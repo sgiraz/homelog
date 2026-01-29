@@ -1,0 +1,333 @@
+<template>
+  <div
+    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+    @click.self="$emit('close')"
+  >
+    <Card class="w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Nuova Spesa</h3>
+        <button @click="$emit('close')" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <form @submit.prevent="handleSubmit" class="space-y-4">
+        <Input
+          v-model="form.amount"
+          label="Importo *"
+          type="number"
+          step="0.01"
+          min="0.01"
+          placeholder="0.00"
+          required
+        />
+
+        <div>
+          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+            Descrizione *
+          </label>
+          <textarea
+            v-model="form.description"
+            rows="2"
+            required
+            placeholder="Es: Spesa supermercato"
+            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+            Categoria *
+          </label>
+          <select
+            v-model="form.category_id"
+            required
+            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option :value="1">Casa</option>
+            <option :value="2">Alimentari e Ristorazione</option>
+            <option :value="3">Trasporti</option>
+            <option :value="4">Salute</option>
+            <option :value="5">Intrattenimento</option>
+            <option :value="6">Famiglia</option>
+            <option :value="7">Abbigliamento</option>
+            <option :value="8">Istruzione</option>
+            <option :value="9">Tecnologia</option>
+          </select>
+        </div>
+
+        <Input
+          v-model="form.date"
+          label="Data *"
+          type="date"
+          required
+        />
+
+        <!-- Sezione Split -->
+        <div v-if="hasMultipleUsers" class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
+          <div class="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="split-checkbox"
+              v-model="form.is_split"
+              class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            />
+            <label for="split-checkbox" class="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+              Dividi questa spesa
+            </label>
+          </div>
+
+          <div v-if="form.is_split" class="space-y-4 pl-2 border-l-2 border-blue-200 dark:border-blue-800 ml-2">
+            <!-- Chi ha pagato -->
+            <div class="pl-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Chi ha pagato?
+              </label>
+              <div class="space-y-2">
+                <label
+                  v-for="user in householdUsers"
+                  :key="user.id"
+                  class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    :value="user.id"
+                    v-model="form.paid_by_member_id"
+                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  />
+                  <span class="text-gray-900 dark:text-white">{{ user.name }}</span>
+                  <span v-if="user.user_id === authStore.user?.id" class="text-xs text-gray-500">(tu)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Con chi dividere -->
+            <div class="pl-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Dividi con:
+              </label>
+              <div class="space-y-2">
+                <label
+                  v-for="user in otherUsers"
+                  :key="user.id"
+                  class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    :value="user.id"
+                    v-model="form.split_with_member_ids"
+                    class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  />
+                  <span class="text-gray-900 dark:text-white">{{ user.name }}</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Riepilogo divisione -->
+            <div
+              v-if="form.split_with_member_ids.length > 0 && form.amount"
+              class="ml-4 bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg"
+            >
+              <div class="text-sm space-y-1">
+                <div class="font-medium text-gray-900 dark:text-white mb-2">Riepilogo divisione:</div>
+                <div class="text-gray-600 dark:text-gray-400">
+                  Totale: <span class="font-medium">{{ formatCurrency(form.amount) }}</span>
+                </div>
+                <div class="text-gray-600 dark:text-gray-400">
+                  Diviso tra {{ totalPeople }} persone
+                </div>
+                <div class="text-lg font-bold text-blue-600 dark:text-blue-400 mt-2">
+                  {{ formatCurrency(splitAmount) }} a testa
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+          {{ error }}
+        </div>
+
+        <div class="flex gap-3 pt-4">
+          <Button type="button" variant="secondary" @click="$emit('close')" class="flex-1">
+            Annulla
+          </Button>
+          <Button type="submit" :disabled="loading" class="flex-1">
+            {{ loading ? 'Salvataggio...' : 'Salva' }}
+          </Button>
+        </div>
+      </form>
+    </Card>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, watch, onMounted } from 'vue'
+import { useExpensesStore } from '@/stores/expenses'
+import { useAuthStore } from '@/stores/auth'
+import apiClient from '@/api/client'
+import Card from '@/components/common/Card.vue'
+import Input from '@/components/common/Input.vue'
+import Button from '@/components/common/Button.vue'
+
+const emit = defineEmits(['close', 'created'])
+const expensesStore = useExpensesStore()
+const authStore = useAuthStore()
+
+const loading = ref(false)
+const error = ref(null)
+const userSettings = ref(null)
+
+// Household users - for now we'll use a simple approach
+// In a real app, this would come from an API call
+const householdUsers = ref([])
+
+const currentPropertyId = ref(null)
+
+const form = ref({
+  amount: null,
+  description: '',
+  category_id: 1,
+  date: new Date().toISOString().split('T')[0],
+  paid_by_member_id: null, // Will be set by fetchHouseholdMembers()
+  is_split: false,
+  split_with_member_ids: [],
+  property_id: null // Will be set by fetchCurrentProperty()
+})
+
+// Computed
+const hasMultipleUsers = computed(() => householdUsers.value.length > 1)
+
+const otherUsers = computed(() => {
+  return householdUsers.value.filter(u => u.id !== form.value.paid_by_member_id)
+})
+
+const totalPeople = computed(() => {
+  return form.value.split_with_member_ids.length + 1
+})
+
+const splitAmount = computed(() => {
+  if (!form.value.amount || totalPeople.value === 0) return 0
+  return parseFloat(form.value.amount) / totalPeople.value
+})
+
+// Methods
+function formatCurrency(value) {
+  return new Intl.NumberFormat('it-IT', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(value || 0)
+}
+
+async function fetchCurrentProperty() {
+  try {
+    const { data } = await apiClient.get('/properties')
+    if (data && data.length > 0) {
+      // Get the current property (is_current = true) or the first one
+      const currentProp = data.find(p => p.is_current) || data[0]
+      currentPropertyId.value = currentProp.id
+      form.value.property_id = currentProp.id
+      console.log('Current property ID:', currentProp.id)
+    }
+  } catch (err) {
+    console.error('Error fetching properties:', err)
+  }
+}
+
+async function fetchUserSettings() {
+  try {
+    const { data } = await apiClient.get('/settings')
+    userSettings.value = data
+
+    // Pre-check split if default_split_with_member_ids is not empty
+    if (data.default_split_with_member_ids) {
+      try {
+        const defaultMembers = JSON.parse(data.default_split_with_member_ids)
+        if (defaultMembers && defaultMembers.length > 0) {
+          form.value.is_split = true
+          form.value.split_with_member_ids = defaultMembers
+          console.log('Pre-selected split members:', defaultMembers)
+        }
+      } catch (e) {
+        console.log('No default split members configured')
+      }
+    }
+  } catch (err) {
+    console.log('Using default settings')
+  }
+}
+
+async function fetchHouseholdUsers() {
+  if (!currentPropertyId.value) return
+
+  try {
+    const { data } = await apiClient.get(`/properties/${currentPropertyId.value}/members`)
+    householdUsers.value = data
+
+    // Find and set current user's member ID as default payer
+    const currentUserId = authStore.user?.id
+    const myMember = data.find(m => m.user_id === currentUserId)
+    if (myMember) {
+      form.value.paid_by_member_id = myMember.id
+      console.log('Current user member ID:', myMember.id)
+    }
+
+    console.log('Household members:', data)
+  } catch (err) {
+    console.log('Error fetching household members:', err)
+    householdUsers.value = []
+  }
+}
+
+// Watch for is_split changes
+watch(() => form.value.is_split, (newVal) => {
+  if (!newVal) {
+    form.value.split_with_member_ids = []
+  }
+})
+
+// Watch for paid_by changes - reset split selection
+watch(() => form.value.paid_by_member_id, () => {
+  form.value.split_with_member_ids = []
+})
+
+async function handleSubmit() {
+  loading.value = true
+  error.value = null
+
+  try {
+    const expenseData = {
+      amount: parseFloat(form.value.amount),
+      description: form.value.description,
+      category_id: form.value.category_id,
+      date: form.value.date,
+      property_id: form.value.property_id,
+      paid_by_member_id: form.value.paid_by_member_id,
+      is_split: form.value.is_split,
+      split_with_member_ids: form.value.is_split ? form.value.split_with_member_ids : []
+    }
+
+    console.log('Creating expense with data:', expenseData)
+
+    await expensesStore.createExpense(expenseData)
+    emit('created')
+    emit('close')
+  } catch (err) {
+    error.value = err.response?.data?.error || err.message || 'Errore durante il salvataggio'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(async () => {
+  await fetchCurrentProperty()
+  await fetchHouseholdUsers()
+  await fetchUserSettings()
+})
+</script>
