@@ -484,16 +484,30 @@ func (h *PDFHandler) extractProviderReadings(extracted *ExtractedBillData, text 
 	switch utilityType {
 	case "electricity":
 		// E.ON format for electricity readings (from "Letture e consumi" section):
-		// "1.936,56 - 1.899,18 = 37,38    2.005,19 - 1.965,35 = 39,84    2.519,09 - 2.453,21 = 65,88"
+		// Table header: "FASCIA 1 kWh + FASCIA 2 kWh + FASCIA 3 kWh = TOT. kWh"
+		// Values: "1.936,56 - 1.899,18 = 37,38    2.005,19 - 1.965,35 = 39,84    2.519,09 - 2.453,21 = 65,88"
 		// Pattern: final_reading - initial_reading = consumption (repeated 3 times for F1, F2, F3)
 		// We want the FINAL readings (lettura finale)
 
-		// Multiple patterns to try
-		// Pattern 1: Standard format "X,XX - Y,YY = Z,ZZ"
-		electricPattern := regexp.MustCompile(`(\d+[\.,]\d+)\s*-\s*(\d+[\.,]\d+)\s*=\s*(\d+[\.,]\d+)`)
-		matches := electricPattern.FindAllStringSubmatch(text, -1)
+		log.Printf("Extracting electricity readings from text (length: %d)", len(text))
 
-		log.Printf("Found %d reading matches in electricity bill", len(matches))
+		// Try to find the "Letture e consumi" section first
+		lettureSection := text
+		if idx := strings.Index(strings.ToLower(text), "letture e consumi"); idx != -1 {
+			lettureSection = text[idx:]
+			// Limit to next major section (roughly 2000 chars should cover the readings table)
+			if len(lettureSection) > 2000 {
+				lettureSection = lettureSection[:2000]
+			}
+			log.Printf("Found 'Letture e consumi' section at index %d", idx)
+		}
+
+		// Pattern for "final - initial = consumption" format
+		// Matches: 1.936,56 - 1.899,18 = 37,38
+		electricPattern := regexp.MustCompile(`(\d{1,3}(?:[.\s]\d{3})*,\d+)\s*-\s*(\d{1,3}(?:[.\s]\d{3})*,\d+)\s*=\s*(\d{1,3}(?:[.\s]\d{3})*,\d+)`)
+		matches := electricPattern.FindAllStringSubmatch(lettureSection, -1)
+
+		log.Printf("Found %d reading matches (pattern 1) in electricity bill", len(matches))
 
 		if len(matches) >= 3 {
 			// F1, F2, F3 final readings (first value in each match is the final reading)
@@ -503,7 +517,48 @@ func (h *PDFHandler) extractProviderReadings(extracted *ExtractedBillData, text 
 			extracted.ProviderReadingF1 = &f1
 			extracted.ProviderReadingF2 = &f2
 			extracted.ProviderReadingF3 = &f3
-			log.Printf("Extracted electricity readings: F1=%.2f, F2=%.2f, F3=%.2f", f1, f2, f3)
+			log.Printf("Extracted electricity readings (pattern 1): F1=%.2f, F2=%.2f, F3=%.2f", f1, f2, f3)
+		} else {
+			// Fallback: Try simpler pattern without thousand separators
+			simplePattern := regexp.MustCompile(`(\d+[,\.]\d+)\s*-\s*(\d+[,\.]\d+)\s*=\s*(\d+[,\.]\d+)`)
+			matches = simplePattern.FindAllStringSubmatch(lettureSection, -1)
+			log.Printf("Found %d reading matches (pattern 2 - simple) in electricity bill", len(matches))
+
+			if len(matches) >= 3 {
+				f1 := h.parseAmount(matches[0][1])
+				f2 := h.parseAmount(matches[1][1])
+				f3 := h.parseAmount(matches[2][1])
+				extracted.ProviderReadingF1 = &f1
+				extracted.ProviderReadingF2 = &f2
+				extracted.ProviderReadingF3 = &f3
+				log.Printf("Extracted electricity readings (pattern 2): F1=%.2f, F2=%.2f, F3=%.2f", f1, f2, f3)
+			}
+		}
+
+		// If still not found, try looking for values near FASCIA labels
+		if extracted.ProviderReadingF1 == nil {
+			log.Printf("Trying FASCIA label patterns...")
+			// Look for patterns like "FASCIA 1" followed by numbers in table format
+			// The table might have: Lettura finale | Lettura iniziale | Consumo
+			fasciaPattern := regexp.MustCompile(`(?i)FASCIA\s*[123].*?(\d{1,3}(?:[.\s]\d{3})*,\d+)`)
+			fasciaMatches := fasciaPattern.FindAllStringSubmatch(lettureSection, 3)
+			log.Printf("Found %d FASCIA matches", len(fasciaMatches))
+			for i, m := range fasciaMatches {
+				log.Printf("FASCIA match %d: %v", i, m)
+			}
+		}
+
+		if extracted.ProviderReadingF1 != nil {
+			log.Printf("Final electricity readings: F1=%.2f, F2=%.2f, F3=%.2f",
+				*extracted.ProviderReadingF1, *extracted.ProviderReadingF2, *extracted.ProviderReadingF3)
+		} else {
+			log.Printf("Warning: Could not extract electricity readings")
+			// Log a sample of the text for debugging
+			sample := lettureSection
+			if len(sample) > 500 {
+				sample = sample[:500]
+			}
+			log.Printf("Sample text: %s", sample)
 		}
 
 	case "gas":

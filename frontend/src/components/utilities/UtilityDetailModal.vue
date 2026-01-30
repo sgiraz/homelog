@@ -529,7 +529,15 @@ async function confirmDeleteReading(reading) {
 async function refreshUtility() {
   try {
     const updated = await utilitiesStore.fetchUtility(localUtility.id)
-    Object.assign(localUtility, updated)
+    // Aggiorna esplicitamente gli array nested per triggerare la reattività
+    localUtility.bills = updated.bills || []
+    localUtility.readings = updated.readings || []
+    // Aggiorna gli altri campi
+    Object.keys(updated).forEach(key => {
+      if (key !== 'bills' && key !== 'readings') {
+        localUtility[key] = updated[key]
+      }
+    })
   } catch (err) {
     console.error('Error refreshing utility:', err)
   }

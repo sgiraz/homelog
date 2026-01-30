@@ -179,15 +179,15 @@
             </div>
             <button
               type="button"
-              @click="showProviderReadings = !showProviderReadings"
+              @click="toggleProviderReadingsEdit"
               class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
             >
-              {{ showProviderReadings ? 'Nascondi' : (hasProviderReadings ? 'Modifica' : 'Inserisci') }}
+              {{ isEditingProviderReadings ? 'Nascondi' : 'Modifica' }}
             </button>
           </div>
 
           <!-- Collapsed view when readings exist -->
-          <div v-show="hasProviderReadings && !showProviderReadings">
+          <div v-show="showCollapsedView">
             <div v-if="utility.type === 'electricity'" class="grid grid-cols-3 gap-2 text-center">
               <div class="bg-white dark:bg-gray-800 rounded p-2">
                 <p class="text-xs text-red-600 dark:text-red-400 font-medium">F1</p>
@@ -208,7 +208,7 @@
           </div>
 
           <!-- Expanded form for manual entry -->
-          <div v-show="showProviderReadings || !hasProviderReadings" class="space-y-3">
+          <div v-show="showExpandedForm" class="space-y-3">
             <p class="text-xs text-gray-500 dark:text-gray-400">
               Inserisci le letture riportate in bolletta per confrontarle con le tue autoletture
             </p>
@@ -222,7 +222,6 @@
                   type="number"
                   step="0.01"
                   placeholder="0"
-                  @focus="showProviderReadings = true"
                   class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                          focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -235,7 +234,6 @@
                   type="number"
                   step="0.01"
                   placeholder="0"
-                  @focus="showProviderReadings = true"
                   class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                          focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -248,7 +246,6 @@
                   type="number"
                   step="0.01"
                   placeholder="0"
-                  @focus="showProviderReadings = true"
                   class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                          focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -264,7 +261,6 @@
                 type="number"
                 step="0.01"
                 placeholder="0"
-                @focus="showProviderReadings = true"
                 class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
                        bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                        focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -332,22 +328,18 @@ const isDragging = ref(false)
 const pdfProcessing = ref(false)
 const pdfError = ref(null)
 const uploadedFile = ref(null)
-const showProviderReadings = ref(false)
 
 const isEditing = computed(() => !!props.bill)
 
-const today = new Date().toISOString().split('T')[0]
-const lastMonth = new Date()
-lastMonth.setMonth(lastMonth.getMonth() - 1)
-const lastMonthStart = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1).toISOString().split('T')[0]
-const lastMonthEnd = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0).toISOString().split('T')[0]
+// Stato per l'editing delle letture fornitore - inizializzato in onMounted
+const isEditingProviderReadings = ref(true)
 
 const form = ref({
   amount_total: null,
-  period_start: lastMonthStart,
-  period_end: lastMonthEnd,
-  due_date: today,
-  issue_date: today,
+  period_start: '',
+  period_end: '',
+  due_date: '',
+  issue_date: '',
   consumption_total: null,
   bill_number: '',
   reading_type: 'actual',
@@ -360,13 +352,27 @@ const form = ref({
   provider_reading: null
 })
 
-// Track if we have provider readings from PDF
+// Track if we have provider readings
 const hasProviderReadings = computed(() => {
   if (props.utility?.type === 'electricity') {
     return form.value.provider_reading_f1 || form.value.provider_reading_f2 || form.value.provider_reading_f3
   }
   return form.value.provider_reading != null
 })
+
+// Computed properties per la UI - logica centralizzata e chiara
+const showCollapsedView = computed(() => {
+  return hasProviderReadings.value && !isEditingProviderReadings.value
+})
+
+const showExpandedForm = computed(() => {
+  return isEditingProviderReadings.value
+})
+
+// Toggle per il pulsante Modifica/Nascondi
+function toggleProviderReadingsEdit() {
+  isEditingProviderReadings.value = !isEditingProviderReadings.value
+}
 
 function getConsumptionUnit(type) {
   const units = {
@@ -524,21 +530,33 @@ async function handleSubmit() {
 
 onMounted(() => {
   if (props.bill) {
-    form.value.amount_total = props.bill.amount_total
-    form.value.period_start = formatDateForInput(props.bill.period_start)
-    form.value.period_end = formatDateForInput(props.bill.period_end)
-    form.value.due_date = formatDateForInput(props.bill.due_date)
-    form.value.issue_date = formatDateForInput(props.bill.issue_date)
-    form.value.consumption_total = props.bill.consumption_total
-    form.value.bill_number = props.bill.bill_number || ''
-    form.value.reading_type = props.bill.reading_type || 'actual'
-    form.value.is_paid = props.bill.is_paid || false
-    // Provider readings
-    form.value.provider_reading_date = formatDateForInput(props.bill.provider_reading_date)
-    form.value.provider_reading_f1 = props.bill.provider_reading_f1
-    form.value.provider_reading_f2 = props.bill.provider_reading_f2
-    form.value.provider_reading_f3 = props.bill.provider_reading_f3
-    form.value.provider_reading = props.bill.provider_reading
+    form.value = {
+      amount_total: props.bill.amount_total,
+      period_start: formatDateForInput(props.bill.period_start),
+      period_end: formatDateForInput(props.bill.period_end),
+      due_date: formatDateForInput(props.bill.due_date),
+      issue_date: formatDateForInput(props.bill.issue_date),
+      consumption_total: props.bill.consumption_total,
+      bill_number: props.bill.bill_number || '',
+      reading_type: props.bill.reading_type || 'actual',
+      is_paid: props.bill.is_paid || false,
+      // Provider readings
+      provider_reading_date: formatDateForInput(props.bill.provider_reading_date),
+      provider_reading_f1: props.bill.provider_reading_f1,
+      provider_reading_f2: props.bill.provider_reading_f2,
+      provider_reading_f3: props.bill.provider_reading_f3,
+      provider_reading: props.bill.provider_reading
+    }
+
+    // Se stiamo editando una bolletta con letture esistenti, mostra la collapsed view
+    const hasExistingReadings = props.utility?.type === 'electricity'
+      ? (props.bill.provider_reading_f1 || props.bill.provider_reading_f2 || props.bill.provider_reading_f3)
+      : props.bill.provider_reading != null
+
+    if (hasExistingReadings) {
+      isEditingProviderReadings.value = false
+    }
   }
+  // Per nuove bollette, isEditingProviderReadings rimane true (default)
 })
 </script>
