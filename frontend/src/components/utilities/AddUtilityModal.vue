@@ -188,7 +188,7 @@
                 Soglia confronto letture
               </label>
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                Differenza % per segnalare anomalie
+                Differenza kWh per segnalare anomalie
               </p>
             </div>
             <div class="flex items-center gap-2">
@@ -203,7 +203,7 @@
                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                        focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
-              <span class="text-sm text-gray-500 dark:text-gray-400">%</span>
+              <span class="text-sm text-gray-500 dark:text-gray-400"> {{ form.type === 'electricity' ? 'kWh' : form.type === 'gas' ? 'Smc' : 'm³' }}</span>
             </div>
           </div>
         </div>
