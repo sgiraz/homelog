@@ -143,7 +143,8 @@ type Utility struct {
 	Rates    []UtilityRate  `gorm:"foreignKey:UtilityID" json:"rates,omitempty"`
 }
 
-// MeterReading represents a manual meter reading
+// MeterReading represents a USER's manual meter reading (autolettura)
+// This is used to compare against provider readings in bills to detect anomalies
 type MeterReading struct {
 	ID        uint      `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time `json:"created_at"`
@@ -151,12 +152,19 @@ type MeterReading struct {
 
 	UtilityID   uint      `gorm:"not null;index" json:"utility_id"`
 	ReadingDate time.Time `gorm:"not null;index" json:"reading_date"`
-	ValueF1     *float64  `json:"value_f1,omitempty"` // For electricity
-	ValueF2     *float64  `json:"value_f2,omitempty"`
-	ValueF3     *float64  `json:"value_f3,omitempty"`
-	ValueTotal  float64   `gorm:"not null" json:"value_total"`
-	PhotoURL    string    `json:"photo_url,omitempty"`
-	Notes       string    `json:"notes,omitempty"`
+
+	// For electricity (multi-band meters)
+	ValueF1 *float64 `json:"value_f1,omitempty"` // Fascia F1 (peak hours)
+	ValueF2 *float64 `json:"value_f2,omitempty"` // Fascia F2 (mid hours)
+	ValueF3 *float64 `json:"value_f3,omitempty"` // Fascia F3 (off-peak hours)
+
+	// For gas/water (single value meters)
+	Value *float64 `json:"value,omitempty"` // Lettura singola (mc per acqua, Smc per gas)
+
+	// Source of reading
+	Source   string `gorm:"default:'manual'" json:"source"` // manual, submitted (inviata al fornitore)
+	PhotoURL string `json:"photo_url,omitempty"`
+	Notes    string `json:"notes,omitempty"`
 }
 
 // Bill represents a utility bill
@@ -173,14 +181,22 @@ type Bill struct {
 	PeriodEnd   time.Time `gorm:"not null;index" json:"period_end"`
 	DueDate     time.Time `gorm:"not null;index" json:"due_date"`
 
-	// Readings
+	// Provider Readings (letture rilevate dal fornitore nella bolletta)
+	// These are the readings reported by the utility provider
+	ProviderReadingDate *time.Time `json:"provider_reading_date,omitempty"` // Data lettura fornitore
+	ProviderReadingF1   *float64   `json:"provider_reading_f1,omitempty"`   // Lettura F1 (electricity peak)
+	ProviderReadingF2   *float64   `json:"provider_reading_f2,omitempty"`   // Lettura F2 (electricity mid)
+	ProviderReadingF3   *float64   `json:"provider_reading_f3,omitempty"`   // Lettura F3 (electricity off-peak)
+	ProviderReading     *float64   `json:"provider_reading,omitempty"`      // Lettura singola (gas/water)
+	ReadingType         string     `json:"reading_type,omitempty"`          // actual (rilevata), estimated (stimata)
+
+	// Legacy reading fields (for backwards compatibility)
 	ReadingStartDate  *time.Time `json:"reading_start_date,omitempty"`
 	ReadingStartValue *float64   `json:"reading_start_value,omitempty"`
 	ReadingEndDate    *time.Time `json:"reading_end_date,omitempty"`
 	ReadingEndValue   *float64   `json:"reading_end_value,omitempty"`
-	ReadingType       string     `json:"reading_type,omitempty"` // actual, estimated
 
-	// Consumption
+	// Consumption (from bill)
 	ConsumptionTotal float64  `gorm:"not null" json:"consumption_total"`
 	ConsumptionF1    *float64 `json:"consumption_f1,omitempty"`
 	ConsumptionF2    *float64 `json:"consumption_f2,omitempty"`
@@ -303,9 +319,9 @@ type ExpenseSplit struct {
 	SettlementID *uint      `gorm:"index" json:"settlement_id,omitempty"`
 
 	// Relations
-	Expense    Expense          `json:"expense"`
-	Member     HouseholdMember  `gorm:"foreignKey:MemberID" json:"member"`
-	Settlement *Settlement      `json:"settlement,omitempty"`
+	Expense    Expense         `json:"expense"`
+	Member     HouseholdMember `gorm:"foreignKey:MemberID" json:"member"`
+	Settlement *Settlement     `json:"settlement,omitempty"`
 }
 
 // Settlement represents a payment between members to settle debts
@@ -315,17 +331,54 @@ type Settlement struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	PropertyID     uint      `gorm:"not null;index" json:"property_id"`
-	FromMemberID   uint      `gorm:"not null;index" json:"from_member_id"` // HouseholdMember ID
-	ToMemberID     uint      `gorm:"not null;index" json:"to_member_id"`   // HouseholdMember ID
-	Amount         float64   `gorm:"not null" json:"amount"`
-	Date           time.Time `gorm:"not null;index" json:"date"`
-	PaymentMethod  string    `json:"payment_method,omitempty"` // bank_transfer, cash, satispay, paypal
-	Note           string    `json:"note,omitempty"`
+	PropertyID    uint      `gorm:"not null;index" json:"property_id"`
+	FromMemberID  uint      `gorm:"not null;index" json:"from_member_id"` // HouseholdMember ID
+	ToMemberID    uint      `gorm:"not null;index" json:"to_member_id"`   // HouseholdMember ID
+	Amount        float64   `gorm:"not null" json:"amount"`
+	Date          time.Time `gorm:"not null;index" json:"date"`
+	PaymentMethod string    `json:"payment_method,omitempty"` // bank_transfer, cash, satispay, paypal
+	Note          string    `json:"note,omitempty"`
 
 	// Relations
-	Property      Property         `json:"property"`
-	FromMember    HouseholdMember  `gorm:"foreignKey:FromMemberID" json:"from_member"`
-	ToMember      HouseholdMember  `gorm:"foreignKey:ToMemberID" json:"to_member"`
-	ExpenseSplits []ExpenseSplit   `gorm:"foreignKey:SettlementID" json:"expense_splits,omitempty"`
+	Property      Property        `json:"property"`
+	FromMember    HouseholdMember `gorm:"foreignKey:FromMemberID" json:"from_member"`
+	ToMember      HouseholdMember `gorm:"foreignKey:ToMemberID" json:"to_member"`
+	ExpenseSplits []ExpenseSplit  `gorm:"foreignKey:SettlementID" json:"expense_splits,omitempty"`
+}
+
+// BillTemplate represents extraction rules for a utility provider's bill format
+type BillTemplate struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	UserID       uint   `gorm:"not null;index" json:"user_id"`
+	Name         string `gorm:"not null" json:"name"`                              // e.g., "E.ON Luce", "Enel Gas"
+	Provider     string `gorm:"not null;index" json:"provider"`                    // e.g., "E.ON", "Enel", "ETRA"
+	UtilityType  string `gorm:"not null" json:"utility_type"`                      // electricity, gas, water, waste
+	IsDefault    bool   `gorm:"not null;default:false" json:"is_default"`          // Default template for this provider+type
+	ExtractionRules string `gorm:"type:text" json:"extraction_rules"`              // JSON with regex patterns for each field
+
+	// Relations
+	User User `json:"user,omitempty"`
+}
+
+
+// ContractTemplate represents extraction rules for utility contracts
+type ContractTemplate struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	UserID          uint   `gorm:"not null;index" json:"user_id"`
+	Name            string `gorm:"not null" json:"name"`
+	Provider        string `gorm:"not null;index" json:"provider"`
+	UtilityType     string `gorm:"not null" json:"utility_type"`
+	IsDefault       bool   `gorm:"not null;default:false" json:"is_default"`
+	ExtractionRules string `gorm:"type:text" json:"extraction_rules"` // JSON with patterns for provider, POD/PDR, customer_code, address
+
+	// Relations
+	User User `json:"user,omitempty"`
 }

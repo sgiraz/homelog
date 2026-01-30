@@ -67,3 +67,59 @@ export const membersAPI = {
   update: (memberId, data) => apiClient.put(`/members/${memberId}`, data),
   delete: (memberId) => apiClient.delete(`/members/${memberId}`),
 }
+
+export const utilitiesAPI = {
+  list: (params) => apiClient.get('/utilities', { params }),
+  create: (data) => apiClient.post('/utilities', data),
+  get: (id) => apiClient.get(`/utilities/${id}`),
+  update: (id, data) => apiClient.put(`/utilities/${id}`, data),
+  delete: (id) => apiClient.delete(`/utilities/${id}`),
+  // Readings
+  getReadings: (utilityId) => apiClient.get(`/utilities/${utilityId}/readings`),
+  addReading: (utilityId, data) => apiClient.post(`/utilities/${utilityId}/readings`, data),
+  updateReading: (utilityId, readingId, data) => apiClient.put(`/utilities/${utilityId}/readings/${readingId}`, data),
+  deleteReading: (utilityId, readingId) => apiClient.delete(`/utilities/${utilityId}/readings/${readingId}`),
+  // Bills
+  getBills: (utilityId) => apiClient.get(`/utilities/${utilityId}/bills`),
+  addBill: (utilityId, data) => apiClient.post(`/utilities/${utilityId}/bills`, data),
+  updateBill: (utilityId, billId, data) => apiClient.put(`/utilities/${utilityId}/bills/${billId}`, data),
+  updateBillFull: (utilityId, billId, data) => apiClient.put(`/utilities/${utilityId}/bills/${billId}/full`, data),
+  deleteBill: (utilityId, billId) => apiClient.delete(`/utilities/${utilityId}/bills/${billId}`),
+  // PDF uploads
+  uploadBillPDF: (utilityId, file, templateId = null) => {
+    const formData = new FormData()
+    formData.append('pdf_file', file)
+    if (templateId) formData.append('template_id', templateId)
+    return apiClient.post(`/utilities/${utilityId}/bills/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  uploadContractPDF: (file) => {
+    const formData = new FormData()
+    formData.append('pdf_file', file)
+    return apiClient.post('/utilities/contract/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  // Reading comparison (autolettura vs lettura fornitore)
+  compareReadings: (utilityId, threshold = 5) =>
+    apiClient.get(`/utilities/${utilityId}/compare-readings`, { params: { threshold } }),
+}
+
+export const templatesAPI = {
+  // Bill templates
+  listBillTemplates: () => apiClient.get('/templates/bills'),
+  createBillTemplate: (data) => apiClient.post('/templates/bills', data),
+  updateBillTemplate: (id, data) => apiClient.put(`/templates/bills/${id}`, data),
+  deleteBillTemplate: (id) => apiClient.delete(`/templates/bills/${id}`),
+}
+
+export const pdfAPI = {
+  extractText: (file) => {
+    const formData = new FormData()
+    formData.append('pdf_file', file)
+    return apiClient.post('/pdf/extract-text', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+}

@@ -78,6 +78,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.HouseholdSettings{},
 		&models.ExpenseSplit{},
 		&models.Settlement{},
+		&models.BillTemplate{},
+		&models.ContractTemplate{},
 	)
 
 	if err != nil {

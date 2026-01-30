@@ -105,6 +105,8 @@ func main() {
 			utilities := protected.Group("/utilities")
 			{
 				utilHandler := handlers.NewUtilityHandler(db)
+				pdfHandler := handlers.NewPDFHandler(db)
+
 				utilities.GET("", utilHandler.List)
 				utilities.POST("", utilHandler.Create)
 				utilities.GET("/:id", utilHandler.Get)
@@ -114,10 +116,41 @@ func main() {
 				// Meter readings
 				utilities.POST("/:id/readings", utilHandler.AddReading)
 				utilities.GET("/:id/readings", utilHandler.GetReadings)
+				utilities.PUT("/:id/readings/:readingId", utilHandler.UpdateReading)
+				utilities.DELETE("/:id/readings/:readingId", utilHandler.DeleteReading)
 
 				// Bills
 				utilities.POST("/:id/bills", utilHandler.AddBill)
 				utilities.GET("/:id/bills", utilHandler.GetBills)
+				utilities.PUT("/:id/bills/:billId", utilHandler.UpdateBill)
+				utilities.PUT("/:id/bills/:billId/full", utilHandler.UpdateBillFull)
+				utilities.DELETE("/:id/bills/:billId", utilHandler.DeleteBill)
+
+				// PDF upload for bills
+				utilities.POST("/:id/bills/upload", pdfHandler.UploadBillPDF)
+
+				// Reading comparison (autolettura vs lettura fornitore)
+				utilities.GET("/:id/compare-readings", utilHandler.CompareReadings)
+
+				// Contract upload (for creating new utilities)
+				utilities.POST("/contract/upload", pdfHandler.UploadContractPDF)
+			}
+
+			// Bill extraction templates
+			templates := protected.Group("/templates")
+			{
+				pdfHandler := handlers.NewPDFHandler(db)
+				templates.GET("/bills", pdfHandler.ListBillTemplates)
+				templates.POST("/bills", pdfHandler.CreateBillTemplate)
+				templates.PUT("/bills/:id", pdfHandler.UpdateBillTemplate)
+				templates.DELETE("/bills/:id", pdfHandler.DeleteBillTemplate)
+			}
+
+			// PDF text extraction helper
+			pdf := protected.Group("/pdf")
+			{
+				pdfHandler := handlers.NewPDFHandler(db)
+				pdf.POST("/extract-text", pdfHandler.GetPDFRawText)
 			}
 
 			// Projects
