@@ -20,12 +20,22 @@
       </svg>
     </div>
 
-    <div v-else-if="comparisons.length === 0" class="text-center py-6 text-gray-500 dark:text-gray-400">
+    <div v-else-if="comparisons.length === 0" class="text-center py-6">
       <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
       </svg>
-      <p>Nessun confronto disponibile</p>
-      <p class="text-sm mt-1">Carica bollette con letture del fornitore e inserisci le tue autoletture</p>
+      <p class="text-gray-700 dark:text-gray-300 font-medium">Nessun confronto disponibile</p>
+      <div class="text-sm mt-3 text-left max-w-xs mx-auto space-y-2">
+        <p class="text-gray-500 dark:text-gray-400">Per abilitare il confronto:</p>
+        <ol class="list-decimal list-inside text-gray-500 dark:text-gray-400 space-y-1">
+          <li>Carica le bollette tramite <strong>PDF</strong> per estrarre le letture del fornitore</li>
+          <li>Oppure inserisci manualmente le <strong>letture del fornitore</strong> quando aggiungi una bolletta</li>
+          <li>Inserisci le tue <strong>autoletture</strong> mensili</li>
+        </ol>
+      </div>
+      <p class="text-xs text-gray-400 mt-3">
+        Debug: {{ debugInfo }}
+      </p>
     </div>
 
     <div v-else class="space-y-4">
@@ -69,7 +79,7 @@
             :providerValue="comparison['provider_' + band.toLowerCase()]"
             :userValue="comparison['user_' + band.toLowerCase()]"
             :difference="comparison['difference_' + band.toLowerCase()]"
-            :percentage="comparison['percentage_' + band.toLowerCase()]"
+            :threshold="threshold"
             unit="kWh"
           />
         </div>
@@ -93,11 +103,10 @@
           <div v-if="comparison.difference != null" class="col-span-2 text-center">
             <span :class="[
               'text-sm font-medium',
-              Math.abs(comparison.difference_percent) > 10 ? 'text-red-600' :
-              Math.abs(comparison.difference_percent) > 5 ? 'text-yellow-600' : 'text-green-600'
+              comparison.status === 'alert' ? 'text-red-600' :
+              comparison.status === 'warning' ? 'text-yellow-600' : 'text-green-600'
             ]">
-              Differenza: {{ formatNumber(comparison.difference) }} {{ getUnit() }}
-              ({{ comparison.difference_percent > 0 ? '+' : '' }}{{ formatNumber(comparison.difference_percent) }}%)
+              Differenza: {{ comparison.difference > 0 ? '+' : '' }}{{ formatNumber(comparison.difference) }} {{ getUnit() }}
             </span>
           </div>
         </div>
@@ -133,20 +142,27 @@ const props = defineProps({
   utilityType: {
     type: String,
     required: true
+  },
+  threshold: {
+    type: Number,
+    default: 5
   }
 })
 
 const loading = ref(false)
 const comparisons = ref([])
-const threshold = ref(5)
+
+const debugInfo = ref('')
 
 async function loadComparisons() {
   loading.value = true
   try {
-    const { data } = await utilitiesAPI.compareReadings(props.utilityId, threshold.value)
+    const { data } = await utilitiesAPI.compareReadings(props.utilityId, props.threshold)
     comparisons.value = data.comparisons || []
+    debugInfo.value = `Bollette con letture: ${comparisons.value.length}, Soglia: ${props.threshold}%`
   } catch (err) {
     console.error('Failed to load comparisons:', err)
+    debugInfo.value = `Errore: ${err.message}`
   } finally {
     loading.value = false
   }
@@ -252,7 +268,7 @@ defineExpose({ loadComparisons })
 <!-- Sub-component for electricity band comparison -->
 <script>
 const ReadingBandComparison = {
-  props: ['band', 'providerValue', 'userValue', 'difference', 'percentage', 'unit'],
+  props: ['band', 'providerValue', 'userValue', 'difference', 'unit', 'threshold'],
   setup(props) {
     const formatNum = (v) => v != null ? v.toLocaleString('it-IT', { maximumFractionDigits: 2 }) : '-'
 
@@ -266,10 +282,11 @@ const ReadingBandComparison = {
     }
 
     const getDiffColor = () => {
-      if (props.percentage == null) return 'text-gray-500'
-      const abs = Math.abs(props.percentage)
-      if (abs > 10) return 'text-red-600'
-      if (abs > 5) return 'text-yellow-600'
+      if (props.difference == null) return 'text-gray-500'
+      const abs = Math.abs(props.difference)
+      const threshold = props.threshold || 5
+      if (abs > threshold * 2) return 'text-red-600'
+      if (abs > threshold) return 'text-yellow-600'
       return 'text-green-600'
     }
 
@@ -278,8 +295,8 @@ const ReadingBandComparison = {
       h('div', { class: 'text-xs text-gray-500 dark:text-gray-400' }, [
         h('p', {}, ['Fornitore: ', h('span', { class: 'font-medium text-gray-700 dark:text-gray-300' }, formatNum(props.providerValue))]),
         h('p', {}, ['Tu: ', h('span', { class: 'font-medium text-gray-700 dark:text-gray-300' }, formatNum(props.userValue))]),
-        props.percentage != null && h('p', { class: getDiffColor() },
-          (props.percentage > 0 ? '+' : '') + formatNum(props.percentage) + '%'
+        props.difference != null && h('p', { class: getDiffColor() },
+          (props.difference > 0 ? '+' : '') + formatNum(props.difference) + ' ' + props.unit
         )
       ])
     ])

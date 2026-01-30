@@ -132,9 +132,11 @@ type Utility struct {
 	IsActive     bool       `gorm:"not null;default:true" json:"is_active"`
 
 	// Additional fields
-	PowerCapacity  float64 `json:"power_capacity,omitempty"` // For electricity (kW)
-	CustomerPortal string  `json:"customer_portal,omitempty"`
-	Notes          string  `json:"notes,omitempty"`
+	PowerCapacity       float64 `json:"power_capacity,omitempty"` // For electricity (kW)
+	CustomerPortal      string  `json:"customer_portal,omitempty"`
+	Notes               string  `json:"notes,omitempty"`
+	AllowsSelfReading   *bool   `gorm:"default:true" json:"allows_self_reading"`  // Se il fornitore accetta autolettura
+	ComparisonThreshold float64 `gorm:"default:5.0" json:"comparison_threshold"` // Soglia % per confronto letture
 
 	// Relations
 	Property Property       `json:"property"`
@@ -353,17 +355,16 @@ type BillTemplate struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID       uint   `gorm:"not null;index" json:"user_id"`
-	Name         string `gorm:"not null" json:"name"`                              // e.g., "E.ON Luce", "Enel Gas"
-	Provider     string `gorm:"not null;index" json:"provider"`                    // e.g., "E.ON", "Enel", "ETRA"
-	UtilityType  string `gorm:"not null" json:"utility_type"`                      // electricity, gas, water, waste
-	IsDefault    bool   `gorm:"not null;default:false" json:"is_default"`          // Default template for this provider+type
-	ExtractionRules string `gorm:"type:text" json:"extraction_rules"`              // JSON with regex patterns for each field
+	UserID          uint   `gorm:"not null;index" json:"user_id"`
+	Name            string `gorm:"not null" json:"name"`                     // e.g., "E.ON Luce", "Enel Gas"
+	Provider        string `gorm:"not null;index" json:"provider"`           // e.g., "E.ON", "Enel", "ETRA"
+	UtilityType     string `gorm:"not null" json:"utility_type"`             // electricity, gas, water, waste
+	IsDefault       bool   `gorm:"not null;default:false" json:"is_default"` // Default template for this provider+type
+	ExtractionRules string `gorm:"type:text" json:"extraction_rules"`        // JSON with regex patterns for each field
 
 	// Relations
 	User User `json:"user,omitempty"`
 }
-
 
 // ContractTemplate represents extraction rules for utility contracts
 type ContractTemplate struct {

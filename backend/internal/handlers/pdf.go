@@ -373,33 +373,67 @@ func (h *PDFHandler) extractBillDataDefault(text string, utilityType string, pdf
 		}
 	}
 
-	// Date patterns (Italian format DD/MM/YYYY or DD mese YYYY)
-	// Due date
+	// Issue date patterns (e.g., "emessa il 19 gennaio 2026")
+	issueDatePatterns := []string{
+		`emessa\s+il\s+(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})`,
+		`[Dd]ata\s+emissione[:\s]*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})`,
+	}
+	for _, pattern := range issueDatePatterns {
+		re := regexp.MustCompile("(?i)" + pattern)
+		if match := re.FindStringSubmatch(text); len(match) > 1 {
+			if len(match) == 4 {
+				// Italian month format: day, month name, year
+				extracted.IssueDate = h.parseItalianDate(match[1], match[2], match[3])
+			} else {
+				extracted.IssueDate = h.parseDate(match[1], "")
+			}
+			log.Printf("Extracted issue date: %s", extracted.IssueDate)
+			break
+		}
+	}
+
+	// Due date patterns - try specific patterns first
+	// E.ON format: "Data di scadenza ... 13 febbraio 2026" or "scadenza 13 febbraio 2026"
 	dueDatePatterns := []string{
+		// Italian month format near "scadenza"
+		`[Ss]cadenza[^0-9]*(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})`,
+		// Numeric format
 		`[Ss]cadenza[:\s]*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})`,
 		`[Dd]ata\s+di\s+scadenza[:\s]*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})`,
 		`entro\s+il\s+(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})`,
 	}
 	for _, pattern := range dueDatePatterns {
-		re := regexp.MustCompile(pattern)
+		re := regexp.MustCompile("(?i)" + pattern)
 		if match := re.FindStringSubmatch(text); len(match) > 1 {
-			extracted.DueDate = h.parseDate(match[1], "")
+			if len(match) == 4 {
+				// Italian month format: day, month name, year
+				extracted.DueDate = h.parseItalianDate(match[1], strings.ToLower(match[2]), match[3])
+				log.Printf("Extracted due date (Italian): %s", extracted.DueDate)
+			} else {
+				extracted.DueDate = h.parseDate(match[1], "")
+				log.Printf("Extracted due date (numeric): %s", extracted.DueDate)
+			}
 			break
 		}
 	}
 
-	// Period patterns
-	periodPattern := regexp.MustCompile(`(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})\s*[-–]\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})`)
-	if match := periodPattern.FindStringSubmatch(text); len(match) > 2 {
-		extracted.PeriodStart = h.parseDate(match[1], "")
-		extracted.PeriodEnd = h.parseDate(match[2], "")
+	// Period patterns - try Italian month format first (more specific)
+	// E.ON format: "01 dicembre 2025 - 31 dicembre 2025"
+	monthPeriodPattern := regexp.MustCompile(`(?i)(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})\s*[-–]\s*(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})`)
+	if match := monthPeriodPattern.FindStringSubmatch(text); len(match) > 6 {
+		extracted.PeriodStart = h.parseItalianDate(match[1], strings.ToLower(match[2]), match[3])
+		extracted.PeriodEnd = h.parseItalianDate(match[4], strings.ToLower(match[5]), match[6])
+		log.Printf("Extracted period (Italian): %s - %s", extracted.PeriodStart, extracted.PeriodEnd)
 	}
 
-	// Italian month-based period
-	monthPeriodPattern := regexp.MustCompile(`(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})\s*[-–]\s*(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})`)
-	if match := monthPeriodPattern.FindStringSubmatch(strings.ToLower(text)); len(match) > 6 {
-		extracted.PeriodStart = h.parseItalianDate(match[1], match[2], match[3])
-		extracted.PeriodEnd = h.parseItalianDate(match[4], match[5], match[6])
+	// Fallback: numeric date format
+	if extracted.PeriodStart == "" {
+		periodPattern := regexp.MustCompile(`(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})\s*[-–]\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})`)
+		if match := periodPattern.FindStringSubmatch(text); len(match) > 2 {
+			extracted.PeriodStart = h.parseDate(match[1], "")
+			extracted.PeriodEnd = h.parseDate(match[2], "")
+			log.Printf("Extracted period (numeric): %s - %s", extracted.PeriodStart, extracted.PeriodEnd)
+		}
 	}
 
 	// POD/PDR code
@@ -438,56 +472,69 @@ func (h *PDFHandler) extractProviderReadings(extracted *ExtractedBillData, text 
 		extracted.ReadingType = "estimated"
 	}
 
-	// Extract reading date from period end (the final reading date)
-	// Pattern: "a 31/12/2025" or "A 31/12/2025"
-	readingDatePattern := regexp.MustCompile(`[Aa]\s+(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})`)
-	if match := readingDatePattern.FindStringSubmatch(text); len(match) > 1 {
-		extracted.ProviderReadingDate = h.parseDate(match[1], "")
+	// Extract reading period from "Da DD/MM/YYYY a DD/MM/YYYY" pattern (E.ON format)
+	// This is in the "Letture e consumi" section
+	readingPeriodPattern := regexp.MustCompile(`Da\s+(\d{1,2}/\d{1,2}/\d{4})\s*[^\d]*a\s+(\d{1,2}/\d{1,2}/\d{4})`)
+	if match := readingPeriodPattern.FindStringSubmatch(text); len(match) > 2 {
+		// Use the end date of the reading period as the provider reading date
+		extracted.ProviderReadingDate = h.parseDate(match[2], "")
+		log.Printf("Extracted reading period: %s - %s", match[1], match[2])
 	}
 
 	switch utilityType {
 	case "electricity":
-		// E.ON format for electricity readings:
+		// E.ON format for electricity readings (from "Letture e consumi" section):
 		// "1.936,56 - 1.899,18 = 37,38    2.005,19 - 1.965,35 = 39,84    2.519,09 - 2.453,21 = 65,88"
 		// Pattern: final_reading - initial_reading = consumption (repeated 3 times for F1, F2, F3)
 		// We want the FINAL readings (lettura finale)
 
-		// Look for the readings section after "Letture e consumi" or "FASCIA"
-		electricPattern := regexp.MustCompile(`(\d+[.,]\d+)\s*-\s*\d+[.,]\d+\s*=\s*\d+[.,]\d+`)
+		// Multiple patterns to try
+		// Pattern 1: Standard format "X,XX - Y,YY = Z,ZZ"
+		electricPattern := regexp.MustCompile(`(\d+[\.,]\d+)\s*-\s*(\d+[\.,]\d+)\s*=\s*(\d+[\.,]\d+)`)
 		matches := electricPattern.FindAllStringSubmatch(text, -1)
 
+		log.Printf("Found %d reading matches in electricity bill", len(matches))
+
 		if len(matches) >= 3 {
-			// F1, F2, F3 final readings
+			// F1, F2, F3 final readings (first value in each match is the final reading)
 			f1 := h.parseAmount(matches[0][1])
 			f2 := h.parseAmount(matches[1][1])
 			f3 := h.parseAmount(matches[2][1])
 			extracted.ProviderReadingF1 = &f1
 			extracted.ProviderReadingF2 = &f2
 			extracted.ProviderReadingF3 = &f3
+			log.Printf("Extracted electricity readings: F1=%.2f, F2=%.2f, F3=%.2f", f1, f2, f3)
 		}
 
 	case "gas":
 		// E.ON format for gas readings:
 		// "6.299,00 - 6.180,00 = 119,00"
 		// Pattern: final_reading - initial_reading = consumption
-		gasPattern := regexp.MustCompile(`(\d+[.,]\d+)\s*-\s*\d+[.,]\d+\s*=\s*\d+[.,]\d+`)
-		if match := gasPattern.FindStringSubmatch(text); len(match) > 1 {
-			reading := h.parseAmount(match[1])
+		gasPattern := regexp.MustCompile(`(\d+[\.,]\d+)\s*-\s*(\d+[\.,]\d+)\s*=\s*(\d+[\.,]\d+)`)
+		matches := gasPattern.FindAllStringSubmatch(text, -1)
+
+		log.Printf("Found %d reading matches in gas bill", len(matches))
+
+		if len(matches) > 0 {
+			// Get the first match (there should be only one for gas)
+			reading := h.parseAmount(matches[0][1])
 			extracted.ProviderReading = &reading
+			log.Printf("Extracted gas reading: %.2f mc", reading)
 		}
 
 	case "water":
 		// ETRA format for water readings - look for "Lettura attuale" or similar
 		// Pattern similar to gas
 		waterPatterns := []string{
-			`[Ll]ettura\s+(?:attuale|finale)[:\s]*(\d+[.,]?\d*)`,
-			`(\d+[.,]\d+)\s*-\s*\d+[.,]\d+\s*=\s*\d+[.,]\d+`,
+			`[Ll]ettura\s+(?:attuale|finale)[:\s]*(\d+[\.,]?\d*)`,
+			`(\d+[\.,]\d+)\s*-\s*(\d+[\.,]\d+)\s*=\s*(\d+[\.,]\d+)`,
 		}
 		for _, pattern := range waterPatterns {
 			re := regexp.MustCompile(pattern)
 			if match := re.FindStringSubmatch(text); len(match) > 1 {
 				reading := h.parseAmount(match[1])
 				extracted.ProviderReading = &reading
+				log.Printf("Extracted water reading: %.2f mc", reading)
 				break
 			}
 		}

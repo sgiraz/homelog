@@ -162,6 +162,52 @@
           placeholder="https://..."
         />
 
+        <!-- Allows Self Reading (only for electricity/gas/water) -->
+        <div v-if="form.type !== 'waste'" class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <input
+            type="checkbox"
+            id="allows-self-reading"
+            v-model="form.allows_self_reading"
+            class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+          />
+          <div>
+            <label for="allows-self-reading" class="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+              Il fornitore accetta autolettura
+            </label>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Attiva se puoi comunicare le tue letture al fornitore
+            </p>
+          </div>
+        </div>
+
+        <!-- Comparison Threshold (only for electricity/gas/water) -->
+        <div v-if="form.type !== 'waste'" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <label for="comparison-threshold" class="text-sm font-medium text-gray-900 dark:text-white">
+                Soglia confronto letture
+              </label>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                Differenza % per segnalare anomalie
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <input
+                id="comparison-threshold"
+                v-model.number="form.comparison_threshold"
+                type="number"
+                min="1"
+                max="50"
+                step="1"
+                class="w-16 px-2 py-1 text-sm text-center border border-gray-300 dark:border-gray-600 rounded
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                       focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <span class="text-sm text-gray-500 dark:text-gray-400">%</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Notes -->
         <div>
           <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -230,7 +276,9 @@ const form = ref({
   start_date: '',
   customer_portal: '',
   notes: '',
-  property_id: null
+  property_id: null,
+  allows_self_reading: true,  // Default to true for most providers
+  comparison_threshold: 5     // Default 5% threshold
 })
 
 function triggerFileInput() {

@@ -166,54 +166,111 @@
           </select>
         </div>
 
-        <!-- Provider Readings Section (shown when extracted from PDF) -->
-        <div v-if="hasProviderReadings" class="border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-          <div class="flex items-center gap-2 mb-3">
-            <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span class="text-sm font-medium text-green-700 dark:text-green-300">
-              Letture Fornitore Estratte
-            </span>
+        <!-- Provider Readings Section -->
+        <div class="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <span class="text-sm font-medium text-blue-700 dark:text-blue-300">
+                Letture Fornitore (per confronto)
+              </span>
+            </div>
+            <button
+              type="button"
+              @click="showProviderReadings = !showProviderReadings"
+              class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              {{ showProviderReadings ? 'Nascondi' : (hasProviderReadings ? 'Modifica' : 'Inserisci') }}
+            </button>
           </div>
 
-          <!-- Electricity readings (F1/F2/F3) -->
-          <div v-if="utility.type === 'electricity'" class="grid grid-cols-3 gap-2 text-center">
-            <div class="bg-white dark:bg-gray-800 rounded p-2">
-              <p class="text-xs text-red-600 dark:text-red-400 font-medium">F1</p>
-              <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                {{ form.provider_reading_f1 ? formatNumber(form.provider_reading_f1) : '-' }}
-              </p>
-              <p class="text-xs text-gray-500">kWh</p>
+          <!-- Collapsed view when readings exist -->
+          <div v-show="hasProviderReadings && !showProviderReadings">
+            <div v-if="utility.type === 'electricity'" class="grid grid-cols-3 gap-2 text-center">
+              <div class="bg-white dark:bg-gray-800 rounded p-2">
+                <p class="text-xs text-red-600 dark:text-red-400 font-medium">F1</p>
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ formatNumber(form.provider_reading_f1) }}</p>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded p-2">
+                <p class="text-xs text-yellow-600 dark:text-yellow-400 font-medium">F2</p>
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ formatNumber(form.provider_reading_f2) }}</p>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded p-2">
+                <p class="text-xs text-green-600 dark:text-green-400 font-medium">F3</p>
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ formatNumber(form.provider_reading_f3) }}</p>
+              </div>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded p-2">
-              <p class="text-xs text-yellow-600 dark:text-yellow-400 font-medium">F2</p>
-              <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                {{ form.provider_reading_f2 ? formatNumber(form.provider_reading_f2) : '-' }}
-              </p>
-              <p class="text-xs text-gray-500">kWh</p>
-            </div>
-            <div class="bg-white dark:bg-gray-800 rounded p-2">
-              <p class="text-xs text-green-600 dark:text-green-400 font-medium">F3</p>
-              <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                {{ form.provider_reading_f3 ? formatNumber(form.provider_reading_f3) : '-' }}
-              </p>
-              <p class="text-xs text-gray-500">kWh</p>
+            <div v-else class="text-center bg-white dark:bg-gray-800 rounded p-2">
+              <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ formatNumber(form.provider_reading) }} mc</p>
             </div>
           </div>
 
-          <!-- Gas/Water single reading -->
-          <div v-else class="text-center bg-white dark:bg-gray-800 rounded p-2">
-            <p class="text-xs text-gray-500 dark:text-gray-400">Lettura Contatore</p>
-            <p class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{ formatNumber(form.provider_reading) }}
-              <span class="text-sm font-normal text-gray-500">{{ utility.type === 'gas' ? 'mc' : 'mc' }}</span>
+          <!-- Expanded form for manual entry -->
+          <div v-show="showProviderReadings || !hasProviderReadings" class="space-y-3">
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Inserisci le letture riportate in bolletta per confrontarle con le tue autoletture
             </p>
-          </div>
 
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-            Queste letture verranno salvate per il confronto con le tue autoletture
-          </p>
+            <!-- Electricity readings (F1/F2/F3) -->
+            <div v-if="utility.type === 'electricity'" class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="block text-xs text-red-600 dark:text-red-400 mb-1 font-medium">F1 (kWh)</label>
+                <input
+                  v-model="form.provider_reading_f1"
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  @focus="showProviderReadings = true"
+                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
+                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                         focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label class="block text-xs text-yellow-600 dark:text-yellow-400 mb-1 font-medium">F2 (kWh)</label>
+                <input
+                  v-model="form.provider_reading_f2"
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  @focus="showProviderReadings = true"
+                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
+                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                         focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label class="block text-xs text-green-600 dark:text-green-400 mb-1 font-medium">F3 (kWh)</label>
+                <input
+                  v-model="form.provider_reading_f3"
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  @focus="showProviderReadings = true"
+                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
+                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                         focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <!-- Gas/Water single reading -->
+            <div v-else-if="utility.type === 'gas' || utility.type === 'water'">
+              <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Lettura Contatore (mc)</label>
+              <input
+                v-model="form.provider_reading"
+                type="number"
+                step="0.01"
+                placeholder="0"
+                @focus="showProviderReadings = true"
+                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                       focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
         </div>
 
         <!-- Stato Pagamento -->
@@ -275,6 +332,7 @@ const isDragging = ref(false)
 const pdfProcessing = ref(false)
 const pdfError = ref(null)
 const uploadedFile = ref(null)
+const showProviderReadings = ref(false)
 
 const isEditing = computed(() => !!props.bill)
 
@@ -466,23 +524,21 @@ async function handleSubmit() {
 
 onMounted(() => {
   if (props.bill) {
-    form.value = {
-      amount_total: props.bill.amount_total,
-      period_start: formatDateForInput(props.bill.period_start),
-      period_end: formatDateForInput(props.bill.period_end),
-      due_date: formatDateForInput(props.bill.due_date),
-      issue_date: formatDateForInput(props.bill.issue_date),
-      consumption_total: props.bill.consumption_total,
-      bill_number: props.bill.bill_number || '',
-      reading_type: props.bill.reading_type || 'actual',
-      is_paid: props.bill.is_paid || false,
-      // Provider readings
-      provider_reading_date: formatDateForInput(props.bill.provider_reading_date),
-      provider_reading_f1: props.bill.provider_reading_f1,
-      provider_reading_f2: props.bill.provider_reading_f2,
-      provider_reading_f3: props.bill.provider_reading_f3,
-      provider_reading: props.bill.provider_reading
-    }
+    form.value.amount_total = props.bill.amount_total
+    form.value.period_start = formatDateForInput(props.bill.period_start)
+    form.value.period_end = formatDateForInput(props.bill.period_end)
+    form.value.due_date = formatDateForInput(props.bill.due_date)
+    form.value.issue_date = formatDateForInput(props.bill.issue_date)
+    form.value.consumption_total = props.bill.consumption_total
+    form.value.bill_number = props.bill.bill_number || ''
+    form.value.reading_type = props.bill.reading_type || 'actual'
+    form.value.is_paid = props.bill.is_paid || false
+    // Provider readings
+    form.value.provider_reading_date = formatDateForInput(props.bill.provider_reading_date)
+    form.value.provider_reading_f1 = props.bill.provider_reading_f1
+    form.value.provider_reading_f2 = props.bill.provider_reading_f2
+    form.value.provider_reading_f3 = props.bill.provider_reading_f3
+    form.value.provider_reading = props.bill.provider_reading
   }
 })
 </script>

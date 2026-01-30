@@ -231,10 +231,47 @@
 
       <!-- Comparison Tab -->
       <div v-if="activeTab === 'comparison'">
+        <!-- Threshold Settings -->
+        <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Soglia di allerta
+              </label>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                Differenza massima tollerata tra letture
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-gray-500 dark:text-gray-400">+/-</span>
+              <input
+                v-model.number="thresholdValue"
+                type="number"
+                min="1"
+                max="100"
+                step="1"
+                class="w-16 px-2 py-1 text-sm text-center border border-gray-300 dark:border-gray-600 rounded
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                       focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <span class="text-sm text-gray-500 dark:text-gray-400">{{ getThresholdUnit() }}</span>
+              <button
+                v-if="thresholdValue !== localUtility.comparison_threshold"
+                @click="saveThreshold"
+                :disabled="savingThreshold"
+                class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+              >
+                {{ savingThreshold ? '...' : 'Salva' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <ReadingComparisonCard
           ref="comparisonCard"
           :utility-id="localUtility.id"
           :utility-type="localUtility.type"
+          :threshold="localUtility.comparison_threshold || 5"
         />
       </div>
 
@@ -253,7 +290,7 @@
 
       <!-- Add/Edit Bill Modal -->
       <AddBillModal
-        v-if="showBillModal"
+        v-show="showBillModal"
         :utility="localUtility"
         :bill="editingBill"
         @close="closeBillModal"
@@ -305,6 +342,35 @@ const showBillModal = ref(false)
 const showReadingModal = ref(false)
 const editingBill = ref(null)
 const editingReading = ref(null)
+const comparisonCard = ref(null)
+
+// Threshold settings
+const thresholdValue = ref(props.utility.comparison_threshold || 5)
+const savingThreshold = ref(false)
+
+// Watch for utility changes to update threshold
+watch(() => props.utility.comparison_threshold, (newVal) => {
+  thresholdValue.value = newVal || 5
+})
+
+async function saveThreshold() {
+  savingThreshold.value = true
+  try {
+    await utilitiesStore.updateUtility(localUtility.id, {
+      comparison_threshold: thresholdValue.value
+    })
+    localUtility.comparison_threshold = thresholdValue.value
+    // Refresh comparison card
+    if (comparisonCard.value) {
+      comparisonCard.value.loadComparisons()
+    }
+    emit('updated')
+  } catch (err) {
+    console.error('Error saving threshold:', err)
+  } finally {
+    savingThreshold.value = false
+  }
+}
 
 function getUtilityIcon(type) {
   const icons = {
@@ -344,6 +410,16 @@ function getConsumptionUnit(type) {
     waste: ''
   }
   return units[type] || ''
+}
+
+function getThresholdUnit() {
+  const units = {
+    electricity: 'kWh',
+    gas: 'Smc',
+    water: 'mc',
+    waste: ''
+  }
+  return units[localUtility.type] || ''
 }
 
 function formatCurrency(value) {

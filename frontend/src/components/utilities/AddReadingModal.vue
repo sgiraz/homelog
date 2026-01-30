@@ -80,8 +80,8 @@
           </p>
         </div>
 
-        <!-- Source (submitted to provider?) -->
-        <div class="flex items-center gap-3">
+        <!-- Source (submitted to provider?) - Only show if provider accepts self-readings -->
+        <div v-if="utility.allows_self_reading === true" class="flex items-center gap-3">
           <input
             type="checkbox"
             id="is-submitted"

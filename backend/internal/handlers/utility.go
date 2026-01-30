@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -76,18 +78,20 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 	}
 
 	var input struct {
-		PropertyID     uint       `json:"property_id" binding:"required"`
-		Type           string     `json:"type" binding:"required,oneof=electricity gas water waste"`
-		Provider       string     `json:"provider" binding:"required"`
-		CustomerCode   string     `json:"customer_code"`
-		ServiceCode    string     `json:"service_code"`
-		Address        string     `json:"address"`
-		StartDate      time.Time  `json:"start_date"`
-		EndDate        *time.Time `json:"end_date"`
-		IsActive       bool       `json:"is_active"`
-		PowerCapacity  float64    `json:"power_capacity"`
-		CustomerPortal string     `json:"customer_portal"`
-		Notes          string     `json:"notes"`
+		PropertyID          uint       `json:"property_id" binding:"required"`
+		Type                string     `json:"type" binding:"required,oneof=electricity gas water waste"`
+		Provider            string     `json:"provider" binding:"required"`
+		CustomerCode        string     `json:"customer_code"`
+		ServiceCode         string     `json:"service_code"`
+		Address             string     `json:"address"`
+		StartDate           time.Time  `json:"start_date"`
+		EndDate             *time.Time `json:"end_date"`
+		IsActive            bool       `json:"is_active"`
+		PowerCapacity       float64    `json:"power_capacity"`
+		CustomerPortal      string     `json:"customer_portal"`
+		Notes               string     `json:"notes"`
+		AllowsSelfReading   *bool      `json:"allows_self_reading"`   // nil = true (default)
+		ComparisonThreshold *float64   `json:"comparison_threshold"` // nil = 5.0 (default)
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -106,20 +110,57 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// Check if there's already an active utility of the same type for this property
+	var existingCount int64
+	h.db.Model(&models.Utility{}).
+		Where("property_id = ? AND type = ? AND is_active = ?", input.PropertyID, input.Type, true).
+		Count(&existingCount)
+
+	if existingCount > 0 {
+		typeLabels := map[string]string{
+			"electricity": "Luce",
+			"gas":         "Gas",
+			"water":       "Acqua",
+			"waste":       "Rifiuti",
+		}
+		label := typeLabels[input.Type]
+		if label == "" {
+			label = input.Type
+		}
+		c.JSON(http.StatusConflict, gin.H{
+			"error": fmt.Sprintf("Esiste già un'utenza %s attiva per questa proprietà. Disattiva quella esistente prima di crearne una nuova.", label),
+		})
+		return
+	}
+
+	// Default allows_self_reading to true if not specified
+	allowsSelfReading := true
+	if input.AllowsSelfReading != nil {
+		allowsSelfReading = *input.AllowsSelfReading
+	}
+
+	// Default comparison_threshold to 5.0 if not specified
+	comparisonThreshold := 5.0
+	if input.ComparisonThreshold != nil {
+		comparisonThreshold = *input.ComparisonThreshold
+	}
+
 	utility := models.Utility{
-		UserID:         userID,
-		PropertyID:     input.PropertyID,
-		Type:           input.Type,
-		Provider:       input.Provider,
-		CustomerCode:   input.CustomerCode,
-		ServiceCode:    input.ServiceCode,
-		Address:        input.Address,
-		StartDate:      input.StartDate,
-		EndDate:        input.EndDate,
-		IsActive:       true,
-		PowerCapacity:  input.PowerCapacity,
-		CustomerPortal: input.CustomerPortal,
-		Notes:          input.Notes,
+		UserID:              userID,
+		PropertyID:          input.PropertyID,
+		Type:                input.Type,
+		Provider:            input.Provider,
+		CustomerCode:        input.CustomerCode,
+		ServiceCode:         input.ServiceCode,
+		Address:             input.Address,
+		StartDate:           input.StartDate,
+		EndDate:             input.EndDate,
+		IsActive:            true,
+		PowerCapacity:       input.PowerCapacity,
+		CustomerPortal:      input.CustomerPortal,
+		Notes:               input.Notes,
+		AllowsSelfReading:   &allowsSelfReading,
+		ComparisonThreshold: comparisonThreshold,
 	}
 
 	if err := h.db.Create(&utility).Error; err != nil {
@@ -206,16 +247,18 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	}
 
 	var input struct {
-		Provider       string     `json:"provider"`
-		CustomerCode   string     `json:"customer_code"`
-		ServiceCode    string     `json:"service_code"`
-		Address        string     `json:"address"`
-		StartDate      *time.Time `json:"start_date"`
-		EndDate        *time.Time `json:"end_date"`
-		IsActive       *bool      `json:"is_active"`
-		PowerCapacity  *float64   `json:"power_capacity"`
-		CustomerPortal string     `json:"customer_portal"`
-		Notes          string     `json:"notes"`
+		Provider            string     `json:"provider"`
+		CustomerCode        string     `json:"customer_code"`
+		ServiceCode         string     `json:"service_code"`
+		Address             string     `json:"address"`
+		StartDate           *time.Time `json:"start_date"`
+		EndDate             *time.Time `json:"end_date"`
+		IsActive            *bool      `json:"is_active"`
+		PowerCapacity       *float64   `json:"power_capacity"`
+		CustomerPortal      string     `json:"customer_portal"`
+		Notes               string     `json:"notes"`
+		AllowsSelfReading   *bool      `json:"allows_self_reading"`
+		ComparisonThreshold *float64   `json:"comparison_threshold"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -241,6 +284,31 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	}
 	utility.EndDate = input.EndDate
 	if input.IsActive != nil {
+		// If trying to activate, check for existing active utility of same type
+		if *input.IsActive && !utility.IsActive {
+			var existingCount int64
+			h.db.Model(&models.Utility{}).
+				Where("property_id = ? AND type = ? AND is_active = ? AND id != ?",
+					utility.PropertyID, utility.Type, true, utility.ID).
+				Count(&existingCount)
+
+			if existingCount > 0 {
+				typeLabels := map[string]string{
+					"electricity": "Luce",
+					"gas":         "Gas",
+					"water":       "Acqua",
+					"waste":       "Rifiuti",
+				}
+				label := typeLabels[utility.Type]
+				if label == "" {
+					label = utility.Type
+				}
+				c.JSON(http.StatusConflict, gin.H{
+					"error": fmt.Sprintf("Esiste già un'utenza %s attiva per questa proprietà. Disattiva quella esistente prima di attivare questa.", label),
+				})
+				return
+			}
+		}
 		utility.IsActive = *input.IsActive
 	}
 	if input.PowerCapacity != nil {
@@ -250,6 +318,12 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 		utility.CustomerPortal = input.CustomerPortal
 	}
 	utility.Notes = input.Notes
+	if input.AllowsSelfReading != nil {
+		utility.AllowsSelfReading = input.AllowsSelfReading
+	}
+	if input.ComparisonThreshold != nil {
+		utility.ComparisonThreshold = *input.ComparisonThreshold
+	}
 
 	if err := h.db.Save(&utility).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update utility"})
@@ -334,11 +408,11 @@ func (h *UtilityHandler) AddReading(c *gin.Context) {
 
 	var input struct {
 		ReadingDate time.Time `json:"reading_date" binding:"required"`
-		ValueF1     *float64  `json:"value_f1"`     // Electricity F1 (peak)
-		ValueF2     *float64  `json:"value_f2"`     // Electricity F2 (mid)
-		ValueF3     *float64  `json:"value_f3"`     // Electricity F3 (off-peak)
-		Value       *float64  `json:"value"`        // Gas/Water single reading (mc/Smc)
-		Source      string    `json:"source"`       // manual, submitted
+		ValueF1     *float64  `json:"value_f1"` // Electricity F1 (peak)
+		ValueF2     *float64  `json:"value_f2"` // Electricity F2 (mid)
+		ValueF3     *float64  `json:"value_f3"` // Electricity F3 (off-peak)
+		Value       *float64  `json:"value"`    // Gas/Water single reading (mc/Smc)
+		Source      string    `json:"source"`   // manual, submitted
 		PhotoURL    string    `json:"photo_url"`
 		Notes       string    `json:"notes"`
 	}
@@ -707,16 +781,21 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	}
 
 	var input struct {
-		BillNumber       string     `json:"bill_number"`
-		IssueDate        time.Time  `json:"issue_date"`
-		PeriodStart      time.Time  `json:"period_start"`
-		PeriodEnd        time.Time  `json:"period_end"`
-		DueDate          time.Time  `json:"due_date"`
-		ConsumptionTotal float64    `json:"consumption_total"`
-		AmountTotal      float64    `json:"amount_total"`
-		ReadingType      string     `json:"reading_type"`
-		IsPaid           bool       `json:"is_paid"`
-		PaidDate         *time.Time `json:"paid_date"`
+		BillNumber          string     `json:"bill_number"`
+		IssueDate           time.Time  `json:"issue_date"`
+		PeriodStart         time.Time  `json:"period_start"`
+		PeriodEnd           time.Time  `json:"period_end"`
+		DueDate             time.Time  `json:"due_date"`
+		ConsumptionTotal    float64    `json:"consumption_total"`
+		AmountTotal         float64    `json:"amount_total"`
+		ReadingType         string     `json:"reading_type"`
+		IsPaid              bool       `json:"is_paid"`
+		PaidDate            *time.Time `json:"paid_date"`
+		ProviderReadingDate *time.Time `json:"provider_reading_date"`
+		ProviderReadingF1   *float64   `json:"provider_reading_f1"`
+		ProviderReadingF2   *float64   `json:"provider_reading_f2"`
+		ProviderReadingF3   *float64   `json:"provider_reading_f3"`
+		ProviderReading     *float64   `json:"provider_reading"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -735,6 +814,11 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	bill.ReadingType = input.ReadingType
 	bill.IsPaid = input.IsPaid
 	bill.PaidDate = input.PaidDate
+	bill.ProviderReadingDate = input.ProviderReadingDate
+	bill.ProviderReadingF1 = input.ProviderReadingF1
+	bill.ProviderReadingF2 = input.ProviderReadingF2
+	bill.ProviderReadingF3 = input.ProviderReadingF3
+	bill.ProviderReading = input.ProviderReading
 
 	if err := h.db.Save(&bill).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update bill"})
@@ -883,29 +967,25 @@ type ReadingComparison struct {
 	BillNumber          string     `json:"bill_number"`
 	PeriodEnd           time.Time  `json:"period_end"`
 	UtilityType         string     `json:"utility_type"`
-	ReadingType         string     `json:"reading_type"`           // actual or estimated
+	ReadingType         string     `json:"reading_type"` // actual or estimated
 	ProviderReadingDate *time.Time `json:"provider_reading_date"`
 	UserReadingDate     *time.Time `json:"user_reading_date"`
 	// For electricity (F1/F2/F3)
-	ProviderF1    *float64 `json:"provider_f1,omitempty"`
-	ProviderF2    *float64 `json:"provider_f2,omitempty"`
-	ProviderF3    *float64 `json:"provider_f3,omitempty"`
-	UserF1        *float64 `json:"user_f1,omitempty"`
-	UserF2        *float64 `json:"user_f2,omitempty"`
-	UserF3        *float64 `json:"user_f3,omitempty"`
-	DifferenceF1  *float64 `json:"difference_f1,omitempty"`
-	DifferenceF2  *float64 `json:"difference_f2,omitempty"`
-	DifferenceF3  *float64 `json:"difference_f3,omitempty"`
-	PercentageF1  *float64 `json:"percentage_f1,omitempty"`
-	PercentageF2  *float64 `json:"percentage_f2,omitempty"`
-	PercentageF3  *float64 `json:"percentage_f3,omitempty"`
+	ProviderF1   *float64 `json:"provider_f1,omitempty"`
+	ProviderF2   *float64 `json:"provider_f2,omitempty"`
+	ProviderF3   *float64 `json:"provider_f3,omitempty"`
+	UserF1       *float64 `json:"user_f1,omitempty"`
+	UserF2       *float64 `json:"user_f2,omitempty"`
+	UserF3       *float64 `json:"user_f3,omitempty"`
+	DifferenceF1 *float64 `json:"difference_f1,omitempty"` // Absolute difference in kWh
+	DifferenceF2 *float64 `json:"difference_f2,omitempty"`
+	DifferenceF3 *float64 `json:"difference_f3,omitempty"`
 	// For gas/water (single value)
-	ProviderReading   *float64 `json:"provider_reading,omitempty"`
-	UserReading       *float64 `json:"user_reading,omitempty"`
-	Difference        *float64 `json:"difference,omitempty"`
-	DifferencePercent *float64 `json:"difference_percent,omitempty"`
+	ProviderReading *float64 `json:"provider_reading,omitempty"`
+	UserReading     *float64 `json:"user_reading,omitempty"`
+	Difference      *float64 `json:"difference,omitempty"` // Absolute difference in mc/Smc
 	// Status
-	Status       string `json:"status"`        // ok, warning, alert
+	Status       string `json:"status"`        // ok, warning, alert, no_data
 	AlertMessage string `json:"alert_message"` // Human readable message
 }
 
@@ -943,14 +1023,22 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 		Order("period_end DESC").
 		Find(&bills)
 
+	log.Printf("CompareReadings: Found %d bills for utility %d (type: %s)", len(bills), utilityID, utility.Type)
+
 	// Get all user readings
 	var readings []models.MeterReading
 	h.db.Where("utility_id = ?", utilityID).
 		Order("reading_date DESC").
 		Find(&readings)
 
-	// Default threshold (5%)
-	threshold := 5.0
+	log.Printf("CompareReadings: Found %d user readings", len(readings))
+
+	// Use utility's comparison threshold (default 5% if not set)
+	threshold := utility.ComparisonThreshold
+	if threshold == 0 {
+		threshold = 5.0
+	}
+	// Allow override via query param
 	if t := c.Query("threshold"); t != "" {
 		if parsed, err := strconv.ParseFloat(t, 64); err == nil {
 			threshold = parsed
@@ -964,11 +1052,16 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 		hasProviderReading := false
 		if utility.Type == "electricity" {
 			hasProviderReading = bill.ProviderReadingF1 != nil || bill.ProviderReadingF2 != nil || bill.ProviderReadingF3 != nil
+			log.Printf("Bill %d: F1=%v, F2=%v, F3=%v, hasReading=%v",
+				bill.ID, bill.ProviderReadingF1, bill.ProviderReadingF2, bill.ProviderReadingF3, hasProviderReading)
 		} else {
 			hasProviderReading = bill.ProviderReading != nil
+			log.Printf("Bill %d: ProviderReading=%v, hasReading=%v",
+				bill.ID, bill.ProviderReading, hasProviderReading)
 		}
 
 		if !hasProviderReading {
+			log.Printf("Skipping bill %d - no provider readings", bill.ID)
 			continue
 		}
 
@@ -982,25 +1075,47 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 			Status:              "ok",
 		}
 
-		// Find the closest user reading to the provider reading date
+		// Find user reading that falls within the bill period
+		// The user's autolettura should be within or close to the billing period
 		var closestReading *models.MeterReading
-		var minDiff time.Duration = time.Hour * 24 * 365 // 1 year max
+		var bestScore int = -1 // Higher is better
 
-		targetDate := bill.PeriodEnd
-		if bill.ProviderReadingDate != nil {
-			targetDate = *bill.ProviderReadingDate
-		}
+		log.Printf("Bill %d: period %v - %v", bill.ID, bill.PeriodStart.Format("2006-01-02"), bill.PeriodEnd.Format("2006-01-02"))
 
 		for i := range readings {
-			diff := readings[i].ReadingDate.Sub(targetDate)
-			if diff < 0 {
-				diff = -diff
+			readingDate := readings[i].ReadingDate
+			score := 0
+
+			// Best match: reading date is within the bill period
+			if !readingDate.Before(bill.PeriodStart) && !readingDate.After(bill.PeriodEnd) {
+				score = 100
+			} else {
+				// Also consider readings slightly before period start or after period end
+				// (user might read meter a few days early/late)
+				daysBefore := bill.PeriodStart.Sub(readingDate).Hours() / 24
+				daysAfter := readingDate.Sub(bill.PeriodEnd).Hours() / 24
+
+				if daysBefore > 0 && daysBefore <= 15 {
+					score = 50 - int(daysBefore) // Within 15 days before period start
+				} else if daysAfter > 0 && daysAfter <= 15 {
+					score = 50 - int(daysAfter) // Within 15 days after period end
+				}
 			}
-			// Only consider readings within 7 days
-			if diff < minDiff && diff <= time.Hour*24*7 {
-				minDiff = diff
+
+			log.Printf("  Reading %d: date=%v, score=%d (F1=%v, F2=%v, F3=%v)",
+				readings[i].ID, readingDate.Format("2006-01-02"), score,
+				readings[i].ValueF1, readings[i].ValueF2, readings[i].ValueF3)
+
+			if score > bestScore {
+				bestScore = score
 				closestReading = &readings[i]
 			}
+		}
+
+		if closestReading != nil {
+			log.Printf("Best match: Reading %d with score %d", closestReading.ID, bestScore)
+		} else {
+			log.Printf("No matching reading found for bill %d", bill.ID)
 		}
 
 		if closestReading != nil {
@@ -1019,64 +1134,52 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 				comparison.UserF2 = closestReading.ValueF2
 				comparison.UserF3 = closestReading.ValueF3
 
-				// Calculate differences for each band
-				maxPercentage := 0.0
+				// Calculate absolute differences for each band
+				maxAbsDiff := 0.0
 
 				if bill.ProviderReadingF1 != nil && closestReading.ValueF1 != nil {
 					diff := *bill.ProviderReadingF1 - *closestReading.ValueF1
 					comparison.DifferenceF1 = &diff
-					if *closestReading.ValueF1 != 0 {
-						pct := (diff / *closestReading.ValueF1) * 100
-						comparison.PercentageF1 = &pct
-						if pct > maxPercentage || -pct > maxPercentage {
-							if pct < 0 {
-								maxPercentage = -pct
-							} else {
-								maxPercentage = pct
-							}
-						}
+					absDiff := diff
+					if absDiff < 0 {
+						absDiff = -absDiff
+					}
+					if absDiff > maxAbsDiff {
+						maxAbsDiff = absDiff
 					}
 				}
 
 				if bill.ProviderReadingF2 != nil && closestReading.ValueF2 != nil {
 					diff := *bill.ProviderReadingF2 - *closestReading.ValueF2
 					comparison.DifferenceF2 = &diff
-					if *closestReading.ValueF2 != 0 {
-						pct := (diff / *closestReading.ValueF2) * 100
-						comparison.PercentageF2 = &pct
-						if pct > maxPercentage || -pct > maxPercentage {
-							if pct < 0 {
-								maxPercentage = -pct
-							} else {
-								maxPercentage = pct
-							}
-						}
+					absDiff := diff
+					if absDiff < 0 {
+						absDiff = -absDiff
+					}
+					if absDiff > maxAbsDiff {
+						maxAbsDiff = absDiff
 					}
 				}
 
 				if bill.ProviderReadingF3 != nil && closestReading.ValueF3 != nil {
 					diff := *bill.ProviderReadingF3 - *closestReading.ValueF3
 					comparison.DifferenceF3 = &diff
-					if *closestReading.ValueF3 != 0 {
-						pct := (diff / *closestReading.ValueF3) * 100
-						comparison.PercentageF3 = &pct
-						if pct > maxPercentage || -pct > maxPercentage {
-							if pct < 0 {
-								maxPercentage = -pct
-							} else {
-								maxPercentage = pct
-							}
-						}
+					absDiff := diff
+					if absDiff < 0 {
+						absDiff = -absDiff
+					}
+					if absDiff > maxAbsDiff {
+						maxAbsDiff = absDiff
 					}
 				}
 
-				// Determine status
-				if maxPercentage > threshold*2 {
+				// Determine status based on absolute difference (threshold in kWh)
+				if maxAbsDiff > threshold*2 {
 					comparison.Status = "alert"
-					comparison.AlertMessage = "Discrepanza significativa tra letture fornitore e autolettura"
-				} else if maxPercentage > threshold {
+					comparison.AlertMessage = fmt.Sprintf("Discrepanza di %.1f kWh tra letture fornitore e autolettura", maxAbsDiff)
+				} else if maxAbsDiff > threshold {
 					comparison.Status = "warning"
-					comparison.AlertMessage = "Differenza rilevata tra letture fornitore e autolettura"
+					comparison.AlertMessage = fmt.Sprintf("Differenza di %.1f kWh tra letture fornitore e autolettura", maxAbsDiff)
 				}
 			} else {
 				comparison.Status = "no_data"
@@ -1093,23 +1196,23 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 					diff := *bill.ProviderReading - *closestReading.Value
 					comparison.Difference = &diff
 
-					if *closestReading.Value != 0 {
-						pct := (diff / *closestReading.Value) * 100
-						comparison.DifferencePercent = &pct
+					// Determine status based on absolute difference (threshold in mc/Smc)
+					absDiff := diff
+					if absDiff < 0 {
+						absDiff = -absDiff
+					}
 
-						// Determine status
-						absPct := pct
-						if absPct < 0 {
-							absPct = -absPct
-						}
+					unit := "mc"
+					if utility.Type == "gas" {
+						unit = "Smc"
+					}
 
-						if absPct > threshold*2 {
-							comparison.Status = "alert"
-							comparison.AlertMessage = "Discrepanza significativa tra letture fornitore e autolettura"
-						} else if absPct > threshold {
-							comparison.Status = "warning"
-							comparison.AlertMessage = "Differenza rilevata tra letture fornitore e autolettura"
-						}
+					if absDiff > threshold*2 {
+						comparison.Status = "alert"
+						comparison.AlertMessage = fmt.Sprintf("Discrepanza di %.1f %s tra letture fornitore e autolettura", absDiff, unit)
+					} else if absDiff > threshold {
+						comparison.Status = "warning"
+						comparison.AlertMessage = fmt.Sprintf("Differenza di %.1f %s tra letture fornitore e autolettura", absDiff, unit)
 					}
 				}
 			} else {
@@ -1122,8 +1225,8 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"comparisons": comparisons,
-		"threshold":   threshold,
+		"comparisons":  comparisons,
+		"threshold":    threshold,
 		"utility_type": utility.Type,
 	})
 }
