@@ -15,37 +15,45 @@
         </button>
       </div>
 
-      <!-- Step Indicators -->
-      <div class="flex items-center justify-center mb-8">
-        <div
-          v-for="(stepInfo, index) in steps"
-          :key="index"
-          class="flex items-center"
-        >
-          <div
-            :class="[
-              'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors',
-              step > index + 1
-                ? 'bg-green-500 text-white'
-                : step === index + 1
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-            ]"
-          >
-            <svg v-if="step > index + 1" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-            <span v-else>{{ index + 1 }}</span>
-          </div>
-          <div
-            v-if="index < steps.length - 1"
-            :class="[
-              'w-12 h-1 mx-2',
-              step > index + 1 ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'
-            ]"
-          />
-        </div>
+<div class="flex items-center justify-center pb-10 pt-4"> <div
+    v-for="(stepInfo, index) in steps"
+    :key="index"
+    class="flex items-center"
+  >
+    <div class="flex flex-col items-center relative">
+      <div
+        :class="[
+          'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors z-10',
+          step > index + 1
+            ? 'bg-green-500 text-white'
+            : step === index + 1
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+        ]"
+      >
+        <svg v-if="step > index + 1" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        <span v-else>{{ index + 1 }}</span>
       </div>
+
+      <span 
+        class="absolute -bottom-7 text-[10px] uppercase tracking-wider font-bold whitespace-nowrap"
+        :class="step === index + 1 ? 'text-blue-500' : 'text-gray-400'"
+      >
+        {{ stepInfo || 'Step ' + (index + 1) }} 
+      </span>
+    </div>
+
+    <div
+      v-if="index < steps.length - 1"
+      :class="[
+        'w-12 h-1 mx-2 mb-0', /* keep the label center aligned with the circles */
+        step > index + 1 ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'
+      ]"
+    />
+  </div>
+</div>
 
       <!-- Step 1: Upload PDF -->
       <div v-if="step === 1" class="space-y-4">
