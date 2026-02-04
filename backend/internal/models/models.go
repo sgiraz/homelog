@@ -136,7 +136,8 @@ type Utility struct {
 	CustomerPortal      string  `json:"customer_portal,omitempty"`
 	Notes               string  `json:"notes,omitempty"`
 	AllowsSelfReading   *bool   `gorm:"default:true" json:"allows_self_reading"`  // Se il fornitore accetta autolettura
-	ComparisonThreshold float64 `gorm:"default:5.0" json:"comparison_threshold"` // Soglia % per confronto letture
+	ComparisonThreshold float64 `gorm:"default:2.0" json:"comparison_threshold"` // Soglia base per letture stesso giorno (kWh/mc)
+	ThresholdPerDay     float64 `gorm:"default:1.0" json:"threshold_per_day"`    // Tolleranza aggiuntiva per ogni giorno di differenza
 
 	// Relations
 	Property Property       `json:"property"`

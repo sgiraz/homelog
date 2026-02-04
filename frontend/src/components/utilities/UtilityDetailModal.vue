@@ -232,14 +232,15 @@
       <!-- Comparison Tab -->
       <div v-if="activeTab === 'comparison'">
         <!-- Threshold Settings -->
-        <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
+          <!-- Base threshold (same day) -->
           <div class="flex items-center justify-between">
             <div>
               <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Soglia di allerta
+                Soglia base (stesso giorno)
               </label>
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                Differenza massima tollerata tra letture
+                Differenza tollerata quando le letture sono nello stesso giorno
               </p>
             </div>
             <div class="flex items-center gap-2">
@@ -247,31 +248,69 @@
               <input
                 v-model.number="thresholdValue"
                 type="number"
-                min="1"
-                max="100"
-                step="1"
+                min="0.5"
+                max="50"
+                step="0.5"
                 class="w-16 px-2 py-1 text-sm text-center border border-gray-300 dark:border-gray-600 rounded
                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                        focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
               <span class="text-sm text-gray-500 dark:text-gray-400">{{ getThresholdUnit() }}</span>
-              <button
-                v-if="thresholdValue !== localUtility.comparison_threshold"
-                @click="saveThreshold"
-                :disabled="savingThreshold"
-                class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-              >
-                {{ savingThreshold ? '...' : 'Salva' }}
-              </button>
             </div>
+          </div>
+
+          <!-- Per-day tolerance -->
+          <div class="flex items-center justify-between">
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Tolleranza per giorno
+              </label>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                Tolleranza aggiuntiva per ogni giorno di differenza tra le letture
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-gray-500 dark:text-gray-400">+</span>
+              <input
+                v-model.number="thresholdPerDayValue"
+                type="number"
+                min="0.1"
+                max="10"
+                step="0.1"
+                class="w-16 px-2 py-1 text-sm text-center border border-gray-300 dark:border-gray-600 rounded
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                       focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <span class="text-sm text-gray-500 dark:text-gray-400">{{ getThresholdUnit() }}/giorno</span>
+            </div>
+          </div>
+
+          <!-- Example calculation -->
+          <div class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 p-2 rounded">
+            <strong>Esempio:</strong> se fai l'autolettura il 28 e la rilevazione fornitore è il 30 (2 giorni di differenza),
+            la soglia effettiva sarà: {{ thresholdValue }} + (2 × {{ thresholdPerDayValue }}) =
+            <strong>{{ (thresholdValue + 2 * thresholdPerDayValue).toFixed(1) }} {{ getThresholdUnit() }}</strong>
+          </div>
+
+          <!-- Save button -->
+          <div v-if="hasThresholdChanges" class="flex justify-end">
+            <button
+              @click="saveThreshold"
+              :disabled="savingThreshold"
+              class="px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+            >
+              {{ savingThreshold ? 'Salvataggio...' : 'Salva impostazioni soglia' }}
+            </button>
           </div>
         </div>
 
         <ReadingComparisonCard
           ref="comparisonCard"
+          :key="comparisonKey"
           :utility-id="localUtility.id"
           :utility-type="localUtility.type"
-          :threshold="localUtility.comparison_threshold || 5"
+          :base-threshold="localUtility.comparison_threshold || 2"
+          :threshold-per-day="localUtility.threshold_per_day || 1"
         />
       </div>
 
@@ -290,7 +329,7 @@
 
       <!-- Add/Edit Bill Modal -->
       <AddBillModal
-        v-show="showBillModal"
+        v-if="showBillModal"
         :utility="localUtility"
         :bill="editingBill"
         @close="closeBillModal"
@@ -310,7 +349,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, computed } from 'vue'
 import { useUtilitiesStore } from '@/stores/utilities'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -343,27 +382,40 @@ const showReadingModal = ref(false)
 const editingBill = ref(null)
 const editingReading = ref(null)
 const comparisonCard = ref(null)
+const comparisonKey = ref(0) // Key to force re-render of comparison card
 
 // Threshold settings
-const thresholdValue = ref(props.utility.comparison_threshold || 5)
+const thresholdValue = ref(props.utility.comparison_threshold || 2)
+const thresholdPerDayValue = ref(props.utility.threshold_per_day || 1)
 const savingThreshold = ref(false)
+
+// Computed to check if threshold values have changed
+const hasThresholdChanges = computed(() => {
+  return thresholdValue.value !== (localUtility.comparison_threshold || 2) ||
+         thresholdPerDayValue.value !== (localUtility.threshold_per_day || 1)
+})
 
 // Watch for utility changes to update threshold
 watch(() => props.utility.comparison_threshold, (newVal) => {
-  thresholdValue.value = newVal || 5
+  thresholdValue.value = newVal || 2
 })
+
+watch(() => props.utility.threshold_per_day, (newVal) => {
+  thresholdPerDayValue.value = newVal || 1
+})
+
 
 async function saveThreshold() {
   savingThreshold.value = true
   try {
     await utilitiesStore.updateUtility(localUtility.id, {
-      comparison_threshold: thresholdValue.value
+      comparison_threshold: thresholdValue.value,
+      threshold_per_day: thresholdPerDayValue.value
     })
     localUtility.comparison_threshold = thresholdValue.value
-    // Refresh comparison card
-    if (comparisonCard.value) {
-      comparisonCard.value.loadComparisons()
-    }
+    localUtility.threshold_per_day = thresholdPerDayValue.value
+    // Forza il re-render del componente confronto
+    comparisonKey.value++
     emit('updated')
   } catch (err) {
     console.error('Error saving threshold:', err)
@@ -463,6 +515,8 @@ function closeBillModal() {
 async function onBillSaved() {
   closeBillModal()
   await refreshUtility()
+  // Forza il re-render del componente confronto incrementando la key
+  comparisonKey.value++
   emit('updated')
 }
 
@@ -484,6 +538,8 @@ async function confirmDeleteBill(bill) {
     try {
       await utilitiesStore.deleteBill(localUtility.id, bill.id)
       await refreshUtility()
+      // Forza il re-render del componente confronto
+      comparisonKey.value++
       emit('updated')
     } catch (err) {
       console.error('Error deleting bill:', err)
@@ -510,6 +566,8 @@ function closeReadingModal() {
 async function onReadingSaved() {
   closeReadingModal()
   await refreshUtility()
+  // Forza il re-render del componente confronto incrementando la key
+  comparisonKey.value++
   emit('updated')
 }
 
@@ -518,6 +576,8 @@ async function confirmDeleteReading(reading) {
     try {
       await utilitiesStore.deleteReading(localUtility.id, reading.id)
       await refreshUtility()
+      // Forza il re-render del componente confronto
+      comparisonKey.value++
       emit('updated')
     } catch (err) {
       console.error('Error deleting reading:', err)

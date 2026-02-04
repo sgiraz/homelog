@@ -137,7 +137,7 @@
           v-model="form.consumption_total"
           :label="'Consumo (' + getConsumptionUnit(utility.type) + ') *'"
           type="number"
-          step="0.01"
+          step="0.001"
           min="0"
           placeholder="0"
           required
@@ -220,7 +220,7 @@
                 <input
                   v-model="form.provider_reading_f1"
                   type="number"
-                  step="0.01"
+                  step="0.001"
                   placeholder="0"
                   class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -232,7 +232,7 @@
                 <input
                   v-model="form.provider_reading_f2"
                   type="number"
-                  step="0.01"
+                  step="0.001"
                   placeholder="0"
                   class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -244,7 +244,7 @@
                 <input
                   v-model="form.provider_reading_f3"
                   type="number"
-                  step="0.01"
+                  step="0.001"
                   placeholder="0"
                   class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -259,7 +259,7 @@
               <input
                 v-model="form.provider_reading"
                 type="number"
-                step="0.01"
+                step="0.001"
                 placeholder="0"
                 class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
                        bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -386,7 +386,7 @@ function getConsumptionUnit(type) {
 
 function formatNumber(value) {
   if (value == null) return '-'
-  return value.toLocaleString('it-IT', { maximumFractionDigits: 2 })
+  return value.toLocaleString('it-IT', { maximumFractionDigits: 3 })
 }
 
 function formatDateForInput(dateStr) {

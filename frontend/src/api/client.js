@@ -102,8 +102,10 @@ export const utilitiesAPI = {
     })
   },
   // Reading comparison (autolettura vs lettura fornitore)
-  compareReadings: (utilityId, threshold = 5) =>
-    apiClient.get(`/utilities/${utilityId}/compare-readings`, { params: { threshold } }),
+  compareReadings: (utilityId, baseThreshold = 2, thresholdPerDay = 1) =>
+    apiClient.get(`/utilities/${utilityId}/compare-readings`, {
+      params: { threshold: baseThreshold, threshold_per_day: thresholdPerDay }
+    }),
 }
 
 export const templatesAPI = {

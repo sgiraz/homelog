@@ -33,7 +33,7 @@
               <Input
                 v-model="form.value_f1"
                 type="number"
-                step="0.01"
+                step="0.001"
                 min="0"
                 placeholder="0"
                 required
@@ -44,7 +44,7 @@
               <Input
                 v-model="form.value_f2"
                 type="number"
-                step="0.01"
+                step="0.001"
                 min="0"
                 placeholder="0"
                 required
@@ -55,7 +55,7 @@
               <Input
                 v-model="form.value_f3"
                 type="number"
-                step="0.01"
+                step="0.001"
                 min="0"
                 placeholder="0"
                 required
@@ -70,7 +70,7 @@
             v-model="form.value"
             :label="'Lettura Contatore (' + getConsumptionUnit(utility.type) + ') *'"
             type="number"
-            step="0.01"
+            step="0.001"
             min="0"
             placeholder="0"
             required
