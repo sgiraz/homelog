@@ -205,6 +205,15 @@ type Bill struct {
 	ConsumptionF2    *float64 `json:"consumption_f2,omitempty"`
 	ConsumptionF3    *float64 `json:"consumption_f3,omitempty"`
 
+	// Gas conversion coefficient (Coefficiente di conversione C)
+	// True billed consumption = Smc × ConversionCoefficient
+	ConversionCoefficient *float64 `json:"conversion_coefficient,omitempty"`
+
+	// Estimated reading/consumption (quando la bolletta contiene una stima)
+	EstimatedDate        *time.Time `json:"estimated_date,omitempty"`
+	EstimatedReading     *float64   `json:"estimated_reading,omitempty"`     // Lettura stimata (mc)
+	EstimatedConsumption *float64   `json:"estimated_consumption,omitempty"` // Consumo stimato (Smc), calcolato
+
 	// Amounts
 	AmountTotal  float64  `gorm:"not null" json:"amount_total"`
 	AmountEnergy *float64 `json:"amount_energy,omitempty"`
@@ -284,6 +293,9 @@ type UserSettings struct {
 	// Split preferences
 	DefaultSplitWithMemberIDs string `json:"default_split_with_member_ids,omitempty"` // JSON array as string e.g. "[2,3]"
 
+	// Template preferences
+	DefaultTemplates string `json:"default_templates,omitempty"` // JSON object as string e.g. {"electricity": 1, "gas": 2}
+
 	// Notifications
 	EmailNotifications  bool `gorm:"not null;default:true" json:"email_notifications"`
 	InAppNotifications  bool `gorm:"not null;default:true" json:"in_app_notifications"`
@@ -351,14 +363,13 @@ type Settlement struct {
 
 // BillTemplate represents extraction rules for a utility provider's bill format
 type BillTemplate struct {
-	ID        uint           `gorm:"primarykey" json:"id"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	ID        uint      `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	UserID          uint   `gorm:"not null;index" json:"user_id"`
-	Name            string `gorm:"not null" json:"name"`                     // e.g., "E.ON Luce", "Enel Gas"
-	Provider        string `gorm:"not null;index" json:"provider"`           // e.g., "E.ON", "Enel", "ETRA"
+	Name            string `gorm:"not null" json:"name"`                     // Template display name
+	Provider        string `gorm:"not null;index" json:"provider"`           // Provider name (user-defined)
 	UtilityType     string `gorm:"not null" json:"utility_type"`             // electricity, gas, water, waste
 	IsDefault       bool   `gorm:"not null;default:false" json:"is_default"` // Default template for this provider+type
 	ExtractionRules string `gorm:"type:text" json:"extraction_rules"`        // JSON with regex patterns for each field

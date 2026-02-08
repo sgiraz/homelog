@@ -185,6 +185,8 @@
 <script setup>
 import { ref, computed, onMounted, h } from 'vue'
 import { useUtilitiesStore } from '@/stores/utilities'
+import { useSettingsStore } from '@/stores/settings'
+import { formatDate as _formatDate } from '@/utils/dateFormatter'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -194,6 +196,7 @@ import AddReadingModal from '@/components/utilities/AddReadingModal.vue'
 import TemplatesManager from '@/components/utilities/TemplatesManager.vue'
 
 const utilitiesStore = useUtilitiesStore()
+const settingsStore = useSettingsStore()
 
 const showAddUtility = ref(false)
 const showUtilityDetail = ref(false)
@@ -282,7 +285,10 @@ function getConsumptionUnit(type) {
 function getLastConsumption(utility) {
   if (utility.bills?.length > 0) {
     const bill = utility.bills[0]
-    return `${bill.consumption_total} ${getConsumptionUnit(utility.type)}`
+    const num = parseFloat(bill.consumption_total)
+    const truncated = Math.trunc(num * 1000) / 1000
+    const value = bill.consumption_total != null ? truncated.toFixed(3).replace(/\.?0+$/, '') : bill.consumption_total
+    return `${value} ${getConsumptionUnit(utility.type)}`
   }
   return '-'
 }
@@ -306,12 +312,7 @@ function formatCurrency(value) {
 }
 
 function formatDate(dateStr) {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('it-IT', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  })
+  return _formatDate(dateStr, settingsStore.dateSettings)
 }
 
 function shouldShowReadingAlert(utility) {

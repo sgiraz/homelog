@@ -313,7 +313,11 @@
 <script setup>
 import { ref, computed, onMounted, h } from 'vue'
 import { utilitiesAPI } from '@/api/client'
+import { useSettingsStore } from '@/stores/settings'
+import { formatDate as _formatDate } from '@/utils/dateFormatter'
 import Card from '@/components/common/Card.vue'
+
+const settingsStore = useSettingsStore()
 
 const props = defineProps({
   utilityId: {
@@ -366,8 +370,7 @@ async function loadComparisons() {
 }
 
 function formatDate(dateStr) {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('it-IT')
+  return _formatDate(dateStr, settingsStore.dateSettings)
 }
 
 function formatNumber(value) {

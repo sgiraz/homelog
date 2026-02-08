@@ -134,12 +134,15 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useBalanceStore } from '@/stores/balance'
+import { useSettingsStore } from '@/stores/settings'
+import { formatDate as _formatDate } from '@/utils/dateFormatter'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import SettlementModal from '@/components/balance/SettlementModal.vue'
 
 const balanceStore = useBalanceStore()
+const settingsStore = useSettingsStore()
 
 const showSettlementModal = ref(false)
 const currentPropertyId = ref(null)
@@ -162,11 +165,7 @@ function formatCurrency(value) {
 }
 
 function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString('it-IT', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  })
+  return _formatDate(dateStr, settingsStore.dateSettings)
 }
 
 function paymentMethodLabel(method) {

@@ -282,6 +282,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
+import { useSettingsStore } from '@/stores/settings'
+import { formatDate as _formatDate } from '@/utils/dateFormatter'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import BarChart from '@/components/charts/BarChart.vue'
@@ -290,6 +292,7 @@ import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditExpenseModal from '@/components/expenses/EditExpenseModal.vue'
 
 const expensesStore = useExpensesStore()
+const settingsStore = useSettingsStore()
 
 const showAddExpense = ref(false)
 const showEditExpense = ref(false)
@@ -405,11 +408,7 @@ function formatCurrency(value) {
 }
 
 function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString('it-IT', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  })
+  return _formatDate(dateStr, settingsStore.dateSettings)
 }
 
 function applyFilters() {

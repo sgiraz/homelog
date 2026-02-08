@@ -1,0 +1,23 @@
+# Development Dockerfile with hot-reload using Air
+FROM golang:1.25-alpine
+
+# Install dependencies
+RUN apk add --no-cache git gcc musl-dev sqlite-dev poppler-utils
+
+# Install Air for hot-reload and Delve for debugging
+RUN go install github.com/air-verse/air@latest
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Source code will be mounted via volume
+WORKDIR /app/src
+
+EXPOSE 8080
+
+# Run with Air for hot-reload
+CMD ["air", "-c", ".air.toml"]

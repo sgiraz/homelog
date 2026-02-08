@@ -99,6 +99,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    sourcemapIgnoreList: false,
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
@@ -109,6 +110,7 @@ export default defineConfig({
   build: {
     target: 'esnext',
     minify: 'terser',
+    sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks: {

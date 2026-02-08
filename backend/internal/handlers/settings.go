@@ -24,7 +24,9 @@ type UserSettingsResponse struct {
 	Theme                     string `json:"theme"`
 	Currency                  string `json:"currency"`
 	Language                  string `json:"language"`
+	DateFormat                string `json:"date_format"`
 	DefaultSplitWithMemberIDs string `json:"default_split_with_member_ids"` // JSON array as string e.g. "[2,3]"
+	DefaultTemplates          string `json:"default_templates"`             // JSON object as string e.g. {"electricity": 1}
 	EmailNotifications        bool   `json:"email_notifications"`
 	BillReminders             bool   `json:"bill_reminders"`
 }
@@ -34,7 +36,9 @@ type UpdateUserSettingsRequest struct {
 	Theme                     *string `json:"theme,omitempty"`
 	Currency                  *string `json:"currency,omitempty"`
 	Language                  *string `json:"language,omitempty"`
+	DateFormat                *string `json:"date_format,omitempty"`
 	DefaultSplitWithMemberIDs *string `json:"default_split_with_member_ids,omitempty"` // JSON array as string
+	DefaultTemplates          *string `json:"default_templates,omitempty"`             // JSON object as string
 	EmailNotifications        *bool   `json:"email_notifications,omitempty"`
 	BillReminders             *bool   `json:"bill_reminders,omitempty"`
 }
@@ -57,7 +61,9 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 				Theme:                     "auto",
 				Currency:                  "EUR",
 				Language:                  "it",
+				DateFormat:                "DD/MM/YYYY",
 				DefaultSplitWithMemberIDs: "",
+				DefaultTemplates:          "",
 				EmailNotifications:        true,
 				BillReminders:             true,
 			})
@@ -67,11 +73,18 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 		return
 	}
 
+	dateFormat := settings.DateFormat
+	if dateFormat == "" {
+		dateFormat = "DD/MM/YYYY"
+	}
+
 	c.JSON(http.StatusOK, UserSettingsResponse{
 		Theme:                     settings.Theme,
 		Currency:                  settings.Currency,
 		Language:                  settings.Language,
+		DateFormat:                dateFormat,
 		DefaultSplitWithMemberIDs: settings.DefaultSplitWithMemberIDs,
+		DefaultTemplates:          settings.DefaultTemplates,
 		EmailNotifications:        settings.EmailNotifications,
 		BillReminders:             settings.BillDueAlertDays > 0,
 	})
@@ -122,8 +135,14 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 	if req.Language != nil {
 		settings.Language = *req.Language
 	}
+	if req.DateFormat != nil {
+		settings.DateFormat = *req.DateFormat
+	}
 	if req.DefaultSplitWithMemberIDs != nil {
 		settings.DefaultSplitWithMemberIDs = *req.DefaultSplitWithMemberIDs
+	}
+	if req.DefaultTemplates != nil {
+		settings.DefaultTemplates = *req.DefaultTemplates
 	}
 	if req.EmailNotifications != nil {
 		settings.EmailNotifications = *req.EmailNotifications
@@ -149,11 +168,18 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 		}
 	}
 
+	updateDateFormat := settings.DateFormat
+	if updateDateFormat == "" {
+		updateDateFormat = "DD/MM/YYYY"
+	}
+
 	c.JSON(http.StatusOK, UserSettingsResponse{
 		Theme:                     settings.Theme,
 		Currency:                  settings.Currency,
 		Language:                  settings.Language,
+		DateFormat:                updateDateFormat,
 		DefaultSplitWithMemberIDs: settings.DefaultSplitWithMemberIDs,
+		DefaultTemplates:          settings.DefaultTemplates,
 		EmailNotifications:        settings.EmailNotifications,
 		BillReminders:             settings.BillDueAlertDays > 0,
 	})

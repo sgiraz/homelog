@@ -13,21 +13,58 @@ apiClient.interceptors.request.use(config => {
 })
 
 // Refresh token interceptor
+let isRefreshing = false
+let failedQueue = []
+
+function processQueue(error, token = null) {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) reject(error)
+    else resolve(token)
+  })
+  failedQueue = []
+}
+
 apiClient.interceptors.response.use(
   response => response,
   async error => {
-    if (error.response?.status === 401) {
+    const originalRequest = error.config
+    // Skip refresh for the refresh endpoint itself to avoid infinite loop
+    const isRefreshRequest = originalRequest.url?.includes('/auth/refresh')
+    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshRequest) {
       const refreshToken = localStorage.getItem('refreshToken')
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post('/api/v1/auth/refresh', { refresh_token: refreshToken })
-          localStorage.setItem('token', data.token)
-          error.config.headers.Authorization = `Bearer ${data.token}`
-          return axios(error.config)
-        } catch {
-          localStorage.clear()
-          window.location = '/login'
-        }
+      if (!refreshToken) {
+        localStorage.clear()
+        window.location = '/login'
+        return Promise.reject(error)
+      }
+
+      if (isRefreshing) {
+        // Queue this request until refresh completes
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        }).then(token => {
+          originalRequest.headers.Authorization = `Bearer ${token}`
+          return apiClient(originalRequest)
+        })
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      try {
+        const { data } = await apiClient.post('/auth/refresh', { refresh_token: refreshToken })
+        localStorage.setItem('token', data.token)
+        if (data.refresh_token) localStorage.setItem('refreshToken', data.refresh_token)
+        processQueue(null, data.token)
+        originalRequest.headers.Authorization = `Bearer ${data.token}`
+        return apiClient(originalRequest)
+      } catch (refreshError) {
+        processQueue(refreshError)
+        localStorage.clear()
+        window.location = '/login'
+        return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
       }
     }
     return Promise.reject(error)
@@ -124,4 +161,23 @@ export const pdfAPI = {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
+  // Extract text with word positions (for template wizard tooltips)
+  extractTextWithPositions: (file) => {
+    const formData = new FormData()
+    formData.append('pdf_file', file)
+    formData.append('with_positions', 'true')
+    return apiClient.post('/pdf/extract-text', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  // Analyze PDF for template creation (Textract-like view)
+  analyzePDF: (file) => {
+    const formData = new FormData()
+    formData.append('pdf_file', file)
+    return apiClient.post('/pdf/analyze', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  // Cleanup temporary template images
+  cleanupImages: (timestamp) => apiClient.delete(`/pdf/cleanup/${timestamp}`),
 }

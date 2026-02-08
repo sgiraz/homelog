@@ -9,8 +9,25 @@
 </template>
 
 <script setup>
+import { watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
 import Navbar from '@/components/layout/Navbar.vue'
 
 const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
+
+// Load user settings when authenticated
+if (authStore.isAuthenticated) {
+  settingsStore.loadSettings()
+}
+
+// Also watch for login/logout
+watch(() => authStore.isAuthenticated, (isAuth) => {
+  if (isAuth) {
+    settingsStore.loadSettings()
+  } else {
+    settingsStore.$reset()
+  }
+})
 </script>

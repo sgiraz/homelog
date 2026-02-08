@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -34,9 +35,26 @@ func NewPDFHandler(db *gorm.DB) *PDFHandler {
 
 // BillTemplateRule defines extraction patterns for bill fields
 type BillTemplateRule struct {
-	Field   string `json:"field"`   // bill_number, period_start, period_end, due_date, amount_total, consumption_total
-	Pattern string `json:"pattern"` // Regex pattern with capture group
-	Format  string `json:"format"`  // Optional date format for parsing (e.g., "02/01/2006")
+	Field        string `json:"field"`         // bill_number, period_start, period_end, due_date, amount_total, consumption_total
+	Pattern      string `json:"pattern"`       // Regex pattern with capture group (full pattern with context)
+	ValuePattern string `json:"value_pattern"` // Pattern for just the value (optional, used by drag-and-drop UI)
+	Prefix       string `json:"prefix"`        // Context prefix text (optional, for display/debugging)
+	Suffix       string `json:"suffix"`        // Context suffix text (optional, for display/debugging)
+	Format       string `json:"format"`        // Optional date format for parsing (e.g., "02/01/2006")
+
+	// Position-based extraction (for accurate matching)
+	Page       int     `json:"page"`        // Page number (0-indexed)
+	X          float64 `json:"x"`           // X coordinate in PDF units
+	Y          float64 `json:"y"`           // Y coordinate in PDF units
+	Width      float64 `json:"width"`       // Width of the word
+	Height     float64 `json:"height"`      // Height of the word
+	ContextLeft  string `json:"context_left"`  // Words to the left for context validation
+	ContextAbove string `json:"context_above"` // Words above for context validation
+
+	// Anchor-based extraction (relative positioning, resilient to layout changes)
+	AnchorText      string `json:"anchor_text"`       // Label text to find as anchor (e.g., "Importo totale da pagare")
+	AnchorDirection string `json:"anchor_direction"`  // "right", "below", "right_or_below"
+	GlobalSearch    bool   `json:"global_search"`     // For unique fields (POD/PDR): search entire document
 }
 
 // ExtractedBillData represents data extracted from a PDF bill
@@ -61,6 +79,15 @@ type ExtractedBillData struct {
 	ProviderReadingF3   *float64 `json:"provider_reading_f3,omitempty"`   // Lettura F3 (electricity off-peak)
 	ProviderReading     *float64 `json:"provider_reading,omitempty"`      // Lettura singola (gas/water mc)
 	ReadingType         string   `json:"reading_type,omitempty"`          // actual (rilevata), estimated (stimata)
+
+	// Gas conversion coefficient (Coefficiente di conversione C)
+	ConversionCoefficient *float64 `json:"conversion_coefficient,omitempty"`
+
+	// Estimated reading/consumption fields
+	EstimatedDate                *string  `json:"estimated_date,omitempty"`
+	EstimatedReading             *float64 `json:"estimated_reading,omitempty"`              // Lettura stimata (mc)
+	EstimatedConsumption         *float64 `json:"estimated_consumption,omitempty"`           // Consumo stimato (Smc)
+	PreviousEstimatedConsumption *float64 `json:"previous_estimated_consumption,omitempty"`
 }
 
 // ExtractedContractData represents data extracted from a contract PDF
@@ -139,20 +166,56 @@ func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 		return
 	}
 
-	// Try to find a matching template
+	// Check if a specific template was requested
 	var template models.BillTemplate
-	templateFound := h.db.Where("user_id = ? AND provider = ? AND utility_type = ?",
-		userID, utility.Provider, utility.Type).
-		Order("is_default DESC").
-		First(&template).Error == nil
+	templateFound := false
+
+	if templateIDStr := c.PostForm("template_id"); templateIDStr != "" {
+		// User specified a template - use it if valid
+		templateID, err := strconv.ParseUint(templateIDStr, 10, 32)
+		if err == nil {
+			templateFound = h.db.Where("id = ? AND user_id = ?", templateID, userID).
+				First(&template).Error == nil
+			if templateFound {
+				log.Printf("Using user-specified template ID %d: %s", templateID, template.Name)
+			} else {
+				log.Printf("Requested template ID %d not found, falling back to auto-detection", templateID)
+			}
+		}
+	}
+
+	// If no template specified or not found, try to find a matching template by provider
+	if !templateFound {
+		templateFound = h.db.Where("user_id = ? AND provider = ? AND utility_type = ?",
+			userID, utility.Provider, utility.Type).
+			Order("is_default DESC").
+			First(&template).Error == nil
+	}
 
 	var extracted ExtractedBillData
 	extracted.PDFURL = pdfURL
 	extracted.RawText = text
 
 	if templateFound {
-		// Extract data using template rules
-		extracted = h.extractBillDataWithTemplate(text, template, pdfURL)
+		// Extract words with positions for position-based matching
+		var words []WordInfo
+		textWithPos, posErr := h.extractTextWithPositions(filepath)
+		if posErr == nil && textWithPos != nil && len(textWithPos.Words) > 0 {
+			words = textWithPos.Words
+			log.Printf("Extracted %d words with positions for template matching", len(words))
+		}
+
+		// Extract data using template rules with position data
+		extracted = h.extractBillDataWithTemplateAndWords(text, template, pdfURL, words)
+
+		// Build set of fields the template defines rules for
+		templateFields := h.getTemplateFieldSet(template)
+
+		// Only supplement fields the template does NOT define rules for.
+		// When a template has a rule for a field, trust it (even if empty) -
+		// wrong default values are worse than missing values.
+		defaultExtracted := h.extractBillDataDefault(text, utility.Type, pdfURL)
+		extracted = h.mergeExtracted(extracted, defaultExtracted, templateFields)
 	} else {
 		// Use default extraction patterns
 		extracted = h.extractBillDataDefault(text, utility.Type, pdfURL)
@@ -214,13 +277,85 @@ func (h *PDFHandler) UploadContractPDF(c *gin.Context) {
 	c.JSON(http.StatusOK, extracted)
 }
 
+// win1252ToUTF8 maps Windows-1252 specific bytes (0x80-0x9F range) to their
+// correct UTF-8 equivalents. These bytes differ from Latin-1/ISO-8859-1.
+var win1252ToUTF8 = map[byte][]byte{
+	0x80: []byte("€"),     // U+20AC Euro sign
+	0x82: []byte("‚"),     // U+201A Single low-9 quotation mark
+	0x83: []byte("ƒ"),     // U+0192 Latin small letter f with hook
+	0x84: []byte("„"),     // U+201E Double low-9 quotation mark
+	0x85: []byte("…"),     // U+2026 Horizontal ellipsis
+	0x86: []byte("†"),     // U+2020 Dagger
+	0x87: []byte("‡"),     // U+2021 Double dagger
+	0x88: []byte("ˆ"),     // U+02C6 Modifier letter circumflex accent
+	0x89: []byte("‰"),     // U+2030 Per mille sign
+	0x8A: []byte("Š"),     // U+0160 Latin capital letter S with caron
+	0x8B: []byte("‹"),     // U+2039 Single left-pointing angle quotation mark
+	0x8C: []byte("Œ"),     // U+0152 Latin capital ligature OE
+	0x8E: []byte("Ž"),     // U+017D Latin capital letter Z with caron
+	0x91: []byte("\u2018"), // U+2018 Left single quotation mark
+	0x92: []byte("\u2019"), // U+2019 Right single quotation mark
+	0x93: []byte("\u201C"), // U+201C Left double quotation mark
+	0x94: []byte("\u201D"), // U+201D Right double quotation mark
+	0x95: []byte("•"),     // U+2022 Bullet
+	0x96: []byte("\u2013"), // U+2013 En dash
+	0x97: []byte("\u2014"), // U+2014 Em dash
+	0x98: []byte("˜"),     // U+02DC Small tilde
+	0x99: []byte("™"),     // U+2122 Trade mark sign
+	0x9A: []byte("š"),     // U+0161 Latin small letter s with caron
+	0x9B: []byte("›"),     // U+203A Single right-pointing angle quotation mark
+	0x9C: []byte("œ"),     // U+0153 Latin small ligature oe
+	0x9E: []byte("ž"),     // U+017E Latin small letter z with caron
+	0x9F: []byte("Ÿ"),     // U+0178 Latin capital letter Y with diaeresis
+}
+
+// normalizeLatin1ToUTF8 converts bytes that may contain Latin-1 or Windows-1252
+// encoded characters to valid UTF-8. pdftotext on Windows often outputs Latin-1
+// (e.g., ° as 0xB0) or Windows-1252 (e.g., € as 0x80) instead of proper UTF-8.
+func normalizeLatin1ToUTF8(data []byte) string {
+	var result []byte
+	for i := 0; i < len(data); i++ {
+		b := data[i]
+		if b < 0x80 {
+			// ASCII: pass through
+			result = append(result, b)
+		} else if b >= 0xC0 && i+1 < len(data) && data[i+1] >= 0x80 && data[i+1] < 0xC0 {
+			// Valid UTF-8 multi-byte start: pass through both bytes
+			result = append(result, b, data[i+1])
+			i++
+		} else if b >= 0x80 && b < 0xC0 {
+			// Check Windows-1252 specific mappings first (0x80-0x9F differ from Latin-1)
+			if mapped, ok := win1252ToUTF8[b]; ok {
+				result = append(result, mapped...)
+			} else {
+				// Bare Latin-1 byte (0xA0-0xBF): convert to UTF-8
+				// In UTF-8, code points 0x80-0xBF are encoded as 0xC2 0x80-0xBF
+				result = append(result, 0xC2, b)
+			}
+		} else if b >= 0xC0 && b <= 0xFF {
+			// Could be Latin-1 chars 0xC0-0xFF or broken UTF-8 start
+			if i+1 < len(data) && data[i+1] >= 0x80 && data[i+1] < 0xC0 {
+				// Looks like valid UTF-8 continuation
+				result = append(result, b, data[i+1])
+				i++
+			} else {
+				// Latin-1 byte 0xC0-0xFF: encode as UTF-8
+				result = append(result, 0xC3, b-0x40)
+			}
+		} else {
+			result = append(result, b)
+		}
+	}
+	return string(result)
+}
+
 // extractTextFromPDF uses pdftotext (poppler-utils) to extract text
 func (h *PDFHandler) extractTextFromPDF(pdfPath string) (string, error) {
 	// Try pdftotext first (Linux/Mac with poppler-utils)
 	cmd := exec.Command("pdftotext", "-layout", pdfPath, "-")
 	output, err := cmd.Output()
 	if err == nil {
-		return string(output), nil
+		return normalizeLatin1ToUTF8(output), nil
 	}
 
 	// On Windows, try reading the PDF directly (basic extraction)
@@ -243,6 +378,192 @@ func (h *PDFHandler) extractTextFromPDF(pdfPath string) (string, error) {
 	}
 
 	return "", fmt.Errorf("could not extract text from PDF")
+}
+
+// WordInfo represents a word with its position and bounding box
+type WordInfo struct {
+	Text       string  `json:"text"`
+	LineIndex  int     `json:"lineIndex"`
+	WordIndex  int     `json:"wordIndex"`
+	X          float64 `json:"x"`
+	Y          float64 `json:"y"`
+	Width      float64 `json:"width"`
+	Height     float64 `json:"height"`
+	Page       int     `json:"page"`
+}
+
+// ExtractedTextWithPositions represents text with word positions
+type ExtractedTextWithPositions struct {
+	RawText    string     `json:"raw_text"`
+	Words      []WordInfo `json:"words"`
+	HasBBox    bool       `json:"has_bbox"`
+	PageCount  int        `json:"page_count"`
+}
+
+// extractTextWithPositions extracts text with word positions using pdftotext -bbox
+func (h *PDFHandler) extractTextWithPositions(pdfPath string) (*ExtractedTextWithPositions, error) {
+	result := &ExtractedTextWithPositions{
+		Words:   []WordInfo{},
+		HasBBox: false,
+	}
+
+	// Try pdftotext -bbox first (poppler-utils on Linux/Docker)
+	cmd := exec.Command("pdftotext", "-bbox", pdfPath, "-")
+	output, err := cmd.Output()
+	if err == nil {
+		// Parse the HTML/XML output from -bbox (normalize encoding)
+		words, pageCount, parseErr := parsePdftextBboxOutput(normalizeLatin1ToUTF8(output))
+		if parseErr == nil && len(words) > 0 {
+			result.Words = words
+			result.HasBBox = true
+			result.PageCount = pageCount
+			// Also get raw text
+			rawCmd := exec.Command("pdftotext", "-layout", pdfPath, "-")
+			rawOutput, _ := rawCmd.Output()
+			result.RawText = normalizeLatin1ToUTF8(rawOutput)
+			return result, nil
+		}
+		log.Printf("Warning: Could not parse -bbox output, falling back to layout: %v", parseErr)
+	}
+
+	// Fallback to -layout and calculate relative positions
+	cmd = exec.Command("pdftotext", "-layout", pdfPath, "-")
+	output, err = cmd.Output()
+	if err != nil {
+		// Try basic extraction for Windows
+		file, fileErr := os.Open(pdfPath)
+		if fileErr != nil {
+			return nil, fileErr
+		}
+		defer file.Close()
+
+		content, readErr := io.ReadAll(file)
+		if readErr != nil {
+			return nil, readErr
+		}
+
+		text := extractBasicPDFText(string(content))
+		if text == "" {
+			return nil, fmt.Errorf("could not extract text from PDF")
+		}
+		result.RawText = text
+		result.Words = extractWordsFromLayoutText(text)
+		return result, nil
+	}
+
+	normalized := normalizeLatin1ToUTF8(output)
+	result.RawText = normalized
+	result.Words = extractWordsFromLayoutText(normalized)
+	return result, nil
+}
+
+// parsePdftextBboxOutput parses the HTML output from pdftotext -bbox
+func parsePdftextBboxOutput(htmlOutput string) ([]WordInfo, int, error) {
+	var words []WordInfo
+
+	// Pattern to match page elements with their content
+	pagePattern := regexp.MustCompile(`<page[^>]*>([\s\S]*?)</page>`)
+	// Pattern to match word elements: <word xMin="X" yMin="Y" xMax="X2" yMax="Y2">text</word>
+	wordPattern := regexp.MustCompile(`<word\s+xMin="([^"]+)"\s+yMin="([^"]+)"\s+xMax="([^"]+)"\s+yMax="([^"]+)"[^>]*>([^<]+)</word>`)
+
+	// Find all pages
+	pageMatches := pagePattern.FindAllStringSubmatch(htmlOutput, -1)
+	pageCount := len(pageMatches)
+
+	if pageCount == 0 {
+		return nil, 0, fmt.Errorf("no pages found in bbox output")
+	}
+
+	// Process each page
+	for pageIndex, pageMatch := range pageMatches {
+		if len(pageMatch) < 2 {
+			continue
+		}
+
+		pageContent := pageMatch[1]
+		lineIndex := 0
+		wordIndexInLine := 0
+		lastY := float64(-1)
+
+		// Find all words in this page
+		wordMatches := wordPattern.FindAllStringSubmatch(pageContent, -1)
+		for _, match := range wordMatches {
+			if len(match) < 6 {
+				continue
+			}
+
+			xMin, _ := strconv.ParseFloat(match[1], 64)
+			yMin, _ := strconv.ParseFloat(match[2], 64)
+			xMax, _ := strconv.ParseFloat(match[3], 64)
+			yMax, _ := strconv.ParseFloat(match[4], 64)
+			text := strings.TrimSpace(match[5])
+
+			if text == "" {
+				continue
+			}
+
+			// Detect new line (Y position changed significantly)
+			if lastY >= 0 && (yMin-lastY > 5 || yMin < lastY-5) {
+				lineIndex++
+				wordIndexInLine = 0
+			}
+			lastY = yMin
+
+			words = append(words, WordInfo{
+				Text:      text,
+				LineIndex: lineIndex,
+				WordIndex: wordIndexInLine,
+				X:         xMin,
+				Y:         yMin,
+				Width:     xMax - xMin,
+				Height:    yMax - yMin,
+				Page:      pageIndex,
+			})
+			wordIndexInLine++
+		}
+	}
+
+	if len(words) == 0 {
+		return nil, 0, fmt.Errorf("no words found in bbox output")
+	}
+
+	return words, pageCount, nil
+}
+
+// extractWordsFromLayoutText extracts words with relative positions from layout text
+func extractWordsFromLayoutText(text string) []WordInfo {
+	var words []WordInfo
+	lines := strings.Split(text, "\n")
+
+	for lineIdx, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		// Split line into words preserving positions
+		wordPattern := regexp.MustCompile(`\S+`)
+		matches := wordPattern.FindAllStringIndex(line, -1)
+
+		for wordIdx, match := range matches {
+			wordText := line[match[0]:match[1]]
+			if wordText == "" {
+				continue
+			}
+
+			words = append(words, WordInfo{
+				Text:      wordText,
+				LineIndex: lineIdx,
+				WordIndex: wordIdx,
+				X:         float64(match[0]), // Character position as X
+				Y:         float64(lineIdx),  // Line number as Y
+				Width:     float64(match[1] - match[0]),
+				Height:    1,
+				Page:      0,
+			})
+		}
+	}
+
+	return words
 }
 
 // extractBasicPDFText does basic text extraction from PDF content
@@ -271,6 +592,11 @@ func extractBasicPDFText(content string) string {
 
 // extractBillDataWithTemplate extracts bill data using template rules
 func (h *PDFHandler) extractBillDataWithTemplate(text string, template models.BillTemplate, pdfURL string) ExtractedBillData {
+	return h.extractBillDataWithTemplateAndWords(text, template, pdfURL, nil)
+}
+
+// extractBillDataWithTemplateAndWords extracts bill data using template rules with word position support
+func (h *PDFHandler) extractBillDataWithTemplateAndWords(text string, template models.BillTemplate, pdfURL string, words []WordInfo) ExtractedBillData {
 	var rules []BillTemplateRule
 	json.Unmarshal([]byte(template.ExtractionRules), &rules)
 
@@ -281,34 +607,498 @@ func (h *PDFHandler) extractBillDataWithTemplate(text string, template models.Bi
 	}
 
 	for _, rule := range rules {
-		re := regexp.MustCompile(rule.Pattern)
-		match := re.FindStringSubmatch(text)
-		if len(match) > 1 {
-			value := strings.TrimSpace(match[1])
-			switch rule.Field {
-			case "bill_number":
-				extracted.BillNumber = value
-			case "issue_date":
-				extracted.IssueDate = h.parseDate(value, rule.Format)
-			case "period_start":
-				extracted.PeriodStart = h.parseDate(value, rule.Format)
-			case "period_end":
-				extracted.PeriodEnd = h.parseDate(value, rule.Format)
-			case "due_date":
-				extracted.DueDate = h.parseDate(value, rule.Format)
-			case "amount_total":
-				extracted.AmountTotal = h.parseAmount(value)
-			case "consumption_total":
-				extracted.ConsumptionTotal = h.parseAmount(value)
-			case "service_code":
-				extracted.ServiceCode = value
-			case "customer_code":
-				extracted.CustomerCode = value
+		value := h.extractValueWithRuleAndWords(rule, text, words)
+		if value == "" {
+			log.Printf("Template extraction FAILED for field '%s' (anchor='%s', pattern='%s')",
+				rule.Field, rule.AnchorText, rule.Pattern)
+			continue
+		}
+		log.Printf("Template extraction OK for field '%s': '%s'", rule.Field, value)
+
+		switch rule.Field {
+		case "bill_number":
+			extracted.BillNumber = value
+		case "issue_date":
+			extracted.IssueDate = h.parseDate(value, rule.Format)
+		case "period_start":
+			extracted.PeriodStart = h.parseDate(value, rule.Format)
+		case "period_end":
+			extracted.PeriodEnd = h.parseDate(value, rule.Format)
+		case "due_date":
+			extracted.DueDate = h.parseDate(value, rule.Format)
+		case "amount_total":
+			extracted.AmountTotal = h.parseAmount(value)
+		case "consumption_total":
+			extracted.ConsumptionTotal = h.parseAmount(value)
+		case "service_code":
+			extracted.ServiceCode = value
+		case "customer_code":
+			extracted.CustomerCode = value
+		case "conversion_coefficient":
+			coeff := h.parseAmount(value)
+			extracted.ConversionCoefficient = &coeff
+		case "provider_reading":
+			reading := h.parseAmount(value)
+			extracted.ProviderReading = &reading
+		case "reading_type":
+			lower := strings.ToLower(value)
+			if strings.Contains(lower, "stim") || strings.Contains(lower, "presunt") {
+				extracted.ReadingType = "estimated"
+			} else {
+				extracted.ReadingType = "actual"
 			}
+		case "estimated_date":
+			parsed := h.parseDate(value, rule.Format)
+			extracted.EstimatedDate = &parsed
+		case "estimated_reading":
+			val := h.parseAmount(value)
+			extracted.EstimatedReading = &val
+		case "estimated_consumption":
+			val := h.parseAmount(value)
+			extracted.EstimatedConsumption = &val
+		case "previous_estimated_consumption":
+			val := h.parseAmount(value)
+			extracted.PreviousEstimatedConsumption = &val
 		}
 	}
 
 	return extracted
+}
+
+// extractValueWithRule extracts a value using the rule's pattern(s)
+// It uses position-based matching when coordinates are available
+func (h *PDFHandler) extractValueWithRule(rule BillTemplateRule, text string) string {
+	return h.extractValueWithRuleAndWords(rule, text, nil)
+}
+
+// extractValueWithRuleAndWords extracts a value using the best available strategy.
+// Priority: 1) Global search (POD/PDR) 2) Anchor-based 3) Position-based 4) Pattern-based
+func (h *PDFHandler) extractValueWithRuleAndWords(rule BillTemplateRule, text string, words []WordInfo) string {
+	// 1. Global search for unique fields (POD/PDR, customer code)
+	if rule.GlobalSearch && rule.ValuePattern != "" && len(words) > 0 {
+		value := h.extractByGlobalSearch(rule, words)
+		if value != "" {
+			log.Printf("Field %s matched by global search: %s", rule.Field, value)
+			return value
+		}
+		log.Printf("Field %s: global search failed, trying next strategy", rule.Field)
+	}
+
+	// 2. Anchor-based extraction (resilient to layout changes)
+	if rule.AnchorText != "" && len(words) > 0 {
+		value := h.extractByAnchor(rule, words)
+		if value != "" {
+			log.Printf("Field %s matched by anchor '%s': %s", rule.Field, rule.AnchorText, value)
+			return value
+		}
+		log.Printf("Field %s: anchor-based match failed, trying position", rule.Field)
+	}
+
+	// 3. Position-based extraction (original coordinate matching)
+	if rule.X > 0 && rule.Y > 0 && len(words) > 0 {
+		value := h.extractByPosition(rule, words)
+		if value != "" {
+			log.Printf("Field %s matched by position: %s", rule.Field, value)
+			return value
+		}
+		log.Printf("Field %s: position-based match failed, falling back to pattern", rule.Field)
+	}
+
+	// 4. Pattern-based extraction (regex on full text)
+	return h.extractByPattern(rule, text)
+}
+
+// extractByPosition finds the value at the specified position with context validation
+func (h *PDFHandler) extractByPosition(rule BillTemplateRule, words []WordInfo) string {
+	// Filter words on the correct page
+	pageWords := make([]WordInfo, 0)
+	for _, w := range words {
+		if w.Page == rule.Page {
+			pageWords = append(pageWords, w)
+		}
+	}
+
+	if len(pageWords) == 0 {
+		return ""
+	}
+
+	// Find the word closest to the stored position
+	var bestMatch WordInfo
+	bestDistance := float64(999999)
+	tolerance := 20.0 // Allow some tolerance for position matching (PDF units)
+
+	for _, w := range pageWords {
+		// Calculate distance from stored position
+		dx := w.X - rule.X
+		dy := w.Y - rule.Y
+		distance := dx*dx + dy*dy // Squared distance (no need for sqrt)
+
+		if distance < bestDistance && distance < tolerance*tolerance {
+			bestDistance = distance
+			bestMatch = w
+		}
+	}
+
+	// If found by position, validate with context if available
+	if bestMatch.Text != "" {
+		// Validate context_left if provided
+		if rule.ContextLeft != "" {
+			leftContext := h.getContextLeft(bestMatch, pageWords)
+			if !strings.Contains(strings.ToLower(leftContext), strings.ToLower(rule.ContextLeft)) {
+				log.Printf("Context validation failed for %s: expected '%s' on left, got '%s'",
+					rule.Field, rule.ContextLeft, leftContext)
+				// Don't fail completely, just log warning
+			}
+		}
+
+		// Validate context_above if provided
+		if rule.ContextAbove != "" {
+			aboveContext := h.getContextAbove(bestMatch, pageWords)
+			if !strings.Contains(strings.ToLower(aboveContext), strings.ToLower(rule.ContextAbove)) {
+				log.Printf("Context validation failed for %s: expected '%s' above, got '%s'",
+					rule.Field, rule.ContextAbove, aboveContext)
+			}
+		}
+
+		return bestMatch.Text
+	}
+
+	return ""
+}
+
+// getContextLeft returns words to the left of the target word (same line)
+func (h *PDFHandler) getContextLeft(target WordInfo, words []WordInfo) string {
+	var leftWords []string
+	for _, w := range words {
+		// Same line (within 5 units Y) and to the left
+		if abs(w.Y-target.Y) < 5 && w.X < target.X {
+			leftWords = append(leftWords, w.Text)
+		}
+	}
+	// Sort by X position and return last 3 words
+	sort.Slice(leftWords, func(i, j int) bool {
+		return i < j // Keep original order
+	})
+	if len(leftWords) > 3 {
+		leftWords = leftWords[len(leftWords)-3:]
+	}
+	return strings.Join(leftWords, " ")
+}
+
+// getContextAbove returns words above the target word (within same X range)
+func (h *PDFHandler) getContextAbove(target WordInfo, words []WordInfo) string {
+	var aboveWords []string
+	for _, w := range words {
+		// Above (smaller Y) and horizontally overlapping
+		if w.Y < target.Y && w.Y > target.Y-50 {
+			// Check horizontal overlap
+			if w.X < target.X+target.Width && w.X+w.Width > target.X {
+				aboveWords = append(aboveWords, w.Text)
+			}
+		}
+	}
+	return strings.Join(aboveWords, " ")
+}
+
+func abs(x float64) float64 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+// AnchorMatch represents a found anchor text location in the document
+type AnchorMatch struct {
+	Words    []WordInfo // The words that form the anchor
+	LastWord WordInfo   // Last word of the anchor (used as reference point)
+	Page     int        // Page where anchor was found
+}
+
+// extractByAnchor finds the value relative to an anchor label in the document.
+// It searches all pages for the anchor text, then looks for matching values
+// in the specified direction (right, below, or both).
+func (h *PDFHandler) extractByAnchor(rule BillTemplateRule, words []WordInfo) string {
+	// Find all occurrences of the anchor text across all pages
+	anchors := findAnchorOccurrences(rule.AnchorText, words)
+	if len(anchors) == 0 {
+		return ""
+	}
+
+	// Compile the value pattern
+	if rule.ValuePattern == "" {
+		return ""
+	}
+	valueRe, err := regexp.Compile("(?i)^" + rule.ValuePattern + "$")
+	if err != nil {
+		log.Printf("Invalid value pattern for anchor search field %s: %v", rule.Field, err)
+		return ""
+	}
+
+	type candidate struct {
+		text     string
+		distance float64
+		word     WordInfo
+	}
+
+	var bestCandidate *candidate
+
+	for _, anchor := range anchors {
+		// Search the region of interest based on direction
+		roiWords := searchROI(anchor, rule.AnchorDirection, words)
+
+		for _, w := range roiWords {
+			// Check if this word matches the value pattern
+			if valueRe.MatchString(w.Text) {
+				// Calculate distance from anchor reference point
+				dx := w.X - anchor.LastWord.X
+				dy := w.Y - anchor.LastWord.Y
+				dist := dx*dx + dy*dy
+
+				// Bonus: if historical position is close, reduce distance (tiebreaker)
+				if rule.X > 0 && rule.Y > 0 {
+					histDx := w.X - rule.X
+					histDy := w.Y - rule.Y
+					histDist := histDx*histDx + histDy*histDy
+					if histDist < 50*50 {
+						dist *= 0.5 // Halve the distance score for historically close matches
+					}
+				}
+
+				if bestCandidate == nil || dist < bestCandidate.distance {
+					bestCandidate = &candidate{text: w.Text, distance: dist, word: w}
+				}
+			}
+		}
+	}
+
+	if bestCandidate != nil {
+		return bestCandidate.text
+	}
+	return ""
+}
+
+// findAnchorOccurrences finds all occurrences of an anchor text (multi-word sequence)
+// across all pages. Case-insensitive matching with tolerance for whitespace.
+func findAnchorOccurrences(anchorText string, words []WordInfo) []AnchorMatch {
+	anchorWords := strings.Fields(strings.ToLower(anchorText))
+	if len(anchorWords) == 0 {
+		return nil
+	}
+
+	var matches []AnchorMatch
+
+	for i := 0; i <= len(words)-len(anchorWords); i++ {
+		matched := true
+		var matchedWords []WordInfo
+
+		for j, aw := range anchorWords {
+			w := words[i+j]
+			wText := strings.ToLower(w.Text)
+
+			// Must be on the same page for consecutive words
+			if j > 0 && w.Page != words[i].Page {
+				matched = false
+				break
+			}
+
+			// Must be on the same line (Y within 10 units) for consecutive words
+			if j > 0 && abs(w.Y-words[i+j-1].Y) > 10 {
+				matched = false
+				break
+			}
+
+			// Case-insensitive comparison, strip trailing punctuation for flexibility
+			wClean := strings.TrimRight(wText, ":.,;")
+			awClean := strings.TrimRight(aw, ":.,;")
+			if wClean != awClean {
+				matched = false
+				break
+			}
+
+			matchedWords = append(matchedWords, w)
+		}
+
+		if matched && len(matchedWords) == len(anchorWords) {
+			matches = append(matches, AnchorMatch{
+				Words:    matchedWords,
+				LastWord: matchedWords[len(matchedWords)-1],
+				Page:     matchedWords[0].Page,
+			})
+		}
+	}
+
+	return matches
+}
+
+// searchROI returns words in the Region of Interest relative to the anchor.
+// direction: "right" = same line to the right, "below" = below anchor,
+// "right_or_below" = both regions combined.
+func searchROI(anchor AnchorMatch, direction string, allWords []WordInfo) []WordInfo {
+	ref := anchor.LastWord
+	var results []WordInfo
+
+	if direction == "" {
+		direction = "right_or_below"
+	}
+
+	if direction == "right" || direction == "right_or_below" {
+		// Same line (Y within 10 units), to the right, within 300 units
+		for _, w := range allWords {
+			if w.Page != ref.Page {
+				continue
+			}
+			if abs(w.Y-ref.Y) < 10 && w.X > ref.X+ref.Width-5 && w.X < ref.X+300 {
+				results = append(results, w)
+			}
+		}
+	}
+
+	if direction == "below" || direction == "right_or_below" {
+		// Below anchor (Y > anchor + 5), within 150 units vertical,
+		// with horizontal overlap (anchor X range extended)
+		anchorXMin := anchor.Words[0].X
+		anchorXMax := ref.X + ref.Width
+		for _, w := range allWords {
+			if w.Page != ref.Page {
+				continue
+			}
+			if w.Y > ref.Y+5 && w.Y < ref.Y+150 {
+				// Check horizontal proximity: word should be within or near anchor's X range
+				if w.X < anchorXMax+100 && w.X+w.Width > anchorXMin-50 {
+					results = append(results, w)
+				}
+			}
+		}
+	}
+
+	return results
+}
+
+// extractByGlobalSearch searches the entire document for a value matching the pattern.
+// Used for unique identifiers like POD/PDR codes that appear once in the document.
+func (h *PDFHandler) extractByGlobalSearch(rule BillTemplateRule, words []WordInfo) string {
+	if rule.ValuePattern == "" {
+		return ""
+	}
+
+	valueRe, err := regexp.Compile("(?i)^" + rule.ValuePattern + "$")
+	if err != nil {
+		log.Printf("Invalid value pattern for global search field %s: %v", rule.Field, err)
+		return ""
+	}
+
+	for _, w := range words {
+		if valueRe.MatchString(w.Text) {
+			return w.Text
+		}
+	}
+
+	return ""
+}
+
+// extractByPattern uses regex pattern matching (original method)
+func (h *PDFHandler) extractByPattern(rule BillTemplateRule, text string) string {
+	hasContext := rule.Pattern != "" && rule.Pattern != rule.ValuePattern
+
+	// 1. If the pattern has context (different from value_pattern), try it first
+	if hasContext {
+		re, err := regexp.Compile("(?i)" + rule.Pattern)
+		if err != nil {
+			log.Printf("Warning: Invalid regex pattern for field %s: %v", rule.Field, err)
+		} else {
+			match := re.FindStringSubmatch(text)
+			if len(match) > 1 {
+				return strings.TrimSpace(match[1])
+			}
+		}
+	}
+
+	// 2. Auto-context from prefix/suffix: when pattern has no context (pattern == value_pattern),
+	// build context from the stored prefix labels. This is tried BEFORE the bare pattern
+	// because bare patterns match the first occurrence which is usually wrong.
+	if rule.ValuePattern != "" && rule.Prefix != "" {
+		contextPrefix := extractLabelContext(rule.Prefix)
+		if contextPrefix != "" {
+			contextPattern := contextPrefix + `[\s:]*` + rule.ValuePattern
+			re, err := regexp.Compile("(?i)" + contextPattern)
+			if err == nil {
+				match := re.FindStringSubmatch(text)
+				if len(match) > 1 {
+					log.Printf("Field %s matched with auto-context '%s': %s", rule.Field, contextPrefix, match[1])
+					return strings.TrimSpace(match[1])
+				}
+			}
+			log.Printf("Field %s: auto-context '%s' did not match", rule.Field, contextPrefix)
+		}
+	}
+
+	// 3. Bare pattern as last resort (no context — matches first occurrence in document)
+	if !hasContext && rule.Pattern != "" {
+		re, err := regexp.Compile("(?i)" + rule.Pattern)
+		if err != nil {
+			log.Printf("Warning: Invalid regex pattern for field %s: %v", rule.Field, err)
+		} else {
+			match := re.FindStringSubmatch(text)
+			if len(match) > 1 {
+				log.Printf("Field %s matched with bare pattern (no context): %s", rule.Field, match[1])
+				return strings.TrimSpace(match[1])
+			}
+		}
+	}
+
+	// 4. Fallback: value_pattern alone (only if different from pattern)
+	if rule.ValuePattern != "" && rule.ValuePattern != rule.Pattern {
+		re, err := regexp.Compile("(?i)" + rule.ValuePattern)
+		if err != nil {
+			log.Printf("Warning: Invalid value pattern for field %s: %v", rule.Field, err)
+		} else {
+			match := re.FindStringSubmatch(text)
+			if len(match) > 1 {
+				log.Printf("Field %s matched with fallback value_pattern", rule.Field)
+				return strings.TrimSpace(match[1])
+			} else if len(match) > 0 {
+				return strings.TrimSpace(match[0])
+			}
+		}
+	}
+
+	return ""
+}
+
+// extractLabelContext extracts label-like words from the prefix/suffix text.
+// Returns the last sequence of alphabetic words (skipping numbers and symbols),
+// which are most likely structural labels that remain constant across bills.
+func extractLabelContext(prefixText string) string {
+	words := strings.Fields(prefixText)
+	// Walk backwards to find the last run of label-like words
+	var labels []string
+	for i := len(words) - 1; i >= 0; i-- {
+		w := words[i]
+		// A label word is mostly alphabetic (allow accented chars, parentheses)
+		isLabel := true
+		letterCount := 0
+		for _, r := range w {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= 0x00C0 && r <= 0x024F) || r == '(' || r == ')' {
+				letterCount++
+			}
+		}
+		if letterCount == 0 || float64(letterCount)/float64(len([]rune(w))) < 0.5 {
+			isLabel = false
+		}
+		if isLabel {
+			labels = append([]string{regexp.QuoteMeta(w)}, labels...)
+		} else if len(labels) > 0 {
+			break // Stop at first non-label word once we've collected some
+		}
+	}
+	if len(labels) == 0 {
+		return ""
+	}
+	// Use at most 3 words for context
+	if len(labels) > 3 {
+		labels = labels[len(labels)-3:]
+	}
+	return strings.Join(labels, `\s+`)
 }
 
 // extractBillDataDefault uses default patterns for common Italian utilities
@@ -318,20 +1108,14 @@ func (h *PDFHandler) extractBillDataDefault(text string, utilityType string, pdf
 		RawText: text,
 	}
 
-	// Provider detection
-	providers := []string{"E.ON", "Enel", "ETRA", "Eni", "Edison", "Acea", "A2A", "Iren", "Hera"}
-	for _, p := range providers {
-		if strings.Contains(strings.ToUpper(text), strings.ToUpper(p)) {
-			extracted.Provider = p
-			break
-		}
-	}
-
-	// Bill number patterns
+	// Bill number patterns (common Italian utility bill formats)
 	billPatterns := []string{
-		`n[°º]\s*(\d+)`,
-		`[Ff]attura\s+n[.°]?\s*(\d+)`,
-		`[Nn]umero\s+[Ff]attura[:\s]*(\d+)`,
+		`[Bb]olletta\s+n[^\d\s]?\s*(\d{6,})`,
+		`[Nn][^\d\s]?\s*[Bb]olletta\s+(\d{6,})`,
+		`[Nn][^\d\s]?\s+(\d{6,})\s+emessa`,
+		`[Ff]attura\s+n[^\d\s]?\s*(\d{6,})`,
+		`[Nn]umero\s+[Ff]attura[:\s]*(\d{6,})`,
+		`[Nn][^\d\s]?\s*(\d{6,})`,
 	}
 	for _, pattern := range billPatterns {
 		re := regexp.MustCompile(pattern)
@@ -341,12 +1125,15 @@ func (h *PDFHandler) extractBillDataDefault(text string, utilityType string, pdf
 		}
 	}
 
-	// Amount patterns (Euro)
+	// Amount patterns (common Italian bill formats, ordered by specificity)
+	// NOTE: Only use patterns with clear context labels. Avoid bare number+€ patterns
+	// that match any euro amount in the document — templates handle provider-specific formats.
 	amountPatterns := []string{
-		`[Tt]otale\s+da\s+pagare\s*[:\s]*(\d+[.,]\d{2})\s*[€E]`,
-		`[Ii]mporto\s+totale\s+da\s+pagare\s*[:\s]*(\d+[.,]\d{2})\s*[€E]`,
-		`(\d+[.,]\d{2})\s*[€E]\s*[Tt]otale`,
-		`[€E]\s*(\d+[.,]\d{2})`,
+		`[Ii]mporto\s+totale\s+da\s+pagare[^0-9]*(\d+[.,]\d{2})`,
+		`[Ii]mporto\s+totale\s+da\s+(\d+[.,]\d{2})`,
+		`[Tt]otale\s+[Ss]pesa\s+(\d+[.,]\d{2})`,
+		`[Tt]otale\s+da\s+pagare[^0-9]*(\d+[.,]\d{2})`,
+		`[Tt]otale\s+[Bb]olletta\s+(\d+[.,]\d{2})`,
 	}
 	for _, pattern := range amountPatterns {
 		re := regexp.MustCompile(pattern)
@@ -356,26 +1143,36 @@ func (h *PDFHandler) extractBillDataDefault(text string, utilityType string, pdf
 		}
 	}
 
-	// Consumption patterns
-	var consumptionPattern string
+	// Consumption patterns (multiple patterns per type, ordered by specificity)
+	var consumptionPatterns []string
 	switch utilityType {
 	case "electricity":
-		consumptionPattern = `[Cc]onsumo\s+totale[^0-9]*(\d+[.,]?\d*)\s*kWh`
+		consumptionPatterns = []string{
+			`[Cc]onsumo\s+totale[^0-9]*(\d+[.,]?\d*)\s*kWh`,
+		}
 	case "gas":
-		consumptionPattern = `[Cc]onsumo\s+totale[^0-9]*(\d+[.,]?\d*)\s*[Ss]mc`
+		consumptionPatterns = []string{
+			`[Cc]onsumi\s+fatturati[:\s]*(\d+[.,]?\d*)\s*Smc`,
+			`(\d+[.,]\d+)\s+Smc.*\n\s*[Cc]onsumo\s+totale\s+fatturato`,
+			`[Cc]onsumo\s+totale[^0-9]*(\d+[.,]?\d*)\s*Smc`,
+		}
 	case "water":
-		consumptionPattern = `[Cc]onsumo\s+totale[^0-9]*(\d+[.,]?\d*)\s*mc`
+		consumptionPatterns = []string{
+			`[Cc]onsumo\s+totale[^0-9]*(\d+[.,]?\d*)\s*mc`,
+		}
 	}
-	if consumptionPattern != "" {
-		re := regexp.MustCompile(consumptionPattern)
+	for _, pattern := range consumptionPatterns {
+		re := regexp.MustCompile(pattern)
 		if match := re.FindStringSubmatch(text); len(match) > 1 {
 			extracted.ConsumptionTotal = h.parseAmount(match[1])
+			break
 		}
 	}
 
-	// Issue date patterns (e.g., "emessa il 19 gennaio 2026")
+	// Issue date patterns (Italian month names or numeric)
 	issueDatePatterns := []string{
 		`emessa\s+il\s+(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})`,
+		`[Bb]olletta\s+del\s+(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})`,
 		`[Dd]ata\s+emissione[:\s]*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})`,
 	}
 	for _, pattern := range issueDatePatterns {
@@ -393,7 +1190,6 @@ func (h *PDFHandler) extractBillDataDefault(text string, utilityType string, pdf
 	}
 
 	// Due date patterns - try specific patterns first
-	// E.ON format: "Data di scadenza ... 13 febbraio 2026" or "scadenza 13 febbraio 2026"
 	dueDatePatterns := []string{
 		// Italian month format near "scadenza"
 		`[Ss]cadenza[^0-9]*(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})`,
@@ -417,13 +1213,23 @@ func (h *PDFHandler) extractBillDataDefault(text string, utilityType string, pdf
 		}
 	}
 
-	// Period patterns - try Italian month format first (more specific)
-	// E.ON format: "01 dicembre 2025 - 31 dicembre 2025"
+	// Period patterns - try Italian month formats first (more specific)
+	// Format: "01 dicembre 2025 - 31 dicembre 2025"
 	monthPeriodPattern := regexp.MustCompile(`(?i)(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})\s*[-–]\s*(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})`)
 	if match := monthPeriodPattern.FindStringSubmatch(text); len(match) > 6 {
 		extracted.PeriodStart = h.parseItalianDate(match[1], strings.ToLower(match[2]), match[3])
 		extracted.PeriodEnd = h.parseItalianDate(match[4], strings.ToLower(match[5]), match[6])
-		log.Printf("Extracted period (Italian): %s - %s", extracted.PeriodStart, extracted.PeriodEnd)
+		log.Printf("Extracted period (Italian dash): %s - %s", extracted.PeriodStart, extracted.PeriodEnd)
+	}
+
+	// Format: "dall'1 novembre 2024 al 22 dicembre 2024" (possibly across lines)
+	if extracted.PeriodStart == "" {
+		dallAlPattern := regexp.MustCompile(`(?i)dall['']?\s*(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})\s+al\s+(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})`)
+		if match := dallAlPattern.FindStringSubmatch(text); len(match) > 6 {
+			extracted.PeriodStart = h.parseItalianDate(match[1], strings.ToLower(match[2]), match[3])
+			extracted.PeriodEnd = h.parseItalianDate(match[4], strings.ToLower(match[5]), match[6])
+			log.Printf("Extracted period (dall/al): %s - %s", extracted.PeriodStart, extracted.PeriodEnd)
+		}
 	}
 
 	// Fallback: numeric date format
@@ -436,6 +1242,23 @@ func (h *PDFHandler) extractBillDataDefault(text string, utilityType string, pdf
 		}
 	}
 
+	// Gas conversion coefficient (Coefficiente di conversione C)
+	if utilityType == "gas" {
+		coeffPatterns := []string{
+			`[Cc]oefficiente\s+di\s+conversione\s*\(?C?\)?\s*[:\s]*(\d+[,\.]\d+)`,
+			`[Cc]oeff\.?\s*(?:di\s+)?conv\.?\s*\(?C?\)?\s*[:\s]*(\d+[,\.]\d+)`,
+		}
+		for _, pattern := range coeffPatterns {
+			re := regexp.MustCompile(pattern)
+			if match := re.FindStringSubmatch(text); len(match) > 1 {
+				coeff := h.parseAmount(match[1])
+				extracted.ConversionCoefficient = &coeff
+				log.Printf("Extracted gas conversion coefficient: %f", coeff)
+				break
+			}
+		}
+	}
+
 	// POD/PDR code
 	if utilityType == "electricity" {
 		podPattern := regexp.MustCompile(`[Cc]odice\s+POD[:\s]*(IT\d{3}E\d+)`)
@@ -443,9 +1266,16 @@ func (h *PDFHandler) extractBillDataDefault(text string, utilityType string, pdf
 			extracted.ServiceCode = match[1]
 		}
 	} else if utilityType == "gas" {
-		pdrPattern := regexp.MustCompile(`[Cc]odice\s+PDR[:\s]*(\d+)`)
-		if match := pdrPattern.FindStringSubmatch(text); len(match) > 1 {
-			extracted.ServiceCode = match[1]
+		pdrPatterns := []string{
+			`[Cc]odice\s+PDR[\s:]*(\d{10,})`,
+			`PDR[^0-9]*(\d{10,})`,
+		}
+		for _, pattern := range pdrPatterns {
+			re := regexp.MustCompile(pattern)
+			if match := re.FindStringSubmatch(text); len(match) > 1 {
+				extracted.ServiceCode = match[1]
+				break
+			}
 		}
 	}
 
@@ -472,8 +1302,7 @@ func (h *PDFHandler) extractProviderReadings(extracted *ExtractedBillData, text 
 		extracted.ReadingType = "estimated"
 	}
 
-	// Extract reading period from "Da DD/MM/YYYY a DD/MM/YYYY" pattern (E.ON format)
-	// This is in the "Letture e consumi" section
+	// Extract reading period from "Da DD/MM/YYYY a DD/MM/YYYY" pattern
 	readingPeriodPattern := regexp.MustCompile(`Da\s+(\d{1,2}/\d{1,2}/\d{4})\s*[^\d]*a\s+(\d{1,2}/\d{1,2}/\d{4})`)
 	if match := readingPeriodPattern.FindStringSubmatch(text); len(match) > 2 {
 		// Use the end date of the reading period as the provider reading date
@@ -483,11 +1312,8 @@ func (h *PDFHandler) extractProviderReadings(extracted *ExtractedBillData, text 
 
 	switch utilityType {
 	case "electricity":
-		// E.ON format for electricity readings (from "Letture e consumi" section):
-		// Table header: "FASCIA 1 kWh + FASCIA 2 kWh + FASCIA 3 kWh = TOT. kWh"
-		// Values: "1.936,56 - 1.899,18 = 37,38    2.005,19 - 1.965,35 = 39,84    2.519,09 - 2.453,21 = 65,88"
-		// Pattern: final_reading - initial_reading = consumption (repeated 3 times for F1, F2, F3)
-		// We want the FINAL readings (lettura finale)
+		// Electricity readings pattern: final_reading - initial_reading = consumption
+		// Repeated for F1, F2, F3 bands. We extract the FINAL readings.
 
 		log.Printf("Extracting electricity readings from text (length: %d)", len(text))
 
@@ -562,23 +1388,36 @@ func (h *PDFHandler) extractProviderReadings(extracted *ExtractedBillData, text 
 		}
 
 	case "gas":
-		// E.ON format for gas readings:
-		// "6.299,00 - 6.180,00 = 119,00"
-		// Pattern: final_reading - initial_reading = consumption
-		gasPattern := regexp.MustCompile(`(\d+[\.,]\d+)\s*-\s*(\d+[\.,]\d+)\s*=\s*(\d+[\.,]\d+)`)
-		matches := gasPattern.FindAllStringSubmatch(text, -1)
+		// Scope to readings section for more accurate extraction
+		gasReadingsSection := text
+		if idx := strings.Index(strings.ToLower(text), "letture e consumi"); idx != -1 {
+			gasReadingsSection = text[idx:]
+			if len(gasReadingsSection) > 2000 {
+				gasReadingsSection = gasReadingsSection[:2000]
+			}
+		} else if idx := strings.Index(strings.ToLower(text), "dettaglio letture"); idx != -1 {
+			gasReadingsSection = text[idx:]
+			if len(gasReadingsSection) > 2000 {
+				gasReadingsSection = gasReadingsSection[:2000]
+			}
+		}
+
+		// Pattern: final_reading - initial_reading = (consumption may be on next line)
+		gasPattern := regexp.MustCompile(`(\d[\d.,]+)\s*-\s*(\d[\d.,]+)\s*=`)
+		matches := gasPattern.FindAllStringSubmatch(gasReadingsSection, -1)
 
 		log.Printf("Found %d reading matches in gas bill", len(matches))
 
 		if len(matches) > 0 {
-			// Get the first match (there should be only one for gas)
-			reading := h.parseAmount(matches[0][1])
+			// Use last match: most recent reading period's final reading
+			lastMatch := matches[len(matches)-1]
+			reading := h.parseAmount(lastMatch[1])
 			extracted.ProviderReading = &reading
-			log.Printf("Extracted gas reading: %.2f mc", reading)
+			log.Printf("Extracted gas reading: %.2f mc (last of %d matches)", reading, len(matches))
 		}
 
 	case "water":
-		// ETRA format for water readings - look for "Lettura attuale" or similar
+		// Water readings - look for "Lettura attuale" or similar
 		// Pattern similar to gas
 		waterPatterns := []string{
 			`[Ll]ettura\s+(?:attuale|finale)[:\s]*(\d+[\.,]?\d*)`,
@@ -601,15 +1440,6 @@ func (h *PDFHandler) extractContractDataDefault(text string, pdfURL string) Extr
 	extracted := ExtractedContractData{
 		PDFURL:  pdfURL,
 		RawText: text,
-	}
-
-	// Provider detection
-	providers := []string{"E.ON", "Enel", "ETRA", "Eni", "Edison", "Acea", "A2A", "Iren", "Hera"}
-	for _, p := range providers {
-		if strings.Contains(strings.ToUpper(text), strings.ToUpper(p)) {
-			extracted.Provider = p
-			break
-		}
 	}
 
 	// POD code (electricity)
@@ -688,6 +1518,94 @@ func (h *PDFHandler) parseItalianDate(day, month, year string) string {
 		return fmt.Sprintf("%04d-%02d-%02d", y, m, d)
 	}
 	return ""
+}
+
+// getTemplateFieldSet returns the set of field names that a template defines rules for.
+func (h *PDFHandler) getTemplateFieldSet(template models.BillTemplate) map[string]bool {
+	fields := make(map[string]bool)
+	var rules []BillTemplateRule
+	json.Unmarshal([]byte(template.ExtractionRules), &rules)
+	for _, rule := range rules {
+		fields[rule.Field] = true
+	}
+	fieldNames := make([]string, 0, len(fields))
+	for f := range fields {
+		fieldNames = append(fieldNames, f)
+	}
+	log.Printf("Template '%s' defines rules for %d fields: %v", template.Name, len(fields), fieldNames)
+	return fields
+}
+
+// mergeExtracted fills missing fields in primary with values from fallback.
+// templateFields contains field names the template defines rules for - these are
+// NOT overridden by default extraction even if empty, because wrong values are
+// worse than missing values. The user can always fill them in manually.
+func (h *PDFHandler) mergeExtracted(primary, fallback ExtractedBillData, templateFields map[string]bool) ExtractedBillData {
+	if primary.BillNumber == "" && !templateFields["bill_number"] {
+		primary.BillNumber = fallback.BillNumber
+	}
+	if primary.IssueDate == "" && !templateFields["issue_date"] {
+		primary.IssueDate = fallback.IssueDate
+	}
+	if primary.PeriodStart == "" && !templateFields["period_start"] {
+		primary.PeriodStart = fallback.PeriodStart
+	}
+	if primary.PeriodEnd == "" && !templateFields["period_end"] {
+		primary.PeriodEnd = fallback.PeriodEnd
+	}
+	if primary.DueDate == "" && !templateFields["due_date"] {
+		primary.DueDate = fallback.DueDate
+	}
+	if primary.AmountTotal == 0 && !templateFields["amount_total"] {
+		primary.AmountTotal = fallback.AmountTotal
+	}
+	if primary.ConsumptionTotal == 0 && !templateFields["consumption_total"] {
+		primary.ConsumptionTotal = fallback.ConsumptionTotal
+	}
+	// Provider is always merged (not a template field, detected by keyword)
+	if primary.Provider == "" {
+		primary.Provider = fallback.Provider
+	}
+	if primary.ServiceCode == "" && !templateFields["service_code"] {
+		primary.ServiceCode = fallback.ServiceCode
+	}
+	if primary.CustomerCode == "" && !templateFields["customer_code"] {
+		primary.CustomerCode = fallback.CustomerCode
+	}
+	if primary.ProviderReadingDate == "" && !templateFields["provider_reading_date"] {
+		primary.ProviderReadingDate = fallback.ProviderReadingDate
+	}
+	if primary.ReadingType == "" && !templateFields["reading_type"] {
+		primary.ReadingType = fallback.ReadingType
+	}
+	if primary.ProviderReadingF1 == nil && !templateFields["provider_reading_f1"] {
+		primary.ProviderReadingF1 = fallback.ProviderReadingF1
+	}
+	if primary.ProviderReadingF2 == nil && !templateFields["provider_reading_f2"] {
+		primary.ProviderReadingF2 = fallback.ProviderReadingF2
+	}
+	if primary.ProviderReadingF3 == nil && !templateFields["provider_reading_f3"] {
+		primary.ProviderReadingF3 = fallback.ProviderReadingF3
+	}
+	if primary.ProviderReading == nil && !templateFields["provider_reading"] {
+		primary.ProviderReading = fallback.ProviderReading
+	}
+	if primary.ConversionCoefficient == nil && !templateFields["conversion_coefficient"] {
+		primary.ConversionCoefficient = fallback.ConversionCoefficient
+	}
+	if primary.EstimatedDate == nil && !templateFields["estimated_date"] {
+		primary.EstimatedDate = fallback.EstimatedDate
+	}
+	if primary.EstimatedReading == nil && !templateFields["estimated_reading"] {
+		primary.EstimatedReading = fallback.EstimatedReading
+	}
+	if primary.EstimatedConsumption == nil && !templateFields["estimated_consumption"] {
+		primary.EstimatedConsumption = fallback.EstimatedConsumption
+	}
+	if primary.PreviousEstimatedConsumption == nil && !templateFields["previous_estimated_consumption"] {
+		primary.PreviousEstimatedConsumption = fallback.PreviousEstimatedConsumption
+	}
+	return primary
 }
 
 // === Template CRUD Operations ===
@@ -844,7 +1762,7 @@ func (h *PDFHandler) DeleteBillTemplate(c *gin.Context) {
 		return
 	}
 
-	result := h.db.Where("id = ? AND user_id = ?", templateID, userID).Delete(&models.BillTemplate{})
+	result := h.db.Unscoped().Where("id = ? AND user_id = ?", templateID, userID).Delete(&models.BillTemplate{})
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete template"})
 		return
@@ -856,6 +1774,190 @@ func (h *PDFHandler) DeleteBillTemplate(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Template deleted successfully"})
+}
+
+// PDFPageImage represents a page converted to image with word positions
+type PDFPageImage struct {
+	PageNumber  int        `json:"page_number"`
+	ImageURL    string     `json:"image_url"`
+	ImageWidth  int        `json:"image_width"`
+	ImageHeight int        `json:"image_height"`
+	Words       []WordInfo `json:"words"`
+}
+
+// PDFAnalysisResult contains the full PDF analysis for template wizard
+type PDFAnalysisResult struct {
+	Pages     []PDFPageImage `json:"pages"`
+	PageCount int            `json:"page_count"`
+	RawText   string         `json:"raw_text"`
+}
+
+// AnalyzePDFForTemplate - POST /api/v1/pdf/analyze
+// Converts PDF to images and extracts word positions for Textract-like UI
+func (h *PDFHandler) AnalyzePDFForTemplate(c *gin.Context) {
+	_, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	file, err := c.FormFile("pdf_file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No PDF file uploaded"})
+		return
+	}
+
+	// Save PDF temporarily
+	timestamp := time.Now().UnixNano()
+	pdfFile := filepath.Join(h.uploadsDir, fmt.Sprintf("analyze_%d.pdf", timestamp))
+	if err := c.SaveUploadedFile(file, pdfFile); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+		return
+	}
+	defer os.Remove(pdfFile)
+
+	// Convert PDF pages to images using pdftoppm
+	imagePrefix := filepath.Join(h.uploadsDir, fmt.Sprintf("page_%d", timestamp))
+	cmd := exec.Command("pdftoppm", "-png", "-r", "150", pdfFile, imagePrefix)
+	if err := cmd.Run(); err != nil {
+		log.Printf("pdftoppm failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to convert PDF to images. Make sure poppler-utils is installed."})
+		return
+	}
+
+	// Find generated images
+	pattern := fmt.Sprintf("page_%d-*.png", timestamp)
+	matches, _ := filepath.Glob(filepath.Join(h.uploadsDir, pattern))
+	if len(matches) == 0 {
+		// Try single page format (no suffix for single page PDFs)
+		singlePage := imagePrefix + ".png"
+		if _, err := os.Stat(singlePage); err == nil {
+			matches = []string{singlePage}
+		}
+	}
+
+	if len(matches) == 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "No images generated from PDF"})
+		return
+	}
+
+	// Sort matches to ensure correct page order
+	sort.Strings(matches)
+
+	// Extract text with bbox for word positions
+	extracted, err := h.extractTextWithPositions(pdfFile)
+	if err != nil {
+		log.Printf("Text extraction warning: %v", err)
+	}
+
+	// Build result
+	result := PDFAnalysisResult{
+		Pages:     make([]PDFPageImage, 0, len(matches)),
+		PageCount: len(matches),
+		RawText:   "",
+	}
+	if extracted != nil {
+		result.RawText = extracted.RawText
+	}
+
+	// Process each page
+	for i, imgPath := range matches {
+		// Get image dimensions
+		width, height := getImageDimensions(imgPath)
+
+		// Move image to permanent location with predictable name
+		newName := fmt.Sprintf("template_page_%d_%d.png", timestamp, i+1)
+		newPath := filepath.Join(h.uploadsDir, newName)
+		os.Rename(imgPath, newPath)
+
+		// Filter words for this page
+		pageWords := []WordInfo{}
+		if extracted != nil && extracted.HasBBox {
+			for _, w := range extracted.Words {
+				if w.Page == i {
+					pageWords = append(pageWords, w)
+				}
+			}
+		}
+
+		result.Pages = append(result.Pages, PDFPageImage{
+			PageNumber:  i + 1,
+			ImageURL:    "/uploads/" + newName,
+			ImageWidth:  width,
+			ImageHeight: height,
+			Words:       pageWords,
+		})
+	}
+
+	// If no bbox data, distribute words across pages based on line index
+	if extracted != nil && !extracted.HasBBox && len(extracted.Words) > 0 {
+		wordsPerPage := len(extracted.Words) / len(result.Pages)
+		if wordsPerPage == 0 {
+			wordsPerPage = len(extracted.Words)
+		}
+
+		for i := range result.Pages {
+			start := i * wordsPerPage
+			end := start + wordsPerPage
+			if i == len(result.Pages)-1 {
+				end = len(extracted.Words)
+			}
+			if start < len(extracted.Words) {
+				if end > len(extracted.Words) {
+					end = len(extracted.Words)
+				}
+				result.Pages[i].Words = extracted.Words[start:end]
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// getImageDimensions reads PNG dimensions from file header
+func getImageDimensions(path string) (int, int) {
+	file, err := os.Open(path)
+	if err != nil {
+		return 800, 1100 // Default A4-ish dimensions
+	}
+	defer file.Close()
+
+	// Read PNG header (8 bytes magic + IHDR chunk)
+	header := make([]byte, 24)
+	if _, err := file.Read(header); err != nil {
+		return 800, 1100
+	}
+
+	// PNG dimensions are at bytes 16-23 in big-endian
+	if len(header) >= 24 {
+		width := int(header[16])<<24 | int(header[17])<<16 | int(header[18])<<8 | int(header[19])
+		height := int(header[20])<<24 | int(header[21])<<16 | int(header[22])<<8 | int(header[23])
+		if width > 0 && height > 0 {
+			return width, height
+		}
+	}
+
+	return 800, 1100
+}
+
+// CleanupTemplateImages - DELETE /api/v1/pdf/cleanup/:timestamp
+// Cleans up temporary template images
+func (h *PDFHandler) CleanupTemplateImages(c *gin.Context) {
+	_, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	timestamp := c.Param("timestamp")
+	pattern := filepath.Join(h.uploadsDir, fmt.Sprintf("template_page_%s_*.png", timestamp))
+	matches, _ := filepath.Glob(pattern)
+
+	for _, match := range matches {
+		os.Remove(match)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"deleted": len(matches)})
 }
 
 // GetPDFRawText - POST /api/v1/pdf/extract-text
@@ -882,6 +1984,20 @@ func (h *PDFHandler) GetPDFRawText(c *gin.Context) {
 		return
 	}
 
+	// Check if caller wants positions (for template wizard)
+	withPositions := c.Query("with_positions") == "true" || c.PostForm("with_positions") == "true"
+
+	if withPositions {
+		result, err := h.extractTextWithPositions(tempFile)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract text: " + err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, result)
+		return
+	}
+
+	// Standard extraction without positions
 	text, err := h.extractTextFromPDF(tempFile)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract text: " + err.Error()})

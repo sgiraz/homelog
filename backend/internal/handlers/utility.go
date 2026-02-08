@@ -540,11 +540,15 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		ProviderReadingF2   *float64   `json:"provider_reading_f2"`   // Lettura F2 (electricity)
 		ProviderReadingF3   *float64   `json:"provider_reading_f3"`   // Lettura F3 (electricity)
 		ProviderReading     *float64   `json:"provider_reading"`      // Lettura singola (gas/water)
-		ConsumptionTotal    float64    `json:"consumption_total" binding:"required"`
-		ConsumptionF1       *float64   `json:"consumption_f1"`
-		ConsumptionF2       *float64   `json:"consumption_f2"`
-		ConsumptionF3       *float64   `json:"consumption_f3"`
-		AmountTotal         float64    `json:"amount_total" binding:"required"`
+		ConsumptionTotal      float64    `json:"consumption_total"`
+		ConsumptionF1         *float64   `json:"consumption_f1"`
+		ConsumptionF2         *float64   `json:"consumption_f2"`
+		ConsumptionF3         *float64   `json:"consumption_f3"`
+		AmountTotal           float64    `json:"amount_total"`
+		ConversionCoefficient *float64   `json:"conversion_coefficient"`
+		EstimatedDate        *time.Time `json:"estimated_date"`
+		EstimatedReading     *float64   `json:"estimated_reading"`
+		EstimatedConsumption *float64   `json:"estimated_consumption"`
 		AmountEnergy        *float64   `json:"amount_energy"`
 		AmountFixed         *float64   `json:"amount_fixed"`
 		AmountTaxes         *float64   `json:"amount_taxes"`
@@ -560,34 +564,38 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 	}
 
 	bill := models.Bill{
-		UtilityID:           uint(utilityID),
-		BillNumber:          input.BillNumber,
-		IssueDate:           input.IssueDate,
-		PeriodStart:         input.PeriodStart,
-		PeriodEnd:           input.PeriodEnd,
-		DueDate:             input.DueDate,
-		ReadingStartDate:    input.ReadingStartDate,
-		ReadingStartValue:   input.ReadingStartValue,
-		ReadingEndDate:      input.ReadingEndDate,
-		ReadingEndValue:     input.ReadingEndValue,
-		ReadingType:         input.ReadingType,
-		ProviderReadingDate: input.ProviderReadingDate,
-		ProviderReadingF1:   input.ProviderReadingF1,
-		ProviderReadingF2:   input.ProviderReadingF2,
-		ProviderReadingF3:   input.ProviderReadingF3,
-		ProviderReading:     input.ProviderReading,
-		ConsumptionTotal:    input.ConsumptionTotal,
-		ConsumptionF1:       input.ConsumptionF1,
-		ConsumptionF2:       input.ConsumptionF2,
-		ConsumptionF3:       input.ConsumptionF3,
-		AmountTotal:         input.AmountTotal,
-		AmountEnergy:        input.AmountEnergy,
-		AmountFixed:         input.AmountFixed,
-		AmountTaxes:         input.AmountTaxes,
-		AmountVAT:           input.AmountVAT,
-		IsPaid:              input.IsPaid,
-		PaidDate:            input.PaidDate,
-		PDFURL:              input.PDFURL,
+		UtilityID:             uint(utilityID),
+		BillNumber:            input.BillNumber,
+		IssueDate:             input.IssueDate,
+		PeriodStart:           input.PeriodStart,
+		PeriodEnd:             input.PeriodEnd,
+		DueDate:               input.DueDate,
+		ReadingStartDate:      input.ReadingStartDate,
+		ReadingStartValue:     input.ReadingStartValue,
+		ReadingEndDate:        input.ReadingEndDate,
+		ReadingEndValue:       input.ReadingEndValue,
+		ReadingType:           input.ReadingType,
+		ProviderReadingDate:   input.ProviderReadingDate,
+		ProviderReadingF1:     input.ProviderReadingF1,
+		ProviderReadingF2:     input.ProviderReadingF2,
+		ProviderReadingF3:     input.ProviderReadingF3,
+		ProviderReading:       input.ProviderReading,
+		ConversionCoefficient: input.ConversionCoefficient,
+		EstimatedDate:         input.EstimatedDate,
+		EstimatedReading:      input.EstimatedReading,
+		EstimatedConsumption:  input.EstimatedConsumption,
+		ConsumptionTotal:      input.ConsumptionTotal,
+		ConsumptionF1:         input.ConsumptionF1,
+		ConsumptionF2:         input.ConsumptionF2,
+		ConsumptionF3:         input.ConsumptionF3,
+		AmountTotal:           input.AmountTotal,
+		AmountEnergy:          input.AmountEnergy,
+		AmountFixed:           input.AmountFixed,
+		AmountTaxes:           input.AmountTaxes,
+		AmountVAT:             input.AmountVAT,
+		IsPaid:                input.IsPaid,
+		PaidDate:              input.PaidDate,
+		PDFURL:                input.PDFURL,
 	}
 
 	if err := h.db.Create(&bill).Error; err != nil {
@@ -793,21 +801,25 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	}
 
 	var input struct {
-		BillNumber          string     `json:"bill_number"`
-		IssueDate           time.Time  `json:"issue_date"`
-		PeriodStart         time.Time  `json:"period_start"`
-		PeriodEnd           time.Time  `json:"period_end"`
-		DueDate             time.Time  `json:"due_date"`
-		ConsumptionTotal    float64    `json:"consumption_total"`
-		AmountTotal         float64    `json:"amount_total"`
-		ReadingType         string     `json:"reading_type"`
-		IsPaid              bool       `json:"is_paid"`
-		PaidDate            *time.Time `json:"paid_date"`
-		ProviderReadingDate *time.Time `json:"provider_reading_date"`
-		ProviderReadingF1   *float64   `json:"provider_reading_f1"`
-		ProviderReadingF2   *float64   `json:"provider_reading_f2"`
-		ProviderReadingF3   *float64   `json:"provider_reading_f3"`
-		ProviderReading     *float64   `json:"provider_reading"`
+		BillNumber            string     `json:"bill_number"`
+		IssueDate             time.Time  `json:"issue_date"`
+		PeriodStart           time.Time  `json:"period_start"`
+		PeriodEnd             time.Time  `json:"period_end"`
+		DueDate               time.Time  `json:"due_date"`
+		ConsumptionTotal      float64    `json:"consumption_total"`
+		AmountTotal           float64    `json:"amount_total"`
+		ConversionCoefficient *float64   `json:"conversion_coefficient"`
+		EstimatedDate        *time.Time `json:"estimated_date"`
+		EstimatedReading     *float64   `json:"estimated_reading"`
+		EstimatedConsumption *float64   `json:"estimated_consumption"`
+		ReadingType           string     `json:"reading_type"`
+		IsPaid                bool       `json:"is_paid"`
+		PaidDate              *time.Time `json:"paid_date"`
+		ProviderReadingDate   *time.Time `json:"provider_reading_date"`
+		ProviderReadingF1     *float64   `json:"provider_reading_f1"`
+		ProviderReadingF2     *float64   `json:"provider_reading_f2"`
+		ProviderReadingF3     *float64   `json:"provider_reading_f3"`
+		ProviderReading       *float64   `json:"provider_reading"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -823,6 +835,10 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	bill.DueDate = input.DueDate
 	bill.ConsumptionTotal = input.ConsumptionTotal
 	bill.AmountTotal = input.AmountTotal
+	bill.ConversionCoefficient = input.ConversionCoefficient
+	bill.EstimatedDate = input.EstimatedDate
+	bill.EstimatedReading = input.EstimatedReading
+	bill.EstimatedConsumption = input.EstimatedConsumption
 	bill.ReadingType = input.ReadingType
 	bill.IsPaid = input.IsPaid
 	bill.PaidDate = input.PaidDate

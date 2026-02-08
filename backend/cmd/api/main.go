@@ -151,6 +151,8 @@ func main() {
 			{
 				pdfHandler := handlers.NewPDFHandler(db)
 				pdf.POST("/extract-text", pdfHandler.GetPDFRawText)
+				pdf.POST("/analyze", pdfHandler.AnalyzePDFForTemplate)
+				pdf.DELETE("/cleanup/:timestamp", pdfHandler.CleanupTemplateImages)
 			}
 
 			// Projects

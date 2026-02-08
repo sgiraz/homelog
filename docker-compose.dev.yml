@@ -1,0 +1,51 @@
+version: '3.8'
+
+# Development docker-compose with hot-reload support
+# Usage: docker-compose -f docker-compose.dev.yml up --build
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: homelog-backend-dev
+    ports:
+      - "8080:8080"
+      - "2345:2345"
+    environment:
+      - GIN_MODE=debug
+      - PORT=8080
+      - DB_PATH=/app/data/homelog.db
+      - JWT_SECRET=dev-secret-change-in-production
+    volumes:
+      - ./backend:/app/src
+      - ./data:/app/data
+      - ./data/uploads:/app/uploads
+      # Keep go modules cached
+      - go-modules:/go/pkg/mod
+    networks:
+      - homelog-dev
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: homelog-frontend-dev
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8080/api/v1
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - homelog-dev
+
+networks:
+  homelog-dev:
+    driver: bridge
+
+volumes:
+  go-modules:

@@ -112,7 +112,7 @@
         <Input
           v-model="form.provider"
           label="Fornitore *"
-          placeholder="Es: Enel, Eni, Acea..."
+          placeholder="Nome del fornitore"
           required
         />
 

@@ -132,7 +132,7 @@
                   Scadenza: {{ formatDate(bill.due_date) }}
                 </div>
                 <div v-if="bill.consumption_total" class="text-sm text-gray-500 dark:text-gray-500">
-                  Consumo: {{ bill.consumption_total }} {{ getConsumptionUnit(localUtility.type) }}
+                  Consumo: {{ formatConsumption(bill.consumption_total) }} {{ getConsumptionUnit(localUtility.type) }}
                 </div>
               </div>
               <div class="flex flex-col gap-5 items-end">
@@ -351,6 +351,8 @@
 <script setup>
 import { ref, reactive, watch, computed } from 'vue'
 import { useUtilitiesStore } from '@/stores/utilities'
+import { useSettingsStore } from '@/stores/settings'
+import { formatDate as _formatDate, formatPeriod as _formatPeriod } from '@/utils/dateFormatter'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import AddBillModal from './AddBillModal.vue'
@@ -367,6 +369,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'updated'])
 
 const utilitiesStore = useUtilitiesStore()
+const settingsStore = useSettingsStore()
 
 // Local reactive copy of utility for immediate updates
 const localUtility = reactive({ ...props.utility })
@@ -478,15 +481,19 @@ function formatCurrency(value) {
   return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value || 0)
 }
 
+function formatConsumption(value) {
+  if (value == null) return '-'
+  const num = parseFloat(value)
+  const truncated = Math.trunc(num * 1000) / 1000
+  return truncated.toFixed(3).replace(/\.?0+$/, '')
+}
+
 function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
+  return _formatDate(dateStr, settingsStore.dateSettings)
 }
 
 function formatPeriod(start, end) {
-  const startDate = new Date(start)
-  const endDate = new Date(end)
-  const options = { month: 'short', year: 'numeric' }
-  return `${startDate.toLocaleDateString('it-IT', options)} - ${endDate.toLocaleDateString('it-IT', options)}`
+  return _formatPeriod(start, end, settingsStore.dateSettings)
 }
 
 function isDueSoon(bill) {

@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git gcc musl-dev sqlite-dev
@@ -13,8 +13,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build binary (optimized for size)
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=7 go build \
+# Build binary (auto-detect architecture)
+RUN CGO_ENABLED=1 go build \
     -ldflags="-s -w" \
     -o homelog-api \
     ./cmd/api/main.go
@@ -22,8 +22,8 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=7 go build \
 # Runtime stage
 FROM alpine:latest
 
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates sqlite-libs tzdata wget
+# Install runtime dependencies including poppler-utils for PDF processing
+RUN apk add --no-cache ca-certificates sqlite-libs tzdata wget poppler-utils
 
 # Create non-root user
 RUN addgroup -g 1000 appuser && \

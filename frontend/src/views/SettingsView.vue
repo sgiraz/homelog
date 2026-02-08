@@ -176,6 +176,58 @@
             <option value="en">English</option>
           </select>
         </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Formato Data</label>
+          <select
+            v-model="preferences.date_format"
+            @change="updateUserSettings"
+            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="DD/MM/YYYY">GG/MM/AAAA (31/12/2024)</option>
+            <option value="MM/DD/YYYY">MM/GG/AAAA (12/31/2024)</option>
+            <option value="YYYY-MM-DD">AAAA-MM-GG (2024-12-31)</option>
+            <option value="DD MMM YYYY">GG MMM AAAA (31 dic 2024)</option>
+          </select>
+        </div>
+      </div>
+    </Card>
+
+    <!-- Default Templates -->
+    <Card class="p-6">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Template Predefiniti Bollette</h2>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        Seleziona il template predefinito per ogni tipo di utenza. Verra usato automaticamente quando carichi una nuova bolletta.
+      </p>
+
+      <div class="space-y-4">
+        <div v-for="utilityType in utilityTypes" :key="utilityType.key">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {{ utilityType.label }}
+          </label>
+          <select
+            v-model="defaultTemplates[utilityType.key]"
+            @change="updateUserSettings"
+            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option :value="null">Nessun template (rilevamento automatico)</option>
+            <option
+              v-for="tpl in getTemplatesForType(utilityType.key)"
+              :key="tpl.id"
+              :value="tpl.id"
+            >
+              {{ tpl.name }} - {{ tpl.provider }}
+            </option>
+          </select>
+        </div>
+
+        <div v-if="allTemplates.length === 0" class="text-sm text-gray-500 dark:text-gray-400 italic p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          Nessun template disponibile. Crea i template dalla pagina Utenze.
+        </div>
       </div>
     </Card>
 
@@ -210,12 +262,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
+import { templatesAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import apiClient from '@/api/client'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
 
 const splitMode = ref(false)
 const currentPropertyId = ref(null)
@@ -224,10 +279,31 @@ const defaultSplitMemberIds = ref([])
 const currentUserMemberId = ref(null)
 const newMemberName = ref('')
 
+// Templates
+const allTemplates = ref([])
+const defaultTemplates = ref({
+  electricity: null,
+  gas: null,
+  water: null,
+  waste: null
+})
+
+const utilityTypes = [
+  { key: 'electricity', label: 'Luce' },
+  { key: 'gas', label: 'Gas' },
+  { key: 'water', label: 'Acqua' },
+  { key: 'waste', label: 'Rifiuti' }
+]
+
+function getTemplatesForType(type) {
+  return allTemplates.value.filter(t => t.utility_type === type)
+}
+
 const preferences = ref({
   theme: 'auto',
   currency: 'EUR',
-  language: 'it'
+  language: 'it',
+  date_format: 'DD/MM/YYYY'
 })
 
 const userInitials = computed(() => {
@@ -300,7 +376,8 @@ async function loadUserSettings() {
     preferences.value = {
       theme: data.theme || 'auto',
       currency: data.currency || 'EUR',
-      language: data.language || 'it'
+      language: data.language || 'it',
+      date_format: data.date_format || 'DD/MM/YYYY'
     }
 
     // Parse default split member IDs
@@ -311,8 +388,33 @@ async function loadUserSettings() {
         defaultSplitMemberIds.value = []
       }
     }
+
+    // Parse default templates
+    if (data.default_templates) {
+      try {
+        const parsed = JSON.parse(data.default_templates)
+        defaultTemplates.value = {
+          electricity: parsed.electricity || null,
+          gas: parsed.gas || null,
+          water: parsed.water || null,
+          waste: parsed.waste || null
+        }
+      } catch (e) {
+        console.error('Error parsing default_templates:', e)
+      }
+    }
   } catch (err) {
     console.log('Using default user settings')
+  }
+}
+
+async function loadTemplates() {
+  try {
+    const { data } = await templatesAPI.listBillTemplates()
+    allTemplates.value = data || []
+  } catch (err) {
+    console.error('Error loading templates:', err)
+    allTemplates.value = []
   }
 }
 
@@ -339,9 +441,16 @@ async function updateUserSettings() {
       theme: preferences.value.theme,
       currency: preferences.value.currency,
       language: preferences.value.language,
-      default_split_with_member_ids: JSON.stringify(defaultSplitMemberIds.value)
+      date_format: preferences.value.date_format,
+      default_split_with_member_ids: JSON.stringify(defaultSplitMemberIds.value),
+      default_templates: JSON.stringify(defaultTemplates.value)
     }
     await apiClient.put('/settings', payload)
+    // Sync with global settings store
+    settingsStore.theme = preferences.value.theme
+    settingsStore.currency = preferences.value.currency
+    settingsStore.language = preferences.value.language
+    settingsStore.dateFormat = preferences.value.date_format
     console.log('User settings updated:', payload)
   } catch (err) {
     console.error('Error updating user settings:', err)
@@ -389,6 +498,7 @@ function handleLogout() {
 
 onMounted(() => {
   loadUserSettings()
+  loadTemplates()
   fetchCurrentProperty()
 })
 </script>
