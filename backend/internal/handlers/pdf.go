@@ -348,7 +348,7 @@ func normalizeLatin1ToUTF8(data []byte) string {
 				// In UTF-8, code points 0x80-0xBF are encoded as 0xC2 0x80-0xBF
 				result = append(result, 0xC2, b)
 			}
-		} else if b >= 0xC0 && b <= 0xFF {
+		} else if b >= 0xC0 {
 			// Multi-byte start without valid continuation: treat as Latin-1
 			result = append(result, 0xC3, b-0x40)
 		} else {
