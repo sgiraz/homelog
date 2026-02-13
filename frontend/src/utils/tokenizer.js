@@ -21,6 +21,7 @@ export const TokenType = {
   NUMBER: 'number',         // Plain numbers
   DATE: 'date',             // Date formats: DD/MM/YYYY, etc.
   MONTH: 'month',           // Italian month names
+  SYMBOL: 'symbol',         // Currency/unit symbols: €, $
   TEXT: 'text',             // Regular text
   POD: 'pod',               // Electricity POD code
   PDR: 'pdr',               // Gas PDR code
@@ -36,8 +37,8 @@ export const TokenType = {
 function isNoiseContent(text) {
   const trimmed = text.trim()
 
-  // Skip very short tokens (single chars except digits)
-  if (trimmed.length === 1 && !/\d/.test(trimmed)) {
+  // Skip very short tokens (single chars except digits and currency symbols)
+  if (trimmed.length === 1 && !/[\d€$]/.test(trimmed)) {
     return true
   }
 
@@ -92,11 +93,13 @@ function isNoiseContent(text) {
  * @param {string} text - The raw token text
  * @returns {string} - Normalized text
  */
-export function normalizeText(text) {
+function normalizeText(text) {
   return text
+    .replace(/\uFFFD{1,2}¬/g, '€')  // Replacement chars + ¬ from broken 3-byte € sequence
     .replace(/â¬/g, '€')        // UTF-8 euro sign interpreted as Latin-1
-    .replace(/\u0080/g, '€')    // Windows-1252 euro sign
     .replace(/â\u0082¬/g, '€')  // Another common UTF-8/Latin-1 misinterpretation
+    .replace(/â\u201A¬/g, '€')  // 0x82 mapped to ‚ (U+201A) by Win-1252 + ¬
+    .replace(/\u0080/g, '€')    // Windows-1252 euro sign
     .replace(/Ã¨/g, 'è')        // UTF-8 è interpreted as Latin-1
     .replace(/Ã©/g, 'é')        // UTF-8 é interpreted as Latin-1
     .replace(/Ã /g, 'à')        // UTF-8 à interpreted as Latin-1
@@ -131,6 +134,11 @@ export function classifyToken(text) {
     return TokenType.PDR
   }
 
+  // Currency/unit symbols (€, $)
+  if (/^[€$]$/.test(trimmed)) {
+    return TokenType.SYMBOL
+  }
+
   // Currency: Italian format with decimal (e.g., 123,45 or 1.234,56)
   // Must have comma and 2 decimal digits
   if (/^\d{1,3}(?:[.\s]\d{3})*,\d{2}$/.test(trimmed)) {
@@ -153,8 +161,8 @@ export function classifyToken(text) {
     return TokenType.NUMBER
   }
 
-  // Pure punctuation
-  if (/^[.,;:!?\-\u2013\u2014()[\]{}€$%]+$/.test(trimmed)) {
+  // Pure punctuation (currency symbols excluded — they are classified above)
+  if (/^[.,;:!?\-\u2013\u2014()[\]{}%]+$/.test(trimmed)) {
     return TokenType.PUNCTUATION
   }
 
@@ -274,109 +282,14 @@ export function getTokenColorClass(type) {
       return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-300 dark:border-purple-700'
     case TokenType.MONTH:
       return 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300 border-violet-300 dark:border-violet-700'
+    case TokenType.SYMBOL:
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700'
     case TokenType.POD:
     case TokenType.PDR:
       return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 border-orange-300 dark:border-orange-700'
     default:
       return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600'
   }
-}
-
-/**
- * Filter tokens by type
- * @param {Array} tokens - Array of tokens
- * @param {string|Array} types - TokenType or array of types to include
- * @returns {Array} - Filtered tokens
- */
-export function filterTokensByType(tokens, types) {
-  const typeArray = Array.isArray(types) ? types : [types]
-  return tokens.filter(t => typeArray.includes(t.type))
-}
-
-/**
- * Search tokens by text content
- * @param {Array} tokens - Array of tokens
- * @param {string} query - Search query
- * @returns {Array} - Matching tokens
- */
-export function searchTokens(tokens, query) {
-  if (!query || !query.trim()) return tokens
-
-  const lowerQuery = query.toLowerCase().trim()
-  return tokens.filter(t => t.text.toLowerCase().includes(lowerQuery))
-}
-
-/**
- * Tokenize PDF text using word positions from backend
- * This provides more accurate positioning when bbox data is available
- * @param {Object} extractedData - Data from backend with words array
- * @returns {Object} - { tokens: Array, lines: Array, hasBBox: boolean }
- */
-export function tokenizePDFWithPositions(extractedData) {
-  if (!extractedData) {
-    return { tokens: [], lines: [], hasBBox: false }
-  }
-
-  // If we have words with positions from backend
-  if (extractedData.words && extractedData.words.length > 0) {
-    const tokens = []
-    const lineMap = new Map()
-
-    extractedData.words.forEach((word, index) => {
-      const normalizedText = normalizeText(word.text)
-      const type = classifyToken(normalizedText)
-      if (!type || type === TokenType.PUNCTUATION) return
-
-      const token = {
-        id: `${word.lineIndex}-${word.wordIndex}-${index}`,
-        text: normalizedText,
-        type: type,
-        lineIndex: word.lineIndex,
-        wordIndex: word.wordIndex,
-        position: word.wordIndex,
-        x: word.x,
-        y: word.y,
-        width: word.width,
-        height: word.height,
-        page: word.page || 0,
-        hasBBox: extractedData.has_bbox || false
-      }
-
-      tokens.push(token)
-
-      // Group by line
-      if (!lineMap.has(word.lineIndex)) {
-        lineMap.set(word.lineIndex, {
-          index: word.lineIndex,
-          text: '',
-          tokens: []
-        })
-      }
-      lineMap.get(word.lineIndex).tokens.push(token)
-    })
-
-    // Build line text from tokens
-    lineMap.forEach(line => {
-      line.text = line.tokens.map(t => t.text).join(' ')
-    })
-
-    const lines = Array.from(lineMap.values()).sort((a, b) => a.index - b.index)
-
-    return {
-      tokens,
-      lines,
-      hasBBox: extractedData.has_bbox || false,
-      pageCount: extractedData.page_count || 1
-    }
-  }
-
-  // Fallback to raw text tokenization
-  if (extractedData.raw_text) {
-    const result = tokenizePDFText(extractedData.raw_text)
-    return { ...result, hasBBox: false, pageCount: 1 }
-  }
-
-  return { tokens: [], lines: [], hasBBox: false, pageCount: 1 }
 }
 
 /**
@@ -499,36 +412,4 @@ function findClosestInLine(token, lineTokens) {
   return closest
 }
 
-/**
- * Get tooltip data for a token
- * @param {Object} token - The token
- * @param {Array} allTokens - All tokens
- * @param {boolean} hasBBox - Whether we have real bounding box data
- * @returns {Object} - Tooltip data { lineInfo, position, neighbors }
- */
-export function getTokenTooltipData(token, allTokens, hasBBox = false) {
-  if (!token) return null
 
-  const neighbors = findTokenNeighbors(token, allTokens, hasBBox)
-
-  return {
-    lineInfo: {
-      lineNumber: token.lineIndex + 1, // 1-based for display
-      wordPosition: token.wordIndex !== undefined ? token.wordIndex + 1 : token.position + 1,
-      page: (token.page || 0) + 1
-    },
-    coordinates: hasBBox ? {
-      x: Math.round(token.x),
-      y: Math.round(token.y),
-      width: Math.round(token.width),
-      height: Math.round(token.height)
-    } : null,
-    neighbors: {
-      left: neighbors.left ? neighbors.left.text : null,
-      right: neighbors.right ? neighbors.right.text : null,
-      above: neighbors.above ? neighbors.above.text : null,
-      below: neighbors.below ? neighbors.below.text : null
-    },
-    hasBBox
-  }
-}

@@ -77,6 +77,10 @@
           <span class="w-3 h-3 rounded bg-blue-400/60 border border-blue-500"></span>
           Numero
         </span>
+        <span class="flex items-center gap-1">
+          <span class="w-3 h-3 rounded bg-yellow-400/60 border border-yellow-500"></span>
+          Simbolo
+        </span>
       </div>
     </div>
 
@@ -318,6 +322,7 @@ function getTypeLabel(type) {
     [TokenType.NUMBER]: 'Numero',
     [TokenType.DATE]: 'Data',
     [TokenType.MONTH]: 'Mese',
+    [TokenType.SYMBOL]: 'Simbolo',
     [TokenType.TEXT]: 'Testo',
     [TokenType.POD]: 'POD',
     [TokenType.PDR]: 'PDR'
@@ -331,6 +336,7 @@ function getTooltipTextColor(type) {
     case TokenType.DATE:
     case TokenType.MONTH: return 'text-purple-400'
     case TokenType.NUMBER: return 'text-blue-400'
+    case TokenType.SYMBOL: return 'text-yellow-400'
     case TokenType.POD:
     case TokenType.PDR: return 'text-orange-400'
     default: return 'text-gray-200'
@@ -346,6 +352,8 @@ function getWordColorClass(type) {
       return 'bg-purple-400/60 border-purple-500 text-purple-900 dark:text-purple-100'
     case TokenType.NUMBER:
       return 'bg-blue-400/60 border-blue-500 text-blue-900 dark:text-blue-100'
+    case TokenType.SYMBOL:
+      return 'bg-yellow-400/60 border-yellow-500 text-yellow-900 dark:text-yellow-100'
     case TokenType.POD:
     case TokenType.PDR:
       return 'bg-orange-400/60 border-orange-500 text-orange-900 dark:text-orange-100'

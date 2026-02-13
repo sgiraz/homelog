@@ -158,7 +158,7 @@ function getPrefixText(beforeTokens) {
  * @param {Array} allTokens - All tokens
  * @returns {string} - Words to the left joined by space
  */
-export function getContextLeft(token, allTokens) {
+function getContextLeft(token, allTokens) {
   const sameLineTokens = allTokens.filter(t =>
     t.page === token.page &&
     Math.abs(t.y - token.y) < 10 && // Same line (within 10 units)
@@ -176,7 +176,7 @@ export function getContextLeft(token, allTokens) {
  * @param {Array} allTokens - All tokens
  * @returns {string} - Words above joined by space
  */
-export function getContextAbove(token, allTokens) {
+function getContextAbove(token, allTokens) {
   const aboveTokens = allTokens.filter(t =>
     t.page === token.page &&
     t.y < token.y && // Above
@@ -672,118 +672,4 @@ export function testPattern(pattern, rawText) {
   }
 }
 
-/**
- * Suggest patterns for common fields based on token analysis
- * @param {Array} tokens - All tokens
- * @param {string} fieldKey - The field to suggest for
- * @returns {Array} - Array of { token, pattern, confidence } suggestions
- */
-export function suggestPatternsForField(tokens, fieldKey) {
-  const suggestions = []
 
-  switch (fieldKey) {
-    case 'amount_total':
-      // Look for currency tokens near "totale" or "pagare"
-      tokens.forEach((token, index) => {
-        if (token.type === TokenType.CURRENCY) {
-          // Check if nearby tokens contain "totale" or "pagare"
-          const lineTokens = tokens.filter(t => t.lineIndex === token.lineIndex)
-          const hasTotal = lineTokens.some(t =>
-            t.text.toLowerCase().includes('totale') ||
-            t.text.toLowerCase().includes('pagare')
-          )
-          suggestions.push({
-            token,
-            confidence: hasTotal ? 0.9 : 0.5
-          })
-        }
-      })
-      break
-
-    case 'consumption_total':
-      // Look for numbers near "consumo", "kWh", "Smc", "mc"
-      tokens.forEach(token => {
-        if (token.type === TokenType.NUMBER || token.type === TokenType.CURRENCY) {
-          const lineTokens = tokens.filter(t => t.lineIndex === token.lineIndex)
-          const hasConsumption = lineTokens.some(t =>
-            /consumo|kwh|smc|mc/i.test(t.text)
-          )
-          if (hasConsumption) {
-            suggestions.push({ token, confidence: 0.8 })
-          }
-        }
-      })
-      break
-
-    case 'bill_number':
-      // Look for numbers near "bolletta", "fattura", "n°"
-      tokens.forEach(token => {
-        if (token.type === TokenType.NUMBER) {
-          const lineTokens = tokens.filter(t => t.lineIndex === token.lineIndex)
-          const hasBillRef = lineTokens.some(t =>
-            /bolletta|fattura|n[°º.]|numero/i.test(t.text)
-          )
-          if (hasBillRef) {
-            suggestions.push({ token, confidence: 0.85 })
-          }
-        }
-      })
-      break
-
-    case 'due_date':
-      // Look for dates near "scadenza"
-      tokens.forEach(token => {
-        if (token.type === TokenType.DATE) {
-          const lineTokens = tokens.filter(t => t.lineIndex === token.lineIndex)
-          const hasDueRef = lineTokens.some(t =>
-            /scadenza|entro/i.test(t.text)
-          )
-          if (hasDueRef) {
-            suggestions.push({ token, confidence: 0.9 })
-          }
-        }
-      })
-      break
-
-    case 'service_code':
-      // POD or PDR codes
-      tokens.forEach(token => {
-        if (token.type === TokenType.POD || token.type === TokenType.PDR) {
-          suggestions.push({ token, confidence: 0.95 })
-        }
-      })
-      break
-  }
-
-  // Sort by confidence descending
-  return suggestions.sort((a, b) => b.confidence - a.confidence)
-}
-
-/**
- * Validate that a pattern is compatible with Go RE2
- * (No lookahead, lookbehind, backreferences)
- * @param {string} pattern - The regex pattern
- * @returns {Object} - { valid: boolean, error: string|null }
- */
-export function validateGoRE2Pattern(pattern) {
-  // Check for unsupported features
-  const unsupportedPatterns = [
-    { regex: /\(\?[=!<]/, message: 'Lookahead/lookbehind non supportati' },
-    { regex: /\\[1-9]/, message: 'Backreference non supportati' },
-    { regex: /\(\?P</, message: 'Named groups con (?P< non supportati' }
-  ]
-
-  for (const check of unsupportedPatterns) {
-    if (check.regex.test(pattern)) {
-      return { valid: false, error: check.message }
-    }
-  }
-
-  // Try to compile the regex
-  try {
-    new RegExp(pattern)
-    return { valid: true, error: null }
-  } catch (e) {
-    return { valid: false, error: e.message }
-  }
-}

@@ -43,18 +43,18 @@ type BillTemplateRule struct {
 	Format       string `json:"format"`        // Optional date format for parsing (e.g., "02/01/2006")
 
 	// Position-based extraction (for accurate matching)
-	Page       int     `json:"page"`        // Page number (0-indexed)
-	X          float64 `json:"x"`           // X coordinate in PDF units
-	Y          float64 `json:"y"`           // Y coordinate in PDF units
-	Width      float64 `json:"width"`       // Width of the word
-	Height     float64 `json:"height"`      // Height of the word
-	ContextLeft  string `json:"context_left"`  // Words to the left for context validation
-	ContextAbove string `json:"context_above"` // Words above for context validation
+	Page         int     `json:"page"`          // Page number (0-indexed)
+	X            float64 `json:"x"`             // X coordinate in PDF units
+	Y            float64 `json:"y"`             // Y coordinate in PDF units
+	Width        float64 `json:"width"`         // Width of the word
+	Height       float64 `json:"height"`        // Height of the word
+	ContextLeft  string  `json:"context_left"`  // Words to the left for context validation
+	ContextAbove string  `json:"context_above"` // Words above for context validation
 
 	// Anchor-based extraction (relative positioning, resilient to layout changes)
-	AnchorText      string `json:"anchor_text"`       // Label text to find as anchor (e.g., "Importo totale da pagare")
-	AnchorDirection string `json:"anchor_direction"`  // "right", "below", "right_or_below"
-	GlobalSearch    bool   `json:"global_search"`     // For unique fields (POD/PDR): search entire document
+	AnchorText      string `json:"anchor_text"`      // Label text to find as anchor (e.g., "Importo totale da pagare")
+	AnchorDirection string `json:"anchor_direction"` // "right", "below", "right_or_below"
+	GlobalSearch    bool   `json:"global_search"`    // For unique fields (POD/PDR): search entire document
 }
 
 // ExtractedBillData represents data extracted from a PDF bill
@@ -85,8 +85,8 @@ type ExtractedBillData struct {
 
 	// Estimated reading/consumption fields
 	EstimatedDate                *string  `json:"estimated_date,omitempty"`
-	EstimatedReading             *float64 `json:"estimated_reading,omitempty"`              // Lettura stimata (mc)
-	EstimatedConsumption         *float64 `json:"estimated_consumption,omitempty"`           // Consumo stimato (Smc)
+	EstimatedReading             *float64 `json:"estimated_reading,omitempty"`     // Lettura stimata (mc)
+	EstimatedConsumption         *float64 `json:"estimated_consumption,omitempty"` // Consumo stimato (Smc)
 	PreviousEstimatedConsumption *float64 `json:"previous_estimated_consumption,omitempty"`
 }
 
@@ -280,33 +280,33 @@ func (h *PDFHandler) UploadContractPDF(c *gin.Context) {
 // win1252ToUTF8 maps Windows-1252 specific bytes (0x80-0x9F range) to their
 // correct UTF-8 equivalents. These bytes differ from Latin-1/ISO-8859-1.
 var win1252ToUTF8 = map[byte][]byte{
-	0x80: []byte("€"),     // U+20AC Euro sign
-	0x82: []byte("‚"),     // U+201A Single low-9 quotation mark
-	0x83: []byte("ƒ"),     // U+0192 Latin small letter f with hook
-	0x84: []byte("„"),     // U+201E Double low-9 quotation mark
-	0x85: []byte("…"),     // U+2026 Horizontal ellipsis
-	0x86: []byte("†"),     // U+2020 Dagger
-	0x87: []byte("‡"),     // U+2021 Double dagger
-	0x88: []byte("ˆ"),     // U+02C6 Modifier letter circumflex accent
-	0x89: []byte("‰"),     // U+2030 Per mille sign
-	0x8A: []byte("Š"),     // U+0160 Latin capital letter S with caron
-	0x8B: []byte("‹"),     // U+2039 Single left-pointing angle quotation mark
-	0x8C: []byte("Œ"),     // U+0152 Latin capital ligature OE
-	0x8E: []byte("Ž"),     // U+017D Latin capital letter Z with caron
+	0x80: []byte("€"),      // U+20AC Euro sign
+	0x82: []byte("‚"),      // U+201A Single low-9 quotation mark
+	0x83: []byte("ƒ"),      // U+0192 Latin small letter f with hook
+	0x84: []byte("„"),      // U+201E Double low-9 quotation mark
+	0x85: []byte("…"),      // U+2026 Horizontal ellipsis
+	0x86: []byte("†"),      // U+2020 Dagger
+	0x87: []byte("‡"),      // U+2021 Double dagger
+	0x88: []byte("ˆ"),      // U+02C6 Modifier letter circumflex accent
+	0x89: []byte("‰"),      // U+2030 Per mille sign
+	0x8A: []byte("Š"),      // U+0160 Latin capital letter S with caron
+	0x8B: []byte("‹"),      // U+2039 Single left-pointing angle quotation mark
+	0x8C: []byte("Œ"),      // U+0152 Latin capital ligature OE
+	0x8E: []byte("Ž"),      // U+017D Latin capital letter Z with caron
 	0x91: []byte("\u2018"), // U+2018 Left single quotation mark
 	0x92: []byte("\u2019"), // U+2019 Right single quotation mark
 	0x93: []byte("\u201C"), // U+201C Left double quotation mark
 	0x94: []byte("\u201D"), // U+201D Right double quotation mark
-	0x95: []byte("•"),     // U+2022 Bullet
+	0x95: []byte("•"),      // U+2022 Bullet
 	0x96: []byte("\u2013"), // U+2013 En dash
 	0x97: []byte("\u2014"), // U+2014 Em dash
-	0x98: []byte("˜"),     // U+02DC Small tilde
-	0x99: []byte("™"),     // U+2122 Trade mark sign
-	0x9A: []byte("š"),     // U+0161 Latin small letter s with caron
-	0x9B: []byte("›"),     // U+203A Single right-pointing angle quotation mark
-	0x9C: []byte("œ"),     // U+0153 Latin small ligature oe
-	0x9E: []byte("ž"),     // U+017E Latin small letter z with caron
-	0x9F: []byte("Ÿ"),     // U+0178 Latin capital letter Y with diaeresis
+	0x98: []byte("˜"),      // U+02DC Small tilde
+	0x99: []byte("™"),      // U+2122 Trade mark sign
+	0x9A: []byte("š"),      // U+0161 Latin small letter s with caron
+	0x9B: []byte("›"),      // U+203A Single right-pointing angle quotation mark
+	0x9C: []byte("œ"),      // U+0153 Latin small ligature oe
+	0x9E: []byte("ž"),      // U+017E Latin small letter z with caron
+	0x9F: []byte("Ÿ"),      // U+0178 Latin capital letter Y with diaeresis
 }
 
 // normalizeLatin1ToUTF8 converts bytes that may contain Latin-1 or Windows-1252
@@ -319,11 +319,27 @@ func normalizeLatin1ToUTF8(data []byte) string {
 		if b < 0x80 {
 			// ASCII: pass through
 			result = append(result, b)
-		} else if b >= 0xC0 && i+1 < len(data) && data[i+1] >= 0x80 && data[i+1] < 0xC0 {
-			// Valid UTF-8 multi-byte start: pass through both bytes
+		} else if b >= 0xF0 && b <= 0xF7 && i+3 < len(data) &&
+			data[i+1] >= 0x80 && data[i+1] < 0xC0 &&
+			data[i+2] >= 0x80 && data[i+2] < 0xC0 &&
+			data[i+3] >= 0x80 && data[i+3] < 0xC0 {
+			// Valid 4-byte UTF-8 sequence (U+10000..U+10FFFF): pass through
+			result = append(result, b, data[i+1], data[i+2], data[i+3])
+			i += 3
+		} else if b >= 0xE0 && b <= 0xEF && i+2 < len(data) &&
+			data[i+1] >= 0x80 && data[i+1] < 0xC0 &&
+			data[i+2] >= 0x80 && data[i+2] < 0xC0 {
+			// Valid 3-byte UTF-8 sequence (U+0800..U+FFFF): pass through
+			// This includes € (U+20AC = 0xE2 0x82 0xAC) and other common symbols
+			result = append(result, b, data[i+1], data[i+2])
+			i += 2
+		} else if b >= 0xC0 && b <= 0xDF && i+1 < len(data) &&
+			data[i+1] >= 0x80 && data[i+1] < 0xC0 {
+			// Valid 2-byte UTF-8 sequence (U+0080..U+07FF): pass through
 			result = append(result, b, data[i+1])
 			i++
 		} else if b >= 0x80 && b < 0xC0 {
+			// Bare continuation byte: not part of a valid UTF-8 sequence
 			// Check Windows-1252 specific mappings first (0x80-0x9F differ from Latin-1)
 			if mapped, ok := win1252ToUTF8[b]; ok {
 				result = append(result, mapped...)
@@ -333,15 +349,8 @@ func normalizeLatin1ToUTF8(data []byte) string {
 				result = append(result, 0xC2, b)
 			}
 		} else if b >= 0xC0 && b <= 0xFF {
-			// Could be Latin-1 chars 0xC0-0xFF or broken UTF-8 start
-			if i+1 < len(data) && data[i+1] >= 0x80 && data[i+1] < 0xC0 {
-				// Looks like valid UTF-8 continuation
-				result = append(result, b, data[i+1])
-				i++
-			} else {
-				// Latin-1 byte 0xC0-0xFF: encode as UTF-8
-				result = append(result, 0xC3, b-0x40)
-			}
+			// Multi-byte start without valid continuation: treat as Latin-1
+			result = append(result, 0xC3, b-0x40)
 		} else {
 			result = append(result, b)
 		}
@@ -382,22 +391,22 @@ func (h *PDFHandler) extractTextFromPDF(pdfPath string) (string, error) {
 
 // WordInfo represents a word with its position and bounding box
 type WordInfo struct {
-	Text       string  `json:"text"`
-	LineIndex  int     `json:"lineIndex"`
-	WordIndex  int     `json:"wordIndex"`
-	X          float64 `json:"x"`
-	Y          float64 `json:"y"`
-	Width      float64 `json:"width"`
-	Height     float64 `json:"height"`
-	Page       int     `json:"page"`
+	Text      string  `json:"text"`
+	LineIndex int     `json:"lineIndex"`
+	WordIndex int     `json:"wordIndex"`
+	X         float64 `json:"x"`
+	Y         float64 `json:"y"`
+	Width     float64 `json:"width"`
+	Height    float64 `json:"height"`
+	Page      int     `json:"page"`
 }
 
 // ExtractedTextWithPositions represents text with word positions
 type ExtractedTextWithPositions struct {
-	RawText    string     `json:"raw_text"`
-	Words      []WordInfo `json:"words"`
-	HasBBox    bool       `json:"has_bbox"`
-	PageCount  int        `json:"page_count"`
+	RawText   string     `json:"raw_text"`
+	Words     []WordInfo `json:"words"`
+	HasBBox   bool       `json:"has_bbox"`
+	PageCount int        `json:"page_count"`
 }
 
 // extractTextWithPositions extracts text with word positions using pdftotext -bbox
@@ -1645,10 +1654,10 @@ func (h *PDFHandler) CreateBillTemplate(c *gin.Context) {
 	}
 
 	var input struct {
-		Name            string                   `json:"name" binding:"required"`
-		Provider        string                   `json:"provider" binding:"required"`
-		UtilityType     string                   `json:"utility_type" binding:"required,oneof=electricity gas water waste"`
-		IsDefault       bool                     `json:"is_default"`
+		Name            string             `json:"name" binding:"required"`
+		Provider        string             `json:"provider" binding:"required"`
+		UtilityType     string             `json:"utility_type" binding:"required,oneof=electricity gas water waste"`
+		IsDefault       bool               `json:"is_default"`
 		ExtractionRules []BillTemplateRule `json:"extraction_rules"`
 	}
 
@@ -1705,10 +1714,10 @@ func (h *PDFHandler) UpdateBillTemplate(c *gin.Context) {
 	}
 
 	var input struct {
-		Name            string                   `json:"name"`
-		Provider        string                   `json:"provider"`
-		UtilityType     string                   `json:"utility_type"`
-		IsDefault       bool                     `json:"is_default"`
+		Name            string             `json:"name"`
+		Provider        string             `json:"provider"`
+		UtilityType     string             `json:"utility_type"`
+		IsDefault       bool               `json:"is_default"`
 		ExtractionRules []BillTemplateRule `json:"extraction_rules"`
 	}
 
