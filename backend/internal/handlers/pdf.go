@@ -863,14 +863,24 @@ func (h *PDFHandler) extractByAnchor(rule BillTemplateRule, words []WordInfo) st
 				dy := w.Y - anchor.LastWord.Y
 				dist := dx*dx + dy*dy
 
-				// Bonus: if historical position is close, reduce distance (tiebreaker)
+				// Historical position bonus: strongly prefer values near the
+				// position where the user originally selected the value.
+				// This disambiguates when the same anchor text appears
+				// multiple times on the page (e.g., "Totale da pagare" in
+				// both the bill summary table and a pie chart legend).
 				if rule.X > 0 && rule.Y > 0 {
 					histDx := w.X - rule.X
 					histDy := w.Y - rule.Y
 					histDist := histDx*histDx + histDy*histDy
-					if histDist < 50*50 {
-						dist *= 0.5 // Halve the distance score for historically close matches
+					if histDist < 30*30 {
+						dist *= 0.01 // Near-exact match to original position
+					} else if histDist < 80*80 {
+						dist *= 0.05 // Very close to original position
+					} else if histDist < 150*150 {
+						dist *= 0.2 // Reasonably close to original position
 					}
+					log.Printf("  Field %s: candidate '%s' at (%.1f,%.1f) histDist=%.0f anchorDist=%.0f finalScore=%.1f",
+						rule.Field, w.Text, w.X, w.Y, histDist, dx*dx+dy*dy, dist)
 				}
 
 				if bestCandidate == nil || dist < bestCandidate.distance {
