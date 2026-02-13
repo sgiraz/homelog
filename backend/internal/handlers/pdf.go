@@ -799,7 +799,7 @@ func (h *PDFHandler) getContextAbove(target WordInfo, words []WordInfo) string {
 	var aboveWords []string
 	for _, w := range words {
 		// Above (smaller Y) and horizontally overlapping
-		if w.Y < target.Y && w.Y > target.Y-50 {
+		if w.Y < target.Y && w.Y > target.Y-120 {
 			// Check horizontal overlap
 			if w.X < target.X+target.Width && w.X+w.Width > target.X {
 				aboveWords = append(aboveWords, w.Text)

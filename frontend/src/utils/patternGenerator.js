@@ -180,7 +180,7 @@ function getContextAbove(token, allTokens) {
   const aboveTokens = allTokens.filter(t =>
     t.page === token.page &&
     t.y < token.y && // Above
-    t.y > token.y - 50 && // Within 50 units
+    t.y > token.y - 120 && // Within 120 units (~4cm)
     t.x < token.x + (token.width || 50) && // Horizontally overlapping
     t.x + (t.width || 50) > token.x
   )
@@ -492,21 +492,33 @@ export function getNeighborWordsForToken(token, allTokens) {
   result.right = rightTokens.slice(0, 3)
 
   // Above: vertically above, horizontally overlapping
+  // Use 120 units (~4cm) to reach labels separated by 2-3 lines from the value
   const aboveTokens = allTokens.filter(t =>
     t.page === token.page &&
     t.y < token.y &&
-    t.y > token.y - 60 &&
+    t.y > token.y - 120 &&
     t.x < token.x + (token.width || 50) + 30 &&
     t.x + (t.width || 50) > token.x - 30 &&
     t.id !== token.id
   )
-  // Group by line (Y within 5 units), take closest line
+  // Group by line (Y within 5 units), collect up to 3 closest lines
+  // so the user can see labels that are a few rows above the value
   if (aboveTokens.length > 0) {
     aboveTokens.sort((a, b) => b.y - a.y) // closest row first
-    const closestY = aboveTokens[0].y
-    const closestLine = aboveTokens.filter(t => Math.abs(t.y - closestY) < 5)
-    closestLine.sort((a, b) => a.x - b.x) // left-to-right
-    result.above = closestLine.slice(0, 4)
+    const aboveWords = []
+    let currentLineY = null
+    let lineCount = 0
+    for (const t of aboveTokens) {
+      if (currentLineY === null || Math.abs(t.y - currentLineY) > 5) {
+        lineCount++
+        if (lineCount > 3) break
+        currentLineY = t.y
+      }
+      aboveWords.push(t)
+    }
+    // Sort all collected words by Y desc then X asc for consistent display
+    aboveWords.sort((a, b) => a.y !== b.y ? b.y - a.y : a.x - b.x)
+    result.above = aboveWords.slice(0, 8)
   }
 
   return result
