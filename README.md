@@ -1,4 +1,4 @@
-# 🏠 HomeLog - Home Expense & Utilities Management
+# HomeLog - Home Expense & Utilities Management
 
 > **Self-hosted, multi-user home expense tracking and utilities management system**
 
@@ -9,73 +9,75 @@
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Quick Start](#-quick-start)
-- [Installation](#-installation)
-- [Project Structure](#-project-structure)
-- [API Documentation](#-api-documentation)
-- [Roadmap](#-roadmap)
-- [Contributing](#-contributing)
-- [License](#-license)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [API Documentation](#api-documentation)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## ✨ Features
+## Features
 
 ### Core Functionality
-- 🏠 **Multi-Property Support** - Manage multiple properties (current & historical)
-- 💰 **Expense Tracking** - Categorized expenses with custom categories
-- 💡 **Utilities Management** - Track electricity, gas, water, waste with readings & bills
-- 📊 **Projects** - Budget tracking for renovations, trips, events
-- 👥 **Multi-User** - Family support with admin/user roles
-- 📅 **Smart Alerts** - Bill due dates, anomaly detection, reading reminders
+- **Multi-Property Support** - Manage multiple properties (current & historical)
+- **Expense Tracking** - Categorized expenses with custom categories
+- **Expense Splitting** - Split expenses between household members with balance tracking
+- **Settlement Tracking** - Record payments between users to settle debts
+- **Utilities Management** - Track electricity, gas, water, waste with readings & bills
+- **PDF Bill Templates** - Automatic data extraction from utility bills via drag-and-drop template wizard
+- **Projects** - Budget tracking for renovations, trips, events
+- **Multi-User** - Family support with admin/user roles
+- **Dashboard** - Overview with charts (bar, pie, line) and monthly trends
 
 ### Advanced Features
-- 📈 **Analytics** - Interactive charts, consumption trends, cost analysis
-- 📄 **Bill Management** - PDF attachments, payment tracking, historical data
-- 📸 **Meter Readings** - Manual readings with photo upload
-- 🔄 **Import/Export** - CSV, Excel, JSON support
-- 🌙 **Dark Mode** - Full dark theme support
-- 📱 **PWA** - Installable on iOS/Android with offline support
+- **Analytics** - Interactive charts, consumption trends, cost analysis
+- **Bill Management** - PDF upload, automatic field extraction, payment tracking
+- **Meter Readings** - Manual readings with comparison (autolettura vs fornitore)
+- **Reading Comparison** - Compare self-readings with supplier readings
+- **User & Household Settings** - Per-property configuration and split mode settings
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 ### Backend
 - **Language**: Go 1.21+
 - **Framework**: Gin (HTTP router)
-- **Database**: SQLite (lightweight, embedded)
-- **Auth**: JWT tokens
+- **Database**: SQLite (lightweight, embedded, WAL mode)
+- **Auth**: JWT tokens (access + refresh)
 - **ORM**: GORM
+- **PDF Processing**: pdftotext (poppler-utils)
 
 ### Frontend
 - **Framework**: Vue 3 (Composition API)
 - **Build Tool**: Vite
 - **State**: Pinia
 - **Router**: Vue Router
-- **UI**: Tailwind CSS
-- **Charts**: Recharts / Chart.js
+- **UI**: Tailwind CSS (Apple HIG theme)
+- **Charts**: Chart.js
 - **Icons**: Lucide Vue
 
 ### Infrastructure
 - **Containerization**: Docker + Docker Compose
-- **Deployment**: Raspberry Pi 3B+ optimized
+- **Deployment**: Raspberry Pi 3B+ optimized (256MB backend, 128MB frontend)
 - **Reverse Proxy**: Nginx (optional)
 - **Network**: Tailscale for remote access
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Go 1.21+
 - Node.js 20+
+- poppler-utils (for PDF text extraction)
 - Docker & Docker Compose (for production)
-- 256MB+ RAM available (Raspberry Pi compatible)
 
 ### Development Setup
 
@@ -87,7 +89,7 @@ cd homelog
 # Backend setup
 cd backend
 go mod download
-go run main.go
+go run cmd/api/main.go
 
 # Frontend setup (new terminal)
 cd ../frontend
@@ -110,56 +112,78 @@ nano .env
 docker-compose up -d
 
 # Access the app
-# http://your-raspberry-pi-ip:8080
+# Frontend: http://your-raspberry-pi-ip:3000
+# Backend API: http://your-raspberry-pi-ip:8080
 ```
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 homelog/
-├── backend/                # Go backend
-│   ├── cmd/
-│   │   └── api/           # Main application
+├── backend/                    # Go backend
+│   ├── cmd/api/main.go         # Entry point, routes, middleware init
 │   ├── internal/
-│   │   ├── models/        # Database models
-│   │   ├── handlers/      # HTTP handlers
-│   │   ├── middleware/    # Auth, CORS, etc.
-│   │   ├── services/      # Business logic
-│   │   └── database/      # DB connection
-│   ├── pkg/               # Shared packages
-│   ├── migrations/        # SQL migrations
+│   │   ├── models/models.go    # GORM models (User, Property, Expense, Utility, etc.)
+│   │   ├── handlers/           # HTTP handlers (11 files)
+│   │   │   ├── auth.go         # Register, login, refresh token
+│   │   │   ├── expense.go      # CRUD + stats
+│   │   │   ├── property.go     # CRUD properties
+│   │   │   ├── category.go     # CRUD categories
+│   │   │   ├── utility.go      # CRUD + readings + bills + comparison
+│   │   │   ├── pdf.go          # PDF upload, extraction, templates
+│   │   │   ├── project.go      # CRUD projects
+│   │   │   ├── settings.go     # User + household settings
+│   │   │   ├── balance.go      # Balance calculation between members
+│   │   │   ├── settlement.go   # Settlement CRUD
+│   │   │   └── member.go       # Household members CRUD
+│   │   ├── middleware/         # CORS, JWT auth, rate limiting, logging
+│   │   └── database/          # SQLite init, migrations, seeding
 │   ├── go.mod
 │   └── Dockerfile
 │
-├── frontend/              # Vue 3 frontend
+├── frontend/                   # Vue 3 frontend
 │   ├── src/
-│   │   ├── components/    # Vue components
-│   │   ├── views/         # Page views
-│   │   ├── stores/        # Pinia stores
-│   │   ├── router/        # Vue Router
-│   │   ├── assets/        # Static assets
-│   │   └── api/           # API client
-│   ├── public/
+│   │   ├── main.js             # App entry (Pinia + Router)
+│   │   ├── App.vue             # Root component
+│   │   ├── router/index.js     # Vue Router with auth guards
+│   │   ├── api/client.js       # Axios client with JWT interceptors
+│   │   ├── stores/             # Pinia stores
+│   │   │   ├── auth.js         # Auth state (login, user, token)
+│   │   │   ├── expenses.js     # Expenses state
+│   │   │   ├── balance.js      # Balance & settlements state
+│   │   │   ├── utilities.js    # Utilities state
+│   │   │   └── settings.js     # User settings state
+│   │   ├── views/              # Page views
+│   │   │   ├── LoginView.vue
+│   │   │   ├── DashboardView.vue
+│   │   │   ├── ExpensesView.vue
+│   │   │   ├── BalanceView.vue
+│   │   │   ├── UtilitiesView.vue
+│   │   │   └── SettingsView.vue
+│   │   ├── components/         # Reusable components (18 files)
+│   │   │   ├── common/         # Button, Card, Input
+│   │   │   ├── charts/         # BarChart, PieChart, LineChart
+│   │   │   ├── layout/         # Navbar
+│   │   │   ├── expenses/       # AddExpenseModal, EditExpenseModal
+│   │   │   ├── balance/        # SettlementModal
+│   │   │   └── utilities/      # TemplateWizard, TemplatesManager, PDFTextractView, etc.
+│   │   └── utils/              # Utilities
+│   │       ├── tokenizer.js    # PDF text tokenizer
+│   │       ├── patternGenerator.js  # Regex pattern generator
+│   │       └── dateFormatter.js     # Italian date formatting
 │   ├── package.json
 │   ├── vite.config.js
 │   └── Dockerfile
 │
-├── data/                  # SQLite database & uploads
-│   ├── homelog.db
-│   └── uploads/
-│
-├── docker/                # Docker configurations
-│   ├── nginx/
-│   └── scripts/
-│
-├── docs/                  # Documentation
-│   ├── API.md
-│   ├── ARCHITECTURE.md
-│   └── DEPLOYMENT.md
-│
-├── docker-compose.yml
+├── data/                       # SQLite database & uploads
+├── prototypes/                 # React reference prototypes (3 files)
+├── docs/                       # Documentation
+│   ├── DEVELOPMENT-GUIDE.md
+│   └── SPLIT-SETTLEMENT-SPEC.md
+├── docker-compose.yml          # Production deployment
+├── docker-compose.dev.yml      # Development deployment
 ├── .env.example
 ├── LICENSE
 └── README.md
@@ -167,7 +191,7 @@ homelog/
 
 ---
 
-## 📡 API Documentation
+## API Documentation
 
 ### Base URL
 ```
@@ -176,76 +200,158 @@ http://localhost:8080/api/v1
 
 ### Authentication
 ```http
-POST /auth/register
-POST /auth/login
-POST /auth/refresh
+POST /auth/register             # Register new user
+POST /auth/login                # Login, returns JWT tokens
+POST /auth/refresh              # Refresh access token
+```
+
+### Properties
+```http
+GET    /properties              # List user properties
+POST   /properties              # Create property
+GET    /properties/:id          # Get property
+PUT    /properties/:id          # Update property
+DELETE /properties/:id          # Delete property
+GET    /properties/:id/balance          # Get balance for property
+GET    /properties/:id/balance/details  # Get detailed balance
+GET    /properties/:id/settings         # Get household settings
+PUT    /properties/:id/settings         # Update household settings
+GET    /properties/:id/members          # List household members
+POST   /properties/:id/members          # Add household member
+```
+
+### Categories
+```http
+GET    /categories              # List categories
+POST   /categories              # Create category
+GET    /categories/:id          # Get category
+PUT    /categories/:id          # Update category
+DELETE /categories/:id          # Delete category
 ```
 
 ### Expenses
 ```http
-GET    /expenses           # List expenses (filterable)
-POST   /expenses           # Create expense
-GET    /expenses/:id       # Get expense
-PUT    /expenses/:id       # Update expense
-DELETE /expenses/:id       # Delete expense
+GET    /expenses                # List expenses (filterable)
+POST   /expenses                # Create expense (supports split)
+GET    /expenses/:id            # Get expense
+PUT    /expenses/:id            # Update expense
+DELETE /expenses/:id            # Delete expense
+GET    /expenses/stats          # Get expense statistics
 ```
 
 ### Utilities
 ```http
-GET    /utilities          # List utilities
-POST   /utilities          # Create utility
-GET    /utilities/:id      # Get utility details
-POST   /utilities/:id/readings  # Add meter reading
-POST   /utilities/:id/bills     # Add bill
+GET    /utilities               # List utilities
+POST   /utilities               # Create utility
+GET    /utilities/:id           # Get utility details
+PUT    /utilities/:id           # Update utility
+DELETE /utilities/:id           # Delete utility
+
+# Meter readings
+POST   /utilities/:id/readings          # Add reading
+GET    /utilities/:id/readings          # List readings
+PUT    /utilities/:id/readings/:rid     # Update reading
+DELETE /utilities/:id/readings/:rid     # Delete reading
+
+# Bills
+POST   /utilities/:id/bills             # Add bill
+GET    /utilities/:id/bills             # List bills
+PUT    /utilities/:id/bills/:bid        # Update bill
+PUT    /utilities/:id/bills/:bid/full   # Full bill update
+DELETE /utilities/:id/bills/:bid        # Delete bill
+POST   /utilities/:id/bills/upload      # Upload bill PDF
+
+# Comparison & contracts
+GET    /utilities/:id/compare-readings  # Compare self vs supplier readings
+POST   /utilities/contract/upload       # Upload contract PDF
+```
+
+### Bill Templates
+```http
+GET    /templates/bills         # List bill extraction templates
+POST   /templates/bills         # Create template
+PUT    /templates/bills/:id     # Update template
+DELETE /templates/bills/:id     # Delete template
+```
+
+### PDF Processing
+```http
+POST   /pdf/extract-text        # Extract raw text from PDF
+POST   /pdf/analyze             # Analyze PDF for template creation
+DELETE /pdf/cleanup/:timestamp  # Cleanup temporary template images
 ```
 
 ### Projects
 ```http
-GET    /projects           # List projects
-POST   /projects           # Create project
-GET    /projects/:id       # Get project
-PUT    /projects/:id       # Update project
-DELETE /projects/:id       # Delete project
+GET    /projects                # List projects
+POST   /projects                # Create project
+GET    /projects/:id            # Get project
+PUT    /projects/:id            # Update project
+DELETE /projects/:id            # Delete project
 ```
 
-Full API documentation: [docs/API.md](docs/API.md)
+### Settings
+```http
+GET    /settings                # Get user settings
+PUT    /settings                # Update user settings
+```
+
+### Members
+```http
+GET    /members/:id             # Get member
+PUT    /members/:id             # Update member
+DELETE /members/:id             # Delete member
+```
+
+### Settlements
+```http
+GET    /settlements             # List settlements
+POST   /settlements             # Create settlement
+GET    /settlements/:id         # Get settlement
+DELETE /settlements/:id         # Delete settlement
+```
 
 ---
 
-## 🗺 Roadmap
+## Roadmap
 
-### Phase 1: MVP (Current)
-- [x] Project structure
-- [x] UI/UX prototype
-- [ ] Backend API (Expenses, Properties, Auth)
-- [ ] Frontend core views
-- [ ] Docker deployment
-- [ ] Basic charts & analytics
+### Phase 1: MVP
+- [x] Project structure & Docker deployment
+- [x] Backend API (Auth, Properties, Categories, Expenses)
+- [x] Frontend core views (Login, Dashboard, Expenses)
+- [x] Basic charts & analytics (Bar, Pie, Line)
 
-### Phase 2: Utilities (Next)
-- [ ] Meter readings management
-- [ ] Bill tracking & PDF upload
-- [ ] Automatic alerts
-- [ ] Consumption analytics
-- [ ] Rate history tracking
+### Phase 2: Utilities & Bills
+- [x] Meter readings management
+- [x] Bill tracking & PDF upload
+- [x] PDF bill template system (drag-and-drop extraction)
+- [x] Reading comparison (autolettura vs fornitore)
+- [ ] Automatic alerts & reminders
+- [ ] Consumption analytics & anomaly detection
 
-### Phase 3: Advanced Features
-- [ ] Budget system
-- [ ] Project tracking
+### Phase 3: Split & Settlement
+- [x] Expense splitting between household members
+- [x] Balance calculation
+- [x] Settlement tracking
+- [x] Household settings per property
+
+### Phase 4: Advanced Features
+- [x] Projects with budget tracking
+- [ ] Budget system with alerts
 - [ ] Import/Export CSV/Excel
 - [ ] PDF report generation
 - [ ] Email notifications
 
-### Phase 4: Community (Future)
-- [ ] OCR bill parsing
-- [ ] AI anomaly detection
+### Phase 5: Polish & Community
+- [ ] PWA with offline support
+- [ ] Dark mode
 - [ ] Multi-language (i18n)
+- [ ] OCR bill parsing
 - [ ] Community templates
-- [ ] Plugin system
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) first.
 
@@ -257,35 +363,19 @@ Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTIN
 5. Open a Pull Request
 
 ### Code Style
-- **Go**: Follow [Effective Go](https://golang.org/doc/effective_go.html)
-- **Vue**: Use [Vue Style Guide](https://vuejs.org/style-guide/)
+- **Go**: Follow [Effective Go](https://golang.org/doc/effective_go.html), use `gofmt`
+- **Vue**: Use [Vue Style Guide](https://vuejs.org/style-guide/), Composition API with `<script setup>`
 - **Commits**: Use [Conventional Commits](https://www.conventionalcommits.org/)
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the **AGPL-3.0 License** - see the [LICENSE](LICENSE) file for details.
 
-### Why AGPL-3.0?
-We chose AGPL to protect the open-source nature of this project, especially for web-based deployments. Any modifications to the code must be shared back with the community.
-
 ---
 
-## 🙏 Acknowledgments
-
-- Built with ❤️ for the open-source community
-- Inspired by the need for privacy-focused home management
-- Optimized for Raspberry Pi self-hosting
-
----
-
-## 📞 Support
+## Support
 
 - **Issues**: [GitHub Issues](https://github.com/sgiraz/homelog/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/sgiraz/homelog/discussions)
-- **Email**: support@homelog.app
-
----
-
-**Made with 🏠 by the HomeLog Team**
