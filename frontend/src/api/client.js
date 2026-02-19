@@ -157,6 +157,14 @@ export const templatesAPI = {
   deleteBillTemplate: (id) => apiClient.delete(`/templates/bills/${id}`),
 }
 
+export const projectsAPI = {
+  list: (params) => apiClient.get('/projects', { params }),
+  create: (data) => apiClient.post('/projects', data),
+  get: (id) => apiClient.get(`/projects/${id}`),
+  update: (id, data) => apiClient.put(`/projects/${id}`, data),
+  delete: (id) => apiClient.delete(`/projects/${id}`),
+}
+
 export const pdfAPI = {
   extractText: (file) => {
     const formData = new FormData()

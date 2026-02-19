@@ -1,9 +1,13 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/middleware"
+	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
 )
 
@@ -15,22 +19,255 @@ func NewProjectHandler(db *gorm.DB) *ProjectHandler {
 	return &ProjectHandler{db: db}
 }
 
+type CreateProjectRequest struct {
+	PropertyID  *uint   `json:"property_id"`
+	Name        string  `json:"name" binding:"required"`
+	Icon        string  `json:"icon"`
+	Description string  `json:"description"`
+	Budget      float64 `json:"budget" binding:"required,gt=0"`
+	StartDate   string  `json:"start_date" binding:"required"`
+	EndDate     string  `json:"end_date" binding:"required"`
+	Status      string  `json:"status"`
+}
+
+type ProjectStatsResponse struct {
+	TotalBudget     float64 `json:"total_budget"`
+	TotalSpent      float64 `json:"total_spent"`
+	Remaining       float64 `json:"remaining"`
+	PercentageSpent float64 `json:"percentage_spent"`
+	ExpenseCount    int     `json:"expense_count"`
+}
+
+// List - GET /api/v1/projects?property_id=X&status=active
 func (h *ProjectHandler) List(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "Not implemented yet"})
+	userID, _ := middleware.GetUserID(c)
+	propertyID := c.Query("property_id")
+	status := c.Query("status")
+
+	query := h.db.Where("user_id = ?", userID)
+
+	if propertyID != "" {
+		query = query.Where("property_id = ?", propertyID)
+	}
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	var projects []models.Project
+	if err := query.Preload("Expenses").
+		Order("status ASC, start_date DESC").
+		Find(&projects).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch projects"})
+		return
+	}
+
+	type ProjectWithStats struct {
+		models.Project
+		Stats ProjectStatsResponse `json:"stats"`
+	}
+
+	projectsWithStats := make([]ProjectWithStats, len(projects))
+	for i, proj := range projects {
+		stats := calculateProjectStats(proj)
+		projectsWithStats[i] = ProjectWithStats{
+			Project: proj,
+			Stats:   stats,
+		}
+	}
+
+	log.Printf("User %d has %d projects", userID, len(projects))
+	c.JSON(http.StatusOK, projectsWithStats)
 }
 
+// Create - POST /api/v1/projects
 func (h *ProjectHandler) Create(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "Not implemented yet"})
+	userID, _ := middleware.GetUserID(c)
+
+	var req CreateProjectRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format"})
+		return
+	}
+
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format"})
+		return
+	}
+
+	if endDate.Before(startDate) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "End date must be after start date"})
+		return
+	}
+
+	status := req.Status
+	if status == "" {
+		status = "planned"
+	}
+
+	validStatuses := []string{"planned", "active", "completed", "cancelled"}
+	isValidStatus := false
+	for _, s := range validStatuses {
+		if status == s {
+			isValidStatus = true
+			break
+		}
+	}
+	if !isValidStatus {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Must be: planned, active, completed, cancelled"})
+		return
+	}
+
+	project := models.Project{
+		UserID:      userID,
+		PropertyID:  req.PropertyID,
+		Name:        req.Name,
+		Icon:        req.Icon,
+		Description: req.Description,
+		Budget:      req.Budget,
+		StartDate:   startDate,
+		EndDate:     endDate,
+		Status:      status,
+	}
+
+	if err := h.db.Create(&project).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create project"})
+		return
+	}
+
+	log.Printf("Project created: ID=%d, Name=%s, Budget=%.2f", project.ID, project.Name, project.Budget)
+	c.JSON(http.StatusCreated, project)
 }
 
+// Get - GET /api/v1/projects/:id
 func (h *ProjectHandler) Get(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "Not implemented yet"})
+	userID, _ := middleware.GetUserID(c)
+	projectID := c.Param("id")
+
+	var project models.Project
+	if err := h.db.Where("id = ? AND user_id = ?", projectID, userID).
+		Preload("Expenses").
+		Preload("Expenses.Category").
+		First(&project).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch project"})
+		}
+		return
+	}
+
+	stats := calculateProjectStats(project)
+
+	response := struct {
+		models.Project
+		Stats ProjectStatsResponse `json:"stats"`
+	}{
+		Project: project,
+		Stats:   stats,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
+// Update - PUT /api/v1/projects/:id
 func (h *ProjectHandler) Update(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "Not implemented yet"})
+	userID, _ := middleware.GetUserID(c)
+	projectID := c.Param("id")
+
+	var project models.Project
+	if err := h.db.Where("id = ? AND user_id = ?", projectID, userID).First(&project).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		return
+	}
+
+	var req CreateProjectRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	startDate, _ := time.Parse("2006-01-02", req.StartDate)
+	endDate, _ := time.Parse("2006-01-02", req.EndDate)
+
+	project.Name = req.Name
+	project.Icon = req.Icon
+	project.Description = req.Description
+	project.Budget = req.Budget
+	project.StartDate = startDate
+	project.EndDate = endDate
+
+	if req.Status != "" {
+		project.Status = req.Status
+	}
+
+	if err := h.db.Save(&project).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update project"})
+		return
+	}
+
+	log.Printf("Project updated: ID=%d, Name=%s", project.ID, project.Name)
+	c.JSON(http.StatusOK, project)
 }
 
+// Delete - DELETE /api/v1/projects/:id
 func (h *ProjectHandler) Delete(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "Not implemented yet"})
+	userID, _ := middleware.GetUserID(c)
+	projectID := c.Param("id")
+
+	var project models.Project
+	if err := h.db.Where("id = ? AND user_id = ?", projectID, userID).First(&project).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		return
+	}
+
+	var expenseCount int64
+	h.db.Model(&models.Expense{}).Where("project_id = ?", projectID).Count(&expenseCount)
+
+	if expenseCount > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Cannot delete project with associated expenses",
+			"message": "Remove or reassign expenses first",
+			"count":   expenseCount,
+		})
+		return
+	}
+
+	if err := h.db.Delete(&project).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete project"})
+		return
+	}
+
+	log.Printf("Project deleted: ID=%d", project.ID)
+	c.JSON(http.StatusOK, gin.H{"message": "Project deleted"})
+}
+
+func calculateProjectStats(project models.Project) ProjectStatsResponse {
+	var totalSpent float64
+	expenseCount := len(project.Expenses)
+
+	for _, expense := range project.Expenses {
+		totalSpent += expense.Amount
+	}
+
+	remaining := project.Budget - totalSpent
+	percentageSpent := 0.0
+	if project.Budget > 0 {
+		percentageSpent = (totalSpent / project.Budget) * 100
+	}
+
+	return ProjectStatsResponse{
+		TotalBudget:     project.Budget,
+		TotalSpent:      totalSpent,
+		Remaining:       remaining,
+		PercentageSpent: percentageSpent,
+		ExpenseCount:    expenseCount,
+	}
 }

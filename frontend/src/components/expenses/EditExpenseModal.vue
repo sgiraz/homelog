@@ -68,6 +68,28 @@
           required
         />
 
+        <!-- Project (Optional) -->
+        <div>
+          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+            Progetto (opzionale)
+          </label>
+          <select
+            v-model.number="form.project_id"
+            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option :value="null">Nessun progetto</option>
+            <option
+              v-for="proj in activeProjects"
+              :key="proj.id"
+              :value="proj.id"
+            >
+              {{ proj.icon }} {{ proj.name }}
+            </option>
+          </select>
+        </div>
+
         <!-- Note about split - editing split is not allowed -->
         <div v-if="expense.is_split" class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
           <p class="text-sm text-yellow-800 dark:text-yellow-200">
@@ -95,7 +117,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
-import { categoriesAPI } from '@/api/client'
+import { categoriesAPI, projectsAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -113,12 +135,14 @@ const expensesStore = useExpensesStore()
 const loading = ref(false)
 const error = ref(null)
 const categories = ref([])
+const activeProjects = ref([])
 
 const form = ref({
   amount: null,
   description: '',
   category_id: 1,
-  date: ''
+  date: '',
+  project_id: null
 })
 
 async function fetchCategories() {
@@ -127,6 +151,15 @@ async function fetchCategories() {
     categories.value = data
   } catch (err) {
     console.error('Error fetching categories:', err)
+  }
+}
+
+async function fetchActiveProjects() {
+  try {
+    const { data } = await projectsAPI.list({ status: 'active' })
+    activeProjects.value = data || []
+  } catch (err) {
+    console.error('Error fetching projects:', err)
   }
 }
 
@@ -139,7 +172,8 @@ async function handleSubmit() {
       amount: parseFloat(form.value.amount),
       description: form.value.description,
       category_id: form.value.category_id,
-      date: form.value.date
+      date: form.value.date,
+      project_id: form.value.project_id
     }
 
     console.log('Updating expense with data:', expenseData)
@@ -156,12 +190,14 @@ async function handleSubmit() {
 
 onMounted(() => {
   fetchCategories()
+  fetchActiveProjects()
   // Pre-populate form with existing expense data
   form.value = {
     amount: props.expense.amount,
     description: props.expense.description,
     category_id: props.expense.category_id || props.expense.category?.id || 1,
-    date: props.expense.date ? props.expense.date.split('T')[0] : ''
+    date: props.expense.date ? props.expense.date.split('T')[0] : '',
+    project_id: props.expense.project_id || null
   }
 })
 </script>

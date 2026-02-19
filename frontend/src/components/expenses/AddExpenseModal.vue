@@ -68,6 +68,28 @@
           required
         />
 
+        <!-- Project (Optional) -->
+        <div>
+          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+            Progetto (opzionale)
+          </label>
+          <select
+            v-model.number="form.project_id"
+            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option :value="null">Nessun progetto</option>
+            <option
+              v-for="proj in activeProjects"
+              :key="proj.id"
+              :value="proj.id"
+            >
+              {{ proj.icon }} {{ proj.name }}
+            </option>
+          </select>
+        </div>
+
         <!-- Sezione Split -->
         <div v-if="hasMultipleUsers" class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
           <div class="flex items-center gap-3">
@@ -170,7 +192,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
-import apiClient, { categoriesAPI } from '@/api/client'
+import apiClient, { categoriesAPI, projectsAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -183,6 +205,7 @@ const loading = ref(false)
 const error = ref(null)
 const userSettings = ref(null)
 const categories = ref([])
+const activeProjects = ref([])
 
 // Household users - for now we'll use a simple approach
 // In a real app, this would come from an API call
@@ -198,6 +221,7 @@ const form = ref({
   paid_by_member_id: null, // Will be set by fetchHouseholdMembers()
   is_split: false,
   split_with_member_ids: [],
+  project_id: null,
   property_id: null // Will be set by fetchCurrentProperty()
 })
 
@@ -275,6 +299,15 @@ async function fetchUserSettings() {
   }
 }
 
+async function fetchActiveProjects() {
+  try {
+    const { data } = await projectsAPI.list({ status: 'active' })
+    activeProjects.value = data || []
+  } catch (err) {
+    console.error('Error fetching projects:', err)
+  }
+}
+
 async function fetchHouseholdUsers() {
   if (!currentPropertyId.value) return
 
@@ -320,6 +353,7 @@ async function handleSubmit() {
       category_id: form.value.category_id,
       date: form.value.date,
       property_id: form.value.property_id,
+      project_id: form.value.project_id,
       paid_by_member_id: form.value.paid_by_member_id,
       is_split: form.value.is_split,
       split_with_member_ids: form.value.is_split ? form.value.split_with_member_ids : []
@@ -342,5 +376,6 @@ onMounted(async () => {
   await fetchCurrentProperty()
   await fetchHouseholdUsers()
   await fetchUserSettings()
+  fetchActiveProjects()
 })
 </script>

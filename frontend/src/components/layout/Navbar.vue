@@ -46,6 +46,15 @@
             Utenze
           </router-link>
           <router-link
+            to="/projects"
+            class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+            :class="$route.path === '/projects'
+              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
+          >
+            Progetti
+          </router-link>
+          <router-link
             to="/settings"
             class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
             :class="$route.path === '/settings'
@@ -131,6 +140,16 @@
             : 'text-gray-600 dark:text-gray-300'"
         >
           Utenze
+        </router-link>
+        <router-link
+          to="/projects"
+          @click="mobileMenuOpen = false"
+          class="px-3 py-2 rounded-lg text-sm font-medium"
+          :class="$route.path === '/projects'
+            ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+            : 'text-gray-600 dark:text-gray-300'"
+        >
+          Progetti
         </router-link>
         <router-link
           to="/settings"
