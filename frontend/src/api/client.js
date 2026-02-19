@@ -87,6 +87,10 @@ export const expensesAPI = {
   stats: (params) => apiClient.get('/expenses/stats', { params }),
 }
 
+export const categoriesAPI = {
+  list: () => apiClient.get('/categories')
+}
+
 export const balanceAPI = {
   get: (propertyId) => apiClient.get(`/properties/${propertyId}/balance`),
   details: (propertyId) => apiClient.get(`/properties/${propertyId}/balance/details`),

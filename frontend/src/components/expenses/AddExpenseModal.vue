@@ -44,21 +44,20 @@
             Categoria *
           </label>
           <select
-            v-model="form.category_id"
+            v-model.number="form.category_id"
             required
             class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option :value="1">Casa</option>
-            <option :value="2">Alimentari e Ristorazione</option>
-            <option :value="3">Trasporti</option>
-            <option :value="4">Salute</option>
-            <option :value="5">Intrattenimento</option>
-            <option :value="6">Famiglia</option>
-            <option :value="7">Abbigliamento</option>
-            <option :value="8">Istruzione</option>
-            <option :value="9">Tecnologia</option>
+            <option value="" disabled>Seleziona categoria</option>
+            <option
+              v-for="cat in categories"
+              :key="cat.id"
+              :value="cat.id"
+            >
+              {{ cat.icon }} {{ cat.name }}
+            </option>
           </select>
         </div>
 
@@ -171,7 +170,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
-import apiClient from '@/api/client'
+import apiClient, { categoriesAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -183,6 +182,7 @@ const authStore = useAuthStore()
 const loading = ref(false)
 const error = ref(null)
 const userSettings = ref(null)
+const categories = ref([])
 
 // Household users - for now we'll use a simple approach
 // In a real app, this would come from an API call
@@ -223,6 +223,18 @@ function formatCurrency(value) {
     style: 'currency',
     currency: 'EUR'
   }).format(value || 0)
+}
+
+async function fetchCategories() {
+  try {
+    const { data } = await categoriesAPI.list()
+    categories.value = data
+    if (!form.value.category_id && data.length > 0) {
+      form.value.category_id = data[0].id
+    }
+  } catch (err) {
+    console.error('Error fetching categories:', err)
+  }
 }
 
 async function fetchCurrentProperty() {
@@ -326,6 +338,7 @@ async function handleSubmit() {
 }
 
 onMounted(async () => {
+  fetchCategories()
   await fetchCurrentProperty()
   await fetchHouseholdUsers()
   await fetchUserSettings()

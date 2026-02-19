@@ -44,21 +44,20 @@
             Categoria *
           </label>
           <select
-            v-model="form.category_id"
+            v-model.number="form.category_id"
             required
             class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option :value="1">Casa</option>
-            <option :value="2">Alimentari e Ristorazione</option>
-            <option :value="3">Trasporti</option>
-            <option :value="4">Salute</option>
-            <option :value="5">Intrattenimento</option>
-            <option :value="6">Famiglia</option>
-            <option :value="7">Abbigliamento</option>
-            <option :value="8">Istruzione</option>
-            <option :value="9">Tecnologia</option>
+            <option value="" disabled>Seleziona categoria</option>
+            <option
+              v-for="cat in categories"
+              :key="cat.id"
+              :value="cat.id"
+            >
+              {{ cat.icon }} {{ cat.name }}
+            </option>
           </select>
         </div>
 
@@ -96,6 +95,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
+import { categoriesAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -112,6 +112,7 @@ const expensesStore = useExpensesStore()
 
 const loading = ref(false)
 const error = ref(null)
+const categories = ref([])
 
 const form = ref({
   amount: null,
@@ -119,6 +120,15 @@ const form = ref({
   category_id: 1,
   date: ''
 })
+
+async function fetchCategories() {
+  try {
+    const { data } = await categoriesAPI.list()
+    categories.value = data
+  } catch (err) {
+    console.error('Error fetching categories:', err)
+  }
+}
 
 async function handleSubmit() {
   loading.value = true
@@ -145,6 +155,7 @@ async function handleSubmit() {
 }
 
 onMounted(() => {
+  fetchCategories()
   // Pre-populate form with existing expense data
   form.value = {
     amount: props.expense.amount,

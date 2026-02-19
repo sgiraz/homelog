@@ -144,18 +144,17 @@
             v-model="filters.categoryId"
             @change="applyFilters"
             class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Tutte</option>
-            <option value="1">Casa</option>
-            <option value="2">Alimentari</option>
-            <option value="3">Trasporti</option>
-            <option value="4">Salute</option>
-            <option value="5">Intrattenimento</option>
-            <option value="6">Famiglia</option>
-            <option value="7">Abbigliamento</option>
-            <option value="8">Istruzione</option>
-            <option value="9">Tecnologia</option>
+            <option
+              v-for="cat in categories"
+              :key="cat.id"
+              :value="cat.id"
+            >
+              {{ cat.icon }} {{ cat.name }}
+            </option>
           </select>
         </div>
 
@@ -318,6 +317,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useSettingsStore } from '@/stores/settings'
+import { categoriesAPI } from '@/api/client'
 import { formatDate as _formatDate } from '@/utils/dateFormatter'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -334,6 +334,7 @@ const showAddExpense = ref(false)
 const showEditExpense = ref(false)
 const editingExpense = ref(null)
 const trendChartType = ref('line')
+const categories = ref([])
 const filters = ref({
   categoryId: '',
   from: '',
@@ -456,6 +457,15 @@ const monthlyLineChartData = computed(() => {
 })
 
 // Methods
+async function fetchCategories() {
+  try {
+    const { data } = await categoriesAPI.list()
+    categories.value = data
+  } catch (err) {
+    console.error('Error fetching categories:', err)
+  }
+}
+
 function formatCurrency(value) {
   return new Intl.NumberFormat('it-IT', {
     style: 'currency',
@@ -527,6 +537,7 @@ async function deleteExpenseConfirm(id) {
 }
 
 onMounted(() => {
+  fetchCategories()
   expensesStore.fetchExpenses()
 })
 </script>

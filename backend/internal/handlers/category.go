@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
 )
 
@@ -17,8 +18,19 @@ func NewCategoryHandler(db *gorm.DB) *CategoryHandler {
 
 // List - GET /api/v1/categories
 func (h *CategoryHandler) List(c *gin.Context) {
-	// TODO: List categories with subcategories
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "Not implemented yet"})
+	var categories []models.Category
+
+	// Fetch all default categories + user's custom categories
+	// For now, just default categories (UserID = nil)
+	if err := h.db.Where("is_default = ?", true).
+		Preload("Subcategories").
+		Order("name ASC").
+		Find(&categories).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch categories"})
+		return
+	}
+
+	c.JSON(http.StatusOK, categories)
 }
 
 // Create - POST /api/v1/categories

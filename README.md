@@ -336,7 +336,7 @@ DELETE /settlements/:id         # Delete settlement
 - [x] Household settings per property
 
 ### Phase 4: Advanced Features
-- [x] Projects with budget tracking
+- [ ] Projects with budget tracking
 - [ ] Budget system with alerts
 - [ ] Import/Export CSV/Excel
 - [ ] PDF report generation
