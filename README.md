@@ -154,6 +154,7 @@ homelog/
 │   │   │   ├── expenses.js     # Expenses state
 │   │   │   ├── balance.js      # Balance & settlements state
 │   │   │   ├── utilities.js    # Utilities state
+│   │   │   ├── projects.js     # Projects state
 │   │   │   └── settings.js     # User settings state
 │   │   ├── views/              # Page views
 │   │   │   ├── LoginView.vue
@@ -161,13 +162,15 @@ homelog/
 │   │   │   ├── ExpensesView.vue
 │   │   │   ├── BalanceView.vue
 │   │   │   ├── UtilitiesView.vue
+│   │   │   ├── ProjectsView.vue
 │   │   │   └── SettingsView.vue
-│   │   ├── components/         # Reusable components (18 files)
+│   │   ├── components/         # Reusable components (21 files)
 │   │   │   ├── common/         # Button, Card, Input
 │   │   │   ├── charts/         # BarChart, PieChart, LineChart
 │   │   │   ├── layout/         # Navbar
 │   │   │   ├── expenses/       # AddExpenseModal, EditExpenseModal
 │   │   │   ├── balance/        # SettlementModal
+│   │   │   ├── projects/       # AddProjectModal, EditProjectModal, ProjectDetailModal
 │   │   │   └── utilities/      # TemplateWizard, TemplatesManager, PDFTextractView, etc.
 │   │   └── utils/              # Utilities
 │   │       ├── tokenizer.js    # PDF text tokenizer
@@ -336,7 +339,7 @@ DELETE /settlements/:id         # Delete settlement
 - [x] Household settings per property
 
 ### Phase 4: Advanced Features
-- [ ] Projects with budget tracking
+- [x] Projects with budget tracking
 - [ ] Budget system with alerts
 - [ ] Import/Export CSV/Excel
 - [ ] PDF report generation
