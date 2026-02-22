@@ -494,7 +494,33 @@ func (h *UtilityHandler) GetReadings(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, readings)
+	// Build map: reading_id → bill_number for readings that are associated to a bill
+	type billRef struct {
+		UserReadingID uint
+		BillNumber    string
+	}
+	var billRefs []billRef
+	h.db.Model(&models.Bill{}).
+		Select("user_reading_id, bill_number").
+		Where("utility_id = ? AND user_reading_id IS NOT NULL AND deleted_at IS NULL", utilityID).
+		Scan(&billRefs)
+
+	billByReadingID := make(map[uint]string, len(billRefs))
+	for _, br := range billRefs {
+		billByReadingID[br.UserReadingID] = br.BillNumber
+	}
+
+	// Return readings enriched with associated_bill_number
+	type ReadingResponse struct {
+		models.MeterReading
+		AssociatedBillNumber string `json:"associated_bill_number,omitempty"`
+	}
+	result := make([]ReadingResponse, len(readings))
+	for i, r := range readings {
+		result[i] = ReadingResponse{MeterReading: r, AssociatedBillNumber: billByReadingID[r.ID]}
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 // AddBill adds a bill for a utility
@@ -525,7 +551,8 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 	}
 
 	var input struct {
-		BillNumber          string     `json:"bill_number"`
+		BillNumber          string     `json:"bill_number" binding:"required"`
+		UserReadingID       *uint      `json:"user_reading_id"`
 		IssueDate           time.Time  `json:"issue_date" binding:"required"`
 		PeriodStart         time.Time  `json:"period_start" binding:"required"`
 		PeriodEnd           time.Time  `json:"period_end" binding:"required"`
@@ -535,11 +562,11 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		ReadingEndDate      *time.Time `json:"reading_end_date"`
 		ReadingEndValue     *float64   `json:"reading_end_value"`
 		ReadingType         string     `json:"reading_type"`
-		ProviderReadingDate *time.Time `json:"provider_reading_date"` // Data lettura fornitore
-		ProviderReadingF1   *float64   `json:"provider_reading_f1"`   // Lettura F1 (electricity)
-		ProviderReadingF2   *float64   `json:"provider_reading_f2"`   // Lettura F2 (electricity)
-		ProviderReadingF3   *float64   `json:"provider_reading_f3"`   // Lettura F3 (electricity)
-		ProviderReading     *float64   `json:"provider_reading"`      // Lettura singola (gas/water)
+		ProviderReadingDate *time.Time `json:"provider_reading_date"`
+		ProviderReadingF1   *float64   `json:"provider_reading_f1"`
+		ProviderReadingF2   *float64   `json:"provider_reading_f2"`
+		ProviderReadingF3   *float64   `json:"provider_reading_f3"`
+		ProviderReading     *float64   `json:"provider_reading"`
 		ConsumptionTotal      float64    `json:"consumption_total"`
 		ConsumptionF1         *float64   `json:"consumption_f1"`
 		ConsumptionF2         *float64   `json:"consumption_f2"`
@@ -566,6 +593,7 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 	bill := models.Bill{
 		UtilityID:             uint(utilityID),
 		BillNumber:            input.BillNumber,
+		UserReadingID:         input.UserReadingID,
 		IssueDate:             input.IssueDate,
 		PeriodStart:           input.PeriodStart,
 		PeriodEnd:             input.PeriodEnd,
@@ -603,8 +631,8 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		return
 	}
 
-	// Load utility relation
-	h.db.Preload("Utility").First(&bill, bill.ID)
+	// Load utility + user reading relations
+	h.db.Preload("Utility").Preload("UserReading").First(&bill, bill.ID)
 
 	c.JSON(http.StatusCreated, bill)
 }
@@ -638,6 +666,7 @@ func (h *UtilityHandler) GetBills(c *gin.Context) {
 
 	var bills []models.Bill
 	if err := h.db.Where("utility_id = ?", utilityID).
+		Preload("UserReading").
 		Order("period_end DESC").
 		Find(&bills).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bills"})
@@ -801,7 +830,8 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	}
 
 	var input struct {
-		BillNumber            string     `json:"bill_number"`
+		BillNumber            string     `json:"bill_number" binding:"required"`
+		UserReadingID         *uint      `json:"user_reading_id"`
 		IssueDate             time.Time  `json:"issue_date"`
 		PeriodStart           time.Time  `json:"period_start"`
 		PeriodEnd             time.Time  `json:"period_end"`
@@ -829,6 +859,7 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 
 	// Update all fields
 	bill.BillNumber = input.BillNumber
+	bill.UserReadingID = input.UserReadingID
 	bill.IssueDate = input.IssueDate
 	bill.PeriodStart = input.PeriodStart
 	bill.PeriodEnd = input.PeriodEnd
@@ -1095,9 +1126,10 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 		return
 	}
 
-	// Get all bills with provider readings
+	// Get all bills with provider readings, preloading the explicit user reading association
 	var bills []models.Bill
 	h.db.Where("utility_id = ?", utilityID).
+		Preload("UserReading").
 		Order("period_end DESC").
 		Find(&bills)
 
@@ -1348,17 +1380,23 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 	})
 }
 
-// calculateConsumptionAnalysis calculates consumption differences between consecutive readings
+// calculateConsumptionAnalysis computes period-by-period consumption comparison.
+//
+// Algorithm (deterministic):
+//   - Sort bills by period_end ascending.
+//   - For each bill define its “effective user reading value”:
+//     • If bill.UserReading != nil → use the explicitly associated self-reading value.
+//     • Otherwise              → fall back to bill.ProviderReading (so Δeffettivo = Δfatturato).
+//   - Consumo Fatturato[i]  = providerReading[i]  − providerReading[i-1]  (consecutive absolute bill readings)
+//   - Consumo Effettivo[i]  = effectiveReading[i] − effectiveReading[i-1] (consecutive effective readings)
+//   - Period rows start from index 1 (bill[0] is the reference anchor; no row generated for it).
+//   - Guard: need at least 2 bills with provider_reading set.
 func (h *UtilityHandler) calculateConsumptionAnalysis(utilityType string, bills []models.Bill, readings []models.MeterReading, threshold float64) ([]ConsumptionPeriod, *ConsumptionSummary) {
-	// Need at least 1 bill for provider data, and at least 2 readings for user consumption calculation
-	if len(bills) == 0 || len(readings) < 2 {
+	if len(bills) < 2 {
 		return nil, nil
 	}
 
-	var periods []ConsumptionPeriod
-	summary := &ConsumptionSummary{}
-
-	// Sort bills by period_end ascending for chronological processing
+	// Sort bills by period_end ascending
 	sortedBills := make([]models.Bill, len(bills))
 	copy(sortedBills, bills)
 	for i := 0; i < len(sortedBills)-1; i++ {
@@ -1369,194 +1407,160 @@ func (h *UtilityHandler) calculateConsumptionAnalysis(utilityType string, bills 
 		}
 	}
 
-	// Sort readings by date ascending
-	sortedReadings := make([]models.MeterReading, len(readings))
-	copy(sortedReadings, readings)
-	for i := 0; i < len(sortedReadings)-1; i++ {
-		for j := i + 1; j < len(sortedReadings); j++ {
-			if sortedReadings[i].ReadingDate.After(sortedReadings[j].ReadingDate) {
-				sortedReadings[i], sortedReadings[j] = sortedReadings[j], sortedReadings[i]
-			}
+	// effectiveValue returns the user reading value for a bill.
+	// Uses the explicitly associated UserReading when available;
+	// falls back to ProviderReading so the period contribution is neutral (Δ=0).
+	effectiveValue := func(b models.Bill) *float64 {
+		if b.UserReading != nil && b.UserReading.Value != nil {
+			return b.UserReading.Value
 		}
+		return b.ProviderReading
+	}
+	effectiveValueF1 := func(b models.Bill) *float64 {
+		if b.UserReading != nil && b.UserReading.ValueF1 != nil {
+			return b.UserReading.ValueF1
+		}
+		return b.ProviderReadingF1
+	}
+	effectiveValueF2 := func(b models.Bill) *float64 {
+		if b.UserReading != nil && b.UserReading.ValueF2 != nil {
+			return b.UserReading.ValueF2
+		}
+		return b.ProviderReadingF2
+	}
+	effectiveValueF3 := func(b models.Bill) *float64 {
+		if b.UserReading != nil && b.UserReading.ValueF3 != nil {
+			return b.UserReading.ValueF3
+		}
+		return b.ProviderReadingF3
 	}
 
-	// Calculate provider consumption from consumption_total on each bill
-	// This is the actual billed consumption, which includes the first bill
-	providerConsumptions := make(map[time.Time]struct {
-		F1, F2, F3, Total float64
-		BillID            uint
-	})
+	var periods []ConsumptionPeriod
+	summary := &ConsumptionSummary{}
 
-	for _, bill := range sortedBills {
-		consumption := struct {
-			F1, F2, F3, Total float64
-			BillID            uint
-		}{BillID: bill.ID}
-
-		// Use consumption_total from the bill (what provider actually billed)
-		consumption.Total = bill.ConsumptionTotal
-		summary.TotalProvider += consumption.Total
-
-		// For electricity, also track per-band consumption if we have consecutive readings
-		// This is for display purposes in the detail breakdown
-		if utilityType == "electricity" {
-			// Find previous bill to calculate per-band consumption
-			var prevBill *models.Bill
-			for j := range sortedBills {
-				if sortedBills[j].ID == bill.ID && j > 0 {
-					prevBill = &sortedBills[j-1]
-					break
-				}
-			}
-
-			if prevBill != nil {
-				if prevBill.ProviderReadingF1 != nil && bill.ProviderReadingF1 != nil {
-					consumption.F1 = *bill.ProviderReadingF1 - *prevBill.ProviderReadingF1
-					summary.TotalProviderF1 += consumption.F1
-				}
-				if prevBill.ProviderReadingF2 != nil && bill.ProviderReadingF2 != nil {
-					consumption.F2 = *bill.ProviderReadingF2 - *prevBill.ProviderReadingF2
-					summary.TotalProviderF2 += consumption.F2
-				}
-				if prevBill.ProviderReadingF3 != nil && bill.ProviderReadingF3 != nil {
-					consumption.F3 = *bill.ProviderReadingF3 - *prevBill.ProviderReadingF3
-					summary.TotalProviderF3 += consumption.F3
-				}
-			} else {
-				// First bill: estimate F1/F2/F3 distribution from total if we can't calculate
-				// For now, leave them at 0 - the total is what matters for comparison
-			}
-		}
-
-		providerConsumptions[bill.PeriodEnd] = consumption
-	}
-
-	// Calculate user consumption (from consecutive self-readings)
-	userConsumptions := make(map[time.Time]struct {
-		F1, F2, F3, Total float64
-	})
-
-	for i := 1; i < len(sortedReadings); i++ {
-		prev := sortedReadings[i-1]
-		curr := sortedReadings[i]
-
-		consumption := struct {
-			F1, F2, F3, Total float64
-		}{}
-
-		if utilityType == "electricity" {
-			if prev.ValueF1 != nil && curr.ValueF1 != nil {
-				consumption.F1 = *curr.ValueF1 - *prev.ValueF1
-				summary.TotalUserF1 += consumption.F1
-			}
-			if prev.ValueF2 != nil && curr.ValueF2 != nil {
-				consumption.F2 = *curr.ValueF2 - *prev.ValueF2
-				summary.TotalUserF2 += consumption.F2
-			}
-			if prev.ValueF3 != nil && curr.ValueF3 != nil {
-				consumption.F3 = *curr.ValueF3 - *prev.ValueF3
-				summary.TotalUserF3 += consumption.F3
-			}
-			consumption.Total = consumption.F1 + consumption.F2 + consumption.F3
-		} else {
-			if prev.Value != nil && curr.Value != nil {
-				consumption.Total = *curr.Value - *prev.Value
-			}
-		}
-
-		summary.TotalUser += consumption.Total
-		userConsumptions[curr.ReadingDate] = consumption
-	}
-
-	// Create periods for ALL bills (including the first one)
-	for i, bill := range sortedBills {
+	for i := 1; i < len(sortedBills); i++ {
+		bill := sortedBills[i]
+		prev := sortedBills[i-1]
+		billID := bill.ID
 		period := ConsumptionPeriod{
 			PeriodStart: bill.PeriodStart,
 			PeriodEnd:   bill.PeriodEnd,
-			BillID:      &bill.ID,
+			BillID:      &billID,
+		}
+		if utilityType == "electricity" {
+			// --- Provider consumption (consecutive absolute F1/F2/F3 readings) ---
+			provTotal := 0.0
+			hasProvF1 := bill.ProviderReadingF1 != nil && prev.ProviderReadingF1 != nil
+			hasProvF2 := bill.ProviderReadingF2 != nil && prev.ProviderReadingF2 != nil
+			hasProvF3 := bill.ProviderReadingF3 != nil && prev.ProviderReadingF3 != nil
+			if hasProvF1 {
+				f1 := *bill.ProviderReadingF1 - *prev.ProviderReadingF1
+				period.ProviderConsumptionF1 = &f1
+				summary.TotalProviderF1 += f1
+				provTotal += f1
+			}
+			if hasProvF2 {
+				f2 := *bill.ProviderReadingF2 - *prev.ProviderReadingF2
+				period.ProviderConsumptionF2 = &f2
+				summary.TotalProviderF2 += f2
+				provTotal += f2
+			}
+			if hasProvF3 {
+				f3 := *bill.ProviderReadingF3 - *prev.ProviderReadingF3
+				period.ProviderConsumptionF3 = &f3
+				summary.TotalProviderF3 += f3
+				provTotal += f3
+			}
+			if hasProvF1 || hasProvF2 || hasProvF3 {
+				period.ProviderConsumption = &provTotal
+				summary.TotalProvider += provTotal
+			}
+
+			// --- User consumption (consecutive effective F1/F2/F3 values) ---
+			ef1Cur, ef1Prv := effectiveValueF1(bill), effectiveValueF1(prev)
+			ef2Cur, ef2Prv := effectiveValueF2(bill), effectiveValueF2(prev)
+			ef3Cur, ef3Prv := effectiveValueF3(bill), effectiveValueF3(prev)
+			userTotal := 0.0
+			hasUser := false
+			if ef1Cur != nil && ef1Prv != nil {
+				f1 := *ef1Cur - *ef1Prv
+				period.UserConsumptionF1 = &f1
+				summary.TotalUserF1 += f1
+				userTotal += f1
+				hasUser = true
+			}
+			if ef2Cur != nil && ef2Prv != nil {
+				f2 := *ef2Cur - *ef2Prv
+				period.UserConsumptionF2 = &f2
+				summary.TotalUserF2 += f2
+				userTotal += f2
+				hasUser = true
+			}
+			if ef3Cur != nil && ef3Prv != nil {
+				f3 := *ef3Cur - *ef3Prv
+				period.UserConsumptionF3 = &f3
+				summary.TotalUserF3 += f3
+				userTotal += f3
+				hasUser = true
+			}
+			if hasUser {
+				period.UserConsumption = &userTotal
+				summary.TotalUser += userTotal
+			}
+
+			// Per-band differences
+			if period.ProviderConsumptionF1 != nil && period.UserConsumptionF1 != nil {
+				d := *period.ProviderConsumptionF1 - *period.UserConsumptionF1
+				period.DifferenceF1 = &d
+			}
+			if period.ProviderConsumptionF2 != nil && period.UserConsumptionF2 != nil {
+				d := *period.ProviderConsumptionF2 - *period.UserConsumptionF2
+				period.DifferenceF2 = &d
+			}
+			if period.ProviderConsumptionF3 != nil && period.UserConsumptionF3 != nil {
+				d := *period.ProviderConsumptionF3 - *period.UserConsumptionF3
+				period.DifferenceF3 = &d
+			}
+
+		} else {
+			// --- Gas / Water ---
+			// Provider: consecutive absolute ProviderReading
+			if bill.ProviderReading != nil && prev.ProviderReading != nil {
+				provTotal := *bill.ProviderReading - *prev.ProviderReading
+				period.ProviderConsumption = &provTotal
+				summary.TotalProvider += provTotal
+			}
+
+			// User: consecutive effective reading values
+			efCur, efPrv := effectiveValue(bill), effectiveValue(prev)
+			if efCur != nil && efPrv != nil {
+				userTotal := *efCur - *efPrv
+				period.UserConsumption = &userTotal
+				summary.TotalUser += userTotal
+			}
 		}
 
-		// Provider consumption for this period (from consumption_total)
-		if prov, ok := providerConsumptions[bill.PeriodEnd]; ok {
-			if utilityType == "electricity" && i > 0 {
-				// Per-band breakdown only available for bills after the first
-				period.ProviderConsumptionF1 = &prov.F1
-				period.ProviderConsumptionF2 = &prov.F2
-				period.ProviderConsumptionF3 = &prov.F3
-			}
-			period.ProviderConsumption = &prov.Total
-		}
-
-		// Find user consumption that matches this bill period
-		// Look for user readings that fall within or close to this bill's period
-		for readingDate, user := range userConsumptions {
-			// User reading should be within the bill period (with some tolerance)
-			periodStart := bill.PeriodStart.AddDate(0, 0, -7) // 7 days before period start
-			periodEnd := bill.PeriodEnd.AddDate(0, 0, 7)      // 7 days after period end
-
-			if !readingDate.Before(periodStart) && !readingDate.After(periodEnd) {
-				if utilityType == "electricity" {
-					period.UserConsumptionF1 = &user.F1
-					period.UserConsumptionF2 = &user.F2
-					period.UserConsumptionF3 = &user.F3
-				}
-				period.UserConsumption = &user.Total
-
-				// Calculate differences
-				if period.ProviderConsumption != nil && period.UserConsumption != nil {
-					diff := *period.ProviderConsumption - *period.UserConsumption
-					period.Difference = &diff
-				}
-				if utilityType == "electricity" {
-					if period.ProviderConsumptionF1 != nil && period.UserConsumptionF1 != nil {
-						diff := *period.ProviderConsumptionF1 - *period.UserConsumptionF1
-						period.DifferenceF1 = &diff
-					}
-					if period.ProviderConsumptionF2 != nil && period.UserConsumptionF2 != nil {
-						diff := *period.ProviderConsumptionF2 - *period.UserConsumptionF2
-						period.DifferenceF2 = &diff
-					}
-					if period.ProviderConsumptionF3 != nil && period.UserConsumptionF3 != nil {
-						diff := *period.ProviderConsumptionF3 - *period.UserConsumptionF3
-						period.DifferenceF3 = &diff
-					}
-				}
-				break
-			}
+		// Overall difference for this period
+		if period.ProviderConsumption != nil && period.UserConsumption != nil {
+			diff := *period.ProviderConsumption - *period.UserConsumption
+			period.Difference = &diff
 		}
 
 		periods = append(periods, period)
 	}
-
-	// Calculate cumulative differences
 	summary.CumulativeDifferenceF1 = summary.TotalProviderF1 - summary.TotalUserF1
 	summary.CumulativeDifferenceF2 = summary.TotalProviderF2 - summary.TotalUserF2
 	summary.CumulativeDifferenceF3 = summary.TotalProviderF3 - summary.TotalUserF3
 	summary.CumulativeDifference = summary.TotalProvider - summary.TotalUser
 
-	// Set period range based on actual data available
-	// Use the earliest of first bill or first reading, and latest of last bill or last reading
 	if len(sortedBills) > 0 {
 		summary.FirstPeriod = sortedBills[0].PeriodStart
 		summary.LastPeriod = sortedBills[len(sortedBills)-1].PeriodEnd
 	}
-	if len(sortedReadings) > 0 {
-		if summary.FirstPeriod.IsZero() || sortedReadings[0].ReadingDate.Before(summary.FirstPeriod) {
-			summary.FirstPeriod = sortedReadings[0].ReadingDate
-		}
-		if summary.LastPeriod.IsZero() || sortedReadings[len(sortedReadings)-1].ReadingDate.After(summary.LastPeriod) {
-			summary.LastPeriod = sortedReadings[len(sortedReadings)-1].ReadingDate
-		}
-	}
 
-	// Check for cumulative alert
-	// IMPORTANT: We only alert when provider charged MORE than actual consumption (positive difference)
-	// When provider charged less, it's not a problem (at worst, there might be a year-end adjustment)
 	numPeriods := len(periods)
 	if numPeriods > 0 {
 		cumulativeThreshold := threshold * float64(numPeriods)
-
-		// Only alert when provider charged MORE (positive difference)
 		if summary.CumulativeDifference > cumulativeThreshold*2 {
 			summary.HasCumulativeAlert = true
 			summary.CumulativeAlertLevel = "alert"
@@ -1568,7 +1572,6 @@ func (h *UtilityHandler) calculateConsumptionAnalysis(utilityType string, bills 
 			summary.CumulativeMessage = fmt.Sprintf("Il fornitore ha fatturato %.1f unità in più rispetto ai consumi effettivi in %d periodi. Tieni sotto controllo questa differenza.",
 				summary.CumulativeDifference, numPeriods)
 		} else if summary.CumulativeDifference < -cumulativeThreshold {
-			// Provider charged less - just informational, no alert level
 			summary.CumulativeMessage = fmt.Sprintf("Il fornitore ha fatturato %.1f unità in meno rispetto ai consumi rilevati in %d periodi. Potrebbe esserci un conguaglio a fine anno.",
 				-summary.CumulativeDifference, numPeriods)
 		}

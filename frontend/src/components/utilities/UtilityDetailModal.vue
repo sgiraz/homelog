@@ -205,6 +205,9 @@
                   <span v-if="reading.source === 'submitted'" class="ml-2 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs rounded">
                     Inviata
                   </span>
+                  <span v-if="readingBillMap[reading.id]" class="ml-2 px-1.5 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 text-xs rounded font-mono">
+                    Boll. {{ readingBillMap[reading.id] }}
+                  </span>
                 </div>
                 <div v-if="reading.notes" class="text-sm text-gray-500 dark:text-gray-500 mt-1">
                   {{ reading.notes }}
@@ -352,6 +355,7 @@
 import { ref, reactive, watch, computed } from 'vue'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
+import { utilitiesAPI } from '@/api/client'
 import { formatDate as _formatDate, formatPeriod as _formatPeriod } from '@/utils/dateFormatter'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -387,6 +391,24 @@ const editingReading = ref(null)
 const comparisonCard = ref(null)
 const comparisonKey = ref(0) // Key to force re-render of comparison card
 
+// Map from reading_id → associated_bill_number (enriched from /readings endpoint)
+const readingBillMap = ref({})
+
+async function fetchReadingBillMap() {
+  try {
+    const { data } = await utilitiesAPI.getReadings(localUtility.id)
+    const map = {}
+    for (const r of data || []) {
+      if (r.associated_bill_number) {
+        map[r.id] = r.associated_bill_number
+      }
+    }
+    readingBillMap.value = map
+  } catch (err) {
+    // Non-critical, ignore
+  }
+}
+
 // Threshold settings
 const thresholdValue = ref(props.utility.comparison_threshold || 2)
 const thresholdPerDayValue = ref(props.utility.threshold_per_day || 1)
@@ -401,6 +423,11 @@ const hasThresholdChanges = computed(() => {
 // Watch for utility changes to update threshold
 watch(() => props.utility.comparison_threshold, (newVal) => {
   thresholdValue.value = newVal || 2
+})
+
+// Fetch reading→bill map when the readings tab is activated
+watch(activeTab, (tab) => {
+  if (tab === 'readings') fetchReadingBillMap()
 })
 
 watch(() => props.utility.threshold_per_day, (newVal) => {
@@ -605,6 +632,8 @@ async function refreshUtility() {
         localUtility[key] = updated[key]
       }
     })
+    // Refresh reading→bill associations
+    await fetchReadingBillMap()
   } catch (err) {
     console.error('Error refreshing utility:', err)
   }

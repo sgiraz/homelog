@@ -169,9 +169,60 @@
         <!-- Numero Bolletta -->
         <Input
           v-model="form.bill_number"
-          label="Numero Bolletta"
-          placeholder="Opzionale"
+          label="Numero Bolletta *"
+          placeholder="Es. 32455111"
+          required
         />
+
+        <!-- Autolettura di riferimento -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Autolettura di riferimento
+          </label>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Associa l'autolettura corrispondente alla lettura finale di questa bolletta
+          </p>
+
+          <!-- Dropdown letture esistenti -->
+          <select
+            v-model="form.user_reading_id"
+            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                   focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            @change="onReadingSelected"
+          >
+            <option :value="null">-- Nessuna autolettura --</option>
+            <option
+              v-for="r in sortedReadings"
+              :key="r.id"
+              :value="r.id"
+            >
+              {{ formatReadingOption(r) }}
+            </option>
+          </select>
+
+          <!-- Campo opzionale per creare una lettura al volo quando nessuna è selezionata -->
+          <div v-if="form.user_reading_id === null" class="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+            <p class="text-xs text-amber-700 dark:text-amber-300 mb-2">
+              Puoi inserire una lettura al volo (verrà creata automaticamente):
+            </p>
+            <div class="flex gap-2 items-center">
+              <input
+                v-model="inlineReadingValue"
+                type="number"
+                step="0.001"
+                :placeholder="form.provider_reading ? String(form.provider_reading) : '0'"
+                class="flex-1 px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                       focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+              <span class="text-xs text-gray-500 dark:text-gray-400">{{ readingUnit }}</span>
+            </div>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              Lascia vuoto per usare la lettura del fornitore come riferimento
+            </p>
+          </div>
+        </div>
 
         <!-- Provider Readings Section -->
         <div class="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
@@ -432,6 +483,43 @@ const availableTemplates = ref([])
 const selectedTemplateId = ref(null)
 const loadingTemplates = ref(false)
 
+// Available readings for this utility
+const availableReadings = ref([])
+const inlineReadingValue = ref(null) // value entered inline when no reading exists
+
+const readingUnit = computed(() => {
+  const type = props.utility?.type
+  if (type === 'electricity') return 'kWh'
+  if (type === 'gas') return 'mc'
+  if (type === 'water') return 'mc'
+  return ''
+})
+
+const sortedReadings = computed(() => {
+  return [...availableReadings.value].sort((a, b) => new Date(b.reading_date) - new Date(a.reading_date))
+})
+
+function formatReadingOption(r) {
+  const d = new Date(r.reading_date)
+  const dateStr = d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const val = r.value != null ? r.value.toLocaleString('it-IT', { maximumFractionDigits: 3 }) : '-'
+  const unit = readingUnit.value
+  return `${dateStr} — ${val} ${unit}`
+}
+
+function onReadingSelected() {
+  inlineReadingValue.value = null
+}
+
+async function fetchReadings() {
+  try {
+    const { data } = await utilitiesAPI.getReadings(props.utility.id)
+    availableReadings.value = data || []
+  } catch (err) {
+    console.error('Error loading readings:', err)
+  }
+}
+
 const isEditing = computed(() => !!props.bill)
 
 // Stato per l'editing delle letture fornitore - inizializzato in onMounted
@@ -445,6 +533,7 @@ const form = ref({
   issue_date: '',
   consumption_total: null,
   bill_number: '',
+  user_reading_id: null,
   reading_type: 'actual',
   is_paid: false,
   // Provider readings (letture rilevate)
@@ -630,6 +719,20 @@ async function handleSubmit() {
   error.value = null
 
   try {
+    // If no reading selected but user entered an inline value, create the reading first
+    let resolvedReadingId = form.value.user_reading_id
+    if (resolvedReadingId === null && inlineReadingValue.value != null && inlineReadingValue.value !== '') {
+      const readingDate = form.value.period_end
+        ? new Date(form.value.period_end).toISOString()
+        : new Date().toISOString()
+      const { data: newReading } = await utilitiesAPI.addReading(props.utility.id, {
+        reading_date: readingDate,
+        value: parseFloat(inlineReadingValue.value),
+        notes: `Creata in fase di inserimento bolletta ${form.value.bill_number}`
+      })
+      resolvedReadingId = newReading.id
+    }
+
     const billData = {
       amount_total: parseFloat(form.value.amount_total) || 0,
       period_start: new Date(form.value.period_start).toISOString(),
@@ -641,6 +744,7 @@ async function handleSubmit() {
         ? parseFloat(form.value.conversion_coefficient)
         : null,
       bill_number: form.value.bill_number,
+      user_reading_id: resolvedReadingId || null,
       reading_type: form.value.reading_type,
       is_paid: form.value.is_paid,
       paid_date: form.value.is_paid ? new Date().toISOString() : null,
@@ -825,7 +929,7 @@ watch(() => form.value.has_estimated, () => calculateConsumption())
 // When period_start changes, previousBill changes, so recalculate
 watch(() => form.value.period_start, () => calculateConsumption())
 
-onMounted(() => {
+onMounted(async () => {
   if (props.bill) {
     form.value = {
       amount_total: props.bill.amount_total,
@@ -835,6 +939,7 @@ onMounted(() => {
       issue_date: formatDateForInput(props.bill.issue_date),
       consumption_total: props.bill.consumption_total,
       bill_number: props.bill.bill_number || '',
+      user_reading_id: props.bill.user_reading_id || null,
       reading_type: props.bill.reading_type || 'actual',
       is_paid: props.bill.is_paid || false,
       // Provider readings
@@ -862,7 +967,23 @@ onMounted(() => {
     }
   }
 
-  // Load available templates for new bills
+  // Load readings and templates in parallel
+  await fetchReadings()
+
+  // For new bills, auto-suggest the reading closest to period_end
+  if (!props.bill && sortedReadings.value.length > 0 && form.value.period_end) {
+    const periodEnd = new Date(form.value.period_end)
+    let closest = null
+    let closestDiff = Infinity
+    for (const r of availableReadings.value) {
+      const diff = Math.abs(new Date(r.reading_date) - periodEnd)
+      if (diff < closestDiff) { closestDiff = diff; closest = r }
+    }
+    if (closest && closestDiff <= 45 * 24 * 60 * 60 * 1000) { // within 45 days
+      form.value.user_reading_id = closest.id
+    }
+  }
+
   loadTemplates()
 })
 </script>

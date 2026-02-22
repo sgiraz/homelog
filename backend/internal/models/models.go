@@ -178,7 +178,13 @@ type Bill struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
 	UtilityID   uint      `gorm:"not null;index" json:"utility_id"`
-	BillNumber  string    `gorm:"index" json:"bill_number"`
+	BillNumber  string    `gorm:"not null;index" json:"bill_number"`
+
+	// Explicit association to the user's self-reading for this bill period.
+	// When set, this reading is used as the "Consumo Effettivo" anchor.
+	// When nil, the provider_reading value is used as fallback.
+	UserReadingID *uint        `json:"user_reading_id,omitempty"`
+	UserReading   *MeterReading `gorm:"foreignKey:UserReadingID" json:"user_reading,omitempty"`
 	IssueDate   time.Time `gorm:"not null" json:"issue_date"`
 	PeriodStart time.Time `gorm:"not null;index" json:"period_start"`
 	PeriodEnd   time.Time `gorm:"not null;index" json:"period_end"`
