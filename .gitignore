@@ -46,6 +46,8 @@ coverage/
 tmp/
 temp/
 *.tmp
+*.bak
+nul
 
 # Go
 *.test
