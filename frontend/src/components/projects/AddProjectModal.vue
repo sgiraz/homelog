@@ -222,6 +222,7 @@ async function handleSubmit() {
 
   try {
     await projectsStore.createProject(form.value)
+    window.$toast?.success('Progetto creato con successo!')
     emit('created')
     emit('close')
   } catch (err) {

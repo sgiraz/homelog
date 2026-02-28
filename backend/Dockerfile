@@ -20,14 +20,14 @@ RUN CGO_ENABLED=1 go build \
     ./cmd/api/main.go
 
 # Runtime stage
-FROM alpine:latest
+FROM alpine:3.19
 
 # Install runtime dependencies including poppler-utils for PDF processing
 RUN apk add --no-cache ca-certificates sqlite-libs tzdata wget poppler-utils
 
 # Create non-root user
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser
+RUN addgroup -g 1000 homelog && \
+    adduser -D -u 1000 -G homelog homelog
 
 WORKDIR /app
 
@@ -36,10 +36,10 @@ COPY --from=builder /build/homelog-api .
 
 # Create data directory
 RUN mkdir -p /app/data /app/uploads && \
-    chown -R appuser:appuser /app
+    chown -R homelog:homelog /app
 
 # Switch to non-root user
-USER appuser
+USER homelog
 
 # Expose port
 EXPOSE 8080

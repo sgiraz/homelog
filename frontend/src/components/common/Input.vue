@@ -11,6 +11,7 @@
       :required="required"
       :step="step"
       :min="min"
+      :autocomplete="autocomplete"
       @input="$emit('update:modelValue', type === 'number' ? ($event.target.value === '' ? null : parseFloat($event.target.value)) : $event.target.value)"
       class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
              bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -28,7 +29,8 @@ defineProps({
   required: Boolean,
   id: String,
   step: String,
-  min: String
+  min: String,
+  autocomplete: String
 })
 
 defineEmits(['update:modelValue'])

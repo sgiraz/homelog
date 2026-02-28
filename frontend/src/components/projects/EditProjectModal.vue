@@ -218,6 +218,7 @@ async function handleSubmit() {
 
   try {
     await projectsStore.updateProject(props.project.id, form.value)
+    window.$toast?.success('Progetto aggiornato!')
     emit('updated')
     emit('close')
   } catch (err) {

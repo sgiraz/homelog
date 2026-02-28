@@ -410,6 +410,7 @@ async function handleSubmit() {
     console.log('Creating expense with data:', expenseData)
 
     await expensesStore.createExpense(expenseData)
+    window.$toast?.success('Spesa creata con successo!')
     emit('created')
     emit('close')
   } catch (err) {

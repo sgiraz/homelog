@@ -14,6 +14,7 @@
           placeholder="email@example.com"
           required
           id="email"
+          autocomplete="email"
         />
 
         <Input
@@ -23,6 +24,7 @@
           placeholder="Password"
           required
           id="password"
+          :autocomplete="isRegister ? 'new-password' : 'current-password'"
         />
 
         <Input
@@ -32,6 +34,7 @@
           placeholder="Il tuo nome"
           required
           id="name"
+          autocomplete="name"
         />
 
         <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">

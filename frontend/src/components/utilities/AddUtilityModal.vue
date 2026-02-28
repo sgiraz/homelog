@@ -402,6 +402,7 @@ async function handleSubmit() {
     }
 
     await utilitiesStore.createUtility(utilityData)
+    window.$toast?.success('Utenza aggiunta con successo!')
     emit('created')
   } catch (err) {
     error.value = err.response?.data?.error || err.message || 'Errore durante il salvataggio'

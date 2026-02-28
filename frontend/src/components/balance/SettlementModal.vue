@@ -168,6 +168,7 @@ async function handleSubmit() {
     }
 
     await balanceStore.createSettlement(settlementData)
+    window.$toast?.success('Saldo registrato con successo!')
     emit('created')
     emit('close')
   } catch (err) {

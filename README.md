@@ -106,15 +106,101 @@ npm run dev
 ```bash
 # Edit configuration
 cp .env.example .env
-nano .env
+nano .env  # Set JWT_SECRET, CORS_ORIGIN, VITE_API_URL
 
-# Start services
-docker-compose up -d
+# Build and start services
+docker compose build
+docker compose up -d
+
+# Verify health
+curl http://localhost:8080/health
+curl http://localhost:3000/health
 
 # Access the app
 # Frontend: http://your-raspberry-pi-ip:3000
 # Backend API: http://your-raspberry-pi-ip:8080
 ```
+
+---
+
+## Raspberry Pi Deployment
+
+### Prerequisites
+- Raspberry Pi 3B+ or newer (2GB+ RAM recommended for build)
+- Raspberry Pi OS (64-bit recommended for arm64 builds)
+- Docker & Docker Compose installed
+
+```bash
+# Install Docker on Raspberry Pi OS
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+# Log out and back in for group change to take effect
+
+# Verify
+docker --version
+docker compose version
+```
+
+### Configure & Deploy
+
+```bash
+git clone https://github.com/sgiraz/homelog.git
+cd homelog
+
+# Configure
+cp .env.example .env
+nano .env
+# REQUIRED: set JWT_SECRET (generate: openssl rand -base64 32)
+# REQUIRED: set CORS_ORIGIN=http://<your-pi-ip>:3000
+# REQUIRED: set VITE_API_URL=http://<your-pi-ip>:8080
+
+# Build images (takes ~10 min on Pi 3B+)
+docker compose build
+
+# Start services
+docker compose up -d
+
+# Verify both containers are healthy (wait ~40s after start)
+docker ps
+```
+
+### Enable Auto-Start on Boot
+
+```bash
+# Install systemd service
+sudo cp scripts/homelog.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable homelog
+sudo systemctl start homelog
+```
+
+### Management
+
+```bash
+docker compose logs -f            # Stream logs
+docker compose restart            # Restart services
+docker compose down && docker compose up -d  # Full restart
+docker stats --no-stream          # Check memory usage
+```
+
+### Remote Access via Tailscale
+
+```bash
+# On Raspberry Pi
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+# Note your Tailscale IP, then access: http://<tailscale-ip>:3000
+```
+
+### Performance Notes (Raspberry Pi 3B+)
+
+- First build takes ~10 minutes due to CGO compilation
+- Subsequent starts are fast (~5s backend, ~2s frontend)
+- Memory limits: backend 256MB, frontend 128MB
+- If OOM issues occur, increase swap: `/etc/dphys-swapfile` → `CONF_SWAPSIZE=1024`
+
+See [DEPLOY-GUIDE.md](DEPLOY-GUIDE.md) for full step-by-step instructions, troubleshooting, backup setup, and security hardening.
 
 ---
 

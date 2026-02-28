@@ -12,6 +12,8 @@ import (
 	"github.com/sgiraz/homelog/internal/middleware"
 )
 
+var startTime = time.Now()
+
 func main() {
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
@@ -53,9 +55,10 @@ func main() {
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"status":    "ok",
-			"timestamp": time.Now().Unix(),
-			"version":   "1.0.0",
+			"status":  "healthy",
+			"service": "homelog-api",
+			"version": "1.0.0",
+			"uptime":  time.Since(startTime).String(),
 		})
 	})
 

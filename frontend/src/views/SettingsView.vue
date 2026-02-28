@@ -1070,10 +1070,9 @@ async function doExport(type) {
     const res = await apiMap[type]()
     const timestamp = new Date().toISOString().slice(0, 10)
     triggerDownload(res.data, `homelog_${nameMap[type]}_${timestamp}.json`)
-    exportSuccess.value = 'File scaricato con successo.'
-    setTimeout(() => { exportSuccess.value = null }, 5000)
+    window.$toast?.success('File scaricato con successo!')
   } catch (err) {
-    exportError.value = 'Errore esportazione: ' + (err.response?.data?.error || err.message)
+    window.$toast?.error('Errore esportazione: ' + (err.response?.data?.error || err.message))
   } finally {
     exportLoading.value = null
   }
@@ -1122,15 +1121,15 @@ async function doImport() {
     const summary = Object.entries(counts)
       .map(([k, v]) => `${v} ${k}`)
       .join(', ')
-    importSuccess.value = `Importazione completata: ${summary || 'nessun dato'}.`
+    window.$toast?.success(`Importazione completata: ${summary || 'nessun dato'}.`)
     selectedFile.value = null
     if (fileInput.value) fileInput.value.value = ''
     setTimeout(() => { window.location.reload() }, 2000)
   } catch (err) {
     if (err instanceof SyntaxError) {
-      importError.value = 'Il file non è un JSON valido.'
+      window.$toast?.error('Il file non è un JSON valido.')
     } else {
-      importError.value = err.response?.data?.error || 'Errore importazione: ' + err.message
+      window.$toast?.error(err.response?.data?.error || 'Errore importazione: ' + err.message)
     }
   } finally {
     importLoading.value = false

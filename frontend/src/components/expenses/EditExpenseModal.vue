@@ -210,6 +210,7 @@ async function handleSubmit() {
     console.log('Updating expense with data:', expenseData)
 
     await expensesStore.updateExpense(props.expense.id, expenseData)
+    window.$toast?.success('Spesa aggiornata!')
     emit('updated')
     emit('close')
   } catch (err) {
