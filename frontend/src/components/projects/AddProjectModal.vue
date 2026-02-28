@@ -1,156 +1,146 @@
 <template>
-  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-       @click.self="$emit('close')">
-    <Card class="w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between mb-6">
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Nuovo Progetto</h3>
-        <button @click="$emit('close')" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+  <BaseModal title="Nuovo Progetto" size="2xl" @close="$emit('close')">
+    <form @submit.prevent="handleSubmit" class="space-y-4">
+      <!-- Name -->
+      <Input
+        v-model="form.name"
+        label="Nome Progetto *"
+        placeholder="es. Ristrutturazione Bagno, Matrimonio, Viaggio"
+        required
+      />
+
+      <!-- Icon -->
+      <div>
+        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">
+          Icona
+        </label>
+        <div class="flex gap-2 flex-wrap">
+          <button
+            v-for="icon in icons"
+            :key="icon"
+            type="button"
+            @click="form.icon = icon"
+            :class="[
+              'w-12 h-12 rounded-lg text-2xl flex items-center justify-center transition-all',
+              form.icon === icon
+                ? 'bg-blue-100 dark:bg-blue-900 ring-2 ring-blue-500'
+                : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
+            ]"
+          >
+            {{ icon }}
+          </button>
+        </div>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="space-y-4">
-        <!-- Name -->
+      <!-- Description -->
+      <div>
+        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+          Descrizione
+        </label>
+        <textarea
+          v-model="form.description"
+          rows="3"
+          placeholder="Descrivi il progetto..."
+          autocorrect="off"
+          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <!-- Budget -->
+      <Input
+        v-model.number="form.budget"
+        label="Budget *"
+        type="number"
+        step="0.01"
+        min="0.01"
+        placeholder="0.00"
+        inputmode="decimal"
+        required
+      />
+
+      <!-- Dates -->
+      <div class="grid grid-cols-2 gap-4">
         <Input
-          v-model="form.name"
-          label="Nome Progetto *"
-          placeholder="es. Ristrutturazione Bagno, Matrimonio, Viaggio"
+          v-model="form.start_date"
+          label="Data Inizio *"
+          type="date"
           required
         />
-
-        <!-- Icon -->
-        <div>
-          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">
-            Icona
-          </label>
-          <div class="flex gap-2 flex-wrap">
-            <button
-              v-for="icon in icons"
-              :key="icon"
-              type="button"
-              @click="form.icon = icon"
-              :class="[
-                'w-12 h-12 rounded-lg text-2xl flex items-center justify-center transition-all',
-                form.icon === icon
-                  ? 'bg-blue-100 dark:bg-blue-900 ring-2 ring-blue-500'
-                  : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
-              ]"
-            >
-              {{ icon }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Description -->
-        <div>
-          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-            Descrizione
-          </label>
-          <textarea
-            v-model="form.description"
-            rows="3"
-            placeholder="Descrivi il progetto..."
-            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                   focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <!-- Budget -->
         <Input
-          v-model.number="form.budget"
-          label="Budget *"
-          type="number"
-          step="0.01"
-          min="0.01"
-          placeholder="0.00"
+          v-model="form.end_date"
+          label="Data Fine *"
+          type="date"
           required
         />
+      </div>
 
-        <!-- Dates -->
-        <div class="grid grid-cols-2 gap-4">
-          <Input
-            v-model="form.start_date"
-            label="Data Inizio *"
-            type="date"
-            required
-          />
-          <Input
-            v-model="form.end_date"
-            label="Data Fine *"
-            type="date"
-            required
-          />
-        </div>
+      <!-- Status -->
+      <div>
+        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+          Status *
+        </label>
+        <select
+          v-model="form.status"
+          required
+          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="planned">Pianificato</option>
+          <option value="active">In Corso</option>
+          <option value="completed">Completato</option>
+          <option value="cancelled">Annullato</option>
+        </select>
+      </div>
 
-        <!-- Status -->
-        <div>
-          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-            Status *
-          </label>
-          <select
-            v-model="form.status"
-            required
-            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+      <!-- Share with household members -->
+      <div v-if="otherMembers.length > 0" class="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Condividi con
+        </label>
+        <div class="space-y-2">
+          <label
+            v-for="member in otherMembers"
+            :key="member.id"
+            class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
           >
-            <option value="planned">Pianificato</option>
-            <option value="active">In Corso</option>
-            <option value="completed">Completato</option>
-            <option value="cancelled">Annullato</option>
-          </select>
-        </div>
-
-        <!-- Share with household members -->
-        <div v-if="otherMembers.length > 0" class="border-t border-gray-200 dark:border-gray-700 pt-4">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Condividi con
+            <input
+              type="checkbox"
+              :value="member.user_id"
+              v-model="form.shared_with_user_ids"
+              :disabled="!member.user_id"
+              class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            />
+            <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-xs font-medium text-purple-700 dark:text-purple-300">
+              {{ getInitials(member.name) }}
+            </div>
+            <span class="text-sm text-gray-900 dark:text-white">{{ member.name }}</span>
+            <span v-if="!member.user_id" class="text-xs text-gray-400">(virtuale, non condivisibile)</span>
           </label>
-          <div class="space-y-2">
-            <label
-              v-for="member in otherMembers"
-              :key="member.id"
-              class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                :value="member.user_id"
-                v-model="form.shared_with_user_ids"
-                :disabled="!member.user_id"
-                class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-              />
-              <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-xs font-medium text-purple-700 dark:text-purple-300">
-                {{ getInitials(member.name) }}
-              </div>
-              <span class="text-sm text-gray-900 dark:text-white">{{ member.name }}</span>
-              <span v-if="!member.user_id" class="text-xs text-gray-400">(virtuale, non condivisibile)</span>
-            </label>
-          </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            I membri condivisi potranno vedere il progetto e aggiungere spese ad esso.
-          </p>
         </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+          I membri condivisi potranno vedere il progetto e aggiungere spese ad esso.
+        </p>
+      </div>
 
-        <!-- Error -->
-        <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
-          {{ error }}
-        </div>
+      <!-- Error -->
+      <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+        {{ error }}
+      </div>
 
-        <!-- Actions -->
-        <div class="flex gap-3 pt-4">
-          <Button type="button" variant="secondary" @click="$emit('close')" class="flex-1">
-            Annulla
-          </Button>
-          <Button type="submit" :disabled="loading" class="flex-1">
-            {{ loading ? 'Creazione...' : 'Crea Progetto' }}
-          </Button>
-        </div>
-      </form>
-    </Card>
-  </div>
+      <!-- Actions -->
+      <div class="flex gap-3 pt-2">
+        <Button type="button" variant="secondary" @click="$emit('close')" class="flex-1">
+          Annulla
+        </Button>
+        <Button type="submit" :disabled="loading" class="flex-1">
+          {{ loading ? 'Creazione...' : 'Crea Progetto' }}
+        </Button>
+      </div>
+    </form>
+  </BaseModal>
 </template>
 
 <script setup>
@@ -158,7 +148,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/client'
-import Card from '@/components/common/Card.vue'
+import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 
@@ -185,7 +175,6 @@ const form = ref({
 
 const icons = ['🏗️', '🔨', '🎨', '🛠️', '🏠', '🚪', '🪟', '💡', '🔌', '🚿', '🛏️', '🍽️', '🌳', '🏊', '🎉', '💍', '✈️', '🎓']
 
-// Only other real (non-virtual) members that have a user account
 const otherMembers = computed(() =>
   householdMembers.value.filter(m => m.user_id && m.user_id !== authStore.user?.id)
 )

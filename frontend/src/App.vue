@@ -11,7 +11,11 @@
 
     <Navbar v-if="authStore.isAuthenticated" />
 
-    <main id="main-content" :class="authStore.isAuthenticated ? 'max-w-7xl mx-auto p-6' : ''" tabindex="-1">
+    <main
+      id="main-content"
+      :class="authStore.isAuthenticated ? 'max-w-7xl mx-auto p-6 pb-24 md:pb-6' : ''"
+      tabindex="-1"
+    >
       <router-view v-slot="{ Component }">
         <Transition name="page" mode="out-in">
           <component :is="Component" />
@@ -20,6 +24,7 @@
     </main>
 
     <Toast />
+    <ConfirmDialog />
   </div>
 </template>
 
@@ -29,6 +34,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import Navbar from '@/components/layout/Navbar.vue'
 import Toast from '@/components/common/Toast.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()

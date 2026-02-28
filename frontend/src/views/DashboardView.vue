@@ -343,6 +343,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { categoriesAPI, projectsAPI } from '@/api/client'
 import { formatDate as _formatDate } from '@/utils/dateFormatter'
+import { useConfirm } from '@/composables/useConfirm'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import BarChart from '@/components/charts/BarChart.vue'
@@ -354,6 +355,7 @@ import EditExpenseModal from '@/components/expenses/EditExpenseModal.vue'
 const expensesStore = useExpensesStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
+const { confirm } = useConfirm()
 
 const showAddExpense = ref(false)
 const showEditExpense = ref(false)
@@ -562,11 +564,17 @@ function onExpenseUpdated() {
 }
 
 async function deleteExpenseConfirm(id) {
-  if (confirm('Sei sicuro di voler eliminare questa spesa?')) {
+  const ok = await confirm({
+    title: 'Elimina spesa',
+    message: 'Sei sicuro di voler eliminare questa spesa?',
+    confirmText: 'Elimina',
+    variant: 'danger'
+  })
+  if (ok) {
     try {
       await expensesStore.deleteExpense(id)
     } catch (err) {
-      alert('Errore eliminazione: ' + err.message)
+      window.$toast?.error('Errore eliminazione: ' + (err.response?.data?.error || err.message))
     }
   }
 }

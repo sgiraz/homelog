@@ -1,26 +1,128 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
+    <!-- Header -->
     <div class="flex items-center justify-between">
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Tutte le Spese</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Spese</h1>
       <Button @click="showAddExpense = true">
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        Aggiungi Spesa
+        <span class="hidden sm:inline">Aggiungi Spesa</span>
       </Button>
     </div>
 
-    <!-- Filtri e Ricerca -->
+    <!-- Filtri -->
     <Card class="p-4">
-      <div class="space-y-3">
-        <!-- Search bar -->
+      <!-- Mobile: filtri collassabili -->
+      <div class="sm:hidden">
+        <div class="flex items-center justify-between">
+          <button
+            @click="filtersOpen = !filtersOpen"
+            class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+            :aria-expanded="filtersOpen"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+            </svg>
+            Filtri
+            <span
+              v-if="activeFiltersCount > 0"
+              class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full"
+            >
+              {{ activeFiltersCount }}
+            </span>
+          </button>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              {{ expensesStore.total > 0 ? `${expensesStore.expenses.length} / ${expensesStore.total}` : '' }}
+            </span>
+            <Button v-if="hasActiveFilters" @click="resetFilters" variant="secondary" size="sm">
+              Reset
+            </Button>
+          </div>
+        </div>
+
+        <!-- Collapsible filter panel (mobile) -->
+        <Transition name="filter-expand">
+          <div v-if="filtersOpen" class="mt-3 space-y-3 border-t border-gray-100 dark:border-gray-700 pt-3">
+            <!-- Search -->
+            <div class="relative">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" />
+              </svg>
+              <input
+                v-model="filters.search"
+                @input="onFiltersChanged"
+                type="search"
+                placeholder="Cerca..."
+                class="w-full pl-9 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <select
+                v-model="filters.categoryId"
+                @change="onFiltersChanged"
+                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Tutte categorie</option>
+                <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ cat.name }}</option>
+              </select>
+              <select
+                v-model="filters.projectId"
+                @change="onFiltersChanged"
+                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Tutti progetti</option>
+                <option v-for="proj in projects" :key="proj.id" :value="proj.id">{{ proj.icon }} {{ proj.name }}</option>
+              </select>
+              <input
+                v-model="filters.from"
+                @change="onFiltersChanged"
+                type="date"
+                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                v-model="filters.to"
+                @change="onFiltersChanged"
+                type="date"
+                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <select
+              v-model="sortOption"
+              class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="date_desc">Data ↓</option>
+              <option value="date_asc">Data ↑</option>
+              <option value="amount_desc">Importo ↓</option>
+              <option value="amount_asc">Importo ↑</option>
+              <option value="desc_asc">Descrizione A-Z</option>
+            </select>
+          </div>
+        </Transition>
+      </div>
+
+      <!-- Desktop: filtri sempre visibili in riga -->
+      <div class="hidden sm:block space-y-3">
         <div class="relative">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" />
           </svg>
           <input
             v-model="filters.search"
-            @input="applyFilters"
+            @input="onFiltersChanged"
             type="text"
             placeholder="Cerca per descrizione..."
             class="w-full pl-9 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
@@ -29,21 +131,18 @@
           />
         </div>
 
-        <!-- Filter row -->
         <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-2">
             <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Categoria:</label>
             <select
               v-model="filters.categoryId"
-              @change="applyFilters"
+              @change="onFiltersChanged"
               class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Tutte</option>
-              <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-                {{ cat.icon }} {{ cat.name }}
-              </option>
+              <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ cat.name }}</option>
             </select>
           </div>
 
@@ -51,15 +150,13 @@
             <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Progetto:</label>
             <select
               v-model="filters.projectId"
-              @change="applyFilters"
+              @change="onFiltersChanged"
               class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Tutti</option>
-              <option v-for="proj in projects" :key="proj.id" :value="proj.id">
-                {{ proj.icon }} {{ proj.name }}
-              </option>
+              <option v-for="proj in projects" :key="proj.id" :value="proj.id">{{ proj.icon }} {{ proj.name }}</option>
             </select>
           </div>
 
@@ -67,7 +164,7 @@
             <label class="text-sm text-gray-600 dark:text-gray-400">Da:</label>
             <input
               v-model="filters.from"
-              @change="applyFilters"
+              @change="onFiltersChanged"
               type="date"
               class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
@@ -79,7 +176,7 @@
             <label class="text-sm text-gray-600 dark:text-gray-400">A:</label>
             <input
               v-model="filters.to"
-              @change="applyFilters"
+              @change="onFiltersChanged"
               type="date"
               class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
@@ -87,7 +184,6 @@
             />
           </div>
 
-          <!-- Sort -->
           <div class="flex items-center gap-2 ml-auto">
             <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Ordina:</label>
             <select
@@ -104,22 +200,23 @@
             </select>
           </div>
 
-          <Button v-if="hasActiveFilters" @click="resetFilters" variant="secondary" class="text-sm">
+          <Button v-if="hasActiveFilters" @click="resetFilters" variant="secondary" size="sm" class="text-sm">
             Reset
           </Button>
         </div>
 
-        <!-- Active filter summary -->
-        <div v-if="hasActiveFilters" class="text-xs text-gray-500 dark:text-gray-400">
-          {{ expensesStore.expenses.length }} risultati
+        <div v-if="hasActiveFilters || expensesStore.total > 0" class="text-xs text-gray-500 dark:text-gray-400">
+          {{ expensesStore.expenses.length }} mostrate
+          <span v-if="expensesStore.total > 0"> di {{ expensesStore.total }}</span>
           <span v-if="filters.projectId"> · Progetto: {{ selectedProjectName }}</span>
           <span v-if="filters.categoryId"> · Categoria: {{ selectedCategoryName }}</span>
         </div>
       </div>
     </Card>
 
-    <Card class="p-6">
-      <div v-if="expensesStore.loading" class="text-center py-8 text-gray-600 dark:text-gray-400">
+    <!-- Lista spese -->
+    <Card class="p-4 sm:p-6">
+      <div v-if="expensesStore.loading && expensesStore.expenses.length === 0" class="text-center py-8 text-gray-600 dark:text-gray-400">
         Caricamento...
       </div>
 
@@ -132,10 +229,10 @@
         <div
           v-for="expense in sortedExpenses"
           :key="expense.id"
-          class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg
+          class="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg
                  hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
         >
-          <div class="flex items-start justify-between">
+          <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-medium text-gray-900 dark:text-white truncate">
@@ -182,37 +279,59 @@
                 </span>
               </div>
             </div>
-            <div class="text-right ml-4">
+            <div class="text-right shrink-0">
               <div class="text-xl font-bold text-blue-600 dark:text-blue-400">
                 {{ formatCurrency(expense.amount) }}
               </div>
               <div v-if="expense.is_split && expense.splits?.length" class="text-xs text-gray-500 dark:text-gray-400">
                 ({{ formatCurrency(expense.splits[0]?.amount || 0) }} a testa)
               </div>
-              <!-- Bill-linked indicator -->
-              <div v-if="expense.bill_id" class="text-xs text-orange-600 dark:text-orange-400 mt-1 text-right">
+              <div v-if="expense.bill_id" class="text-xs text-orange-600 dark:text-orange-400 mt-1">
                 Da bolletta
               </div>
-              <!-- Actions: only visible to the creator, not for bill-linked or fully-settled expenses -->
+              <!-- Actions: on mobile always visible, on desktop hover -->
               <div
                 v-if="isOwner(expense) && !expense.bill_id && !(expense.is_split && isExpenseSettled(expense))"
-                class="flex gap-2 justify-end mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                class="flex gap-1 justify-end mt-1 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
               >
                 <button
                   @click="editExpense(expense)"
-                  class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                  class="p-1.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                  aria-label="Modifica spesa"
                 >
-                  Modifica
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
                 </button>
                 <button
                   @click="deleteExpenseConfirm(expense.id)"
-                  class="text-sm text-red-600 hover:text-red-700 dark:text-red-400"
+                  class="p-1.5 text-red-600 hover:text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                  aria-label="Elimina spesa"
                 >
-                  Elimina
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
                 </button>
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Load More -->
+        <div v-if="expensesStore.hasMore" class="pt-2 text-center">
+          <Button
+            @click="loadMore"
+            variant="secondary"
+            :disabled="expensesStore.loading"
+          >
+            <span v-if="expensesStore.loading">Caricamento...</span>
+            <span v-else>Carica altri</span>
+          </Button>
+        </div>
+
+        <!-- End of list indicator -->
+        <div v-else-if="expensesStore.expenses.length > 0 && expensesStore.total > 0" class="pt-2 text-center text-xs text-gray-400 dark:text-gray-500">
+          Tutte le {{ expensesStore.total }} spese mostrate
         </div>
       </div>
     </Card>
@@ -237,6 +356,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
+import { useConfirm } from '@/composables/useConfirm'
 import { formatDate as _formatDate } from '@/utils/dateFormatter'
 import { categoriesAPI, projectsAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
@@ -247,12 +367,14 @@ import EditExpenseModal from '@/components/expenses/EditExpenseModal.vue'
 const expensesStore = useExpensesStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
+const { confirm } = useConfirm()
 
 const showAddExpense = ref(false)
 const showEditExpense = ref(false)
 const editingExpense = ref(null)
 const categories = ref([])
 const projects = ref([])
+const filtersOpen = ref(false)
 
 const filters = ref({
   search: '',
@@ -263,6 +385,9 @@ const filters = ref({
 })
 
 const sortOption = ref('date_desc')
+
+// Current filters snapshot for "load more"
+const currentFilters = ref({})
 
 const sortedExpenses = computed(() => {
   const list = [...expensesStore.expenses]
@@ -287,6 +412,16 @@ const hasActiveFilters = computed(() =>
   filters.value.from || filters.value.to
 )
 
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (filters.value.search) count++
+  if (filters.value.categoryId) count++
+  if (filters.value.projectId) count++
+  if (filters.value.from) count++
+  if (filters.value.to) count++
+  return count
+})
+
 const selectedCategoryName = computed(() => {
   const cat = categories.value.find(c => c.id === filters.value.categoryId)
   return cat ? `${cat.icon} ${cat.name}` : ''
@@ -297,19 +432,34 @@ const selectedProjectName = computed(() => {
   return proj ? `${proj.icon || ''} ${proj.name}` : ''
 })
 
-function applyFilters() {
+function buildParams() {
   const params = {}
   if (filters.value.search) params.search = filters.value.search
   if (filters.value.categoryId) params.category_id = filters.value.categoryId
   if (filters.value.projectId) params.project_id = filters.value.projectId
   if (filters.value.from) params.from = filters.value.from
   if (filters.value.to) params.to = filters.value.to
-  expensesStore.fetchExpenses(params)
+  return params
+}
+
+function onFiltersChanged() {
+  const params = buildParams()
+  currentFilters.value = params
+  expensesStore.fetchExpenses(params, { page: 1 })
+}
+
+function applyFilters() {
+  onFiltersChanged()
 }
 
 function resetFilters() {
   filters.value = { search: '', categoryId: '', projectId: '', from: '', to: '' }
-  expensesStore.fetchExpenses()
+  currentFilters.value = {}
+  expensesStore.fetchExpenses({}, { page: 1 })
+}
+
+async function loadMore() {
+  await expensesStore.fetchMore(currentFilters.value)
 }
 
 function formatCurrency(value) {
@@ -354,11 +504,17 @@ function onExpenseUpdated() {
 }
 
 async function deleteExpenseConfirm(id) {
-  if (confirm('Sei sicuro di voler eliminare questa spesa?')) {
+  const ok = await confirm({
+    title: 'Elimina spesa',
+    message: 'Sei sicuro di voler eliminare questa spesa?',
+    confirmText: 'Elimina',
+    variant: 'danger'
+  })
+  if (ok) {
     try {
       await expensesStore.deleteExpense(id)
     } catch (err) {
-      alert('Errore eliminazione: ' + (err.response?.data?.error || err.message))
+      window.$toast?.error('Errore eliminazione: ' + (err.response?.data?.error || err.message))
     }
   }
 }
@@ -378,6 +534,20 @@ async function fetchFiltersData() {
 
 onMounted(() => {
   fetchFiltersData()
-  expensesStore.fetchExpenses()
+  expensesStore.fetchExpenses({}, { page: 1 })
 })
 </script>
+
+<style scoped>
+.filter-expand-enter-active,
+.filter-expand-leave-active {
+  transition: opacity 0.2s ease, max-height 0.25s ease;
+  overflow: hidden;
+  max-height: 500px;
+}
+.filter-expand-enter-from,
+.filter-expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+</style>
