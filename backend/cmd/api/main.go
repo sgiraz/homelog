@@ -215,6 +215,14 @@ func main() {
 				settlements.GET("/:id", settlementHandler.Get)
 				settlements.DELETE("/:id", settlementHandler.Delete)
 			}
+
+			// Export / Import
+			exportHandler := handlers.NewExportHandler(db)
+			protected.GET("/export/all", exportHandler.ExportAll)
+			protected.GET("/export/expenses", exportHandler.ExportExpenses)
+			protected.GET("/export/utilities", exportHandler.ExportUtilities)
+			protected.GET("/export/projects", exportHandler.ExportProjects)
+			protected.POST("/import", exportHandler.ImportData)
 		}
 	}
 

@@ -170,6 +170,14 @@ export const projectsAPI = {
   delete: (id) => apiClient.delete(`/projects/${id}`),
 }
 
+export const exportAPI = {
+  exportAll: () => apiClient.get('/export/all', { responseType: 'blob' }),
+  exportExpenses: () => apiClient.get('/export/expenses', { responseType: 'blob' }),
+  exportUtilities: () => apiClient.get('/export/utilities', { responseType: 'blob' }),
+  exportProjects: () => apiClient.get('/export/projects', { responseType: 'blob' }),
+  importData: (data) => apiClient.post('/import', data),
+}
+
 export const pdfAPI = {
   extractText: (file) => {
     const formData = new FormData()
