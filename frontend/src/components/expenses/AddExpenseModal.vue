@@ -45,6 +45,7 @@
           </label>
           <select
             v-model.number="form.category_id"
+            @change="form.subcategory_id = null"
             required
             class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -57,6 +58,28 @@
               :value="cat.id"
             >
               {{ cat.icon }} {{ cat.name }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Subcategory (shown only when selected category has subcategories) -->
+        <div v-if="selectedCategorySubcategories.length > 0">
+          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+            Sottocategoria (opzionale)
+          </label>
+          <select
+            v-model.number="form.subcategory_id"
+            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option :value="null">Nessuna sottocategoria</option>
+            <option
+              v-for="sub in selectedCategorySubcategories"
+              :key="sub.id"
+              :value="sub.id"
+            >
+              {{ sub.name }}
             </option>
           </select>
         </div>
@@ -197,6 +220,7 @@ import Card from '@/components/common/Card.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 
+
 const emit = defineEmits(['close', 'created'])
 const expensesStore = useExpensesStore()
 const authStore = useAuthStore()
@@ -217,6 +241,7 @@ const form = ref({
   amount: null,
   description: '',
   category_id: 1,
+  subcategory_id: null,
   date: new Date().toISOString().split('T')[0],
   paid_by_member_id: null, // Will be set by fetchHouseholdMembers()
   is_split: false,
@@ -227,6 +252,12 @@ const form = ref({
 
 // Computed
 const hasMultipleUsers = computed(() => householdUsers.value.length > 1)
+
+const selectedCategorySubcategories = computed(() => {
+  if (!form.value.category_id) return []
+  const cat = categories.value.find(c => c.id === form.value.category_id)
+  return cat?.subcategories || []
+})
 
 const otherUsers = computed(() => {
   return householdUsers.value.filter(u => u.id !== form.value.paid_by_member_id)
@@ -342,6 +373,22 @@ watch(() => form.value.paid_by_member_id, () => {
   form.value.split_with_member_ids = []
 })
 
+// Watch for project selection — pre-populate split from project shared members
+watch(() => form.value.project_id, (newProjectId) => {
+  if (!newProjectId) return
+  const project = activeProjects.value.find(p => p.id === newProjectId)
+  if (project?.shared_with?.length > 0) {
+    const sharedUserIds = project.shared_with.map(u => u.id)
+    const matchingMemberIds = householdUsers.value
+      .filter(m => m.user_id && sharedUserIds.includes(m.user_id) && m.id !== form.value.paid_by_member_id)
+      .map(m => m.id)
+    if (matchingMemberIds.length > 0) {
+      form.value.is_split = true
+      form.value.split_with_member_ids = matchingMemberIds
+    }
+  }
+})
+
 async function handleSubmit() {
   loading.value = true
   error.value = null
@@ -351,6 +398,7 @@ async function handleSubmit() {
       amount: parseFloat(form.value.amount),
       description: form.value.description,
       category_id: form.value.category_id,
+      subcategory_id: form.value.subcategory_id || undefined,
       date: form.value.date,
       property_id: form.value.property_id,
       project_id: form.value.project_id,

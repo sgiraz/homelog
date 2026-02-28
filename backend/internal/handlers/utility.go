@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -634,6 +635,13 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 	// Load utility + user reading relations
 	h.db.Preload("Utility").Preload("UserReading").First(&bill, bill.ID)
 
+	// Auto-create expense if bill is already marked as paid on creation
+	if input.IsPaid {
+		if err := h.autoCreateExpenseFromBill(c, userID, &bill); err != nil {
+			log.Printf("⚠️  Failed to auto-create expense for bill %d: %v", bill.ID, err)
+		}
+	}
+
 	c.JSON(http.StatusCreated, bill)
 }
 
@@ -726,6 +734,8 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 		return
 	}
 
+	wasAlreadyPaid := bill.IsPaid
+
 	if input.IsPaid != nil {
 		bill.IsPaid = *input.IsPaid
 	}
@@ -738,7 +748,153 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 		return
 	}
 
+	// Auto-create expense when a bill is marked as paid for the first time
+	if bill.IsPaid && !wasAlreadyPaid {
+		if err := h.autoCreateExpenseFromBill(c, userID, &bill); err != nil {
+			// Log but don't fail the request — bill payment already saved
+			log.Printf("⚠️  Failed to auto-create expense for bill %d: %v", bill.ID, err)
+		}
+	}
+
+	// Auto-delete linked expense when a bill is marked as unpaid
+	if wasAlreadyPaid && !bill.IsPaid {
+		bid := uint(billID)
+		var linkedExpense models.Expense
+		if err := h.db.Where("bill_id = ?", bid).First(&linkedExpense).Error; err == nil {
+			h.db.Where("expense_id = ?", linkedExpense.ID).Delete(&models.ExpenseSplit{})
+			h.db.Delete(&linkedExpense)
+			log.Printf("🗑️  Auto-deleted expense ID=%d linked to bill ID=%d (bill marked unpaid)", linkedExpense.ID, bid)
+		}
+	}
+
 	c.JSON(http.StatusOK, bill)
+}
+
+// autoCreateExpenseFromBill creates an expense automatically when a bill is marked as paid.
+// Split logic: uses the paying user's default_split_with_member_ids setting.
+// If no default split configured, expense is created without split.
+// All split members (payer included) get is_settled=false.
+func (h *UtilityHandler) autoCreateExpenseFromBill(c *gin.Context, userID uint, bill *models.Bill) error {
+	// Load utility
+	var utility models.Utility
+	if err := h.db.First(&utility, bill.UtilityID).Error; err != nil {
+		return fmt.Errorf("could not load utility: %w", err)
+	}
+
+	// Find current user's member for the utility's property
+	var member models.HouseholdMember
+	if err := h.db.Where("property_id = ? AND user_id = ?", utility.PropertyID, userID).
+		First(&member).Error; err != nil {
+		return fmt.Errorf("user has no member profile for property %d: %w", utility.PropertyID, err)
+	}
+
+	// Find the "Casa" category
+	var casaCategory models.Category
+	if err := h.db.Where("name = ? AND is_default = true", "Casa").First(&casaCategory).Error; err != nil {
+		return fmt.Errorf("could not find 'Casa' category: %w", err)
+	}
+
+	// Find the "Utenze" subcategory under Casa
+	var utenzeSubcat models.Subcategory
+	_ = h.db.Where("category_id = ? AND name = ?", casaCategory.ID, "Utenze").First(&utenzeSubcat)
+
+	// Build description: "Bolletta Luce - Mar 2025"
+	typeNames := map[string]string{
+		"electricity": "Luce",
+		"gas":         "Gas",
+		"water":       "Acqua",
+		"waste":       "Rifiuti",
+	}
+	italianMonths := []string{"Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"}
+	typeName := typeNames[utility.Type]
+	if typeName == "" {
+		typeName = utility.Type
+	}
+	month := italianMonths[bill.PeriodEnd.Month()-1]
+	year := bill.PeriodEnd.Year()
+	description := fmt.Sprintf("Bolletta %s - %s %d", typeName, month, year)
+
+	// Payment date: use bill's paid_date or today
+	expenseDate := time.Now()
+	if bill.PaidDate != nil {
+		expenseDate = *bill.PaidDate
+	}
+
+	// Subcategory ID (optional)
+	var subcatID *uint
+	if utenzeSubcat.ID != 0 {
+		id := utenzeSubcat.ID
+		subcatID = &id
+	}
+
+	// Check household split mode
+	var householdSettings models.HouseholdSettings
+	splitMode := false
+	if err := h.db.Where("property_id = ?", utility.PropertyID).First(&householdSettings).Error; err == nil {
+		splitMode = householdSettings.SplitMode
+	}
+
+	// Determine split members from the payer's user settings (default_split_with_member_ids)
+	var splitMemberIDs []uint
+	isSplit := false
+	if splitMode {
+		var userSettings models.UserSettings
+		if err := h.db.Where("user_id = ?", userID).First(&userSettings).Error; err == nil {
+			if userSettings.DefaultSplitWithMemberIDs != "" {
+				if jsonErr := json.Unmarshal([]byte(userSettings.DefaultSplitWithMemberIDs), &splitMemberIDs); jsonErr != nil {
+					splitMemberIDs = nil
+				}
+			}
+		}
+		if len(splitMemberIDs) > 0 {
+			isSplit = true
+		}
+	}
+
+	billID := bill.ID
+	propID := utility.PropertyID
+	expense := models.Expense{
+		UserID:         userID,
+		PropertyID:     &propID,
+		CategoryID:     casaCategory.ID,
+		SubcategoryID:  subcatID,
+		BillID:         &billID,
+		Amount:         bill.AmountTotal,
+		Date:           expenseDate,
+		Description:    description,
+		PaidByMemberID: member.ID,
+		IsSplit:        isSplit,
+	}
+
+	if err := h.db.Create(&expense).Error; err != nil {
+		return fmt.Errorf("could not create expense: %w", err)
+	}
+
+	// Create split records: payer + default split members, all is_settled=false
+	if isSplit {
+		// Build full member list: payer + split-with members (dedup)
+		allMemberIDs := make([]uint, 0, len(splitMemberIDs)+1)
+		allMemberIDs = append(allMemberIDs, member.ID)
+		for _, mid := range splitMemberIDs {
+			if mid != member.ID {
+				allMemberIDs = append(allMemberIDs, mid)
+			}
+		}
+		splitAmount := bill.AmountTotal / float64(len(allMemberIDs))
+		for _, mid := range allMemberIDs {
+			split := models.ExpenseSplit{
+				ExpenseID: expense.ID,
+				MemberID:  mid,
+				Amount:    splitAmount,
+				IsSettled: false,
+			}
+			h.db.Create(&split)
+		}
+		log.Printf("✅ Auto-created expense ID=%d '%s' €%.2f for bill ID=%d (split among %d members)", expense.ID, description, expense.Amount, bill.ID, len(allMemberIDs))
+	} else {
+		log.Printf("✅ Auto-created expense ID=%d '%s' €%.2f for bill ID=%d (no split)", expense.ID, description, expense.Amount, bill.ID)
+	}
+	return nil
 }
 
 // DeleteBill removes a bill
@@ -784,6 +940,17 @@ func (h *UtilityHandler) DeleteBill(c *gin.Context) {
 	if err := h.db.Delete(&bill).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete bill"})
 		return
+	}
+
+	// Delete auto-created expense linked to this bill (if any)
+	bid := uint(billID)
+	var linkedExpense models.Expense
+	if err := h.db.Where("bill_id = ?", bid).First(&linkedExpense).Error; err == nil {
+		// Delete splits first
+		h.db.Where("expense_id = ?", linkedExpense.ID).Delete(&models.ExpenseSplit{})
+		// Delete expense
+		h.db.Delete(&linkedExpense)
+		log.Printf("🗑️  Deleted auto-expense ID=%d linked to bill ID=%d", linkedExpense.ID, billID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Bill deleted successfully"})

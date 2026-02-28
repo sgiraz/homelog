@@ -66,13 +66,18 @@
             </div>
           </div>
 
-          <!-- Status Badge -->
-          <span :class="[
-            'px-2 py-1 text-xs rounded-full font-medium',
-            getStatusColor(project.status)
-          ]">
-            {{ getStatusLabel(project.status) }}
-          </span>
+            <!-- Status + Shared badges -->
+          <div class="flex flex-col items-end gap-1">
+            <span :class="[
+              'px-2 py-1 text-xs rounded-full font-medium',
+              getStatusColor(project.status)
+            ]">
+              {{ getStatusLabel(project.status) }}
+            </span>
+            <span v-if="!isOwner(project)" class="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-medium">
+              Condiviso
+            </span>
+          </div>
         </div>
 
         <!-- Description -->
@@ -118,13 +123,29 @@
         </div>
 
         <!-- Footer Stats -->
-        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between text-sm">
+        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center text-sm">
           <span class="text-gray-600 dark:text-gray-400">
             {{ project.stats?.expense_count || 0 }} spese
           </span>
-          <span v-if="isOverdue(project)" class="text-red-600 font-medium">
-            Scaduto
-          </span>
+          <div class="flex items-center gap-2">
+            <!-- Shared member avatars -->
+            <div v-if="project.shared_with?.length > 0" class="flex -space-x-1">
+              <div
+                v-for="user in project.shared_with.slice(0, 3)"
+                :key="user.id"
+                class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900 border-2 border-white dark:border-gray-800 flex items-center justify-center text-xs font-medium text-purple-700 dark:text-purple-300"
+                :title="user.name"
+              >
+                {{ user.name?.[0]?.toUpperCase() }}
+              </div>
+              <div v-if="project.shared_with.length > 3" class="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600 border-2 border-white dark:border-gray-800 flex items-center justify-center text-xs text-gray-600 dark:text-gray-300">
+                +{{ project.shared_with.length - 3 }}
+              </div>
+            </div>
+            <span v-if="isOverdue(project)" class="text-red-600 font-medium">
+              Scaduto
+            </span>
+          </div>
         </div>
       </Card>
     </div>
@@ -150,6 +171,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useProjectsStore } from '@/stores/projects'
+import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -157,6 +179,11 @@ import AddProjectModal from '@/components/projects/AddProjectModal.vue'
 import ProjectDetailModal from '@/components/projects/ProjectDetailModal.vue'
 
 const projectsStore = useProjectsStore()
+const authStore = useAuthStore()
+
+function isOwner(project) {
+  return project.user_id === authStore.user?.id
+}
 const showAddModal = ref(false)
 const selectedProject = ref(null)
 const selectedStatus = ref('')

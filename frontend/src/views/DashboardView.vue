@@ -159,6 +159,22 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <label class="text-sm text-gray-600 dark:text-gray-400">Progetto:</label>
+          <select
+            v-model="filters.projectId"
+            @change="applyFilters"
+            class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Tutti</option>
+            <option v-for="proj in projects" :key="proj.id" :value="proj.id">
+              {{ proj.icon }} {{ proj.name }}
+            </option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2">
           <label class="text-sm text-gray-600 dark:text-gray-400">Da:</label>
           <input
             v-model="filters.from"
@@ -275,9 +291,16 @@
               <div v-if="expense.is_split && expense.splits?.length" class="text-xs text-gray-500 dark:text-gray-400">
                 ({{ formatCurrency(expense.splits[0]?.amount || 0) }} a testa)
               </div>
-              <div class="flex gap-2 justify-end mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <!-- Bill-linked indicator -->
+              <div v-if="expense.bill_id" class="text-xs text-orange-600 dark:text-orange-400 mt-1 text-right">
+                Da bolletta
+              </div>
+              <!-- Actions: only visible to the creator, not for bill-linked or fully-settled expenses -->
+              <div
+                v-if="isOwner(expense) && !expense.bill_id && !(expense.is_split && isExpenseSettled(expense))"
+                class="flex gap-2 justify-end mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
                 <button
-                  v-if="canEditExpense(expense)"
                   @click="editExpense(expense)"
                   class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
                 >
@@ -316,8 +339,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
+import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
-import { categoriesAPI } from '@/api/client'
+import { categoriesAPI, projectsAPI } from '@/api/client'
 import { formatDate as _formatDate } from '@/utils/dateFormatter'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -328,6 +352,7 @@ import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditExpenseModal from '@/components/expenses/EditExpenseModal.vue'
 
 const expensesStore = useExpensesStore()
+const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 
 const showAddExpense = ref(false)
@@ -335,8 +360,10 @@ const showEditExpense = ref(false)
 const editingExpense = ref(null)
 const trendChartType = ref('line')
 const categories = ref([])
+const projects = ref([])
 const filters = ref({
   categoryId: '',
+  projectId: '',
   from: '',
   to: ''
 })
@@ -369,7 +396,7 @@ const dailyAverage = computed(() => {
 })
 
 const hasFilters = computed(() => {
-  return filters.value.categoryId || filters.value.from || filters.value.to
+  return filters.value.categoryId || filters.value.projectId || filters.value.from || filters.value.to
 })
 
 // Chart data
@@ -415,16 +442,20 @@ const monthlyData = computed(() => {
 
   expensesStore.expenses.forEach(e => {
     const date = new Date(e.date)
-    const key = `${monthNames[date.getMonth()]} ${date.getFullYear()}`
-    months[key] = (months[key] || 0) + e.amount
+    // Use YYYY-MM as sort key for correct chronological ordering
+    const sortKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    const displayLabel = `${monthNames[date.getMonth()]} ${date.getFullYear()}`
+    if (!months[sortKey]) months[sortKey] = { label: displayLabel, amount: 0 }
+    months[sortKey].amount += e.amount
   })
 
   return months
 })
 
 const monthlyChartData = computed(() => {
-  const labels = Object.keys(monthlyData.value).slice(-6) // Last 6 months
-  const data = labels.map(l => monthlyData.value[l])
+  const sortedKeys = Object.keys(monthlyData.value).sort().slice(-6)
+  const labels = sortedKeys.map(k => monthlyData.value[k].label)
+  const data = sortedKeys.map(k => monthlyData.value[k].amount)
 
   return {
     labels,
@@ -438,8 +469,9 @@ const monthlyChartData = computed(() => {
 })
 
 const monthlyLineChartData = computed(() => {
-  const labels = Object.keys(monthlyData.value).slice(-6)
-  const data = labels.map(l => monthlyData.value[l])
+  const sortedKeys = Object.keys(monthlyData.value).sort().slice(-6)
+  const labels = sortedKeys.map(k => monthlyData.value[k].label)
+  const data = sortedKeys.map(k => monthlyData.value[k].amount)
 
   return {
     labels,
@@ -457,12 +489,16 @@ const monthlyLineChartData = computed(() => {
 })
 
 // Methods
-async function fetchCategories() {
+async function fetchFiltersData() {
   try {
-    const { data } = await categoriesAPI.list()
-    categories.value = data
+    const [catRes, projRes] = await Promise.all([
+      categoriesAPI.list(),
+      projectsAPI.list()
+    ])
+    categories.value = catRes.data || []
+    projects.value = projRes.data?.projects || projRes.data || []
   } catch (err) {
-    console.error('Error fetching categories:', err)
+    console.error('Error fetching filter data:', err)
   }
 }
 
@@ -480,6 +516,7 @@ function formatDate(dateStr) {
 function applyFilters() {
   const params = {}
   if (filters.value.categoryId) params.category_id = filters.value.categoryId
+  if (filters.value.projectId) params.project_id = filters.value.projectId
   if (filters.value.from) params.from = filters.value.from
   if (filters.value.to) params.to = filters.value.to
 
@@ -487,19 +524,17 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  filters.value = { categoryId: '', from: '', to: '' }
+  filters.value = { categoryId: '', projectId: '', from: '', to: '' }
   expensesStore.fetchExpenses()
+}
+
+function isOwner(expense) {
+  return expense.user_id === authStore.user?.id
 }
 
 function isExpenseSettled(expense) {
   if (!expense.is_split || !expense.splits || expense.splits.length === 0) return true
   return expense.splits.every(s => s.is_settled)
-}
-
-function canEditExpense(expense) {
-  if (!expense.is_split) return true
-  if (!expense.splits || expense.splits.length === 0) return true
-  return !expense.splits.some(s => s.is_settled)
 }
 
 function getSplitPartners(expense) {
@@ -517,13 +552,13 @@ function editExpense(expense) {
 
 function onExpenseCreated() {
   showAddExpense.value = false
-  expensesStore.fetchExpenses()
+  applyFilters()
 }
 
 function onExpenseUpdated() {
   showEditExpense.value = false
   editingExpense.value = null
-  expensesStore.fetchExpenses()
+  applyFilters()
 }
 
 async function deleteExpenseConfirm(id) {
@@ -537,7 +572,7 @@ async function deleteExpenseConfirm(id) {
 }
 
 onMounted(() => {
-  fetchCategories()
+  fetchFiltersData()
   expensesStore.fetchExpenses()
 })
 </script>

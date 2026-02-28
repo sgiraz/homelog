@@ -20,14 +20,15 @@ func NewProjectHandler(db *gorm.DB) *ProjectHandler {
 }
 
 type CreateProjectRequest struct {
-	PropertyID  *uint   `json:"property_id"`
-	Name        string  `json:"name" binding:"required"`
-	Icon        string  `json:"icon"`
-	Description string  `json:"description"`
-	Budget      float64 `json:"budget" binding:"required,gt=0"`
-	StartDate   string  `json:"start_date" binding:"required"`
-	EndDate     string  `json:"end_date" binding:"required"`
-	Status      string  `json:"status"`
+	PropertyID       *uint   `json:"property_id"`
+	Name             string  `json:"name" binding:"required"`
+	Icon             string  `json:"icon"`
+	Description      string  `json:"description"`
+	Budget           float64 `json:"budget" binding:"required,gt=0"`
+	StartDate        string  `json:"start_date" binding:"required"`
+	EndDate          string  `json:"end_date" binding:"required"`
+	Status           string  `json:"status"`
+	SharedWithUserIDs []uint `json:"shared_with_user_ids"`
 }
 
 type ProjectStatsResponse struct {
@@ -44,7 +45,11 @@ func (h *ProjectHandler) List(c *gin.Context) {
 	propertyID := c.Query("property_id")
 	status := c.Query("status")
 
-	query := h.db.Where("user_id = ?", userID)
+	// Visibility: owned by user OR shared with user
+	query := h.db.Where(
+		"user_id = ? OR id IN (SELECT project_id FROM project_members WHERE user_id = ?)",
+		userID, userID,
+	)
 
 	if propertyID != "" {
 		query = query.Where("property_id = ?", propertyID)
@@ -56,6 +61,7 @@ func (h *ProjectHandler) List(c *gin.Context) {
 
 	var projects []models.Project
 	if err := query.Preload("Expenses").
+		Preload("SharedWith").
 		Order("status ASC, start_date DESC").
 		Find(&projects).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch projects"})
@@ -142,7 +148,21 @@ func (h *ProjectHandler) Create(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Project created: ID=%d, Name=%s, Budget=%.2f", project.ID, project.Name, project.Budget)
+	// Share with specified users (only users different from creator)
+	if len(req.SharedWithUserIDs) > 0 {
+		var users []models.User
+		h.db.Where("id IN ? AND id != ?", req.SharedWithUserIDs, userID).Find(&users)
+		if len(users) > 0 {
+			if err := h.db.Model(&project).Association("SharedWith").Append(&users); err != nil {
+				log.Printf("⚠️  Failed to set shared_with for project %d: %v", project.ID, err)
+			}
+		}
+	}
+
+	// Reload with associations
+	h.db.Preload("SharedWith").First(&project, project.ID)
+
+	log.Printf("Project created: ID=%d, Name=%s, Budget=%.2f, SharedWith=%d users", project.ID, project.Name, project.Budget, len(project.SharedWith))
 	c.JSON(http.StatusCreated, project)
 }
 
@@ -152,9 +172,13 @@ func (h *ProjectHandler) Get(c *gin.Context) {
 	projectID := c.Param("id")
 
 	var project models.Project
-	if err := h.db.Where("id = ? AND user_id = ?", projectID, userID).
+	if err := h.db.Where(
+		"id = ? AND (user_id = ? OR id IN (SELECT project_id FROM project_members WHERE user_id = ?))",
+		projectID, userID, userID,
+	).
 		Preload("Expenses").
 		Preload("Expenses.Category").
+		Preload("SharedWith").
 		First(&project).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
@@ -177,14 +201,15 @@ func (h *ProjectHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// Update - PUT /api/v1/projects/:id
+// Update - PUT /api/v1/projects/:id (creator only)
 func (h *ProjectHandler) Update(c *gin.Context) {
 	userID, _ := middleware.GetUserID(c)
 	projectID := c.Param("id")
 
+	// Only creator can edit
 	var project models.Project
 	if err := h.db.Where("id = ? AND user_id = ?", projectID, userID).First(&project).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found or you are not the creator"})
 		return
 	}
 
@@ -213,18 +238,30 @@ func (h *ProjectHandler) Update(c *gin.Context) {
 		return
 	}
 
+	// Replace shared users (only users different from creator)
+	var users []models.User
+	if len(req.SharedWithUserIDs) > 0 {
+		h.db.Where("id IN ? AND id != ?", req.SharedWithUserIDs, userID).Find(&users)
+	}
+	if err := h.db.Model(&project).Association("SharedWith").Replace(&users); err != nil {
+		log.Printf("⚠️  Failed to update shared_with for project %d: %v", project.ID, err)
+	}
+
+	// Reload with associations
+	h.db.Preload("SharedWith").First(&project, project.ID)
+
 	log.Printf("Project updated: ID=%d, Name=%s", project.ID, project.Name)
 	c.JSON(http.StatusOK, project)
 }
 
-// Delete - DELETE /api/v1/projects/:id
+// Delete - DELETE /api/v1/projects/:id (creator only)
 func (h *ProjectHandler) Delete(c *gin.Context) {
 	userID, _ := middleware.GetUserID(c)
 	projectID := c.Param("id")
 
 	var project models.Project
 	if err := h.db.Where("id = ? AND user_id = ?", projectID, userID).First(&project).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found or you are not the creator"})
 		return
 	}
 
@@ -239,6 +276,9 @@ func (h *ProjectHandler) Delete(c *gin.Context) {
 		})
 		return
 	}
+
+	// Clear shared_with associations before deleting
+	h.db.Model(&project).Association("SharedWith").Clear()
 
 	if err := h.db.Delete(&project).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete project"})

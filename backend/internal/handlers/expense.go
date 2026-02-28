@@ -76,14 +76,30 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 		return
 	}
 
-	// Find property IDs where user is a member
-	var memberPropertyIDs []uint
+	// Find member IDs for the current user across all their properties
+	var currentMemberIDs []uint
 	h.db.Model(&models.HouseholdMember{}).
 		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+		Pluck("id", &currentMemberIDs)
 
+	// Find split expense IDs where the current user has a split record (as recipient)
+	var splitExpenseIDs []uint
+	if len(currentMemberIDs) > 0 {
+		h.db.Model(&models.ExpenseSplit{}).
+			Where("member_id IN ?", currentMemberIDs).
+			Pluck("expense_id", &splitExpenseIDs)
+	}
+
+	// Visibility rules:
+	// - Own unsplit expenses (created by this user, not shared)
+	// - Split expenses where this user is the creator (payer)
+	// - Split expenses where this user has a split record (recipient)
 	var expenses []models.Expense
-	query := h.db.Where("property_id IN ?", memberPropertyIDs).
+	visibilityClause := h.db.Where(
+		"(user_id = ? AND is_split = false) OR (is_split = true AND (user_id = ? OR (paid_by_member_id IN ? AND is_split = true) OR id IN ?))",
+		userID, userID, currentMemberIDs, splitExpenseIDs,
+	)
+	query := visibilityClause.
 		Preload("Category").
 		Preload("Property").
 		Preload("Subcategory").
@@ -113,6 +129,10 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 		query = query.Where("date <= ?", to)
 	}
 
+	if search := c.Query("search"); search != "" {
+		query = query.Where("description LIKE ?", "%"+search+"%")
+	}
+
 	// Pagination
 	limit := 50
 	offset := 0
@@ -127,9 +147,12 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 		}
 	}
 
-	// Get total count before pagination
+	// Get total count before pagination (same visibility + filters)
 	var total int64
-	countQuery := h.db.Model(&models.Expense{}).Where("property_id IN ?", memberPropertyIDs)
+	countQuery := h.db.Model(&models.Expense{}).Where(
+		"(user_id = ? AND is_split = false) OR (is_split = true AND (user_id = ? OR (paid_by_member_id IN ? AND is_split = true) OR id IN ?))",
+		userID, userID, currentMemberIDs, splitExpenseIDs,
+	)
 	if categoryID := c.Query("category_id"); categoryID != "" {
 		countQuery = countQuery.Where("category_id = ?", categoryID)
 	}
@@ -141,6 +164,9 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	}
 	if to := c.Query("to"); to != "" {
 		countQuery = countQuery.Where("date <= ?", to)
+	}
+	if search := c.Query("search"); search != "" {
+		countQuery = countQuery.Where("description LIKE ?", "%"+search+"%")
 	}
 	countQuery.Count(&total)
 
@@ -392,21 +418,37 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Find property IDs where user is a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
-
-	// Find existing expense
+	// Find existing expense - only the creator can update
 	var expense models.Expense
-	if err := h.db.Where("id = ? AND property_id IN ?", id, memberPropertyIDs).First(&expense).Error; err != nil {
+	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&expense).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found or you are not the owner"})
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expense"})
 		}
 		return
+	}
+
+	// Block editing of auto-created expenses (must be managed via the bill)
+	if expense.BillID != nil {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Questa spesa è stata creata automaticamente dal pagamento di una bolletta. Per modificarla, aggiorna la relativa bolletta dalla sezione Utenze.",
+		})
+		return
+	}
+
+	// Block editing of fully-settled split expenses
+	if expense.IsSplit {
+		var unsettled int64
+		h.db.Model(&models.ExpenseSplit{}).
+			Where("expense_id = ? AND is_settled = false", expense.ID).
+			Count(&unsettled)
+		if unsettled == 0 {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Questa spesa è già stata completamente saldata e non può essere modificata.",
+			})
+			return
+		}
 	}
 
 	var req UpdateExpenseRequest
@@ -431,9 +473,9 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 	}
 
 	if req.CategoryID != nil {
-		// Verify category belongs to user
+		// Verify category is accessible (default or owned by user)
 		var category models.Category
-		if err := h.db.Where("id = ? AND user_id = ?", *req.CategoryID, userID).First(&category).Error; err != nil {
+		if err := h.db.Where("id = ? AND (is_default = true OR user_id = ?)", *req.CategoryID, userID).First(&category).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category"})
 			return
 		}
@@ -510,21 +552,37 @@ func (h *ExpenseHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Find property IDs where user is a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
-
-	// Find and delete expense (soft delete due to gorm.DeletedAt)
-	result := h.db.Where("id = ? AND property_id IN ?", id, memberPropertyIDs).Delete(&models.Expense{})
-	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete expense"})
+	// Only the creator can delete the expense
+	var expense models.Expense
+	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&expense).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found or you are not the owner"})
 		return
 	}
 
-	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})
+	// Block manual deletion of auto-created expenses (must be managed via the bill)
+	if expense.BillID != nil {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Questa spesa è stata creata automaticamente dal pagamento di una bolletta. Per eliminarla, elimina la relativa bolletta dalla sezione Utenze.",
+		})
+		return
+	}
+
+	// Block deletion of fully-settled split expenses
+	if expense.IsSplit {
+		var unsettled int64
+		h.db.Model(&models.ExpenseSplit{}).
+			Where("expense_id = ? AND is_settled = false", expense.ID).
+			Count(&unsettled)
+		if unsettled == 0 {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Questa spesa è già stata completamente saldata e non può essere eliminata.",
+			})
+			return
+		}
+	}
+
+	if err := h.db.Delete(&expense).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete expense"})
 		return
 	}
 

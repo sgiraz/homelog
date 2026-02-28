@@ -28,15 +28,6 @@
 
       <form @submit.prevent="handleSubmit" class="space-y-4">
         <Input
-          v-model="form.amount"
-          label="Importo effettivo"
-          type="number"
-          step="0.01"
-          min="0.01"
-          required
-        />
-
-        <Input
           v-model="form.date"
           label="Data pagamento"
           type="date"

@@ -94,6 +94,7 @@ type Expense struct {
 	CategoryID    uint  `gorm:"not null;index" json:"category_id"`
 	SubcategoryID *uint `gorm:"index" json:"subcategory_id,omitempty"`
 	ProjectID     *uint `gorm:"index" json:"project_id,omitempty"`
+	BillID        *uint `gorm:"index" json:"bill_id,omitempty"` // auto-created from bill payment
 
 	Amount        float64   `gorm:"not null" json:"amount"`
 	Date          time.Time `gorm:"not null;index" json:"date"`
@@ -279,8 +280,9 @@ type Project struct {
 	Status      string    `gorm:"not null;default:'active'" json:"status"` // active, completed, cancelled
 
 	// Relations
-	Property *Property `json:"property,omitempty"`
-	Expenses []Expense `gorm:"foreignKey:ProjectID" json:"expenses,omitempty"`
+	Property   *Property `json:"property,omitempty"`
+	Expenses   []Expense `gorm:"foreignKey:ProjectID" json:"expenses,omitempty"`
+	SharedWith []User    `gorm:"many2many:project_members;" json:"shared_with,omitempty"`
 }
 
 // UserSettings represents user preferences

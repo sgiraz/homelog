@@ -109,7 +109,7 @@ func SeedDefaultCategories(db *gorm.DB) error {
 		{UserID: nil, Name: "Salute", Icon: "🏥", Color: "#8B5CF6", IsDefault: true},
 		{UserID: nil, Name: "Intrattenimento", Icon: "🎬", Color: "#EC4899", IsDefault: true},
 		{UserID: nil, Name: "Famiglia", Icon: "👶", Color: "#14B8A6", IsDefault: true},
-		{UserID: nil, Name: "Abbigliamento", Icon: "👕", Color: "#F97316", IsDefault: true},
+		{UserID: nil, Name: "Abbigliamento e Cura Personale", Icon: "👕", Color: "#F97316", IsDefault: true},
 		{UserID: nil, Name: "Istruzione", Icon: "🎓", Color: "#6366F1", IsDefault: true},
 		{UserID: nil, Name: "Tecnologia", Icon: "📱", Color: "#0EA5E9", IsDefault: true},
 	}
@@ -120,42 +120,112 @@ func SeedDefaultCategories(db *gorm.DB) error {
 			return err
 		}
 
-		// Add subcategories based on category
-		var subcategories []models.Subcategory
-		switch cat.Name {
-		case "Casa":
-			subcategories = []models.Subcategory{
-				{CategoryID: cat.ID, Name: "Utenze"},
-				{CategoryID: cat.ID, Name: "Manutenzione ordinaria"},
-				{CategoryID: cat.ID, Name: "Lavori straordinari"},
-				{CategoryID: cat.ID, Name: "Arredamento"},
-				{CategoryID: cat.ID, Name: "Elettrodomestici"},
-			}
-		case "Alimentari e Ristorazione":
-			subcategories = []models.Subcategory{
-				{CategoryID: cat.ID, Name: "Spesa supermercato"},
-				{CategoryID: cat.ID, Name: "Ristoranti/Pizzerie"},
-				{CategoryID: cat.ID, Name: "Bar/Caffè"},
-				{CategoryID: cat.ID, Name: "Delivery"},
-			}
-		case "Trasporti":
-			subcategories = []models.Subcategory{
-				{CategoryID: cat.ID, Name: "Carburante"},
-				{CategoryID: cat.ID, Name: "Manutenzione auto"},
-				{CategoryID: cat.ID, Name: "Assicurazione"},
-				{CategoryID: cat.ID, Name: "Parcheggi/Pedaggi"},
-				{CategoryID: cat.ID, Name: "Trasporti pubblici"},
-			}
-		}
-
-		if len(subcategories) > 0 {
-			if err := db.Create(&subcategories).Error; err != nil {
+		subs := defaultSubcategoriesFor(cat.Name, cat.ID)
+		if len(subs) > 0 {
+			if err := db.Create(&subs).Error; err != nil {
 				return err
 			}
 		}
 	}
 
 	log.Println("✅ Default categories seeded")
+	return nil
+}
+
+// defaultSubcategoriesFor returns the default subcategories for a given category name.
+func defaultSubcategoriesFor(catName string, catID uint) []models.Subcategory {
+	switch catName {
+	case "Casa":
+		return []models.Subcategory{
+			{CategoryID: catID, Name: "Utenze"},
+			{CategoryID: catID, Name: "Manutenzione ordinaria"},
+			{CategoryID: catID, Name: "Lavori straordinari"},
+			{CategoryID: catID, Name: "Arredamento"},
+			{CategoryID: catID, Name: "Elettrodomestici"},
+		}
+	case "Alimentari e Ristorazione":
+		return []models.Subcategory{
+			{CategoryID: catID, Name: "Spesa supermercato"},
+			{CategoryID: catID, Name: "Ristoranti/Pizzerie"},
+			{CategoryID: catID, Name: "Bar/Caffè"},
+			{CategoryID: catID, Name: "Delivery"},
+		}
+	case "Trasporti":
+		return []models.Subcategory{
+			{CategoryID: catID, Name: "Carburante"},
+			{CategoryID: catID, Name: "Manutenzione auto"},
+			{CategoryID: catID, Name: "Assicurazione"},
+			{CategoryID: catID, Name: "Parcheggi/Pedaggi"},
+			{CategoryID: catID, Name: "Trasporti pubblici"},
+		}
+	case "Salute":
+		return []models.Subcategory{
+			{CategoryID: catID, Name: "Farmaci"},
+			{CategoryID: catID, Name: "Visite mediche"},
+			{CategoryID: catID, Name: "Assicurazioni sanitarie"},
+		}
+	case "Intrattenimento":
+		return []models.Subcategory{
+			{CategoryID: catID, Name: "Cinema/Teatro"},
+			{CategoryID: catID, Name: "Streaming/Abbonamenti"},
+			{CategoryID: catID, Name: "Libri/Riviste"},
+			{CategoryID: catID, Name: "Viaggi/Vacanze"},
+		}
+	case "Famiglia":
+		return []models.Subcategory{
+			{CategoryID: catID, Name: "Abbigliamento bambini"},
+			{CategoryID: catID, Name: "Scuola/Asilo"},
+			{CategoryID: catID, Name: "Giochi/Attrezzature"},
+		}
+	case "Abbigliamento e Cura Personale":
+		return []models.Subcategory{
+			{CategoryID: catID, Name: "Abbigliamento adulti"},
+			{CategoryID: catID, Name: "Parrucchiere/Barbiere"},
+			{CategoryID: catID, Name: "Prodotti cura personale"},
+		}
+	case "Istruzione":
+		return []models.Subcategory{
+			{CategoryID: catID, Name: "Corsi/Formazione"},
+			{CategoryID: catID, Name: "Libri di testo"},
+			{CategoryID: catID, Name: "Materiale scolastico"},
+		}
+	case "Tecnologia":
+		return []models.Subcategory{
+			{CategoryID: catID, Name: "Dispositivi"},
+			{CategoryID: catID, Name: "Abbonamenti software"},
+			{CategoryID: catID, Name: "Riparazioni"},
+		}
+	}
+	return nil
+}
+
+// MigrateDefaultSubcategories adds missing subcategories to existing default categories.
+// Safe to call at every startup — it only inserts what's missing.
+func MigrateDefaultSubcategories(db *gorm.DB) error {
+	var categories []models.Category
+	if err := db.Where("is_default = true").Preload("Subcategories").Find(&categories).Error; err != nil {
+		return err
+	}
+
+	for _, cat := range categories {
+		expected := defaultSubcategoriesFor(cat.Name, cat.ID)
+		if len(expected) == 0 {
+			continue
+		}
+
+		existingNames := make(map[string]bool)
+		for _, s := range cat.Subcategories {
+			existingNames[s.Name] = true
+		}
+
+		for _, sub := range expected {
+			if !existingNames[sub.Name] {
+				if err := db.Create(&sub).Error; err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }
 

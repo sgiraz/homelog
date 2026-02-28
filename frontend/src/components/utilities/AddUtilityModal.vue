@@ -248,6 +248,13 @@ import Card from '@/components/common/Card.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 
+const props = defineProps({
+  defaultPropertyId: {
+    type: Number,
+    default: null
+  }
+})
+
 const emit = defineEmits(['close', 'created'])
 const utilitiesStore = useUtilitiesStore()
 
@@ -362,6 +369,11 @@ function clearUploadedFile() {
 }
 
 async function fetchCurrentProperty() {
+  // If parent passed a specific property, use it directly
+  if (props.defaultPropertyId) {
+    form.value.property_id = props.defaultPropertyId
+    return
+  }
   try {
     const { data } = await apiClient.get('/properties')
     if (data && data.length > 0) {

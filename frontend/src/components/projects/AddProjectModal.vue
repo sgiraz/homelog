@@ -104,6 +104,36 @@
           </select>
         </div>
 
+        <!-- Share with household members -->
+        <div v-if="otherMembers.length > 0" class="border-t border-gray-200 dark:border-gray-700 pt-4">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Condividi con
+          </label>
+          <div class="space-y-2">
+            <label
+              v-for="member in otherMembers"
+              :key="member.id"
+              class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                :value="member.user_id"
+                v-model="form.shared_with_user_ids"
+                :disabled="!member.user_id"
+                class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              />
+              <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-xs font-medium text-purple-700 dark:text-purple-300">
+                {{ getInitials(member.name) }}
+              </div>
+              <span class="text-sm text-gray-900 dark:text-white">{{ member.name }}</span>
+              <span v-if="!member.user_id" class="text-xs text-gray-400">(virtuale, non condivisibile)</span>
+            </label>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            I membri condivisi potranno vedere il progetto e aggiungere spese ad esso.
+          </p>
+        </div>
+
         <!-- Error -->
         <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
           {{ error }}
@@ -124,17 +154,22 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useProjectsStore } from '@/stores/projects'
+import { useAuthStore } from '@/stores/auth'
+import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 
 const emit = defineEmits(['close', 'created'])
 const projectsStore = useProjectsStore()
+const authStore = useAuthStore()
 
 const loading = ref(false)
 const error = ref(null)
+const householdMembers = ref([])
+const currentPropertyId = ref(null)
 
 const form = ref({
   name: '',
@@ -144,10 +179,36 @@ const form = ref({
   start_date: new Date().toISOString().split('T')[0],
   end_date: '',
   status: 'planned',
-  property_id: 1
+  property_id: null,
+  shared_with_user_ids: []
 })
 
 const icons = ['🏗️', '🔨', '🎨', '🛠️', '🏠', '🚪', '🪟', '💡', '🔌', '🚿', '🛏️', '🍽️', '🌳', '🏊', '🎉', '💍', '✈️', '🎓']
+
+// Only other real (non-virtual) members that have a user account
+const otherMembers = computed(() =>
+  householdMembers.value.filter(m => m.user_id && m.user_id !== authStore.user?.id)
+)
+
+function getInitials(name) {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+}
+
+async function fetchCurrentPropertyAndMembers() {
+  try {
+    const { data } = await apiClient.get('/properties')
+    if (data && data.length > 0) {
+      const prop = data.find(p => p.is_current) || data[0]
+      currentPropertyId.value = prop.id
+      form.value.property_id = prop.id
+
+      const membersRes = await apiClient.get(`/properties/${prop.id}/members`)
+      householdMembers.value = membersRes.data || []
+    }
+  } catch (err) {
+    console.error('Error fetching property/members:', err)
+  }
+}
 
 async function handleSubmit() {
   loading.value = true
@@ -169,4 +230,8 @@ async function handleSubmit() {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  fetchCurrentPropertyAndMembers()
+})
 </script>

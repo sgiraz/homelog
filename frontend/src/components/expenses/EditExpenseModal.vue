@@ -45,6 +45,7 @@
           </label>
           <select
             v-model.number="form.category_id"
+            @change="form.subcategory_id = null"
             required
             class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -57,6 +58,28 @@
               :value="cat.id"
             >
               {{ cat.icon }} {{ cat.name }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Subcategory selector -->
+        <div v-if="selectedCategorySubcategories.length > 0">
+          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+            Sottocategoria (opzionale)
+          </label>
+          <select
+            v-model.number="form.subcategory_id"
+            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option :value="null">Nessuna sottocategoria</option>
+            <option
+              v-for="sub in selectedCategorySubcategories"
+              :key="sub.id"
+              :value="sub.id"
+            >
+              {{ sub.name }}
             </option>
           </select>
         </div>
@@ -115,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { categoriesAPI, projectsAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
@@ -141,8 +164,15 @@ const form = ref({
   amount: null,
   description: '',
   category_id: 1,
+  subcategory_id: null,
   date: '',
   project_id: null
+})
+
+const selectedCategorySubcategories = computed(() => {
+  if (!form.value.category_id) return []
+  const cat = categories.value.find(c => c.id === form.value.category_id)
+  return cat?.subcategories || []
 })
 
 async function fetchCategories() {
@@ -172,6 +202,7 @@ async function handleSubmit() {
       amount: parseFloat(form.value.amount),
       description: form.value.description,
       category_id: form.value.category_id,
+      subcategory_id: form.value.subcategory_id || undefined,
       date: form.value.date,
       project_id: form.value.project_id
     }
@@ -196,6 +227,7 @@ onMounted(() => {
     amount: props.expense.amount,
     description: props.expense.description,
     category_id: props.expense.category_id || props.expense.category?.id || 1,
+    subcategory_id: props.expense.subcategory_id || null,
     date: props.expense.date ? props.expense.date.split('T')[0] : '',
     project_id: props.expense.project_id || null
   }

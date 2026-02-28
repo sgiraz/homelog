@@ -29,6 +29,14 @@ func main() {
 		log.Fatal("Failed to migrate database:", err)
 	}
 
+	// Seed/migrate default categories and their subcategories
+	if err := database.SeedDefaultCategories(db); err != nil {
+		log.Printf("Warning: failed to seed default categories: %v", err)
+	}
+	if err := database.MigrateDefaultSubcategories(db); err != nil {
+		log.Printf("Warning: failed to migrate default subcategories: %v", err)
+	}
+
 	// Set Gin mode
 	if os.Getenv("GIN_MODE") == "release" {
 		gin.SetMode(gin.ReleaseMode)
@@ -87,6 +95,8 @@ func main() {
 				categories.GET("/:id", catHandler.Get)
 				categories.PUT("/:id", catHandler.Update)
 				categories.DELETE("/:id", catHandler.Delete)
+				categories.POST("/:id/subcategories", catHandler.CreateSubcategory)
+				categories.DELETE("/:id/subcategories/:subId", catHandler.DeleteSubcategory)
 			}
 
 			// Expenses
