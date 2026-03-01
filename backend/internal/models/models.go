@@ -18,6 +18,9 @@ type User struct {
 	Name         string `gorm:"not null" json:"name"`
 	Role         string `gorm:"not null;default:'user'" json:"role"` // admin, user
 	IsActive     bool   `gorm:"not null;default:true" json:"is_active"`
+
+	PasswordResetToken   string     `gorm:"index" json:"-"`
+	PasswordResetExpires *time.Time `json:"-"`
 }
 
 // HouseholdMember represents a member of a household (can be a registered user or virtual)

@@ -61,9 +61,6 @@ func AuthRequired() gin.HandlerFunc {
 
 		tokenString := parts[1]
 		jwtSecret := os.Getenv("JWT_SECRET")
-		if jwtSecret == "" {
-			jwtSecret = "your-secret-key-change-this-in-production"
-		}
 
 		// Parse and validate token
 		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {

@@ -347,7 +347,53 @@
           </div>
         </div>
 
-        <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-3">
+          <!-- Change Password toggle -->
+          <div>
+            <button
+              type="button"
+              @click="showChangePassword = !showChangePassword; pwError = null; pwSuccess = null"
+              class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+            >
+              {{ showChangePassword ? '✕ Annulla' : 'Cambia password' }}
+            </button>
+
+            <div v-if="showChangePassword" class="mt-4 space-y-3">
+              <Input
+                v-model="pwForm.current"
+                label="Password attuale"
+                type="password"
+                placeholder="Password attuale"
+                autocomplete="current-password"
+              />
+              <Input
+                v-model="pwForm.newPw"
+                label="Nuova password"
+                type="password"
+                placeholder="Minimo 6 caratteri"
+                autocomplete="new-password"
+              />
+              <Input
+                v-model="pwForm.confirm"
+                label="Conferma nuova password"
+                type="password"
+                placeholder="Ripeti la nuova password"
+                autocomplete="new-password"
+              />
+
+              <div v-if="pwError" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                {{ pwError }}
+              </div>
+              <div v-if="pwSuccess" class="text-green-700 text-sm bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                {{ pwSuccess }}
+              </div>
+
+              <Button :disabled="pwLoading" @click="handleChangePassword">
+                {{ pwLoading ? 'Salvataggio...' : 'Aggiorna password' }}
+              </Button>
+            </div>
+          </div>
+
           <Button variant="danger" @click="handleLogout">
             Esci dall'account
           </Button>
@@ -684,9 +730,10 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
-import { templatesAPI, categoriesAPI, exportAPI } from '@/api/client'
+import { templatesAPI, categoriesAPI, exportAPI, authAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
+import Input from '@/components/common/Input.vue'
 import apiClient from '@/api/client'
 
 const router = useRouter()
@@ -1063,6 +1110,44 @@ async function deleteMember(memberId) {
 function handleLogout() {
   authStore.logout()
   router.push('/login')
+}
+
+// ── Cambio password ─────────────────────────────────────────────────────────
+
+const showChangePassword = ref(false)
+const pwLoading = ref(false)
+const pwError = ref(null)
+const pwSuccess = ref(null)
+const pwForm = ref({ current: '', newPw: '', confirm: '' })
+
+async function handleChangePassword() {
+  pwError.value = null
+  pwSuccess.value = null
+
+  if (!pwForm.value.current) {
+    pwError.value = 'Inserisci la password attuale.'
+    return
+  }
+  if (pwForm.value.newPw.length < 6) {
+    pwError.value = 'La nuova password deve avere almeno 6 caratteri.'
+    return
+  }
+  if (pwForm.value.newPw !== pwForm.value.confirm) {
+    pwError.value = 'Le due password non coincidono.'
+    return
+  }
+
+  pwLoading.value = true
+  try {
+    await authAPI.changePassword(pwForm.value.current, pwForm.value.newPw)
+    pwSuccess.value = 'Password aggiornata con successo!'
+    pwForm.value = { current: '', newPw: '', confirm: '' }
+    setTimeout(() => { showChangePassword.value = false; pwSuccess.value = null }, 2000)
+  } catch (err) {
+    pwError.value = err.response?.data?.error || 'Errore durante il cambio password.'
+  } finally {
+    pwLoading.value = false
+  }
 }
 
 // ── Backup & Dati ──────────────────────────────────────────────────────────

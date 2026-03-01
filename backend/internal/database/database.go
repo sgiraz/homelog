@@ -112,6 +112,7 @@ func SeedDefaultCategories(db *gorm.DB) error {
 		{UserID: nil, Name: "Abbigliamento e Cura Personale", Icon: "👕", Color: "#F97316", IsDefault: true},
 		{UserID: nil, Name: "Istruzione", Icon: "🎓", Color: "#6366F1", IsDefault: true},
 		{UserID: nil, Name: "Tecnologia", Icon: "📱", Color: "#0EA5E9", IsDefault: true},
+		{UserID: nil, Name: "Regali", Icon: "🎁", Color: "#EF4444", IsDefault: true},
 	}
 
 	// Create categories with subcategories
@@ -194,6 +195,15 @@ func defaultSubcategoriesFor(catName string, catID uint) []models.Subcategory {
 			{CategoryID: catID, Name: "Dispositivi"},
 			{CategoryID: catID, Name: "Abbonamenti software"},
 			{CategoryID: catID, Name: "Riparazioni"},
+		}
+	case "Regali":
+		return []models.Subcategory{
+			{CategoryID: catID, Name: "Compleanni"},
+			{CategoryID: catID, Name: "Natale"},
+			{CategoryID: catID, Name: "Anniversari"},
+			{CategoryID: catID, Name: "San Valentino"},
+			{CategoryID: catID, Name: "Lauree/Diplomi"},
+			{CategoryID: catID, Name: "Nascite/Battesimi"},
 		}
 	}
 	return nil

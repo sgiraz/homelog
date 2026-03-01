@@ -77,6 +77,10 @@ export default apiClient
 export const authAPI = {
   register: (data) => apiClient.post('/auth/register', data),
   login: (data) => apiClient.post('/auth/login', data),
+  forgotPassword: (email) => apiClient.post('/auth/forgot-password', { email }),
+  resetPassword: (token, newPassword) => apiClient.post('/auth/reset-password', { token, new_password: newPassword }),
+  changePassword: (currentPassword, newPassword) =>
+    apiClient.put('/settings/password', { current_password: currentPassword, new_password: newPassword }),
 }
 
 export const expensesAPI = {

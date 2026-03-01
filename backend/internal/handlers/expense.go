@@ -170,8 +170,20 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	}
 	countQuery.Count(&total)
 
-	// Execute query with ordering and pagination
-	if err := query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&expenses).Error; err != nil {
+	// Ordering — driven by client sort param
+	orderClause := "date DESC, id DESC"
+	switch c.Query("sort") {
+	case "date_asc":
+		orderClause = "date ASC, id ASC"
+	case "amount_desc":
+		orderClause = "amount DESC, date DESC"
+	case "amount_asc":
+		orderClause = "amount ASC, date DESC"
+	case "description_asc":
+		orderClause = "description ASC"
+	}
+
+	if err := query.Order(orderClause).Limit(limit).Offset(offset).Find(&expenses).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses"})
 		return
 	}
@@ -635,12 +647,33 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		}
 	}
 
-	// Base query - use property membership instead of user_id
-	baseQuery := h.db.Model(&models.Expense{}).Where("property_id IN ? AND date >= ? AND date <= ?", memberPropertyIDs, startDate, endDate)
+	// Explicit from/to override year and period
+	if from := c.Query("from"); from != "" {
+		if t, err := time.Parse("2006-01-02", from); err == nil {
+			startDate = t
+		}
+	}
+	if to := c.Query("to"); to != "" {
+		if t, err := time.Parse("2006-01-02", to); err == nil {
+			endDate = time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, 0, time.UTC)
+		}
+	}
 
-	// Optional property filter
+	// Build reusable WHERE conditions shared across all sub-queries
+	baseWhere := "property_id IN ? AND date >= ? AND date <= ?"
+	joinWhere := "expenses.property_id IN ? AND expenses.date >= ? AND expenses.date <= ?"
+	baseArgs := []interface{}{memberPropertyIDs, startDate, endDate}
+
+	categoryID := c.Query("category_id")
+	if categoryID != "" {
+		baseWhere += " AND category_id = ?"
+		joinWhere += " AND expenses.category_id = ?"
+		baseArgs = append(baseArgs, categoryID)
+	}
 	if propertyID := c.Query("property_id"); propertyID != "" {
-		baseQuery = baseQuery.Where("property_id = ?", propertyID)
+		baseWhere += " AND property_id = ?"
+		joinWhere += " AND expenses.property_id = ?"
+		baseArgs = append(baseArgs, propertyID)
 	}
 
 	// Monthly aggregation
@@ -653,7 +686,7 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 
 	h.db.Model(&models.Expense{}).
 		Select("CAST(strftime('%m', date) AS INTEGER) as month, CAST(strftime('%Y', date) AS INTEGER) as year, SUM(amount) as amount, COUNT(*) as count").
-		Where("property_id IN ? AND date >= ? AND date <= ?", memberPropertyIDs, startDate, endDate).
+		Where(baseWhere, baseArgs...).
 		Group("strftime('%Y-%m', date)").
 		Order("year, month").
 		Scan(&monthlyResults)
@@ -670,58 +703,108 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		}
 	}
 
-	// Category aggregation
-	var categoryResults []struct {
-		CategoryID   uint    `json:"category_id"`
-		CategoryName string  `json:"category_name"`
-		Amount       float64 `json:"amount"`
-		Count        int     `json:"count"`
-	}
-
-	h.db.Model(&models.Expense{}).
-		Select("expenses.category_id, categories.name as category_name, SUM(expenses.amount) as amount, COUNT(*) as count").
-		Joins("JOIN categories ON categories.id = expenses.category_id").
-		Where("expenses.property_id IN ? AND expenses.date >= ? AND expenses.date <= ?", memberPropertyIDs, startDate, endDate).
-		Group("expenses.category_id").
-		Order("amount DESC").
-		Scan(&categoryResults)
-
-	// Calculate total for percentages
+	// Category/Subcategory aggregation
 	var totalAmount float64
-	for _, r := range categoryResults {
-		totalAmount += r.Amount
+	var byCategory []CategoryStats
+
+	if categoryID != "" {
+		// Subcategory breakdown when filtering by category
+		var subResults []struct {
+			SubcategoryID *uint   `json:"subcategory_id"`
+			CategoryName  string  `json:"category_name"`
+			Amount        float64 `json:"amount"`
+			Count         int     `json:"count"`
+		}
+		h.db.Model(&models.Expense{}).
+			Select("expenses.subcategory_id, COALESCE(subcategories.name, 'Senza sottocategoria') as category_name, SUM(expenses.amount) as amount, COUNT(*) as count").
+			Joins("LEFT JOIN subcategories ON subcategories.id = expenses.subcategory_id").
+			Where(joinWhere, baseArgs...).
+			Group("expenses.subcategory_id").
+			Order("amount DESC").
+			Scan(&subResults)
+
+		for _, r := range subResults {
+			totalAmount += r.Amount
+		}
+		byCategory = make([]CategoryStats, len(subResults))
+		for i, r := range subResults {
+			percentage := 0.0
+			if totalAmount > 0 {
+				percentage = (r.Amount / totalAmount) * 100
+			}
+			id := uint(0)
+			if r.SubcategoryID != nil {
+				id = *r.SubcategoryID
+			}
+			byCategory[i] = CategoryStats{
+				CategoryID:   id,
+				CategoryName: r.CategoryName,
+				Amount:       r.Amount,
+				Count:        r.Count,
+				Percentage:   percentage,
+			}
+		}
+	} else {
+		var categoryResults []struct {
+			CategoryID   uint    `json:"category_id"`
+			CategoryName string  `json:"category_name"`
+			Amount       float64 `json:"amount"`
+			Count        int     `json:"count"`
+		}
+		h.db.Model(&models.Expense{}).
+			Select("expenses.category_id, categories.name as category_name, SUM(expenses.amount) as amount, COUNT(*) as count").
+			Joins("JOIN categories ON categories.id = expenses.category_id").
+			Where(joinWhere, baseArgs...).
+			Group("expenses.category_id").
+			Order("amount DESC").
+			Scan(&categoryResults)
+
+		for _, r := range categoryResults {
+			totalAmount += r.Amount
+		}
+		byCategory = make([]CategoryStats, len(categoryResults))
+		for i, r := range categoryResults {
+			percentage := 0.0
+			if totalAmount > 0 {
+				percentage = (r.Amount / totalAmount) * 100
+			}
+			byCategory[i] = CategoryStats{
+				CategoryID:   r.CategoryID,
+				CategoryName: r.CategoryName,
+				Amount:       r.Amount,
+				Count:        r.Count,
+				Percentage:   percentage,
+			}
+		}
 	}
 
-	byCategory := make([]CategoryStats, len(categoryResults))
-	for i, r := range categoryResults {
-		percentage := 0.0
-		if totalAmount > 0 {
-			percentage = (r.Amount / totalAmount) * 100
-		}
-		byCategory[i] = CategoryStats{
-			CategoryID:   r.CategoryID,
-			CategoryName: r.CategoryName,
-			Amount:       r.Amount,
-			Count:        r.Count,
-			Percentage:   percentage,
-		}
-	}
-
-	// Current month total
+	// Current month total (respects category filter)
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	monthEnd := monthStart.AddDate(0, 1, 0).Add(-time.Second)
+	monthWhere := "property_id IN ? AND date >= ? AND date <= ?"
+	monthArgs := []interface{}{memberPropertyIDs, monthStart, monthEnd}
+	if categoryID != "" {
+		monthWhere += " AND category_id = ?"
+		monthArgs = append(monthArgs, categoryID)
+	}
 	var totalMonth float64
 	h.db.Model(&models.Expense{}).
-		Where("property_id IN ? AND date >= ? AND date <= ?", memberPropertyIDs, monthStart, monthEnd).
+		Where(monthWhere, monthArgs...).
 		Select("COALESCE(SUM(amount), 0)").
 		Scan(&totalMonth)
 
-	// Year total
+	// Year total (respects category filter)
 	yearStart := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.UTC)
 	yearEnd := time.Date(now.Year(), 12, 31, 23, 59, 59, 0, time.UTC)
+	yearWhere := "property_id IN ? AND date >= ? AND date <= ?"
+	yearArgs := []interface{}{memberPropertyIDs, yearStart, yearEnd}
+	if categoryID != "" {
+		yearWhere += " AND category_id = ?"
+		yearArgs = append(yearArgs, categoryID)
+	}
 	var totalYear float64
 	h.db.Model(&models.Expense{}).
-		Where("property_id IN ? AND date >= ? AND date <= ?", memberPropertyIDs, yearStart, yearEnd).
+		Where(yearWhere, yearArgs...).
 		Select("COALESCE(SUM(amount), 0)").
 		Scan(&totalYear)
 
@@ -732,12 +815,13 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"monthly":       monthly,
-		"by_category":   byCategory,
-		"total_month":   totalMonth,
-		"total_year":    totalYear,
-		"total_period":  totalAmount,
-		"average_month": avgMonth,
+		"monthly":        monthly,
+		"by_category":    byCategory,
+		"is_subcategory": categoryID != "",
+		"total_month":    totalMonth,
+		"total_year":     totalYear,
+		"total_period":   totalAmount,
+		"average_month":  avgMonth,
 		"period": gin.H{
 			"start": startDate.Format("2006-01-02"),
 			"end":   endDate.Format("2006-01-02"),

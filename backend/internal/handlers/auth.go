@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"log"
 	"net/http"
 	"os"
@@ -315,9 +317,6 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 
 	// Parse refresh token
 	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		jwtSecret = "your-secret-key-change-this-in-production"
-	}
 
 	token, err := jwt.ParseWithClaims(req.RefreshToken, &middleware.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(jwtSecret), nil
@@ -358,9 +357,6 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 // generateTokens creates access and refresh tokens
 func (h *AuthHandler) generateTokens(user *models.User) (string, string, error) {
 	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		jwtSecret = "your-secret-key-change-this-in-production"
-	}
 
 	// Access token (expires in 15 minutes)
 	accessClaims := middleware.JWTClaims{
@@ -397,4 +393,137 @@ func (h *AuthHandler) generateTokens(user *models.User) (string, string, error) 
 	}
 
 	return accessTokenString, refreshTokenString, nil
+}
+
+// ChangePasswordRequest represents the change-password input
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+}
+
+// ChangePassword updates the authenticated user's password
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	userID, _ := middleware.GetUserID(c)
+
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := h.db.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Password attuale non corretta"})
+		return
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	if err := h.db.Model(&user).Update("password_hash", string(hashed)).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password aggiornata con successo"})
+}
+
+// ForgotPasswordRequest represents the forgot-password input
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+// ForgotPassword generates a reset token and returns it directly
+// (no email configured — token is shown in the response for self-hosted use)
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var req ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := h.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		// Return success even if email not found to avoid enumeration
+		c.JSON(http.StatusOK, gin.H{"message": "Se l'email esiste, riceverai le istruzioni."})
+		return
+	}
+
+	// Generate a cryptographically secure 32-byte token
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+	token := hex.EncodeToString(tokenBytes)
+	expires := time.Now().Add(1 * time.Hour)
+
+	if err := h.db.Model(&user).Updates(map[string]interface{}{
+		"password_reset_token":   token,
+		"password_reset_expires": expires,
+	}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save reset token"})
+		return
+	}
+
+	log.Printf("Password reset token generated for %s", user.Email)
+
+	// Since email is not configured, return the token directly
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Token generato. Poiché l'email non è configurata, usa il token qui sotto.",
+		"reset_token": token,
+		"expires_in":  "1 ora",
+	})
+}
+
+// ResetPasswordRequest represents the reset-password input
+type ResetPasswordRequest struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
+// ResetPassword validates the token and updates the password
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := h.db.Where("password_reset_token = ?", req.Token).First(&user).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Token non valido o scaduto"})
+		return
+	}
+
+	if user.PasswordResetExpires == nil || time.Now().After(*user.PasswordResetExpires) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Token scaduto. Richiedi un nuovo reset."})
+		return
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	if err := h.db.Model(&user).Updates(map[string]interface{}{
+		"password_hash":          string(hashed),
+		"password_reset_token":   "",
+		"password_reset_expires": nil,
+	}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset password"})
+		return
+	}
+
+	log.Printf("Password reset successfully for %s", user.Email)
+	c.JSON(http.StatusOK, gin.H{"message": "Password reimpostata con successo. Puoi ora accedere."})
 }

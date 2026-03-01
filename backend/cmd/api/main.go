@@ -20,6 +20,11 @@ func main() {
 		log.Println("No .env file found, using system environment variables")
 	}
 
+	// Validate required environment variables
+	if os.Getenv("JWT_SECRET") == "" {
+		log.Fatal("❌ JWT_SECRET environment variable is required. Set it in .env or as a system variable.")
+	}
+
 	// Initialize database
 	db, err := database.InitDatabase()
 	if err != nil {
@@ -72,6 +77,8 @@ func main() {
 			auth.POST("/register", authHandler.Register)
 			auth.POST("/login", authHandler.Login)
 			auth.POST("/refresh", authHandler.RefreshToken)
+			auth.POST("/forgot-password", authHandler.ForgotPassword)
+			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 
 		// Protected routes (require authentication)
@@ -185,6 +192,7 @@ func main() {
 			{
 				settings.GET("", settingsHandler.Get)
 				settings.PUT("", settingsHandler.Update)
+				settings.PUT("/password", handlers.NewAuthHandler(db).ChangePassword)
 			}
 
 			// Balance (per property) - nested under properties

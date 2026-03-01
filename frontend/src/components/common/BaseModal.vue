@@ -41,7 +41,7 @@
             </div>
 
             <!-- Content slot -->
-            <div class="px-6 pb-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6">
+            <div class="px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6">
               <slot />
             </div>
           </div>

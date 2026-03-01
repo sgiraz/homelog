@@ -227,7 +227,7 @@
 
       <div v-else class="space-y-3">
         <div
-          v-for="expense in sortedExpenses"
+          v-for="expense in expensesStore.expenses"
           :key="expense.id"
           class="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg
                  hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
@@ -317,21 +317,22 @@
           </div>
         </div>
 
-        <!-- Load More -->
-        <div v-if="expensesStore.hasMore" class="pt-2 text-center">
-          <Button
-            @click="loadMore"
-            variant="secondary"
-            :disabled="expensesStore.loading"
+        <!-- Infinite scroll sentinel + loading indicator -->
+        <div ref="sentinel" class="py-2 flex justify-center">
+          <svg
+            v-if="expensesStore.loading && expensesStore.expenses.length > 0"
+            class="w-5 h-5 animate-spin text-blue-500"
+            fill="none" viewBox="0 0 24 24"
           >
-            <span v-if="expensesStore.loading">Caricamento...</span>
-            <span v-else>Carica altri</span>
-          </Button>
-        </div>
-
-        <!-- End of list indicator -->
-        <div v-else-if="expensesStore.expenses.length > 0 && expensesStore.total > 0" class="pt-2 text-center text-xs text-gray-400 dark:text-gray-500">
-          Tutte le {{ expensesStore.total }} spese mostrate
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+          <span
+            v-else-if="!expensesStore.hasMore && expensesStore.expenses.length > 0 && expensesStore.total > 0"
+            class="text-xs text-gray-400 dark:text-gray-500"
+          >
+            Tutte le {{ expensesStore.total }} spese mostrate
+          </span>
         </div>
       </div>
     </Card>
@@ -352,7 +353,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -386,26 +387,11 @@ const filters = ref({
 
 const sortOption = ref('date_desc')
 
-// Current filters snapshot for "load more"
+// Current filters snapshot for infinite scroll
 const currentFilters = ref({})
 
-const sortedExpenses = computed(() => {
-  const list = [...expensesStore.expenses]
-  switch (sortOption.value) {
-    case 'date_asc':
-      return list.sort((a, b) => new Date(a.date) - new Date(b.date))
-    case 'date_desc':
-      return list.sort((a, b) => new Date(b.date) - new Date(a.date))
-    case 'amount_desc':
-      return list.sort((a, b) => b.amount - a.amount)
-    case 'amount_asc':
-      return list.sort((a, b) => a.amount - b.amount)
-    case 'desc_asc':
-      return list.sort((a, b) => (a.description || '').localeCompare(b.description || ''))
-    default:
-      return list
-  }
-})
+// Watch sort changes → reset and refetch server-side
+watch(sortOption, () => onFiltersChanged())
 
 const hasActiveFilters = computed(() =>
   filters.value.search || filters.value.categoryId || filters.value.projectId ||
@@ -433,7 +419,7 @@ const selectedProjectName = computed(() => {
 })
 
 function buildParams() {
-  const params = {}
+  const params = { sort: sortOption.value }
   if (filters.value.search) params.search = filters.value.search
   if (filters.value.categoryId) params.category_id = filters.value.categoryId
   if (filters.value.projectId) params.project_id = filters.value.projectId
@@ -454,12 +440,28 @@ function applyFilters() {
 
 function resetFilters() {
   filters.value = { search: '', categoryId: '', projectId: '', from: '', to: '' }
-  currentFilters.value = {}
-  expensesStore.fetchExpenses({}, { page: 1 })
+  const params = { sort: sortOption.value }
+  currentFilters.value = params
+  expensesStore.fetchExpenses(params, { page: 1 })
 }
 
 async function loadMore() {
   await expensesStore.fetchMore(currentFilters.value)
+}
+
+// ── Infinite scroll ──────────────────────────────────────────────────────────
+const sentinel = ref(null)
+let observer = null
+
+function setupIntersectionObserver() {
+  if (!sentinel.value) return
+  observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0].isIntersecting) loadMore()
+    },
+    { rootMargin: '200px' } // trigger 200px before sentinel enters viewport
+  )
+  observer.observe(sentinel.value)
 }
 
 function formatCurrency(value) {
@@ -532,9 +534,16 @@ async function fetchFiltersData() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   fetchFiltersData()
-  expensesStore.fetchExpenses({}, { page: 1 })
+  const params = { sort: sortOption.value }
+  currentFilters.value = params
+  await expensesStore.fetchExpenses(params, { page: 1 })
+  setupIntersectionObserver()
+})
+
+onUnmounted(() => {
+  observer?.disconnect()
 })
 </script>
 

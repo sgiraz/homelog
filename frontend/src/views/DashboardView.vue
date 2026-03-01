@@ -37,7 +37,7 @@
           <div>
             <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Numero Spese</div>
             <div class="text-2xl font-bold text-gray-900 dark:text-white">
-              {{ expensesStore.expenses.length }}
+              {{ expensesStore.total }}
             </div>
           </div>
           <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
@@ -84,7 +84,7 @@
     <!-- Grafici -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card class="p-6">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Spese per Categoria</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ categoryChartTitle }}</h3>
         <PieChart v-if="hasCategoryData" :chartData="categoryChartData" />
         <div v-else class="h-64 flex items-center justify-center text-gray-500">
           Nessun dato disponibile
@@ -341,7 +341,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
-import { categoriesAPI, projectsAPI } from '@/api/client'
+import { categoriesAPI, projectsAPI, expensesAPI } from '@/api/client'
 import { formatDate as _formatDate } from '@/utils/dateFormatter'
 import { useConfirm } from '@/composables/useConfirm'
 import Card from '@/components/common/Card.vue'
@@ -370,111 +370,63 @@ const filters = ref({
   to: ''
 })
 
-// Computed for KPIs
-const totalMonth = computed(() => {
-  const now = new Date()
-  return expensesStore.expenses
-    .filter(e => {
-      const expenseDate = new Date(e.date)
-      return expenseDate.getMonth() === now.getMonth() && expenseDate.getFullYear() === now.getFullYear()
-    })
-    .reduce((sum, e) => sum + e.amount, 0)
-})
+// Stats from API (used for KPIs and charts)
+const stats = ref(null)
 
-const totalYear = computed(() => {
-  const now = new Date()
-  return expensesStore.expenses
-    .filter(e => {
-      const expenseDate = new Date(e.date)
-      return expenseDate.getFullYear() === now.getFullYear()
-    })
-    .reduce((sum, e) => sum + e.amount, 0)
-})
+const itMonthNames = { Jan:'Gen', Feb:'Feb', Mar:'Mar', Apr:'Apr', May:'Mag', Jun:'Giu', Jul:'Lug', Aug:'Ago', Sep:'Set', Oct:'Ott', Nov:'Nov', Dec:'Dic' }
 
+// KPIs from stats API
+const totalMonth = computed(() => stats.value?.total_month ?? 0)
+const totalYear = computed(() => stats.value?.total_year ?? 0)
 const dailyAverage = computed(() => {
-  if (expensesStore.expenses.length === 0) return 0
-  const daysInMonth = new Date().getDate()
-  return totalMonth.value / daysInMonth
+  if (!stats.value?.total_month) return 0
+  return stats.value.total_month / new Date().getDate()
 })
 
 const hasFilters = computed(() => {
   return filters.value.categoryId || filters.value.projectId || filters.value.from || filters.value.to
 })
 
-// Chart data
+// Chart data from stats API
 const categoryColors = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
   '#EC4899', '#14B8A6', '#F97316', '#6366F1'
 ]
 
-const hasCategoryData = computed(() => {
-  return Object.keys(categoryData.value).length > 0
-})
+const categoryChartTitle = computed(() =>
+  stats.value?.is_subcategory ? 'Spese per Sottocategoria' : 'Spese per Categoria'
+)
 
-const categoryData = computed(() => {
-  const categories = {}
-  expensesStore.expenses.forEach(e => {
-    const catName = e.category?.name || 'Altro'
-    categories[catName] = (categories[catName] || 0) + e.amount
-  })
-  return categories
-})
+const hasCategoryData = computed(() => (stats.value?.by_category?.length ?? 0) > 0)
 
 const categoryChartData = computed(() => {
-  const labels = Object.keys(categoryData.value)
-  const data = Object.values(categoryData.value)
-
+  const items = stats.value?.by_category ?? []
   return {
-    labels,
+    labels: items.map(i => i.category_name),
     datasets: [{
-      data,
-      backgroundColor: categoryColors.slice(0, labels.length),
+      data: items.map(i => i.amount),
+      backgroundColor: categoryColors.slice(0, items.length),
       borderWidth: 0
     }]
   }
 })
 
-const hasMonthlyData = computed(() => {
-  return Object.keys(monthlyData.value).length > 0
-})
-
-const monthlyData = computed(() => {
-  const months = {}
-  const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
-
-  expensesStore.expenses.forEach(e => {
-    const date = new Date(e.date)
-    // Use YYYY-MM as sort key for correct chronological ordering
-    const sortKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-    const displayLabel = `${monthNames[date.getMonth()]} ${date.getFullYear()}`
-    if (!months[sortKey]) months[sortKey] = { label: displayLabel, amount: 0 }
-    months[sortKey].amount += e.amount
-  })
-
-  return months
-})
+const hasMonthlyData = computed(() => (stats.value?.monthly?.length ?? 0) > 0)
 
 const monthlyChartData = computed(() => {
-  const sortedKeys = Object.keys(monthlyData.value).sort().slice(-6)
-  const labels = sortedKeys.map(k => monthlyData.value[k].label)
-  const data = sortedKeys.map(k => monthlyData.value[k].amount)
-
+  const items = stats.value?.monthly ?? []
+  const labels = items.map(i => `${itMonthNames[i.month] ?? i.month} ${i.year}`)
+  const data = items.map(i => i.amount)
   return {
     labels,
-    datasets: [{
-      label: 'Spese',
-      data,
-      backgroundColor: '#3B82F6',
-      borderRadius: 4
-    }]
+    datasets: [{ label: 'Spese', data, backgroundColor: '#3B82F6', borderRadius: 4 }]
   }
 })
 
 const monthlyLineChartData = computed(() => {
-  const sortedKeys = Object.keys(monthlyData.value).sort().slice(-6)
-  const labels = sortedKeys.map(k => monthlyData.value[k].label)
-  const data = sortedKeys.map(k => monthlyData.value[k].amount)
-
+  const items = stats.value?.monthly ?? []
+  const labels = items.map(i => `${itMonthNames[i.month] ?? i.month} ${i.year}`)
+  const data = items.map(i => i.amount)
   return {
     labels,
     datasets: [{
@@ -491,6 +443,15 @@ const monthlyLineChartData = computed(() => {
 })
 
 // Methods
+async function fetchStats(params = {}) {
+  try {
+    const { data } = await expensesAPI.stats(params)
+    stats.value = data
+  } catch (err) {
+    console.error('Error fetching stats:', err)
+  }
+}
+
 async function fetchFiltersData() {
   try {
     const [catRes, projRes] = await Promise.all([
@@ -515,19 +476,25 @@ function formatDate(dateStr) {
   return _formatDate(dateStr, settingsStore.dateSettings)
 }
 
-function applyFilters() {
+function buildStatsParams() {
   const params = {}
   if (filters.value.categoryId) params.category_id = filters.value.categoryId
   if (filters.value.projectId) params.project_id = filters.value.projectId
   if (filters.value.from) params.from = filters.value.from
   if (filters.value.to) params.to = filters.value.to
+  return params
+}
 
+function applyFilters() {
+  const params = buildStatsParams()
   expensesStore.fetchExpenses(params)
+  fetchStats(params)
 }
 
 function resetFilters() {
   filters.value = { categoryId: '', projectId: '', from: '', to: '' }
   expensesStore.fetchExpenses()
+  fetchStats()
 }
 
 function isOwner(expense) {
@@ -582,5 +549,6 @@ async function deleteExpenseConfirm(id) {
 onMounted(() => {
   fetchFiltersData()
   expensesStore.fetchExpenses()
+  fetchStats()
 })
 </script>
