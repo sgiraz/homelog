@@ -26,21 +26,24 @@
 
 ### Core Functionality
 - **Multi-Property Support** - Manage multiple properties (current & historical)
-- **Expense Tracking** - Categorized expenses with custom categories
+- **Expense Tracking** - Categorized expenses with custom categories and subcategories
 - **Expense Splitting** - Split expenses between household members with balance tracking
 - **Settlement Tracking** - Record payments between users to settle debts
 - **Utilities Management** - Track electricity, gas, water, waste with readings & bills
 - **PDF Bill Templates** - Automatic data extraction from utility bills via drag-and-drop template wizard
 - **Projects** - Budget tracking for renovations, trips, events
 - **Multi-User** - Family support with admin/user roles
-- **Dashboard** - Overview with charts (bar, pie, line) and monthly trends
+- **Dashboard** - Interactive charts (bar, pie, line) with adaptive trend granularity (daily/monthly/quarterly)
 
 ### Advanced Features
-- **Analytics** - Interactive charts, consumption trends, cost analysis
+- **Analytics** - Interactive charts, consumption trends, cost analysis; pie chart clickable to filter by category
+- **Adaptive Trend Chart** - Automatically selects day/month/quarter granularity based on selected date range
 - **Bill Management** - PDF upload, automatic field extraction, payment tracking
 - **Meter Readings** - Manual readings with comparison (autolettura vs fornitore)
 - **Reading Comparison** - Compare self-readings with supplier readings
-- **User & Household Settings** - Per-property configuration and split mode settings
+- **User & Household Settings** - Per-property configuration, split mode settings, tabbed UI
+- **Settled Expense Protection** - Settled split expenses can only have description/category modified
+- **Mobile-First UX** - Bottom navigation, modal bottom sheets, collapsible filters, touch-friendly targets
 
 ---
 
@@ -415,6 +418,7 @@ DELETE /settlements/:id         # Delete settlement
 - [x] Bill tracking & PDF upload
 - [x] PDF bill template system (drag-and-drop extraction)
 - [x] Reading comparison (autolettura vs fornitore)
+- [x] Bill ↔ reading explicit association (user_reading_id)
 - [ ] Automatic alerts & reminders
 - [ ] Consumption analytics & anomaly detection
 
@@ -423,9 +427,15 @@ DELETE /settlements/:id         # Delete settlement
 - [x] Balance calculation
 - [x] Settlement tracking
 - [x] Household settings per property
+- [x] Settled expense protection (restrict edits on settled splits)
 
 ### Phase 4: Advanced Features
 - [x] Projects with budget tracking
+- [x] Export/Import JSON data
+- [x] Interactive dashboard (clickable pie chart, adaptive trend granularity)
+- [x] Mobile-first UX overhaul (bottom nav, bottom sheet modals, ConfirmDialog)
+- [x] SettingsView tabbed layout (Famiglia / Proprietà / Preferenze / Categorie / Dati)
+- [x] ExpensesView collapsible filters + load-more pagination
 - [ ] Budget system with alerts
 - [ ] Import/Export CSV/Excel
 - [ ] PDF report generation

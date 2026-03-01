@@ -291,7 +291,7 @@
               </div>
               <!-- Actions: on mobile always visible, on desktop hover -->
               <div
-                v-if="isOwner(expense) && !expense.bill_id && !(expense.is_split && isExpenseSettled(expense))"
+                v-if="isOwner(expense) && !expense.bill_id"
                 class="flex gap-1 justify-end mt-1 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
               >
                 <button
@@ -304,6 +304,7 @@
                   </svg>
                 </button>
                 <button
+                  v-if="!(expense.is_split && isExpenseSettled(expense))"
                   @click="deleteExpenseConfirm(expense.id)"
                   class="p-1.5 text-red-600 hover:text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                   aria-label="Elimina spesa"

@@ -11,6 +11,8 @@ Step-by-step guide for deploying HomeLog on a Raspberry Pi 3B+ with Docker Compo
 3. [Docker Installation](#3-docker-installation)
 4. [Clone & Configure](#4-clone--configure)
 5. [Build & Start Services](#5-build--start-services)
+   - [5A. Build directly on the Pi](#5a-build-directly-on-the-pi-simple-but-slow)
+   - [5B. Pre-build on your PC via DockerHub (faster)](#5b-pre-build-on-your-pc-via-dockerhub-recommended)
 6. [Verify Deployment](#6-verify-deployment)
 7. [Auto-Start on Boot](#7-auto-start-on-boot)
 8. [Remote Access via Tailscale](#8-remote-access-via-tailscale)
@@ -150,12 +152,17 @@ TZ=Europe/Rome
 
 ## 5. Build & Start Services
 
-### Build Docker Images
+You have two options: build on the Pi directly (simple but slow), or cross-compile on your PC and push to DockerHub (faster).
+
+---
+
+### 5A. Build directly on the Pi (simple but slow)
 
 Building on Raspberry Pi 3B+ takes ~10 minutes the first time (CGO compilation).
 
 ```bash
 docker compose build
+docker compose up -d
 ```
 
 Expected output (truncated):
@@ -167,11 +174,134 @@ Expected output (truncated):
  => [frontend] npm run build ...
 ```
 
-### Start Services
+---
+
+### 5B. Pre-build on your PC via DockerHub (recommended)
+
+This approach cross-compiles for ARM64 on your Windows/Mac/Linux machine and pushes images to DockerHub. The Pi only needs to pull and run — no compiler on the Pi needed.
+
+#### On your development machine
+
+**Prerequisites:** Docker with buildx support (Docker Desktop includes this).
 
 ```bash
-docker compose up -d
+# Log in to DockerHub
+docker login
+# (enter your DockerHub username and password)
+
+# Create a multi-platform builder (one-time setup)
+docker buildx create --name mybuilder --use
+docker buildx inspect --bootstrap
+
+# Build and push backend (ARM64 for Raspberry Pi)
+# Replace YOUR_DOCKERHUB_USERNAME with your DockerHub account
+docker buildx build \
+  --platform linux/arm64 \
+  -t YOUR_DOCKERHUB_USERNAME/homelog-backend:latest \
+  --push \
+  ./backend
+
+# Build and push frontend (set your Pi's IP in VITE_API_URL)
+docker buildx build \
+  --platform linux/arm64 \
+  --build-arg VITE_API_URL=http://YOUR_PI_IP:8080 \
+  -t YOUR_DOCKERHUB_USERNAME/homelog-frontend:latest \
+  --push \
+  ./frontend
 ```
+
+> **Note on VITE_API_URL:** This URL is baked into the frontend build at compile time.
+> If you access HomeLog via Tailscale, use your Tailscale IP here instead.
+
+#### On the Raspberry Pi
+
+Create a minimal `docker-compose.prod.yml` that uses the pre-built images instead of building:
+
+```bash
+cat > docker-compose.prod.yml << 'EOF'
+version: '3.8'
+
+services:
+  backend:
+    image: YOUR_DOCKERHUB_USERNAME/homelog-backend:latest
+    container_name: homelog-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - GIN_MODE=release
+      - PORT=8080
+      - DB_PATH=/app/data/homelog.db
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      - TZ=Europe/Rome
+    volumes:
+      - ./data:/app/data
+      - ./data/uploads:/app/uploads
+    networks:
+      - homelog-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    image: YOUR_DOCKERHUB_USERNAME/homelog-frontend:latest
+    container_name: homelog-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - homelog-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+networks:
+  homelog-network:
+    driver: bridge
+EOF
+```
+
+Then pull and start:
+
+```bash
+# Pull the pre-built images from DockerHub
+docker compose -f docker-compose.prod.yml pull
+
+# Start services
+docker compose -f docker-compose.prod.yml up -d
+```
+
+#### Updating to a new version
+
+On your dev machine: rebuild and push with the same commands (or add a version tag like `:v1.1`).
+On the Pi:
+
+```bash
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+```
+
+---
 
 ### Check Status
 

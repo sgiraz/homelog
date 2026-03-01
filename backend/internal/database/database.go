@@ -106,7 +106,6 @@ func SeedDefaultCategories(db *gorm.DB) error {
 		{UserID: nil, Name: "Casa", Icon: "🏠", Color: "#3B82F6", IsDefault: true},
 		{UserID: nil, Name: "Alimentari e Ristorazione", Icon: "🍕", Color: "#10B981", IsDefault: true},
 		{UserID: nil, Name: "Trasporti", Icon: "🚗", Color: "#F59E0B", IsDefault: true},
-		{UserID: nil, Name: "Salute", Icon: "🏥", Color: "#8B5CF6", IsDefault: true},
 		{UserID: nil, Name: "Intrattenimento", Icon: "🎬", Color: "#EC4899", IsDefault: true},
 		{UserID: nil, Name: "Famiglia", Icon: "👶", Color: "#14B8A6", IsDefault: true},
 		{UserID: nil, Name: "Abbigliamento e Cura Personale", Icon: "👕", Color: "#F97316", IsDefault: true},
@@ -159,12 +158,6 @@ func defaultSubcategoriesFor(catName string, catID uint) []models.Subcategory {
 			{CategoryID: catID, Name: "Parcheggi/Pedaggi"},
 			{CategoryID: catID, Name: "Trasporti pubblici"},
 		}
-	case "Salute":
-		return []models.Subcategory{
-			{CategoryID: catID, Name: "Farmaci"},
-			{CategoryID: catID, Name: "Visite mediche"},
-			{CategoryID: catID, Name: "Assicurazioni sanitarie"},
-		}
 	case "Intrattenimento":
 		return []models.Subcategory{
 			{CategoryID: catID, Name: "Cinema/Teatro"},
@@ -177,6 +170,7 @@ func defaultSubcategoriesFor(catName string, catID uint) []models.Subcategory {
 			{CategoryID: catID, Name: "Abbigliamento bambini"},
 			{CategoryID: catID, Name: "Scuola/Asilo"},
 			{CategoryID: catID, Name: "Giochi/Attrezzature"},
+			{CategoryID: catID, Name: "Salute"},
 		}
 	case "Abbigliamento e Cura Personale":
 		return []models.Subcategory{

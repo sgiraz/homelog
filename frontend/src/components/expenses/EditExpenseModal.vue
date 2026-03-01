@@ -1,6 +1,16 @@
 <template>
   <BaseModal title="Modifica Spesa" @close="$emit('close')">
     <form @submit.prevent="handleSubmit" class="space-y-4">
+      <!-- Settled expense notice -->
+      <div v-if="isSettled" class="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+        <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+        <p class="text-sm text-amber-800 dark:text-amber-200">
+          Spesa saldata: puoi modificare solo descrizione, categoria e sottocategoria.
+        </p>
+      </div>
+
       <Input
         v-model="form.amount"
         label="Importo *"
@@ -9,7 +19,8 @@
         min="0.01"
         placeholder="0.00"
         inputmode="decimal"
-        required
+        :required="!isSettled"
+        :disabled="isSettled"
       />
 
       <div>
@@ -78,7 +89,8 @@
         v-model="form.date"
         label="Data *"
         type="date"
-        required
+        :required="!isSettled"
+        :disabled="isSettled"
       />
 
       <!-- Project (Optional) -->
@@ -88,9 +100,11 @@
         </label>
         <select
           v-model.number="form.project_id"
+          :disabled="isSettled"
           class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
-                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 focus:outline-none focus:ring-2 focus:ring-blue-500
+                 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <option :value="null">Nessun progetto</option>
           <option
@@ -164,6 +178,14 @@ const selectedCategorySubcategories = computed(() => {
   return cat?.subcategories || []
 })
 
+// Only split expenses can be "settled" (all splits paid).
+// Non-split expenses are always fully editable.
+const isSettled = computed(() => {
+  if (!props.expense.is_split) return false
+  const splits = props.expense.splits
+  return Array.isArray(splits) && splits.length > 0 && splits.every(s => s.is_settled)
+})
+
 async function fetchCategories() {
   try {
     const { data } = await categoriesAPI.list()
@@ -188,12 +210,15 @@ async function handleSubmit() {
 
   try {
     const expenseData = {
-      amount: parseFloat(form.value.amount),
       description: form.value.description,
       category_id: form.value.category_id,
       subcategory_id: form.value.subcategory_id || undefined,
-      date: form.value.date,
-      project_id: form.value.project_id
+    }
+
+    if (!isSettled.value) {
+      expenseData.amount = parseFloat(form.value.amount)
+      expenseData.date = form.value.date
+      expenseData.project_id = form.value.project_id
     }
 
     await expensesStore.updateExpense(props.expense.id, expenseData)

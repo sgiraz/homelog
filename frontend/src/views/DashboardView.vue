@@ -85,7 +85,13 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card class="p-6">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ categoryChartTitle }}</h3>
-        <PieChart v-if="hasCategoryData" :chartData="categoryChartData" />
+        <PieChart
+          v-if="hasCategoryData"
+          :chartData="categoryChartData"
+          :currency="settingsStore.currency"
+          :isSubcategory="!!stats?.is_subcategory"
+          @slice-click="onPieSliceClick"
+        />
         <div v-else class="h-64 flex items-center justify-center text-gray-500">
           Nessun dato disponibile
         </div>
@@ -93,7 +99,7 @@
 
       <Card class="p-6">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Trend Mensile</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ trendChartTitle }}</h3>
           <div class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
             <button
               @click="trendChartType = 'line'"
@@ -125,9 +131,9 @@
             </button>
           </div>
         </div>
-        <template v-if="hasMonthlyData">
-          <LineChart v-if="trendChartType === 'line'" :chartData="monthlyLineChartData" />
-          <BarChart v-else :chartData="monthlyChartData" />
+        <template v-if="hasTrendData">
+          <LineChart v-if="trendChartType === 'line'" :chartData="trendLineChartData" :currency="settingsStore.currency" />
+          <BarChart v-else :chartData="trendBarChartData" :currency="settingsStore.currency" />
         </template>
         <div v-else class="h-64 flex items-center justify-center text-gray-500">
           Nessun dato disponibile
@@ -196,7 +202,7 @@
           />
         </div>
 
-        <Button v-if="hasFilters" @click="resetFilters" variant="secondary" class="text-sm">
+        <Button @click="resetFilters" variant="secondary" class="text-sm">
           Reset Filtri
         </Button>
       </div>
@@ -363,17 +369,28 @@ const editingExpense = ref(null)
 const trendChartType = ref('line')
 const categories = ref([])
 const projects = ref([])
+function defaultDateRange() {
+  const today = new Date()
+  const from = new Date(today)
+  from.setFullYear(from.getFullYear() - 1)
+  from.setDate(from.getDate() + 1)
+  return {
+    from: from.toISOString().split('T')[0],
+    to: today.toISOString().split('T')[0]
+  }
+}
+
+const { from: defaultFrom, to: defaultTo } = defaultDateRange()
+
 const filters = ref({
   categoryId: '',
   projectId: '',
-  from: '',
-  to: ''
+  from: defaultFrom,
+  to: defaultTo
 })
 
 // Stats from API (used for KPIs and charts)
 const stats = ref(null)
-
-const itMonthNames = { Jan:'Gen', Feb:'Feb', Mar:'Mar', Apr:'Apr', May:'Mag', Jun:'Giu', Jul:'Lug', Aug:'Ago', Sep:'Set', Oct:'Ott', Nov:'Nov', Dec:'Dic' }
 
 // KPIs from stats API
 const totalMonth = computed(() => stats.value?.total_month ?? 0)
@@ -383,9 +400,6 @@ const dailyAverage = computed(() => {
   return stats.value.total_month / new Date().getDate()
 })
 
-const hasFilters = computed(() => {
-  return filters.value.categoryId || filters.value.projectId || filters.value.from || filters.value.to
-})
 
 // Chart data from stats API
 const categoryColors = [
@@ -411,27 +425,31 @@ const categoryChartData = computed(() => {
   }
 })
 
-const hasMonthlyData = computed(() => (stats.value?.monthly?.length ?? 0) > 0)
+const hasTrendData = computed(() => (stats.value?.trend?.length ?? 0) > 0)
 
-const monthlyChartData = computed(() => {
-  const items = stats.value?.monthly ?? []
-  const labels = items.map(i => `${itMonthNames[i.month] ?? i.month} ${i.year}`)
-  const data = items.map(i => i.amount)
-  return {
-    labels,
-    datasets: [{ label: 'Spese', data, backgroundColor: '#3B82F6', borderRadius: 4 }]
+const trendChartTitle = computed(() => {
+  switch (stats.value?.granularity) {
+    case 'day': return 'Trend Giornaliero'
+    case 'quarter': return 'Trend Trimestrale'
+    default: return 'Trend Mensile'
   }
 })
 
-const monthlyLineChartData = computed(() => {
-  const items = stats.value?.monthly ?? []
-  const labels = items.map(i => `${itMonthNames[i.month] ?? i.month} ${i.year}`)
-  const data = items.map(i => i.amount)
+const trendBarChartData = computed(() => {
+  const items = stats.value?.trend ?? []
   return {
-    labels,
+    labels: items.map(i => i.label),
+    datasets: [{ label: 'Spese', data: items.map(i => i.amount), backgroundColor: '#3B82F6', borderRadius: 4 }]
+  }
+})
+
+const trendLineChartData = computed(() => {
+  const items = stats.value?.trend ?? []
+  return {
+    labels: items.map(i => i.label),
     datasets: [{
       label: 'Spese',
-      data,
+      data: items.map(i => i.amount),
       borderColor: '#3B82F6',
       backgroundColor: 'rgba(59, 130, 246, 0.1)',
       fill: true,
@@ -468,7 +486,7 @@ async function fetchFiltersData() {
 function formatCurrency(value) {
   return new Intl.NumberFormat('it-IT', {
     style: 'currency',
-    currency: 'EUR'
+    currency: settingsStore.currency || 'EUR'
   }).format(value || 0)
 }
 
@@ -485,16 +503,29 @@ function buildStatsParams() {
   return params
 }
 
+function onPieSliceClick(index) {
+  const item = stats.value?.by_category?.[index]
+  if (!item || !item.category_id) return
+  filters.value.categoryId = item.category_id
+  applyFilters()
+}
+
 function applyFilters() {
   const params = buildStatsParams()
   expensesStore.fetchExpenses(params)
   fetchStats(params)
 }
 
-function resetFilters() {
+async function resetFilters() {
   filters.value = { categoryId: '', projectId: '', from: '', to: '' }
-  expensesStore.fetchExpenses()
-  fetchStats()
+  // Fetch stats with full range to discover first expense date → today
+  await fetchStats({ all: true })
+  // Populate date fields from the returned period (never empty)
+  if (stats.value?.period) {
+    filters.value.from = stats.value.period.start
+    filters.value.to = stats.value.period.end
+  }
+  expensesStore.fetchExpenses(buildStatsParams())
 }
 
 function isOwner(expense) {
@@ -548,7 +579,6 @@ async function deleteExpenseConfirm(id) {
 
 onMounted(() => {
   fetchFiltersData()
-  expensesStore.fetchExpenses()
-  fetchStats()
+  applyFilters()
 })
 </script>

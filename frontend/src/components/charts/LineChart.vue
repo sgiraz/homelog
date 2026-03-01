@@ -29,6 +29,10 @@ const props = defineProps({
   chartOptions: {
     type: Object,
     default: () => ({})
+  },
+  currency: {
+    type: String,
+    default: 'EUR'
   }
 })
 
@@ -36,13 +40,25 @@ const defaultOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: { display: false }
+    legend: { display: false },
+    tooltip: {
+      callbacks: {
+        label: (ctx) => new Intl.NumberFormat('it-IT', {
+          style: 'currency',
+          currency: props.currency
+        }).format(ctx.parsed.y)
+      }
+    }
   },
   scales: {
     y: {
       beginAtZero: true,
       ticks: {
-        callback: (value) => '€' + value
+        callback: (value) => new Intl.NumberFormat('it-IT', {
+          style: 'currency',
+          currency: props.currency,
+          maximumFractionDigits: 0
+        }).format(value)
       }
     }
   },

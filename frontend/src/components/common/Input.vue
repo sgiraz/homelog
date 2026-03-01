@@ -13,10 +13,12 @@
       :min="min"
       :autocomplete="autocomplete"
       :inputmode="inputmode"
+      :disabled="disabled"
       @input="$emit('update:modelValue', type === 'number' ? ($event.target.value === '' ? null : parseFloat($event.target.value)) : $event.target.value)"
       class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
              bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
-             focus:outline-none focus:ring-2 focus:ring-blue-500"
+             focus:outline-none focus:ring-2 focus:ring-blue-500
+             disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700"
     />
   </div>
 </template>
@@ -32,7 +34,8 @@ defineProps({
   step: String,
   min: String,
   autocomplete: String,
-  inputmode: String
+  inputmode: String,
+  disabled: Boolean
 })
 
 defineEmits(['update:modelValue'])

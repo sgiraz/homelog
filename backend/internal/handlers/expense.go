@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -54,6 +55,13 @@ type UpdateExpenseRequest struct {
 type MonthlyStats struct {
 	Month  string  `json:"month"`
 	Year   int     `json:"year"`
+	Amount float64 `json:"amount"`
+	Count  int     `json:"count"`
+}
+
+// TrendPoint represents a single data point in the trend chart (day/month/quarter)
+type TrendPoint struct {
+	Label  string  `json:"label"`
 	Amount float64 `json:"amount"`
 	Count  int     `json:"count"`
 }
@@ -449,18 +457,15 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Block editing of fully-settled split expenses
+	// For split expenses: determine if fully settled (all splits paid)
+	// Non-split expenses are never "settled" and always fully editable
+	settled := false
 	if expense.IsSplit {
 		var unsettled int64
 		h.db.Model(&models.ExpenseSplit{}).
 			Where("expense_id = ? AND is_settled = false", expense.ID).
 			Count(&unsettled)
-		if unsettled == 0 {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Questa spesa è già stata completamente saldata e non può essere modificata.",
-			})
-			return
-		}
+		settled = (unsettled == 0)
 	}
 
 	var req UpdateExpenseRequest
@@ -472,20 +477,54 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 	// Build updates map
 	updates := make(map[string]interface{})
 
-	if req.Amount != nil {
-		if *req.Amount <= 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Amount must be greater than 0"})
-			return
+	// Settled split expenses: only description, category and subcategory can be changed
+	if !settled {
+		if req.Amount != nil {
+			if *req.Amount <= 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Amount must be greater than 0"})
+				return
+			}
+			updates["amount"] = *req.Amount
 		}
-		updates["amount"] = *req.Amount
+
+		if req.PropertyID != nil {
+			var member models.HouseholdMember
+			if err := h.db.Where("property_id = ? AND user_id = ?", *req.PropertyID, userID).First(&member).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "You are not a member of this property"})
+				return
+			}
+			updates["property_id"] = *req.PropertyID
+		}
+
+		if req.ProjectID != nil {
+			var project models.Project
+			if err := h.db.Where("id = ? AND user_id = ?", *req.ProjectID, userID).First(&project).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project"})
+				return
+			}
+			updates["project_id"] = *req.ProjectID
+		}
+
+		if req.Date != nil {
+			date, err := time.Parse("2006-01-02", *req.Date)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format. Use YYYY-MM-DD"})
+				return
+			}
+			updates["date"] = date
+		}
+
+		if req.AttachmentURL != nil {
+			updates["attachment_url"] = *req.AttachmentURL
+		}
 	}
 
+	// Always editable regardless of settlement status: description, category, subcategory
 	if req.Description != nil {
 		updates["description"] = *req.Description
 	}
 
 	if req.CategoryID != nil {
-		// Verify category is accessible (default or owned by user)
 		var category models.Category
 		if err := h.db.Where("id = ? AND (is_default = true OR user_id = ?)", *req.CategoryID, userID).First(&category).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category"})
@@ -494,41 +533,8 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 		updates["category_id"] = *req.CategoryID
 	}
 
-	if req.PropertyID != nil {
-		// Verify user is a member of the property
-		var member models.HouseholdMember
-		if err := h.db.Where("property_id = ? AND user_id = ?", *req.PropertyID, userID).First(&member).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "You are not a member of this property"})
-			return
-		}
-		updates["property_id"] = *req.PropertyID
-	}
-
 	if req.SubcategoryID != nil {
 		updates["subcategory_id"] = *req.SubcategoryID
-	}
-
-	if req.ProjectID != nil {
-		// Verify project belongs to user
-		var project models.Project
-		if err := h.db.Where("id = ? AND user_id = ?", *req.ProjectID, userID).First(&project).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project"})
-			return
-		}
-		updates["project_id"] = *req.ProjectID
-	}
-
-	if req.Date != nil {
-		date, err := time.Parse("2006-01-02", *req.Date)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format. Use YYYY-MM-DD"})
-			return
-		}
-		updates["date"] = date
-	}
-
-	if req.AttachmentURL != nil {
-		updates["attachment_url"] = *req.AttachmentURL
 	}
 
 	// Apply updates
@@ -659,6 +665,21 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		}
 	}
 
+	// "all=true" overrides everything: use first expense date → today
+	if c.Query("all") == "true" {
+		var minDateStr string
+		h.db.Model(&models.Expense{}).
+			Where("property_id IN ?", memberPropertyIDs).
+			Select("strftime('%Y-%m-%d', MIN(date))").
+			Scan(&minDateStr)
+		if minDateStr != "" {
+			if t, err := time.Parse("2006-01-02", minDateStr); err == nil {
+				startDate = t
+			}
+		}
+		endDate = now
+	}
+
 	// Build reusable WHERE conditions shared across all sub-queries
 	baseWhere := "property_id IN ? AND date >= ? AND date <= ?"
 	joinWhere := "expenses.property_id IN ? AND expenses.date >= ? AND expenses.date <= ?"
@@ -676,30 +697,80 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		baseArgs = append(baseArgs, propertyID)
 	}
 
-	// Monthly aggregation
-	var monthlyResults []struct {
-		Month  int     `json:"month"`
-		Year   int     `json:"year"`
-		Amount float64 `json:"amount"`
-		Count  int     `json:"count"`
+	// Determine trend granularity from date range
+	dayRange := int(endDate.Sub(startDate).Hours() / 24)
+	granularity := "month"
+	if dayRange <= 31 {
+		granularity = "day"
+	} else if dayRange > 365 {
+		granularity = "quarter"
 	}
 
-	h.db.Model(&models.Expense{}).
-		Select("CAST(strftime('%m', date) AS INTEGER) as month, CAST(strftime('%Y', date) AS INTEGER) as year, SUM(amount) as amount, COUNT(*) as count").
-		Where(baseWhere, baseArgs...).
-		Group("strftime('%Y-%m', date)").
-		Order("year, month").
-		Scan(&monthlyResults)
+	itMonths := []string{"", "Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"}
+	var trend []TrendPoint
 
-	// Convert to MonthlyStats with month names
-	monthNames := []string{"", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}
-	monthly := make([]MonthlyStats, len(monthlyResults))
-	for i, r := range monthlyResults {
-		monthly[i] = MonthlyStats{
-			Month:  monthNames[r.Month],
-			Year:   r.Year,
-			Amount: r.Amount,
-			Count:  r.Count,
+	switch granularity {
+	case "day":
+		var rows []struct {
+			Day    int     `json:"day"`
+			Month  int     `json:"month"`
+			Year   int     `json:"year"`
+			Amount float64 `json:"amount"`
+			Count  int     `json:"count"`
+		}
+		h.db.Model(&models.Expense{}).
+			Select("CAST(strftime('%d', date) AS INTEGER) as day, CAST(strftime('%m', date) AS INTEGER) as month, CAST(strftime('%Y', date) AS INTEGER) as year, SUM(amount) as amount, COUNT(*) as count").
+			Where(baseWhere, baseArgs...).
+			Group("strftime('%Y-%m-%d', date)").
+			Order("year, month, day").
+			Scan(&rows)
+		trend = make([]TrendPoint, len(rows))
+		for i, r := range rows {
+			mon := ""
+			if r.Month >= 1 && r.Month <= 12 {
+				mon = itMonths[r.Month]
+			}
+			trend[i] = TrendPoint{Label: fmt.Sprintf("%d %s", r.Day, mon), Amount: r.Amount, Count: r.Count}
+		}
+
+	case "quarter":
+		var rows []struct {
+			Quarter int     `json:"quarter"`
+			Year    int     `json:"year"`
+			Amount  float64 `json:"amount"`
+			Count   int     `json:"count"`
+		}
+		h.db.Model(&models.Expense{}).
+			Select("CAST((CAST(strftime('%m', date) AS INTEGER) + 2) / 3 AS INTEGER) as quarter, CAST(strftime('%Y', date) AS INTEGER) as year, SUM(amount) as amount, COUNT(*) as count").
+			Where(baseWhere, baseArgs...).
+			Group("year, quarter").
+			Order("year, quarter").
+			Scan(&rows)
+		trend = make([]TrendPoint, len(rows))
+		for i, r := range rows {
+			trend[i] = TrendPoint{Label: fmt.Sprintf("Q%d %d", r.Quarter, r.Year), Amount: r.Amount, Count: r.Count}
+		}
+
+	default: // month
+		var rows []struct {
+			Month  int     `json:"month"`
+			Year   int     `json:"year"`
+			Amount float64 `json:"amount"`
+			Count  int     `json:"count"`
+		}
+		h.db.Model(&models.Expense{}).
+			Select("CAST(strftime('%m', date) AS INTEGER) as month, CAST(strftime('%Y', date) AS INTEGER) as year, SUM(amount) as amount, COUNT(*) as count").
+			Where(baseWhere, baseArgs...).
+			Group("strftime('%Y-%m', date)").
+			Order("year, month").
+			Scan(&rows)
+		trend = make([]TrendPoint, len(rows))
+		for i, r := range rows {
+			mon := ""
+			if r.Month >= 1 && r.Month <= 12 {
+				mon = itMonths[r.Month]
+			}
+			trend[i] = TrendPoint{Label: fmt.Sprintf("%s %d", mon, r.Year), Amount: r.Amount, Count: r.Count}
 		}
 	}
 
@@ -808,14 +879,15 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		Select("COALESCE(SUM(amount), 0)").
 		Scan(&totalYear)
 
-	// Average per month (based on selected period)
+	// Average per period point (day/month/quarter)
 	var avgMonth float64
-	if len(monthly) > 0 {
-		avgMonth = totalAmount / float64(len(monthly))
+	if len(trend) > 0 {
+		avgMonth = totalAmount / float64(len(trend))
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"monthly":        monthly,
+		"trend":          trend,
+		"granularity":    granularity,
 		"by_category":    byCategory,
 		"is_subcategory": categoryID != "",
 		"total_month":    totalMonth,
