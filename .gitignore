@@ -53,7 +53,8 @@ nul
 # Go
 *.test
 go.work
-backend/cmd/api/static/
+backend/cmd/api/static/*
+!backend/cmd/api/static/index.html
 
 # Frontend
 .vite/

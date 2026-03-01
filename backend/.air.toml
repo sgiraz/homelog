@@ -2,7 +2,7 @@ root = "."
 tmp_dir = "/tmp/air"
 
 [build]
-  cmd = "go build -gcflags='all=-N -l' -o /tmp/air/main ./cmd/api/main.go"
+  cmd = "go build -gcflags='all=-N -l' -o /tmp/air/main ./cmd/api/"
   full_bin = "dlv exec --accept-multiclient --continue --headless --listen=:2345 --api-version=2 --log /tmp/air/main"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "data"]
