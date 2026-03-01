@@ -15,11 +15,10 @@ Step-by-step guide for deploying HomeLog on a Raspberry Pi 3B+ with Docker Compo
    - [5B. Pre-build on your PC via DockerHub (faster)](#5b-pre-build-on-your-pc-via-dockerhub-recommended)
 6. [Verify Deployment](#6-verify-deployment)
 7. [Auto-Start on Boot](#7-auto-start-on-boot)
-8. [Remote Access via Tailscale](#8-remote-access-via-tailscale)
-9. [Backup & Restore](#9-backup--restore)
-10. [Security Hardening](#10-security-hardening)
-11. [Monitoring & Maintenance](#11-monitoring--maintenance)
-12. [Troubleshooting](#12-troubleshooting)
+8. [Backup & Restore](#8-backup--restore)
+9. [Security Hardening](#9-security-hardening)
+10. [Monitoring & Maintenance](#10-monitoring--maintenance)
+11. [Troubleshooting](#11-troubleshooting)
 
 ---
 
@@ -136,10 +135,8 @@ nano .env
 openssl rand -base64 32
 # Copy the output into JWT_SECRET below
 
-# --- EDIT THESE ---
+# --- REQUIRED ---
 JWT_SECRET=PASTE_YOUR_GENERATED_SECRET_HERE
-CORS_ORIGIN=http://192.168.1.100:3000      # Your Pi's LAN IP
-VITE_API_URL=http://192.168.1.100:8080     # Your Pi's LAN IP
 
 # --- OPTIONAL ---
 GIN_MODE=release
@@ -201,17 +198,13 @@ docker buildx build \
   --push \
   ./backend
 
-# Build and push frontend (set your Pi's IP in VITE_API_URL)
+# Build and push frontend
 docker buildx build \
   --platform linux/arm64 \
-  --build-arg VITE_API_URL=http://YOUR_PI_IP:8080 \
   -t YOUR_DOCKERHUB_USERNAME/homelog-frontend:latest \
   --push \
   ./frontend
 ```
-
-> **Note on VITE_API_URL:** This URL is baked into the frontend build at compile time.
-> If you access HomeLog via Tailscale, use your Tailscale IP here instead.
 
 #### On the Raspberry Pi
 
@@ -233,7 +226,6 @@ services:
       - PORT=8080
       - DB_PATH=/app/data/homelog.db
       - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
       - TZ=Europe/Rome
     volumes:
       - ./data:/app/data
@@ -371,45 +363,7 @@ curl http://localhost:8080/health
 
 ---
 
-## 8. Remote Access via Tailscale
-
-Tailscale creates a secure VPN so you can access HomeLog from anywhere without port forwarding.
-
-### Install on Raspberry Pi
-
-```bash
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up
-# Follow the auth URL printed in terminal to authorize
-```
-
-### Get Tailscale IP
-
-```bash
-tailscale ip -4
-# Example output: 100.x.y.z
-```
-
-### Update Configuration for Remote Access
-
-```bash
-nano ~/homelog/.env
-# Update:
-CORS_ORIGIN=http://100.x.y.z:3000
-VITE_API_URL=http://100.x.y.z:8080
-
-# Rebuild frontend (VITE_API_URL is baked in at build time)
-docker compose build frontend
-docker compose up -d frontend
-```
-
-### Install Tailscale on Other Devices
-
-Download from [tailscale.com/download](https://tailscale.com/download) for iOS, Android, macOS, or Windows. Sign in with the same account. You can then access `http://100.x.y.z:3000` from any device in your Tailnet.
-
----
-
-## 9. Backup & Restore
+## 8. Backup & Restore
 
 ### Manual Backup
 
@@ -457,7 +411,7 @@ Or restore from a JSON export via the UI: Settings → Backup & Dati → **Impor
 
 ---
 
-## 10. Security Hardening
+## 9. Security Hardening
 
 ### Change Default JWT Secret
 
@@ -516,7 +470,7 @@ sudo dpkg-reconfigure unattended-upgrades
 
 ---
 
-## 11. Monitoring & Maintenance
+## 10. Monitoring & Maintenance
 
 ### Resource Usage
 
@@ -589,7 +543,7 @@ free -h
 
 ---
 
-## 12. Troubleshooting
+## 11. Troubleshooting
 
 ### Container won't start
 
@@ -606,17 +560,6 @@ Symptoms: `database is locked` errors in backend logs.
 docker compose down
 rm -f ~/homelog/data/homelog.db-wal ~/homelog/data/homelog.db-shm
 docker compose up -d
-```
-
-### Frontend: blank page or API errors
-
-Check that `VITE_API_URL` points to the correct backend address. Remember it's baked in at build time:
-
-```bash
-nano ~/homelog/.env
-# Update VITE_API_URL=http://<correct-ip>:8080
-docker compose build frontend
-docker compose up -d frontend
 ```
 
 ### Health check failing
@@ -670,13 +613,10 @@ sudo ufw status
 ## Pre-Deploy Checklist
 
 - [ ] JWT_SECRET changed (not the default)
-- [ ] CORS_ORIGIN set to Pi's actual IP
-- [ ] VITE_API_URL set to Pi's actual IP
 - [ ] Static IP configured on Pi
 - [ ] UFW firewall enabled
 - [ ] Systemd service enabled for auto-start
 - [ ] Automated backup cron configured
-- [ ] Tailscale installed (for remote access)
 - [ ] Swap increased if Pi has 1GB RAM
 - [ ] First user account created and tested
 

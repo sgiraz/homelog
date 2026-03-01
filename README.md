@@ -1,480 +1,129 @@
-# HomeLog - Home Expense & Utilities Management
+# HomeLog
 
-> **Self-hosted, multi-user home expense tracking and utilities management system**
+> Self-hosted home expense tracking and utilities management for families.
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)](https://golang.org/)
+[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)](https://golang.org/)
 [![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D?logo=vue.js)](https://vuejs.org/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)](https://www.docker.com/)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)](https://hub.docker.com/u/sgira)
 
----
-
-## Table of Contents
-
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Quick Start](#quick-start)
-- [Project Structure](#project-structure)
-- [API Documentation](#api-documentation)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [License](#license)
+<!-- TODO: Add screenshot here -->
+<!-- ![HomeLog Dashboard](docs/images/dashboard.png) -->
 
 ---
 
 ## Features
 
-### Core Functionality
-- **Multi-Property Support** - Manage multiple properties (current & historical)
-- **Expense Tracking** - Categorized expenses with custom categories and subcategories
-- **Expense Splitting** - Split expenses between household members with balance tracking
-- **Settlement Tracking** - Record payments between users to settle debts
-- **Utilities Management** - Track electricity, gas, water, waste with readings & bills
-- **PDF Bill Templates** - Automatic data extraction from utility bills via drag-and-drop template wizard
-- **Projects** - Budget tracking for renovations, trips, events
-- **Multi-User** - Family support with admin/user roles
-- **Dashboard** - Interactive charts (bar, pie, line) with adaptive trend granularity (daily/monthly/quarterly)
-
-### Advanced Features
-- **Analytics** - Interactive charts, consumption trends, cost analysis; pie chart clickable to filter by category
-- **Adaptive Trend Chart** - Automatically selects day/month/quarter granularity based on selected date range
-- **Bill Management** - PDF upload, automatic field extraction, payment tracking
-- **Meter Readings** - Manual readings with comparison (autolettura vs fornitore)
-- **Reading Comparison** - Compare self-readings with supplier readings
-- **User & Household Settings** - Per-property configuration, split mode settings, tabbed UI
-- **Settled Expense Protection** - Settled split expenses can only have description/category modified
-- **Mobile-First UX** - Bottom navigation, modal bottom sheets, collapsible filters, touch-friendly targets
-
----
-
-## Tech Stack
-
-### Backend
-- **Language**: Go 1.21+
-- **Framework**: Gin (HTTP router)
-- **Database**: SQLite (lightweight, embedded, WAL mode)
-- **Auth**: JWT tokens (access + refresh)
-- **ORM**: GORM
-- **PDF Processing**: pdftotext (poppler-utils)
-
-### Frontend
-- **Framework**: Vue 3 (Composition API)
-- **Build Tool**: Vite
-- **State**: Pinia
-- **Router**: Vue Router
-- **UI**: Tailwind CSS (Apple HIG theme)
-- **Charts**: Chart.js
-- **Icons**: Lucide Vue
-
-### Infrastructure
-- **Containerization**: Docker + Docker Compose
-- **Deployment**: Raspberry Pi 3B+ optimized (256MB backend, 128MB frontend)
-- **Reverse Proxy**: Nginx (optional)
-- **Network**: Tailscale for remote access
+- **Expense Tracking** with categories, subcategories, and project-based budgets
+- **Expense Splitting** between household members with automatic balance and settlement tracking
+- **Utilities Management** for electricity, gas, water — meter readings, bills, consumption analysis
+- **PDF Bill Templates** with drag-and-drop field extraction wizard
+- **Interactive Dashboard** with adaptive trend charts (daily/monthly/quarterly granularity)
+- **Projects** for budget tracking (renovations, trips, events)
+- **Multi-User / Multi-Property** support
+- **Mobile-First UX** with bottom navigation, bottom sheet modals, and touch-friendly design
+- **Export/Import** your data as JSON
+- **Runs anywhere** — Raspberry Pi, VPS, NAS, or any Docker host
 
 ---
 
 ## Quick Start
 
-### Prerequisites
-- Go 1.21+
-- Node.js 20+
-- poppler-utils (for PDF text extraction)
-- Docker & Docker Compose (for production)
-
-### Development Setup
+### Docker (recommended)
 
 ```bash
-# Clone the repository
-git clone https://github.com/sgiraz/homelog.git
-cd homelog
-
-# Backend setup
-cd backend
-go mod download
-go run cmd/api/main.go
-
-# Frontend setup (new terminal)
-cd ../frontend
-npm install
-npm run dev
-
-# Access the app
-# Frontend: http://localhost:5173
-# Backend API: http://localhost:8080
-```
-
-### Production Deploy (Docker Compose)
-
-```bash
-# Edit configuration
+git clone https://github.com/sgiraz/homelog.git && cd homelog
 cp .env.example .env
-nano .env  # Set JWT_SECRET, CORS_ORIGIN, VITE_API_URL
 
-# Build and start services
-docker compose build
+# Set a secure JWT secret (the only required setting)
+# Linux/macOS: openssl rand -base64 32
+# Paste the output into .env as JWT_SECRET=...
+
 docker compose up -d
-
-# Verify health
-curl http://localhost:8080/health
-curl http://localhost:3000/health
-
-# Access the app
-# Frontend: http://your-raspberry-pi-ip:3000
-# Backend API: http://your-raspberry-pi-ip:8080
 ```
 
----
+Open **http://localhost:3000**, register, and start tracking.
 
-## Raspberry Pi Deployment
-
-### Prerequisites
-- Raspberry Pi 3B+ or newer (2GB+ RAM recommended for build)
-- Raspberry Pi OS (64-bit recommended for arm64 builds)
-- Docker & Docker Compose installed
+### Pre-built images from DockerHub
 
 ```bash
-# Install Docker on Raspberry Pi OS
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo usermod -aG docker $USER
-# Log out and back in for group change to take effect
+mkdir homelog && cd homelog
 
-# Verify
-docker --version
-docker compose version
-```
+# Create .env with your JWT secret
+echo "JWT_SECRET=$(openssl rand -base64 32)" > .env
 
-### Configure & Deploy
-
-```bash
-git clone https://github.com/sgiraz/homelog.git
-cd homelog
-
-# Configure
-cp .env.example .env
-nano .env
-# REQUIRED: set JWT_SECRET (generate: openssl rand -base64 32)
-# REQUIRED: set CORS_ORIGIN=http://<your-pi-ip>:3000
-# REQUIRED: set VITE_API_URL=http://<your-pi-ip>:8080
-
-# Build images (takes ~10 min on Pi 3B+)
-docker compose build
-
-# Start services
+# Download and run
+curl -O https://raw.githubusercontent.com/sgiraz/homelog/main/docker-compose.yml
 docker compose up -d
-
-# Verify both containers are healthy (wait ~40s after start)
-docker ps
 ```
 
-### Enable Auto-Start on Boot
-
-```bash
-# Install systemd service
-sudo cp scripts/homelog.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable homelog
-sudo systemctl start homelog
-```
-
-### Management
-
-```bash
-docker compose logs -f            # Stream logs
-docker compose restart            # Restart services
-docker compose down && docker compose up -d  # Full restart
-docker stats --no-stream          # Check memory usage
-```
-
-### Remote Access via Tailscale
-
-```bash
-# On Raspberry Pi
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up
-# Note your Tailscale IP, then access: http://<tailscale-ip>:3000
-```
-
-### Performance Notes (Raspberry Pi 3B+)
-
-- First build takes ~10 minutes due to CGO compilation
-- Subsequent starts are fast (~5s backend, ~2s frontend)
-- Memory limits: backend 256MB, frontend 128MB
-- If OOM issues occur, increase swap: `/etc/dphys-swapfile` → `CONF_SWAPSIZE=1024`
-
-See [DEPLOY-GUIDE.md](DEPLOY-GUIDE.md) for full step-by-step instructions, troubleshooting, backup setup, and security hardening.
+See [DEPLOY-GUIDE.md](DEPLOY-GUIDE.md) for Raspberry Pi setup, Tailscale remote access, backups, and more.
 
 ---
 
-## Project Structure
+## Tech Stack
 
-```
-homelog/
-├── backend/                    # Go backend
-│   ├── cmd/api/main.go         # Entry point, routes, middleware init
-│   ├── internal/
-│   │   ├── models/models.go    # GORM models (User, Property, Expense, Utility, etc.)
-│   │   ├── handlers/           # HTTP handlers (11 files)
-│   │   │   ├── auth.go         # Register, login, refresh token
-│   │   │   ├── expense.go      # CRUD + stats
-│   │   │   ├── property.go     # CRUD properties
-│   │   │   ├── category.go     # CRUD categories
-│   │   │   ├── utility.go      # CRUD + readings + bills + comparison
-│   │   │   ├── pdf.go          # PDF upload, extraction, templates
-│   │   │   ├── project.go      # CRUD projects
-│   │   │   ├── settings.go     # User + household settings
-│   │   │   ├── balance.go      # Balance calculation between members
-│   │   │   ├── settlement.go   # Settlement CRUD
-│   │   │   └── member.go       # Household members CRUD
-│   │   ├── middleware/         # CORS, JWT auth, rate limiting, logging
-│   │   └── database/          # SQLite init, migrations, seeding
-│   ├── go.mod
-│   └── Dockerfile
-│
-├── frontend/                   # Vue 3 frontend
-│   ├── src/
-│   │   ├── main.js             # App entry (Pinia + Router)
-│   │   ├── App.vue             # Root component
-│   │   ├── router/index.js     # Vue Router with auth guards
-│   │   ├── api/client.js       # Axios client with JWT interceptors
-│   │   ├── stores/             # Pinia stores
-│   │   │   ├── auth.js         # Auth state (login, user, token)
-│   │   │   ├── expenses.js     # Expenses state
-│   │   │   ├── balance.js      # Balance & settlements state
-│   │   │   ├── utilities.js    # Utilities state
-│   │   │   ├── projects.js     # Projects state
-│   │   │   └── settings.js     # User settings state
-│   │   ├── views/              # Page views
-│   │   │   ├── LoginView.vue
-│   │   │   ├── DashboardView.vue
-│   │   │   ├── ExpensesView.vue
-│   │   │   ├── BalanceView.vue
-│   │   │   ├── UtilitiesView.vue
-│   │   │   ├── ProjectsView.vue
-│   │   │   └── SettingsView.vue
-│   │   ├── components/         # Reusable components (21 files)
-│   │   │   ├── common/         # Button, Card, Input
-│   │   │   ├── charts/         # BarChart, PieChart, LineChart
-│   │   │   ├── layout/         # Navbar
-│   │   │   ├── expenses/       # AddExpenseModal, EditExpenseModal
-│   │   │   ├── balance/        # SettlementModal
-│   │   │   ├── projects/       # AddProjectModal, EditProjectModal, ProjectDetailModal
-│   │   │   └── utilities/      # TemplateWizard, TemplatesManager, PDFTextractView, etc.
-│   │   └── utils/              # Utilities
-│   │       ├── tokenizer.js    # PDF text tokenizer
-│   │       ├── patternGenerator.js  # Regex pattern generator
-│   │       └── dateFormatter.js     # Italian date formatting
-│   ├── package.json
-│   ├── vite.config.js
-│   └── Dockerfile
-│
-├── data/                       # SQLite database & uploads
-├── prototypes/                 # React reference prototypes (3 files)
-├── docs/                       # Documentation
-│   ├── DEVELOPMENT-GUIDE.md
-│   └── SPLIT-SETTLEMENT-SPEC.md
-├── docker-compose.yml          # Production deployment
-├── docker-compose.dev.yml      # Development deployment
-├── .env.example
-├── LICENSE
-└── README.md
-```
+| Layer | Technology |
+|-------|------------|
+| Backend | Go, Gin, GORM, SQLite (WAL mode) |
+| Frontend | Vue 3, Vite, Pinia, Tailwind CSS, Chart.js |
+| Auth | JWT (access + refresh tokens) |
+| PDF | pdftotext (poppler-utils) |
+| Deploy | Docker Compose, Nginx reverse proxy, multi-arch images (amd64/arm64/arm/v7) |
 
 ---
 
-## API Documentation
+## Documentation
 
-### Base URL
-```
-http://localhost:8080/api/v1
-```
-
-### Authentication
-```http
-POST /auth/register             # Register new user
-POST /auth/login                # Login, returns JWT tokens
-POST /auth/refresh              # Refresh access token
-```
-
-### Properties
-```http
-GET    /properties              # List user properties
-POST   /properties              # Create property
-GET    /properties/:id          # Get property
-PUT    /properties/:id          # Update property
-DELETE /properties/:id          # Delete property
-GET    /properties/:id/balance          # Get balance for property
-GET    /properties/:id/balance/details  # Get detailed balance
-GET    /properties/:id/settings         # Get household settings
-PUT    /properties/:id/settings         # Update household settings
-GET    /properties/:id/members          # List household members
-POST   /properties/:id/members          # Add household member
-```
-
-### Categories
-```http
-GET    /categories              # List categories
-POST   /categories              # Create category
-GET    /categories/:id          # Get category
-PUT    /categories/:id          # Update category
-DELETE /categories/:id          # Delete category
-```
-
-### Expenses
-```http
-GET    /expenses                # List expenses (filterable)
-POST   /expenses                # Create expense (supports split)
-GET    /expenses/:id            # Get expense
-PUT    /expenses/:id            # Update expense
-DELETE /expenses/:id            # Delete expense
-GET    /expenses/stats          # Get expense statistics
-```
-
-### Utilities
-```http
-GET    /utilities               # List utilities
-POST   /utilities               # Create utility
-GET    /utilities/:id           # Get utility details
-PUT    /utilities/:id           # Update utility
-DELETE /utilities/:id           # Delete utility
-
-# Meter readings
-POST   /utilities/:id/readings          # Add reading
-GET    /utilities/:id/readings          # List readings
-PUT    /utilities/:id/readings/:rid     # Update reading
-DELETE /utilities/:id/readings/:rid     # Delete reading
-
-# Bills
-POST   /utilities/:id/bills             # Add bill
-GET    /utilities/:id/bills             # List bills
-PUT    /utilities/:id/bills/:bid        # Update bill
-PUT    /utilities/:id/bills/:bid/full   # Full bill update
-DELETE /utilities/:id/bills/:bid        # Delete bill
-POST   /utilities/:id/bills/upload      # Upload bill PDF
-
-# Comparison & contracts
-GET    /utilities/:id/compare-readings  # Compare self vs supplier readings
-POST   /utilities/contract/upload       # Upload contract PDF
-```
-
-### Bill Templates
-```http
-GET    /templates/bills         # List bill extraction templates
-POST   /templates/bills         # Create template
-PUT    /templates/bills/:id     # Update template
-DELETE /templates/bills/:id     # Delete template
-```
-
-### PDF Processing
-```http
-POST   /pdf/extract-text        # Extract raw text from PDF
-POST   /pdf/analyze             # Analyze PDF for template creation
-DELETE /pdf/cleanup/:timestamp  # Cleanup temporary template images
-```
-
-### Projects
-```http
-GET    /projects                # List projects
-POST   /projects                # Create project
-GET    /projects/:id            # Get project
-PUT    /projects/:id            # Update project
-DELETE /projects/:id            # Delete project
-```
-
-### Settings
-```http
-GET    /settings                # Get user settings
-PUT    /settings                # Update user settings
-```
-
-### Members
-```http
-GET    /members/:id             # Get member
-PUT    /members/:id             # Update member
-DELETE /members/:id             # Delete member
-```
-
-### Settlements
-```http
-GET    /settlements             # List settlements
-POST   /settlements             # Create settlement
-GET    /settlements/:id         # Get settlement
-DELETE /settlements/:id         # Delete settlement
-```
+| Document | Description |
+|----------|-------------|
+| [DEPLOY-GUIDE.md](DEPLOY-GUIDE.md) | Full deployment guide (Raspberry Pi, Docker, Tailscale, backups, security) |
+| [docs/API.md](docs/API.md) | REST API reference |
+| [docs/SPLIT-SETTLEMENT-SPEC.md](docs/SPLIT-SETTLEMENT-SPEC.md) | Split & settlement system design |
 
 ---
 
-## Roadmap
+## Development
 
-### Phase 1: MVP
-- [x] Project structure & Docker deployment
-- [x] Backend API (Auth, Properties, Categories, Expenses)
-- [x] Frontend core views (Login, Dashboard, Expenses)
-- [x] Basic charts & analytics (Bar, Pie, Line)
+```bash
+# Backend (terminal 1)
+cd backend && go mod download && go run cmd/api/main.go
 
-### Phase 2: Utilities & Bills
-- [x] Meter readings management
-- [x] Bill tracking & PDF upload
-- [x] PDF bill template system (drag-and-drop extraction)
-- [x] Reading comparison (autolettura vs fornitore)
-- [x] Bill ↔ reading explicit association (user_reading_id)
-- [ ] Automatic alerts & reminders
-- [ ] Consumption analytics & anomaly detection
+# Frontend (terminal 2)
+cd frontend && npm install && npm run dev
+```
 
-### Phase 3: Split & Settlement
-- [x] Expense splitting between household members
-- [x] Balance calculation
-- [x] Settlement tracking
-- [x] Household settings per property
-- [x] Settled expense protection (restrict edits on settled splits)
+Frontend: http://localhost:5173 — Backend API: http://localhost:8080
 
-### Phase 4: Advanced Features
-- [x] Projects with budget tracking
-- [x] Export/Import JSON data
-- [x] Interactive dashboard (clickable pie chart, adaptive trend granularity)
-- [x] Mobile-first UX overhaul (bottom nav, bottom sheet modals, ConfirmDialog)
-- [x] SettingsView tabbed layout (Famiglia / Proprietà / Preferenze / Categorie / Dati)
-- [x] ExpensesView collapsible filters + load-more pagination
-- [ ] Budget system with alerts
-- [ ] Import/Export CSV/Excel
-- [ ] PDF report generation
-- [ ] Email notifications
-
-### Phase 5: Polish & Community
-- [ ] PWA with offline support
-- [ ] Dark mode
-- [ ] Multi-language (i18n)
-- [ ] OCR bill parsing
-- [ ] Community templates
+The Vite dev server proxies `/api` to the backend automatically.
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) first.
+Contributions are welcome! Here's how:
 
-### Development Workflow
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Commit with [Conventional Commits](https://www.conventionalcommits.org/) (`git commit -m 'feat: add my feature'`)
+4. Push and open a Pull Request
 
-### Code Style
-- **Go**: Follow [Effective Go](https://golang.org/doc/effective_go.html), use `gofmt`
-- **Vue**: Use [Vue Style Guide](https://vuejs.org/style-guide/), Composition API with `<script setup>`
-- **Commits**: Use [Conventional Commits](https://www.conventionalcommits.org/)
+**Code style:** Go (`gofmt`), Vue (`<script setup>` Composition API), Tailwind CSS.
+
+---
+
+## Support the Project
+
+If HomeLog is useful to you, consider supporting its development:
+
+- Star this repository
+- [Report bugs or suggest features](https://github.com/sgiraz/homelog/issues)
+- [Join the discussion](https://github.com/sgiraz/homelog/discussions)
+- Contribute code, translations, or documentation
+<!-- - [Sponsor on GitHub](https://github.com/sponsors/sgiraz) -->
 
 ---
 
 ## License
 
-This project is licensed under the **AGPL-3.0 License** - see the [LICENSE](LICENSE) file for details.
-
----
-
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/sgiraz/homelog/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/sgiraz/homelog/discussions)
+[AGPL-3.0](LICENSE) — free to use, modify, and self-host. If you distribute a modified version, you must share the source code.

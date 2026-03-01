@@ -212,7 +212,7 @@ const props = defineProps({
 const emit = defineEmits(['word-click', 'drag-start', 'drag-end'])
 
 // API base URL for images
-const apiBaseUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:8080'
+const apiBaseUrl = ''  // same origin via nginx proxy
 
 // State
 const containerRef = ref(null)
