@@ -1,0 +1,6 @@
+node_modules/
+backend/cmd/api/static/
+.git/
+data/
+*.md
+.env

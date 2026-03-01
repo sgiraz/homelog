@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  backend:
+  homelog:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
-    container_name: homelog-backend
+    container_name: homelog
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -14,13 +14,10 @@ services:
       - PORT=8080
       - DB_PATH=/app/data/homelog.db
       - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
       - TZ=Europe/Rome
     volumes:
       - ./data:/app/data
       - ./data/uploads:/app/uploads
-    networks:
-      - homelog-network
     deploy:
       resources:
         limits:
@@ -39,42 +36,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: homelog-frontend
-    restart: unless-stopped
-    ports:
-      - "3000:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - homelog-network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.3'
-          memory: 128M
-        reservations:
-          memory: 64M
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-networks:
-  homelog-network:
-    driver: bridge
 
 volumes:
   data:

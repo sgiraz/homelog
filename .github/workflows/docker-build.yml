@@ -1,4 +1,4 @@
-name: Build and Push Docker Images
+name: Build and Push Docker Image
 
 on:
   push:
@@ -7,8 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  BACKEND_IMAGE: sgira/homelog-backend
-  FRONTEND_IMAGE: sgira/homelog-frontend
+  IMAGE: sgira/homelog
 
 jobs:
   build-and-push:
@@ -37,33 +36,20 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Building version: ${VERSION}"
 
-      - name: Build and push backend
+      - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           tags: |
-            ${{ env.BACKEND_IMAGE }}:latest
-            ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push frontend
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: true
-          tags: |
-            ${{ env.FRONTEND_IMAGE }}:latest
-            ${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.version }}
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ steps.meta.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Summary
         run: |
-          echo "## Docker Images Published" >> $GITHUB_STEP_SUMMARY
-          echo "- \`${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "## Docker Image Published" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ env.IMAGE }}:${{ steps.meta.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Platforms: linux/amd64, linux/arm64, linux/arm/v7" >> $GITHUB_STEP_SUMMARY

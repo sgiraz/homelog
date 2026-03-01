@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/sgiraz/homelog/internal/database"
@@ -56,6 +57,16 @@ func main() {
 	router.Use(middleware.CORS())
 	router.Use(middleware.RateLimiter())
 	router.Use(middleware.Logger())
+	router.Use(gzip.Gzip(gzip.DefaultCompression))
+
+	// Security headers (replaces nginx headers)
+	router.Use(func(c *gin.Context) {
+		c.Header("X-Frame-Options", "SAMEORIGIN")
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-XSS-Protection", "1; mode=block")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Next()
+	})
 
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
@@ -239,6 +250,9 @@ func main() {
 
 	// Serve uploaded files
 	router.Static("/uploads", "./data/uploads")
+
+	// Serve embedded frontend (SPA + static assets)
+	serveFrontend(router)
 
 	// Start server
 	port := os.Getenv("PORT")
