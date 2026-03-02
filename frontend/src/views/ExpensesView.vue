@@ -3,13 +3,37 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
       <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Spese</h1>
-      <Button @click="showAddExpense = true">
+      <Button v-if="activeTab === 'lista'" @click="showAddExpense = true">
         <svg class="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
         <span class="hidden sm:inline">Aggiungi Spesa</span>
       </Button>
     </div>
+
+    <!-- Tab bar: Lista / Bilancio -->
+    <div class="flex gap-1">
+      <button
+        v-for="tab in expenseTabs"
+        :key="tab.id"
+        @click="activeTab = tab.id"
+        :class="[
+          'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
+          activeTab === tab.id
+            ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+        ]"
+      >
+        <span>{{ tab.icon }}</span>
+        <span>{{ tab.label }}</span>
+      </button>
+    </div>
+
+    <!-- Tab: Bilancio -->
+    <BalanceSection v-if="activeTab === 'bilancio'" />
+
+    <!-- Tab: Lista -->
+    <template v-if="activeTab === 'lista'">
 
     <!-- Filtri -->
     <Card class="p-4">
@@ -235,7 +259,7 @@
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-medium text-gray-900 dark:text-white truncate">
+                <span class="font-medium text-gray-900 dark:text-white line-clamp-2">
                   {{ expense.description || 'Senza descrizione' }}
                 </span>
                 <span
@@ -250,7 +274,7 @@
                     'px-2 py-0.5 text-xs rounded-full',
                     isExpenseSettled(expense)
                       ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
-                      : 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300'
+                      : 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700'
                   ]"
                 >
                   {{ isExpenseSettled(expense) ? 'Saldato' : 'Da saldare' }}
@@ -270,12 +294,13 @@
                 >
                   {{ expense.project.icon }} {{ expense.project.name }}
                 </span>
-                <span v-if="expense.is_split && expense.paid_by" class="text-xs flex items-center gap-1">
-                  Pagato da {{ expense.paid_by.name }}
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span v-if="expense.is_split && expense.paid_by" class="text-xs flex items-center gap-1 max-w-full overflow-hidden">
+                  <span class="hidden sm:inline">Pagato da</span>
+                  <span class="truncate">{{ expense.paid_by.name }}</span>
+                  <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
-                  {{ getSplitPartners(expense) }}
+                  <span class="truncate">{{ getSplitPartners(expense) }}</span>
                 </span>
               </div>
             </div>
@@ -338,6 +363,8 @@
       </div>
     </Card>
 
+    </template>
+
     <AddExpenseModal
       v-if="showAddExpense"
       @close="showAddExpense = false"
@@ -355,6 +382,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -365,12 +393,20 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditExpenseModal from '@/components/expenses/EditExpenseModal.vue'
+import BalanceSection from '@/components/balance/BalanceSection.vue'
 
+const route = useRoute()
 const expensesStore = useExpensesStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 
+const expenseTabs = [
+  { id: 'lista',    label: 'Lista',    icon: '📋' },
+  { id: 'bilancio', label: 'Bilancio', icon: '⚖️' },
+]
+
+const activeTab = ref(route.query.tab === 'bilancio' ? 'bilancio' : 'lista')
 const showAddExpense = ref(false)
 const showEditExpense = ref(false)
 const editingExpense = ref(null)

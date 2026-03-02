@@ -84,7 +84,7 @@
         :aria-label="link.label"
       >
         <component :is="'span'" class="text-xl leading-none" aria-hidden="true">{{ link.icon }}</component>
-        <span class="text-[10px] font-medium leading-tight">{{ link.shortLabel }}</span>
+        <span class="text-[11px] font-medium leading-tight">{{ link.shortLabel }}</span>
       </router-link>
     </div>
   </nav>
@@ -103,10 +103,9 @@ const { isDark, toggleDarkMode } = useDarkMode()
 const navLinks = [
   { path: '/',          label: 'Dashboard',    shortLabel: 'Home',       icon: '🏠' },
   { path: '/expenses',  label: 'Spese',         shortLabel: 'Spese',      icon: '💰' },
-  { path: '/balance',   label: 'Bilancio',      shortLabel: 'Bilancio',   icon: '⚖️' },
   { path: '/utilities', label: 'Utenze',        shortLabel: 'Utenze',     icon: '⚡' },
   { path: '/projects',  label: 'Progetti',      shortLabel: 'Progetti',   icon: '📁' },
-  { path: '/settings',  label: 'Impostazioni',  shortLabel: 'Settings',   icon: '⚙️' },
+  { path: '/settings',  label: 'Impostazioni',  shortLabel: 'Impostaz.',  icon: '⚙️' },
 ]
 
 const userInitials = computed(() => {

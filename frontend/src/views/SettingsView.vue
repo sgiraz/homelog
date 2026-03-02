@@ -108,11 +108,11 @@
 
               <!-- Add new member -->
               <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <div class="flex gap-2">
+                <div class="flex flex-col sm:flex-row gap-2">
                   <input
                     v-model="newMemberName"
                     type="text"
-                    placeholder="Nome nuovo membro (es: Partner)"
+                    placeholder="Nome membro"
                     class="flex-1 px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                            focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -312,7 +312,7 @@
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option :value="null">Nessun template (rilevamento automatico)</option>
+              <option :value="null">Nessun template (auto)</option>
               <option
                 v-for="tpl in getTemplatesForType(utilityType.key)"
                 :key="tpl.id"

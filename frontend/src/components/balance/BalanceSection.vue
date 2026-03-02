@@ -1,13 +1,5 @@
 <template>
   <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Bilancio Famiglia</h1>
-        <p class="text-gray-600 dark:text-gray-400 mt-1">Gestisci le spese condivise</p>
-      </div>
-    </div>
-
     <!-- Loading State -->
     <div v-if="balanceStore.loading" class="text-center py-12">
       <svg class="animate-spin h-12 w-12 mx-auto text-blue-600" fill="none" viewBox="0 0 24 24">
@@ -19,13 +11,13 @@
 
     <template v-else>
       <!-- Balance Card -->
-      <Card class="p-8">
+      <Card class="p-4 sm:p-8">
         <div class="text-center">
           <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
             Bilancio con {{ balanceStore.otherMemberName || 'Partner' }}
           </div>
           <div :class="[
-            'text-5xl font-bold mb-3',
+            'text-3xl sm:text-5xl font-bold mb-3',
             balanceStore.balance > 0 ? 'text-green-600 dark:text-green-400' :
             balanceStore.balance < 0 ? 'text-red-600 dark:text-red-400' :
             'text-gray-600 dark:text-gray-400'
@@ -58,14 +50,14 @@
       </Card>
 
       <!-- Stats Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card class="p-6 text-center">
+      <div class="grid grid-cols-2 gap-4">
+        <Card class="p-4 sm:p-6 text-center">
           <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Pagamenti effettuati</div>
           <div class="text-2xl font-bold text-gray-900 dark:text-white">
             {{ balanceStore.settlements.length }}
           </div>
         </Card>
-        <Card class="p-6 text-center">
+        <Card class="p-4 sm:p-6 text-center">
           <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Totale saldato</div>
           <div class="text-2xl font-bold text-green-600 dark:text-green-400">
             {{ formatCurrency(totalSettled) }}
@@ -74,7 +66,7 @@
       </div>
 
       <!-- Storico Pagamenti -->
-      <Card class="p-6">
+      <Card class="p-4 sm:p-6">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Storico Pagamenti</h3>
         <div v-if="balanceStore.settlements.length === 0" class="text-center py-8">
           <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,16 +79,16 @@
           <div
             v-for="settlement in balanceStore.settlements"
             :key="settlement.id"
-            class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
+            class="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
           >
-            <div class="flex items-start justify-between">
-              <div class="flex-1">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex-1 min-w-0">
                 <div class="font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                  <span>{{ settlement.from_member_name }}</span>
-                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span class="truncate">{{ settlement.from_member_name }}</span>
+                  <svg class="w-4 h-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
-                  <span>{{ settlement.to_member_name }}</span>
+                  <span class="truncate">{{ settlement.to_member_name }}</span>
                 </div>
                 <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-2">
                   <span>{{ formatDate(settlement.date) }}</span>
@@ -108,7 +100,7 @@
                   "{{ settlement.note }}"
                 </div>
               </div>
-              <div class="text-xl font-bold text-green-600 dark:text-green-400">
+              <div class="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400 shrink-0">
                 {{ formatCurrency(settlement.amount) }}
               </div>
             </div>
@@ -181,7 +173,6 @@ function paymentMethodLabel(method) {
 
 function onSettlementCreated() {
   showSettlementModal.value = false
-  // Refresh balance after settlement
   if (currentPropertyId.value) {
     balanceStore.fetchBalanceDetails(currentPropertyId.value)
   }
@@ -193,7 +184,6 @@ async function fetchCurrentProperty() {
     if (data && data.length > 0) {
       const currentProp = data.find(p => p.is_current) || data[0]
       currentPropertyId.value = currentProp.id
-      console.log('Current property ID:', currentProp.id)
       await balanceStore.fetchBalanceDetails(currentProp.id)
     }
   } catch (err) {

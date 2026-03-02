@@ -42,7 +42,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Open **http://localhost:3000**, register, and start tracking.
+Open **http://localhost:8080**, register, and start tracking.
 
 ### Pre-built images from DockerHub
 
@@ -69,7 +69,7 @@ See [DEPLOY-GUIDE.md](DEPLOY-GUIDE.md) for Raspberry Pi setup, Tailscale remote 
 | Frontend | Vue 3, Vite, Pinia, Tailwind CSS, Chart.js |
 | Auth | JWT (access + refresh tokens) |
 | PDF | pdftotext (poppler-utils) |
-| Deploy | Docker Compose, Nginx reverse proxy, multi-arch images (amd64/arm64/arm/v7) |
+| Deploy | Single container (Go embeds frontend via `go:embed`), Docker Compose, multi-arch images (amd64/arm64/arm/v7) |
 
 ---
 
@@ -85,15 +85,23 @@ See [DEPLOY-GUIDE.md](DEPLOY-GUIDE.md) for Raspberry Pi setup, Tailscale remote 
 
 ## Development
 
+### Docker (recommended)
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+Frontend (hot-reload): http://localhost:5173 — Backend API: http://localhost:8080
+
+### Manual
+
 ```bash
 # Backend (terminal 1)
-cd backend && go mod download && go run cmd/api/main.go
+cd backend && go mod download && go run ./cmd/api/
 
 # Frontend (terminal 2)
 cd frontend && npm install && npm run dev
 ```
-
-Frontend: http://localhost:5173 — Backend API: http://localhost:8080
 
 The Vite dev server proxies `/api` to the backend automatically.
 

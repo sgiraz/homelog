@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Utilities</h2>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Utenze</h1>
         <p class="text-gray-600 dark:text-gray-400 text-sm mt-1">
           Gestione bollette e letture
         </p>

@@ -3,14 +3,14 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p class="text-gray-600 dark:text-gray-400 mt-1">Panoramica delle tue spese</p>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+        <p class="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base">Panoramica delle tue spese</p>
       </div>
       <Button @click="showAddExpense = true">
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        Aggiungi Spesa
+        <span class="hidden sm:inline">Aggiungi Spesa</span>
       </Button>
     </div>
 
@@ -35,9 +35,9 @@
       <Card class="p-6">
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Numero Spese</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Spese nel Periodo</div>
             <div class="text-2xl font-bold text-gray-900 dark:text-white">
-              {{ expensesStore.total }}
+              {{ stats?.count ?? expensesStore.total }}
             </div>
           </div>
           <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
@@ -143,7 +143,74 @@
 
     <!-- Filtri -->
     <Card class="p-4">
-      <div class="flex flex-wrap items-center gap-4">
+      <!-- Mobile: filtri collassabili -->
+      <div class="sm:hidden">
+        <div class="flex items-center justify-between">
+          <button
+            @click="filtersOpen = !filtersOpen"
+            class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+            </svg>
+            Filtri
+            <span
+              v-if="activeFiltersCount > 0"
+              class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full"
+            >
+              {{ activeFiltersCount }}
+            </span>
+          </button>
+          <Button v-if="hasActiveFilters" @click="resetFilters" variant="secondary" size="sm">
+            Reset
+          </Button>
+        </div>
+        <Transition name="filter-expand">
+          <div v-if="filtersOpen" class="mt-3 space-y-3 border-t border-gray-100 dark:border-gray-700 pt-3">
+            <div class="grid grid-cols-2 gap-2">
+              <select
+                v-model="filters.categoryId"
+                @change="applyFilters"
+                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Tutte categorie</option>
+                <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ cat.name }}</option>
+              </select>
+              <select
+                v-model="filters.projectId"
+                @change="applyFilters"
+                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Tutti progetti</option>
+                <option v-for="proj in projects" :key="proj.id" :value="proj.id">{{ proj.icon }} {{ proj.name }}</option>
+              </select>
+              <input
+                v-model="filters.from"
+                @change="applyFilters"
+                type="date"
+                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                v-model="filters.to"
+                @change="applyFilters"
+                type="date"
+                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </Transition>
+      </div>
+
+      <!-- Desktop: filtri sempre visibili -->
+      <div class="hidden sm:flex flex-wrap items-center gap-4">
         <div class="flex items-center gap-2">
           <label class="text-sm text-gray-600 dark:text-gray-400">Categoria:</label>
           <select
@@ -154,11 +221,7 @@
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Tutte</option>
-            <option
-              v-for="cat in categories"
-              :key="cat.id"
-              :value="cat.id"
-            >
+            <option v-for="cat in categories" :key="cat.id" :value="cat.id">
               {{ cat.icon }} {{ cat.name }}
             </option>
           </select>
@@ -243,13 +306,13 @@
         <div
           v-for="expense in expensesStore.expenses.slice(0, 3)"
           :key="expense.id"
-          class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg
+          class="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg
                  hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
         >
-          <div class="flex items-start justify-between">
+          <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-medium text-gray-900 dark:text-white truncate">
+                <span class="font-medium text-gray-900 dark:text-white line-clamp-2">
                   {{ expense.description || 'Senza descrizione' }}
                 </span>
                 <!-- Badge Split -->
@@ -266,7 +329,7 @@
                     'px-2 py-0.5 text-xs rounded-full',
                     isExpenseSettled(expense)
                       ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
-                      : 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300'
+                      : 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700'
                   ]"
                 >
                   {{ isExpenseSettled(expense) ? 'Saldato' : 'Da saldare' }}
@@ -280,16 +343,17 @@
                 >
                   {{ expense.category.name }}
                 </span>
-                <span v-if="expense.is_split && expense.paid_by" class="text-xs flex items-center gap-1">
-                  Pagato da {{ expense.paid_by.name }}
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span v-if="expense.is_split && expense.paid_by" class="text-xs flex items-center gap-1 max-w-full overflow-hidden">
+                  <span class="hidden sm:inline">Pagato da</span>
+                  <span class="truncate">{{ expense.paid_by.name }}</span>
+                  <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
-                  {{ getSplitPartners(expense) }}
+                  <span class="truncate">{{ getSplitPartners(expense) }}</span>
                 </span>
               </div>
             </div>
-            <div class="text-right ml-4">
+            <div class="text-right shrink-0">
               <div class="text-xl font-bold text-blue-600 dark:text-blue-400">
                 {{ formatCurrency(expense.amount) }}
               </div>
@@ -304,19 +368,25 @@
               <!-- Actions: only visible to the creator, not for bill-linked or fully-settled expenses -->
               <div
                 v-if="isOwner(expense) && !expense.bill_id && !(expense.is_split && isExpenseSettled(expense))"
-                class="flex gap-2 justify-end mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                class="flex gap-1 justify-end mt-1 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
               >
                 <button
                   @click="editExpense(expense)"
-                  class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                  class="p-1.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                  aria-label="Modifica spesa"
                 >
-                  Modifica
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
                 </button>
                 <button
                   @click="deleteExpenseConfirm(expense.id)"
-                  class="text-sm text-red-600 hover:text-red-700 dark:text-red-400"
+                  class="p-1.5 text-red-600 hover:text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                  aria-label="Elimina spesa"
                 >
-                  Elimina
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -343,7 +413,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, Transition } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -367,6 +437,7 @@ const showAddExpense = ref(false)
 const showEditExpense = ref(false)
 const editingExpense = ref(null)
 const trendChartType = ref('line')
+const filtersOpen = ref(false)
 const categories = ref([])
 const projects = ref([])
 function defaultDateRange() {
@@ -387,6 +458,19 @@ const filters = ref({
   projectId: '',
   from: defaultFrom,
   to: defaultTo
+})
+
+const hasActiveFilters = computed(() =>
+  filters.value.categoryId || filters.value.projectId
+)
+
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (filters.value.categoryId) count++
+  if (filters.value.projectId) count++
+  if (filters.value.from) count++
+  if (filters.value.to) count++
+  return count
 })
 
 // Stats from API (used for KPIs and charts)
@@ -435,10 +519,33 @@ const trendChartTitle = computed(() => {
   }
 })
 
+function abbreviateTrendLabel(label) {
+  // "Mar 2025" → "Mar" (show year only on first item or when year changes)
+  const parts = label.split(' ')
+  if (parts.length === 2) return parts[0] // Return just the month abbreviation
+  return label
+}
+
+function abbreviateTrendLabels(items) {
+  let lastYear = null
+  return items.map(i => {
+    const parts = i.label.split(' ')
+    if (parts.length === 2) {
+      const [month, year] = parts
+      if (year !== lastYear) {
+        lastYear = year
+        return `${month} '${year.slice(-2)}`
+      }
+      return month
+    }
+    return i.label
+  })
+}
+
 const trendBarChartData = computed(() => {
   const items = stats.value?.trend ?? []
   return {
-    labels: items.map(i => i.label),
+    labels: abbreviateTrendLabels(items),
     datasets: [{ label: 'Spese', data: items.map(i => i.amount), backgroundColor: '#3B82F6', borderRadius: 4 }]
   }
 })
@@ -446,7 +553,7 @@ const trendBarChartData = computed(() => {
 const trendLineChartData = computed(() => {
   const items = stats.value?.trend ?? []
   return {
-    labels: items.map(i => i.label),
+    labels: abbreviateTrendLabels(items),
     datasets: [{
       label: 'Spese',
       data: items.map(i => i.amount),
@@ -582,3 +689,17 @@ onMounted(() => {
   applyFilters()
 })
 </script>
+
+<style scoped>
+.filter-expand-enter-active,
+.filter-expand-leave-active {
+  transition: opacity 0.2s ease, max-height 0.25s ease;
+  overflow: hidden;
+  max-height: 500px;
+}
+.filter-expand-enter-from,
+.filter-expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+</style>

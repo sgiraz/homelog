@@ -22,9 +22,7 @@ const router = createRouter({
     },
     {
       path: '/balance',
-      name: 'balance',
-      component: () => import('../views/BalanceView.vue'),
-      meta: { requiresAuth: true }
+      redirect: '/expenses?tab=bilancio'
     },
     {
       path: '/utilities',

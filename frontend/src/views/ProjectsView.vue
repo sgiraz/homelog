@@ -9,20 +9,23 @@
     </div>
 
     <!-- Filters -->
-    <div class="flex gap-3 flex-wrap">
-      <button
-        v-for="status in statuses"
-        :key="status.value"
-        @click="selectedStatus = status.value"
-        :class="[
-          'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-          selectedStatus === status.value
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-        ]"
-      >
-        {{ status.icon }} {{ status.label }}
-      </button>
+    <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 pb-1">
+      <div class="flex gap-1 min-w-max sm:min-w-0 sm:flex-wrap">
+        <button
+          v-for="status in statuses"
+          :key="status.value"
+          @click="selectedStatus = status.value"
+          :class="[
+            'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
+            selectedStatus === status.value
+              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+          ]"
+        >
+          <span>{{ status.icon }}</span>
+          <span>{{ status.label }}</span>
+        </button>
+      </div>
     </div>
 
     <!-- Loading -->

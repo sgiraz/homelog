@@ -14,7 +14,7 @@
           <div class="flex gap-3 justify-end">
             <button
               @click="handleCancel"
-              class="px-4 py-2 rounded-lg font-medium text-gray-700 dark:text-gray-300
+              class="px-4 py-3 rounded-lg font-medium text-gray-700 dark:text-gray-300
                      bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
                      transition-colors"
             >
@@ -23,7 +23,7 @@
             <button
               @click="handleConfirm"
               :class="[
-                'px-4 py-2 rounded-lg font-medium text-white transition-colors',
+                'px-4 py-3 rounded-lg font-medium text-white transition-colors',
                 state.variant === 'danger'
                   ? 'bg-red-600 hover:bg-red-700'
                   : 'bg-blue-600 hover:bg-blue-700'
