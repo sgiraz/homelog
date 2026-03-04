@@ -101,10 +101,10 @@ func main() {
 			{
 				propHandler := handlers.NewPropertyHandler(db)
 				properties.GET("", propHandler.List)
-				properties.POST("", propHandler.Create)
+				properties.POST("", middleware.AdminRequired(), propHandler.Create)
 				properties.GET("/:id", propHandler.Get)
-				properties.PUT("/:id", propHandler.Update)
-				properties.DELETE("/:id", propHandler.Delete)
+				properties.PUT("/:id", middleware.AdminRequired(), propHandler.Update)
+				properties.DELETE("/:id", middleware.AdminRequired(), propHandler.Delete)
 			}
 
 			// Categories
@@ -139,10 +139,10 @@ func main() {
 				pdfHandler := handlers.NewPDFHandler(db)
 
 				utilities.GET("", utilHandler.List)
-				utilities.POST("", utilHandler.Create)
+				utilities.POST("", middleware.AdminRequired(), utilHandler.Create)
 				utilities.GET("/:id", utilHandler.Get)
-				utilities.PUT("/:id", utilHandler.Update)
-				utilities.DELETE("/:id", utilHandler.Delete)
+				utilities.PUT("/:id", middleware.AdminRequired(), utilHandler.Update)
+				utilities.DELETE("/:id", middleware.AdminRequired(), utilHandler.Delete)
 
 				// Meter readings
 				utilities.POST("/:id/readings", utilHandler.AddReading)
@@ -164,7 +164,7 @@ func main() {
 				utilities.GET("/:id/compare-readings", utilHandler.CompareReadings)
 
 				// Contract upload (for creating new utilities)
-				utilities.POST("/contract/upload", pdfHandler.UploadContractPDF)
+				utilities.POST("/contract/upload", middleware.AdminRequired(), pdfHandler.UploadContractPDF)
 			}
 
 			// Bill extraction templates
@@ -213,19 +213,19 @@ func main() {
 
 			// Household settings (per property) - nested under properties
 			properties.GET("/:id/settings", settingsHandler.GetHouseholdSettings)
-			properties.PUT("/:id/settings", settingsHandler.UpdateHouseholdSettings)
+			properties.PUT("/:id/settings", middleware.AdminRequired(), settingsHandler.UpdateHouseholdSettings)
 
 			// Household members (per property) - nested under properties
 			memberHandler := handlers.NewMemberHandler(db)
 			properties.GET("/:id/members", memberHandler.List)
-			properties.POST("/:id/members", memberHandler.Create)
+			properties.POST("/:id/members", middleware.AdminRequired(), memberHandler.Create)
 
 			// Individual member operations
 			members := protected.Group("/members")
 			{
 				members.GET("/:id", memberHandler.Get)
-				members.PUT("/:id", memberHandler.Update)
-				members.DELETE("/:id", memberHandler.Delete)
+				members.PUT("/:id", middleware.AdminRequired(), memberHandler.Update)
+				members.DELETE("/:id", middleware.AdminRequired(), memberHandler.Delete)
 			}
 
 			// Settlements
@@ -236,6 +236,15 @@ func main() {
 				settlements.POST("", settlementHandler.Create)
 				settlements.GET("/:id", settlementHandler.Get)
 				settlements.DELETE("/:id", settlementHandler.Delete)
+			}
+
+			// Admin operations (require admin role)
+			admin := protected.Group("/admin")
+			admin.Use(middleware.AdminRequired())
+			{
+				adminHandler := handlers.NewAdminHandler(db)
+				admin.DELETE("/users/:id", adminHandler.DeleteUser)
+				admin.PUT("/users/:id/role", adminHandler.ToggleAdmin)
 			}
 
 			// Export / Import

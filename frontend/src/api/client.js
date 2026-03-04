@@ -182,6 +182,11 @@ export const exportAPI = {
   importData: (data) => apiClient.post('/import', data),
 }
 
+export const adminAPI = {
+  deleteUser: (userId) => apiClient.delete(`/admin/users/${userId}`),
+  setUserRole: (userId, role) => apiClient.put(`/admin/users/${userId}/role`, { role }),
+}
+
 export const pdfAPI = {
   extractText: (file) => {
     const formData = new FormData()

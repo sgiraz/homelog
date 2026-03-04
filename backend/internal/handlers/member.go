@@ -28,6 +28,7 @@ type MemberResponse struct {
 	Name       string `json:"name"`
 	Role       string `json:"role,omitempty"`
 	IsVirtual  bool   `json:"is_virtual"`
+	UserRole   string `json:"user_role,omitempty"` // "admin" or "user" (from linked User account)
 }
 
 // CreateMemberRequest represents the request for creating a member
@@ -59,7 +60,7 @@ func (h *MemberHandler) List(c *gin.Context) {
 	}
 
 	var members []models.HouseholdMember
-	if err := h.db.Where("property_id = ?", propertyID).Find(&members).Error; err != nil {
+	if err := h.db.Preload("User").Where("property_id = ?", propertyID).Find(&members).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch members"})
 		return
 	}
@@ -67,7 +68,7 @@ func (h *MemberHandler) List(c *gin.Context) {
 	// Convert to response
 	response := make([]MemberResponse, len(members))
 	for i, m := range members {
-		response[i] = MemberResponse{
+		resp := MemberResponse{
 			ID:         m.ID,
 			PropertyID: m.PropertyID,
 			UserID:     m.UserID,
@@ -75,6 +76,10 @@ func (h *MemberHandler) List(c *gin.Context) {
 			Role:       m.Role,
 			IsVirtual:  m.IsVirtual,
 		}
+		if m.User != nil {
+			resp.UserRole = m.User.Role
+		}
+		response[i] = resp
 	}
 
 	c.JSON(http.StatusOK, response)

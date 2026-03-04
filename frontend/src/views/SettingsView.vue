@@ -40,7 +40,7 @@
                 Traccia chi deve cosa dividendo le spese tra i membri della famiglia
               </div>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer ml-4">
+            <label v-if="isAdmin" class="relative inline-flex items-center cursor-pointer ml-4">
               <input
                 type="checkbox"
                 v-model="splitMode"
@@ -56,6 +56,9 @@
                           dark:border-gray-500 peer-checked:bg-blue-600">
               </div>
             </label>
+            <span v-else class="ml-4 text-sm font-medium" :class="splitMode ? 'text-green-600 dark:text-green-400' : 'text-gray-400'">
+              {{ splitMode ? 'Attivo' : 'Disattivo' }}
+            </span>
           </div>
 
           <!-- Split Settings -->
@@ -80,25 +83,53 @@
                     @change="updateUserSettings"
                     class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                   />
-                  <div class="flex items-center gap-2 flex-1">
+                  <div class="flex items-center gap-2 flex-1 min-w-0">
                     <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900
                                 flex items-center justify-center text-sm font-medium
-                                text-blue-600 dark:text-blue-300">
+                                text-blue-600 dark:text-blue-300 flex-shrink-0">
                       {{ getInitials(member.name) }}
                     </div>
-                    <span class="text-gray-900 dark:text-white">{{ member.name }}</span>
-                    <span v-if="member.is_virtual" class="text-xs text-gray-500 dark:text-gray-400">(virtuale)</span>
+                    <span class="text-gray-900 dark:text-white truncate">{{ member.name }}</span>
+                    <span v-if="member.is_virtual" class="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">(virtuale)</span>
+                    <span v-if="member.user_role === 'admin'" class="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium flex-shrink-0">Admin</span>
                   </div>
-                  <button
-                    v-if="member.is_virtual"
-                    @click="deleteMember(member.id)"
-                    class="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-2"
-                    aria-label="Elimina membro"
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  <div class="flex items-center gap-1 flex-shrink-0">
+                    <!-- Admin: toggle admin role -->
+                    <button
+                      v-if="isAdmin && !member.is_virtual && member.user_id !== authStore.user?.id"
+                      @click="toggleAdminRole(member)"
+                      class="p-2 transition-colors"
+                      :class="member.user_role === 'admin' ? 'text-amber-500 hover:text-amber-700' : 'text-gray-400 hover:text-amber-500'"
+                      :title="member.user_role === 'admin' ? 'Rimuovi ruolo admin' : 'Promuovi ad admin'"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                    </button>
+                    <!-- Admin: delete virtual member -->
+                    <button
+                      v-if="isAdmin && member.is_virtual"
+                      @click="deleteMember(member.id)"
+                      class="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-2"
+                      aria-label="Elimina membro"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                    <!-- Admin: delete user account -->
+                    <button
+                      v-if="isAdmin && !member.is_virtual && member.user_id !== authStore.user?.id"
+                      @click="deleteUserAccount(member)"
+                      class="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-2"
+                      aria-label="Elimina account utente"
+                      title="Elimina account e tutti i dati"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728l-12.728-12.728" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -106,8 +137,8 @@
                 Nessun altro membro nella casa. Aggiungi un membro per dividere le spese.
               </div>
 
-              <!-- Add new member -->
-              <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <!-- Add new member (admin only) -->
+              <div v-if="isAdmin" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div class="flex flex-col sm:flex-row gap-2">
                   <input
                     v-model="newMemberName"
@@ -730,7 +761,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
-import { templatesAPI, categoriesAPI, exportAPI, authAPI } from '@/api/client'
+import { templatesAPI, categoriesAPI, exportAPI, authAPI, adminAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
@@ -1104,6 +1135,46 @@ async function deleteMember(memberId) {
     if (err.response?.data?.error) {
       window.$toast?.error(err.response.data.error)
     }
+  }
+}
+
+async function deleteUserAccount(member) {
+  const ok = await confirm({
+    title: 'Elimina account utente',
+    message: `Eliminare definitivamente l'account di "${member.name}"? Tutti i dati associati (spese, utenze, bollette, letture, progetti, template) verranno cancellati in modo irreversibile.`,
+    confirmText: 'Elimina definitivamente',
+    variant: 'danger'
+  })
+  if (!ok) return
+
+  try {
+    await adminAPI.deleteUser(member.user_id)
+    window.$toast?.success(`Account di "${member.name}" eliminato con successo`)
+    await fetchHouseholdMembers()
+  } catch (err) {
+    console.error('Error deleting user account:', err)
+    window.$toast?.error(err.response?.data?.error || "Errore durante l'eliminazione dell'account")
+  }
+}
+
+async function toggleAdminRole(member) {
+  const newRole = member.user_role === 'admin' ? 'user' : 'admin'
+  const action = newRole === 'admin' ? 'promuovere ad admin' : 'rimuovere il ruolo admin da'
+  const ok = await confirm({
+    title: newRole === 'admin' ? 'Promuovi ad admin' : 'Rimuovi ruolo admin',
+    message: `Sei sicuro di voler ${action} "${member.name}"?`,
+    confirmText: newRole === 'admin' ? 'Promuovi' : 'Rimuovi',
+    variant: newRole === 'admin' ? 'primary' : 'danger'
+  })
+  if (!ok) return
+
+  try {
+    await adminAPI.setUserRole(member.user_id, newRole)
+    window.$toast?.success(`Ruolo di "${member.name}" aggiornato a ${newRole}`)
+    await fetchHouseholdMembers()
+  } catch (err) {
+    console.error('Error toggling admin role:', err)
+    window.$toast?.error(err.response?.data?.error || 'Errore durante il cambio ruolo')
   }
 }
 

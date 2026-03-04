@@ -33,7 +33,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         </button>
-        <Button @click="showAddUtility = true">
+        <Button v-if="authStore.isAdmin" @click="showAddUtility = true">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
@@ -67,7 +67,7 @@
         </svg>
         <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Nessuna utenza configurata</h3>
         <p class="mt-2 text-gray-500 dark:text-gray-400">Aggiungi le tue utenze per monitorare consumi e bollette</p>
-        <Button class="mt-4" @click="showAddUtility = true">
+        <Button v-if="authStore.isAdmin" class="mt-4" @click="showAddUtility = true">
           Aggiungi la prima utenza
         </Button>
       </Card>
@@ -199,6 +199,7 @@
 
 <script setup>
 import { ref, computed, onMounted, h } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { formatDate as _formatDate } from '@/utils/dateFormatter'
@@ -210,6 +211,7 @@ import UtilityDetailModal from '@/components/utilities/UtilityDetailModal.vue'
 import AddReadingModal from '@/components/utilities/AddReadingModal.vue'
 import TemplatesManager from '@/components/utilities/TemplatesManager.vue'
 
+const authStore = useAuthStore()
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 
