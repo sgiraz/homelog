@@ -111,7 +111,7 @@
         />
 
         <!-- Periodo -->
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-4 w-full min-w-0 overflow-hidden">
           <Input
             v-model="form.period_start"
             label="Inizio Periodo *"
@@ -127,7 +127,7 @@
         </div>
 
         <!-- Scadenza + Emissione -->
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-4 w-full min-w-0 overflow-hidden">
           <Input
             v-model="form.due_date"
             label="Scadenza *"

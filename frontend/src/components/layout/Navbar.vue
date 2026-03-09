@@ -69,7 +69,7 @@
     class="md:hidden fixed bottom-0 left-0 right-0 z-40"
     style="padding-bottom: env(safe-area-inset-bottom)"
   >
-    <nav class="tab-bar-pill mx-3 mb-2" role="tablist">
+    <nav class="tab-bar-pill mx-3 mb-4" role="tablist">
       <div class="flex items-stretch">
         <router-link
           v-for="link in navLinks"

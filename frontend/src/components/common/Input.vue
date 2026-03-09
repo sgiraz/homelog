@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="min-w-0 w-full">
     <label v-if="label" :for="id" class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
       {{ label }}
     </label>
@@ -40,3 +40,13 @@ defineProps({
 
 defineEmits(['update:modelValue'])
 </script>
+
+<style scoped>
+input[type="date"] {
+  width: 0;
+  min-width: 100%;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  min-height: 1.5em;
+}
+</style>
