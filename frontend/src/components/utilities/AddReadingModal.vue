@@ -1,20 +1,5 @@
 <template>
-  <div
-    class="fixed inset-0 bg-black/50 flex items-start justify-center z-[60] p-4 pt-8 overflow-y-auto overflow-x-hidden"
-    @click.self="$emit('close')"
-  >
-    <Card class="w-full max-w-md p-6 my-auto">
-      <div class="flex items-center justify-between mb-6">
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white">
-          {{ isEditing ? 'Modifica Lettura' : 'Nuova Lettura' }}
-        </h3>
-        <button @click="$emit('close')" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
+  <BaseModal :title="isEditing ? 'Modifica Lettura' : 'Nuova Lettura'" @close="$emit('close')">
       <form @submit.prevent="handleSubmit" class="space-y-4">
         <!-- Data Lettura -->
         <Input
@@ -121,14 +106,13 @@
           </Button>
         </div>
       </form>
-    </Card>
-  </div>
+  </BaseModal>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useUtilitiesStore } from '@/stores/utilities'
-import Card from '@/components/common/Card.vue'
+import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 

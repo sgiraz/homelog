@@ -64,46 +64,61 @@
     </div>
   </nav>
 
-  <!-- Mobile Bottom Navigation (Apple HIG Tab Bar) -->
-  <nav
-    class="md:hidden fixed bottom-0 left-0 right-0 z-40 tab-bar-glass"
+  <!-- Mobile Bottom Navigation — iOS Floating Pill Tab Bar -->
+  <div
+    class="md:hidden fixed bottom-0 left-0 right-0 z-40"
     style="padding-bottom: env(safe-area-inset-bottom)"
   >
-    <div class="flex items-stretch">
-      <router-link
-        v-for="link in navLinks"
-        :key="link.path"
-        :to="link.path"
-        class="flex-1 flex flex-col items-center justify-center pt-2 pb-1.5 gap-1 min-h-[50px] transition-colors relative"
-        :class="isActive(link.path)
-          ? 'text-blue-600 dark:text-blue-400'
-          : 'text-gray-400 dark:text-gray-500 active:text-gray-600 dark:active:text-gray-300'"
-        :aria-current="isActive(link.path) ? 'page' : undefined"
-        :aria-label="link.label"
-      >
-        <!-- Icon -->
-        <svg class="w-[22px] h-[22px] transition-transform" :class="isActive(link.path) ? 'scale-105' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="isActive(link.path) ? '2.2' : '1.8'">
-          <path v-if="link.id === 'home' && isActive(link.path)" stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" fill="currentColor" fill-opacity="0.15" />
-          <path v-else-if="link.id === 'home'" stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+    <nav class="tab-bar-pill mx-3 mb-2" role="tablist">
+      <div class="flex items-stretch">
+        <router-link
+          v-for="link in navLinks"
+          :key="link.path"
+          :to="link.path"
+          role="tab"
+          class="tab-item flex-1 flex flex-col items-center justify-center py-3 gap-1 relative transition-colors"
+          :class="isActive(link.path)
+            ? 'text-blue-500 dark:text-blue-400'
+            : 'text-gray-500 dark:text-gray-400 active:text-gray-700 dark:active:text-gray-200'"
+          :aria-selected="isActive(link.path)"
+          :aria-label="link.label"
+        >
+          <!-- Active pill highlight -->
+          <span
+            v-if="isActive(link.path)"
+            class="active-pill"
+          />
 
-          <path v-else-if="link.id === 'expenses' && isActive(link.path)" stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" fill="currentColor" fill-opacity="0.15" />
-          <path v-else-if="link.id === 'expenses'" stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <!-- Icon -->
+          <svg class="w-[26px] h-[26px] relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="isActive(link.path) ? '2.2' : '1.6'" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Home -->
+            <template v-if="link.id === 'home'">
+              <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" :fill="isActive(link.path) ? 'currentColor' : 'none'" :fill-opacity="isActive(link.path) ? '0.2' : '0'" />
+            </template>
+            <!-- Expenses -->
+            <template v-else-if="link.id === 'expenses'">
+              <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" :fill="isActive(link.path) ? 'currentColor' : 'none'" :fill-opacity="isActive(link.path) ? '0.2' : '0'" />
+            </template>
+            <!-- Utilities -->
+            <template v-else-if="link.id === 'utilities'">
+              <path d="M13 10V3L4 14h7v7l9-11h-7z" :fill="isActive(link.path) ? 'currentColor' : 'none'" :fill-opacity="isActive(link.path) ? '0.2' : '0'" />
+            </template>
+            <!-- Projects -->
+            <template v-else-if="link.id === 'projects'">
+              <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" :fill="isActive(link.path) ? 'currentColor' : 'none'" :fill-opacity="isActive(link.path) ? '0.2' : '0'" />
+            </template>
+            <!-- Settings -->
+            <template v-else-if="link.id === 'settings'">
+              <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066zM15 12a3 3 0 11-6 0 3 3 0 016 0z" :fill="isActive(link.path) ? 'currentColor' : 'none'" :fill-opacity="isActive(link.path) ? '0.15' : '0'" />
+            </template>
+          </svg>
 
-          <path v-else-if="link.id === 'utilities' && isActive(link.path)" stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" fill="currentColor" fill-opacity="0.15" />
-          <path v-else-if="link.id === 'utilities'" stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-
-          <path v-else-if="link.id === 'projects' && isActive(link.path)" stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" fill="currentColor" fill-opacity="0.15" />
-          <path v-else-if="link.id === 'projects'" stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-
-          <path v-else-if="link.id === 'settings' && isActive(link.path)" stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066zM15 12a3 3 0 11-6 0 3 3 0 016 0z" fill="currentColor" fill-opacity="0.15" />
-          <path v-else-if="link.id === 'settings'" stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066zM15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-
-        <!-- Label -->
-        <span class="text-[10px] font-semibold leading-none tracking-tight">{{ link.shortLabel }}</span>
-      </router-link>
-    </div>
-  </nav>
+          <!-- Label -->
+          <span class="text-[10px] font-semibold leading-none relative z-10">{{ link.shortLabel }}</span>
+        </router-link>
+      </div>
+    </nav>
+  </div>
 </template>
 
 <script setup>
@@ -142,16 +157,83 @@ function handleLogout() {
 </script>
 
 <style scoped>
-.tab-bar-glass {
-  background: rgba(249, 250, 251, 0.82);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-top: 0.5px solid rgba(0, 0, 0, 0.12);
+/* ─── Liquid Glass floating pill ─── */
+.tab-bar-pill {
+  position: relative;
+  border-radius: 9999px;
+  overflow: hidden;
+
+  /* Glass material: translucent + heavy blur + saturation boost */
+  background: rgba(245, 245, 248, 0.55);
+  backdrop-filter: saturate(200%) blur(40px) brightness(1.05);
+  -webkit-backdrop-filter: saturate(200%) blur(40px) brightness(1.05);
+
+  /* Outer shadow for depth + inset glow for glass edge refraction */
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.5),
+    0 4px 24px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04);
 }
 
-:root.dark .tab-bar-glass,
-.dark .tab-bar-glass {
-  background: rgba(17, 24, 39, 0.82);
-  border-top-color: rgba(255, 255, 255, 0.08);
+/* Specular highlight gradient overlay — simulates light hitting glass surface */
+.tab-bar-pill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.05) 40%,
+    rgba(0, 0, 0, 0.02) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─── Dark mode ─── */
+.dark .tab-bar-pill {
+  background: rgba(28, 28, 32, 0.55);
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.1),
+    0 4px 24px rgba(0, 0, 0, 0.35),
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+}
+
+.dark .tab-bar-pill::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 40%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+}
+
+/* ─── Active tab pill highlight ─── */
+.active-pill {
+  position: absolute;
+  inset: 5px 4px;
+  border-radius: 9999px;
+  background: rgba(59, 130, 246, 0.14);
+  box-shadow: inset 0 0 8px rgba(59, 130, 246, 0.08);
+}
+
+.dark .active-pill {
+  background: rgba(96, 165, 250, 0.18);
+  box-shadow: inset 0 0 8px rgba(96, 165, 250, 0.1);
+}
+
+/* ─── Tap feedback ─── */
+.tab-item {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tab-item:active {
+  transform: scale(0.92);
+  transition: transform 0.1s ease;
 }
 </style>

@@ -1,19 +1,5 @@
 <template>
-  <div
-    class="fixed inset-0 bg-black/50 flex items-start justify-center z-[60] p-4 pt-8 overflow-y-auto overflow-x-hidden"
-    @click.self="$emit('close')"
-  >
-    <Card class="w-full max-w-md p-6 my-auto">
-      <div class="flex items-center justify-between mb-6">
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white">
-          {{ isEditing ? 'Modifica Bolletta' : 'Nuova Bolletta' }}
-        </h3>
-        <button @click="$emit('close')" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
+  <BaseModal :title="isEditing ? 'Modifica Bolletta' : 'Nuova Bolletta'" @close="$emit('close')">
 
       <!-- Template Selector (only for new bills) -->
       <div v-if="!isEditing && availableTemplates.length > 0" class="mb-4">
@@ -125,7 +111,7 @@
         />
 
         <!-- Periodo -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-3">
           <Input
             v-model="form.period_start"
             label="Inizio Periodo *"
@@ -140,21 +126,21 @@
           />
         </div>
 
-        <!-- Scadenza -->
-        <Input
-          v-model="form.due_date"
-          label="Scadenza Pagamento *"
-          type="date"
-          required
-        />
-
-        <!-- Data Emissione -->
-        <Input
-          v-model="form.issue_date"
-          label="Data Emissione *"
-          type="date"
-          required
-        />
+        <!-- Scadenza + Emissione -->
+        <div class="grid grid-cols-2 gap-3">
+          <Input
+            v-model="form.due_date"
+            label="Scadenza *"
+            type="date"
+            required
+          />
+          <Input
+            v-model="form.issue_date"
+            label="Emissione *"
+            type="date"
+            required
+          />
+        </div>
 
         <!-- Consumo -->
         <Input
@@ -443,8 +429,7 @@
           </Button>
         </div>
       </form>
-    </Card>
-  </div>
+  </BaseModal>
 </template>
 
 <script setup>
@@ -452,7 +437,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { utilitiesAPI, templatesAPI } from '@/api/client'
 import apiClient from '@/api/client'
-import Card from '@/components/common/Card.vue'
+import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 

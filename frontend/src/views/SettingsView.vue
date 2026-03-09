@@ -455,15 +455,15 @@
         </div>
 
         <!-- Add Category Form -->
-        <div v-if="showAddCategoryForm" class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+        <div v-if="showAddCategoryForm" class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 overflow-hidden">
           <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Nuova categoria personale</h3>
-          <div class="flex gap-2 mb-2">
+          <div class="flex gap-2 mb-2 min-w-0">
             <input
               v-model="newCategory.icon"
               type="text"
               placeholder="🏠"
               maxlength="4"
-              class="w-16 px-2 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+              class="w-14 shrink-0 px-2 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-center text-base
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -471,7 +471,7 @@
               v-model="newCategory.name"
               type="text"
               placeholder="Nome categoria"
-              class="flex-1 px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+              class="flex-1 min-w-0 px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
               @keyup.enter="addCategory"
@@ -511,19 +511,19 @@
               class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden"
             >
               <div
-                class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 cursor-pointer"
+                class="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 cursor-pointer"
                 @click="toggleCategory(cat.id)"
               >
-                <span class="text-lg w-7 text-center">{{ cat.icon }}</span>
-                <span class="flex-1 font-medium text-gray-900 dark:text-white">{{ cat.name }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ cat.subcategories?.length || 0 }} sottocategorie
-                </span>
-                <div class="flex items-center gap-1">
+                <span class="text-lg w-6 shrink-0 text-center">{{ cat.icon }}</span>
+                <div class="flex-1 min-w-0">
+                  <span class="font-medium text-gray-900 dark:text-white truncate block">{{ cat.name }}</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ cat.subcategories?.length || 0 }} sottocategorie</span>
+                </div>
+                <div class="flex items-center shrink-0">
                   <button
                     v-if="isAdmin"
                     @click.stop="startAddSubcategory(cat)"
-                    class="p-2 text-blue-500 hover:text-blue-700 dark:hover:text-blue-400"
+                    class="p-1.5 text-blue-500 hover:text-blue-700 dark:hover:text-blue-400"
                     aria-label="Aggiungi sottocategoria"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -533,7 +533,7 @@
                   <button
                     v-if="isAdmin"
                     @click.stop="deleteCategory(cat)"
-                    class="p-2 text-red-400 hover:text-red-600 dark:hover:text-red-400"
+                    class="p-1.5 text-red-400 hover:text-red-600 dark:hover:text-red-400"
                     aria-label="Elimina categoria"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -541,7 +541,7 @@
                     </svg>
                   </button>
                   <svg
-                    :class="['w-4 h-4 text-gray-400 transition-transform', expandedCategories.has(cat.id) ? 'rotate-180' : '']"
+                    :class="['w-4 h-4 ml-1 text-gray-400 transition-transform', expandedCategories.has(cat.id) ? 'rotate-180' : '']"
                     fill="none" stroke="currentColor" viewBox="0 0 24 24"
                   >
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -603,18 +603,18 @@
               class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden"
             >
               <div
-                class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 cursor-pointer"
+                class="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 cursor-pointer"
                 @click="toggleCategory(cat.id)"
               >
-                <span class="text-lg w-7 text-center">{{ cat.icon }}</span>
-                <span class="flex-1 font-medium text-gray-900 dark:text-white">{{ cat.name }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ cat.subcategories?.length || 0 }} sottocategorie
-                </span>
-                <div class="flex items-center gap-1">
+                <span class="text-lg w-6 shrink-0 text-center">{{ cat.icon }}</span>
+                <div class="flex-1 min-w-0">
+                  <span class="font-medium text-gray-900 dark:text-white truncate block">{{ cat.name }}</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ cat.subcategories?.length || 0 }} sottocategorie</span>
+                </div>
+                <div class="flex items-center shrink-0">
                   <button
                     @click.stop="startAddSubcategory(cat)"
-                    class="p-2 text-blue-500 hover:text-blue-700 dark:hover:text-blue-400"
+                    class="p-1.5 text-blue-500 hover:text-blue-700 dark:hover:text-blue-400"
                     aria-label="Aggiungi sottocategoria"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -623,7 +623,7 @@
                   </button>
                   <button
                     @click.stop="deleteCategory(cat)"
-                    class="p-2 text-red-400 hover:text-red-600 dark:hover:text-red-400"
+                    class="p-1.5 text-red-400 hover:text-red-600 dark:hover:text-red-400"
                     aria-label="Elimina categoria"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -631,7 +631,7 @@
                     </svg>
                   </button>
                   <svg
-                    :class="['w-4 h-4 text-gray-400 transition-transform', expandedCategories.has(cat.id) ? 'rotate-180' : '']"
+                    :class="['w-4 h-4 ml-1 text-gray-400 transition-transform', expandedCategories.has(cat.id) ? 'rotate-180' : '']"
                     fill="none" stroke="currentColor" viewBox="0 0 24 24"
                   >
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
