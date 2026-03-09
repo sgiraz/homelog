@@ -298,8 +298,12 @@ async function fetchUserSettings() {
       try {
         const defaultMembers = JSON.parse(data.default_split_with_member_ids)
         if (defaultMembers && defaultMembers.length > 0) {
-          form.value.is_split = true
-          form.value.split_with_member_ids = defaultMembers
+          // Filter out the payer's own member ID to avoid counting them twice
+          const filtered = defaultMembers.filter(id => id !== form.value.paid_by_member_id)
+          if (filtered.length > 0) {
+            form.value.is_split = true
+            form.value.split_with_member_ids = filtered
+          }
         }
       } catch (e) {
         console.log('No default split members configured')
@@ -377,7 +381,9 @@ async function handleSubmit() {
       project_id: form.value.project_id,
       paid_by_member_id: form.value.paid_by_member_id,
       is_split: form.value.is_split,
-      split_with_member_ids: form.value.is_split ? form.value.split_with_member_ids : []
+      split_with_member_ids: form.value.is_split
+        ? form.value.split_with_member_ids.filter(id => id !== form.value.paid_by_member_id)
+        : []
     }
 
     await expensesStore.createExpense(expenseData)
