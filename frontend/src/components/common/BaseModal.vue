@@ -16,7 +16,7 @@
           <div
             class="modal-content relative bg-white dark:bg-gray-800 w-full
                    rounded-t-2xl sm:rounded-2xl sm:shadow-xl
-                   max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto
+                   max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden
                    sm:pb-0"
             :class="size === '2xl' ? 'sm:max-w-2xl' : 'sm:max-w-md'"
           >

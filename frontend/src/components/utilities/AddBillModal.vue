@@ -1,6 +1,6 @@
 <template>
   <div
-    class="fixed inset-0 bg-black/50 flex items-start justify-center z-[60] p-4 pt-8 overflow-y-auto"
+    class="fixed inset-0 bg-black/50 flex items-start justify-center z-[60] p-4 pt-8 overflow-y-auto overflow-x-hidden"
     @click.self="$emit('close')"
   >
     <Card class="w-full max-w-md p-6 my-auto">
@@ -394,7 +394,7 @@
               <input
                 v-model="form.estimated_date"
                 type="date"
-                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
+                class="w-full min-w-0 max-w-full box-border px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
                        bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                        focus:outline-none focus:ring-1 focus:ring-amber-500"
               />

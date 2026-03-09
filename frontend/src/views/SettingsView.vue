@@ -183,8 +183,13 @@
             <h2 class="text-xl font-bold text-gray-900 dark:text-white">Gestione Abitazioni</h2>
             <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Aggiungi una nuova abitazione al sistema</p>
           </div>
-          <Button @click="showAddPropertyForm = !showAddPropertyForm" size="sm">
-            {{ showAddPropertyForm ? 'Annulla' : '+ Nuova' }}
+          <Button @click="showAddPropertyForm = !showAddPropertyForm" :variant="showAddPropertyForm ? 'secondary' : 'primary'" size="sm">
+            <svg v-if="!showAddPropertyForm" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </Button>
         </div>
 
@@ -442,8 +447,10 @@
               Gestisci le categorie per organizzare le spese
             </p>
           </div>
-          <Button @click="showAddCategoryForm = true" v-if="!showAddCategoryForm" size="sm">
-            + Nuova
+          <Button v-if="!showAddCategoryForm" @click="showAddCategoryForm = true" size="sm">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
           </Button>
         </div>
 

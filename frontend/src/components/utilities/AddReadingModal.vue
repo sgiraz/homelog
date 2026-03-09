@@ -1,6 +1,6 @@
 <template>
   <div
-    class="fixed inset-0 bg-black/50 flex items-start justify-center z-[60] p-4 pt-8 overflow-y-auto"
+    class="fixed inset-0 bg-black/50 flex items-start justify-center z-[60] p-4 pt-8 overflow-y-auto overflow-x-hidden"
     @click.self="$emit('close')"
   >
     <Card class="w-full max-w-md p-6 my-auto">
