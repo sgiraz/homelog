@@ -397,7 +397,7 @@ func (h *SettingsHandler) UploadAvatar(c *gin.Context) {
 	}
 
 	// Generate filename and save
-	filename := fmt.Sprintf("%d_%d.jpg", userID, time.Now().Unix())
+	filename := fmt.Sprintf("%d_%d.jpg", userID, time.Now().UnixNano())
 	avatarPath := filepath.Join(avatarDir, filename)
 
 	outFile, err := os.Create(avatarPath)

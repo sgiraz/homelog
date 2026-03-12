@@ -724,10 +724,13 @@ async function processFile(file) {
 }
 
 function inferMissingPeriodDate() {
-  if (!form.value.period_start) return
+  // Only infer when period_end is missing (don't overwrite PDF-extracted or manual values)
+  if (!form.value.period_start || form.value.period_end) return
 
   const interval = props.utility.billing_interval
   const unit = props.utility.billing_unit
+  if (!['day', 'week', 'month', 'year'].includes(unit)) return
+
   // Parse as UTC to avoid timezone/DST off-by-one issues
   const parts = form.value.period_start.split('-')
   const year = parseInt(parts[0]), month = parseInt(parts[1]) - 1, day = parseInt(parts[2])
