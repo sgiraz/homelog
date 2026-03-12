@@ -1985,16 +1985,27 @@ func (h *UtilityHandler) MarkCommunicationRead(c *gin.Context) {
 		return
 	}
 
+	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		return
+	}
+
 	commID, err := strconv.ParseUint(c.Param("commId"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid communication ID"})
 		return
 	}
 
-	// Find the communication and verify access through utility
+	// Find the communication and verify it belongs to the specified utility
 	var comm models.ServiceCommunication
 	if err := h.db.First(&comm, commID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Communication not found"})
+		return
+	}
+
+	if comm.UtilityID != uint(utilityID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Communication does not belong to this utility"})
 		return
 	}
 
@@ -2024,6 +2035,12 @@ func (h *UtilityHandler) DeleteCommunication(c *gin.Context) {
 		return
 	}
 
+	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		return
+	}
+
 	commID, err := strconv.ParseUint(c.Param("commId"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid communication ID"})
@@ -2033,6 +2050,11 @@ func (h *UtilityHandler) DeleteCommunication(c *gin.Context) {
 	var comm models.ServiceCommunication
 	if err := h.db.First(&comm, commID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Communication not found"})
+		return
+	}
+
+	if comm.UtilityID != uint(utilityID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Communication does not belong to this utility"})
 		return
 	}
 
