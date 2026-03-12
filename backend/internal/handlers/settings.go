@@ -22,6 +22,16 @@ import (
 	"github.com/sgiraz/homelog/internal/models"
 )
 
+// dataDir returns the base data directory, derived from DB_PATH for consistency
+// across dev (WORKDIR /app/src) and prod (WORKDIR /app) environments.
+func dataDir() string {
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath != "" {
+		return filepath.Dir(dbPath)
+	}
+	return "./data"
+}
+
 type SettingsHandler struct {
 	db *gorm.DB
 }
@@ -379,8 +389,8 @@ func (h *SettingsHandler) UploadAvatar(c *gin.Context) {
 	dst := image.NewRGBA(image.Rect(0, 0, 256, 256))
 	draw.CatmullRom.Scale(dst, dst.Bounds(), cropped, cropped.Bounds(), draw.Over, nil)
 
-	// Ensure avatars directory exists
-	avatarDir := "./data/avatars"
+	// Ensure avatars directory exists (derive from DB_PATH for consistent paths across dev/prod)
+	avatarDir := filepath.Join(dataDir(), "avatars")
 	if err := os.MkdirAll(avatarDir, 0755); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create avatar directory"})
 		return
@@ -409,7 +419,7 @@ func (h *SettingsHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 	if user.AvatarPath != "" {
-		oldPath := filepath.Join("./data", user.AvatarPath)
+		oldPath := filepath.Join(dataDir(), user.AvatarPath)
 		os.Remove(oldPath)
 	}
 
@@ -440,7 +450,7 @@ func (h *SettingsHandler) DeleteAvatar(c *gin.Context) {
 
 	// Delete file from disk
 	if user.AvatarPath != "" {
-		oldPath := filepath.Join("./data", user.AvatarPath)
+		oldPath := filepath.Join(dataDir(), user.AvatarPath)
 		os.Remove(oldPath)
 	}
 

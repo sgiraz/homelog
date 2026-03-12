@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/glebarez/sqlite"
 	"github.com/sgiraz/homelog/internal/models"
@@ -18,20 +19,16 @@ func InitDatabase() (*gorm.DB, error) {
 		dbPath = "./data/homelog.db"
 	}
 
-	// Create data directory if it doesn't exist
-	dataDir := "./data"
-	if _, err := os.Stat(dataDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(dataDir, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create data directory: %w", err)
-		}
+	// Derive data directory from DB_PATH for consistency across dev/prod
+	dataDir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
 
 	// Create uploads directory
-	uploadsDir := "./data/uploads"
-	if _, err := os.Stat(uploadsDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(uploadsDir, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create uploads directory: %w", err)
-		}
+	uploadsDir := filepath.Join(dataDir, "uploads")
+	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create uploads directory: %w", err)
 	}
 
 	// Configure GORM
@@ -100,8 +97,12 @@ func AutoMigrate(db *gorm.DB) error {
 	db.Exec(`UPDATE utilities SET billing_interval = 1 WHERE billing_interval IS NULL OR billing_interval = 0`)
 	db.Exec(`UPDATE utilities SET billing_unit = 'month' WHERE billing_unit IS NULL OR billing_unit = ''`)
 
-	// Backfill price changes from existing bills of fixed-cost services
-	backfillPriceChanges(db)
+	// Backfill price changes from existing bills of fixed-cost services (one-time)
+	var pcCount int64
+	db.Model(&models.PriceChange{}).Count(&pcCount)
+	if pcCount == 0 {
+		backfillPriceChanges(db)
+	}
 
 	log.Println("✅ Database migrations completed")
 	return nil

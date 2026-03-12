@@ -81,7 +81,7 @@ function isNoiseContent(text) {
   }
 
   // Special characters sequences (often from QR/barcode)
-  if (/^[\[\]{}|\\<>^`~]+/.test(trimmed)) {
+  if (/^[[\]{}|\\<>^`~]+/.test(trimmed)) {
     return true
   }
 

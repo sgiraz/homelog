@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gin-contrib/gzip"
@@ -269,9 +270,13 @@ func main() {
 		}
 	}
 
-	// Serve uploaded files
-	router.Static("/uploads", "./data/uploads")
-	router.Static("/avatars", "./data/avatars")
+	// Serve uploaded files — derive paths from DB_PATH for dev/prod consistency
+	baseDataDir := "./data"
+	if dbPath := os.Getenv("DB_PATH"); dbPath != "" {
+		baseDataDir = filepath.Dir(dbPath)
+	}
+	router.Static("/uploads", filepath.Join(baseDataDir, "uploads"))
+	router.Static("/avatars", filepath.Join(baseDataDir, "avatars"))
 
 	// Serve embedded frontend (SPA + static assets)
 	serveFrontend(router)

@@ -130,11 +130,11 @@ import { useSettingsStore } from '@/stores/settings'
 import { useExpensesStore } from '@/stores/expenses'
 import { formatDate as _formatDate } from '@/utils/dateFormatter'
 import apiClient from '@/api/client'
-
-const emit = defineEmits(['settlement-created'])
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import SettlementModal from '@/components/balance/SettlementModal.vue'
+
+const emit = defineEmits(['settlement-created'])
 
 const balanceStore = useBalanceStore()
 const settingsStore = useSettingsStore()

@@ -18,8 +18,6 @@ services:
     volumes:
       - ./backend:/app/src
       - ./data:/app/data
-      - ./data/uploads:/app/uploads
-      - ./data/avatars:/app/data/avatars
       # Keep go modules cached across rebuilds
       - go-modules:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build

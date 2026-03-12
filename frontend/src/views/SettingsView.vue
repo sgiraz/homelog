@@ -1,10 +1,70 @@
 <template>
   <div class="space-y-4">
-    <!-- Header -->
-    <div>
-      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Impostazioni</h1>
-      <p class="text-gray-600 dark:text-gray-400 mt-1">Configura le preferenze dell'app</p>
-    </div>
+    <!-- Profile Card (Apple HIG: always visible above tabs) -->
+    <Card class="p-4 sm:p-6">
+      <div class="flex items-center gap-4">
+        <!-- Avatar with always-visible camera badge -->
+        <div class="relative shrink-0">
+          <button
+            @click="$refs.avatarInput.click()"
+            class="block relative cursor-pointer"
+            aria-label="Cambia foto profilo"
+          >
+            <img
+              v-if="authStore.avatarUrl"
+              :src="authStore.avatarUrl"
+              :alt="authStore.user?.name"
+              class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover"
+            />
+            <div
+              v-else
+              class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600
+                      flex items-center justify-center text-white text-xl sm:text-2xl font-bold"
+            >
+              {{ userInitials }}
+            </div>
+            <!-- Camera badge (always visible, Apple-style) -->
+            <div
+              class="absolute -bottom-0.5 -right-0.5 w-7 h-7 sm:w-8 sm:h-8
+                     bg-gray-100 dark:bg-gray-600 rounded-full
+                     flex items-center justify-center
+                     border-2 border-white dark:border-gray-800
+                     shadow-sm"
+              :class="avatarUploading ? 'animate-pulse' : ''"
+            >
+              <svg v-if="!avatarUploading" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <div v-else class="w-3.5 h-3.5 border-2 border-gray-600 dark:border-gray-200 border-t-transparent rounded-full animate-spin" />
+            </div>
+          </button>
+          <input
+            ref="avatarInput"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            class="hidden"
+            @change="onAvatarSelected"
+          />
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-lg text-gray-900 dark:text-white truncate">{{ authStore.user?.name }}</div>
+          <div class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ authStore.user?.email }}</div>
+          <div class="flex items-center gap-3 mt-1.5">
+            <span class="text-xs text-gray-400 dark:text-gray-500">
+              {{ authStore.user?.role === 'admin' ? 'Amministratore' : 'Utente' }}
+            </span>
+            <button
+              v-if="authStore.avatarUrl"
+              @click="removeAvatar"
+              class="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400"
+            >
+              Rimuovi foto
+            </button>
+          </div>
+        </div>
+      </div>
+    </Card>
 
     <!-- Tab Bar -->
     <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 pb-1">
@@ -365,65 +425,10 @@
         </div>
       </Card>
 
-      <!-- Account Info -->
+      <!-- Account -->
       <Card class="p-6">
         <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Account</h2>
-
-        <div class="flex items-center gap-4">
-          <!-- Avatar with upload -->
-          <div class="relative group">
-            <img
-              v-if="authStore.avatarUrl"
-              :src="authStore.avatarUrl"
-              :alt="authStore.user?.name"
-              class="w-20 h-20 rounded-full object-cover"
-            />
-            <div
-              v-else
-              class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600
-                      flex items-center justify-center text-white text-2xl font-bold"
-            >
-              {{ userInitials }}
-            </div>
-            <!-- Upload overlay -->
-            <button
-              @click="$refs.avatarInput.click()"
-              class="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40
-                     flex items-center justify-center transition-all cursor-pointer"
-              :class="avatarUploading ? 'bg-black/40' : ''"
-              aria-label="Cambia foto profilo"
-            >
-              <svg v-if="!avatarUploading" class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <div v-else class="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            </button>
-            <input
-              ref="avatarInput"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              class="hidden"
-              @change="onAvatarSelected"
-            />
-          </div>
-          <div class="flex-1">
-            <div class="font-medium text-gray-900 dark:text-white">{{ authStore.user?.name }}</div>
-            <div class="text-sm text-gray-600 dark:text-gray-400">{{ authStore.user?.email }}</div>
-            <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">
-              {{ authStore.user?.role === 'admin' ? 'Amministratore' : 'Utente' }}
-            </div>
-            <button
-              v-if="authStore.avatarUrl"
-              @click="removeAvatar"
-              class="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400 mt-1"
-            >
-              Rimuovi foto
-            </button>
-          </div>
-        </div>
-
-        <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-3">
+        <div class="space-y-3">
           <!-- Change Password toggle -->
           <div>
             <button
@@ -799,6 +804,14 @@
         </div>
       </Card>
     </div>
+
+    <!-- Avatar Crop Modal -->
+    <AvatarCropModal
+      v-if="showCropModal"
+      :image-src="cropImageSrc"
+      @close="showCropModal = false; cropImageSrc = null"
+      @cropped="onAvatarCropped"
+    />
   </div>
 </template>
 
@@ -810,6 +823,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
 import { templatesAPI, categoriesAPI, exportAPI, authAPI, adminAPI, avatarAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
+import AvatarCropModal from '@/components/common/AvatarCropModal.vue'
 import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
 import apiClient from '@/api/client'
@@ -1229,14 +1243,30 @@ async function toggleAdminRole(member) {
 
 const avatarUploading = ref(false)
 const avatarInput = ref(null)
+const showCropModal = ref(false)
+const cropImageSrc = ref(null)
 
-async function onAvatarSelected(e) {
+function onAvatarSelected(e) {
   const file = e.target.files[0]
   if (!file) return
   if (file.size > 5 * 1024 * 1024) {
     window.$toast?.error('Immagine troppo grande (max 5MB)')
+    if (avatarInput.value) avatarInput.value.value = ''
     return
   }
+  // Read file and open crop modal
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    cropImageSrc.value = ev.target.result
+    showCropModal.value = true
+  }
+  reader.readAsDataURL(file)
+  if (avatarInput.value) avatarInput.value.value = ''
+}
+
+async function onAvatarCropped(file) {
+  showCropModal.value = false
+  cropImageSrc.value = null
   avatarUploading.value = true
   try {
     const { data } = await avatarAPI.upload(file)
@@ -1246,7 +1276,6 @@ async function onAvatarSelected(e) {
     window.$toast?.error(err.response?.data?.error || 'Errore durante il caricamento')
   } finally {
     avatarUploading.value = false
-    if (avatarInput.value) avatarInput.value.value = ''
   }
 }
 

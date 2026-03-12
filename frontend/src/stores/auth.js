@@ -26,7 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('user', JSON.stringify(data.user))
       return data
     } catch (error) {
-      throw new Error(error.response?.data?.error || 'Login failed')
+      throw new Error(error.response?.data?.error || 'Login failed', { cause: error })
     }
   }
 
@@ -40,7 +40,7 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('user', JSON.stringify(data.user))
       return data
     } catch (error) {
-      throw new Error(error.response?.data?.error || 'Registration failed')
+      throw new Error(error.response?.data?.error || 'Registration failed', { cause: error })
     }
   }
 
