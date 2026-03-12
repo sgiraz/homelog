@@ -127,8 +127,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useBalanceStore } from '@/stores/balance'
 import { useSettingsStore } from '@/stores/settings'
+import { useExpensesStore } from '@/stores/expenses'
 import { formatDate as _formatDate } from '@/utils/dateFormatter'
 import apiClient from '@/api/client'
+
+const emit = defineEmits(['settlement-created'])
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import SettlementModal from '@/components/balance/SettlementModal.vue'
@@ -171,11 +174,16 @@ function paymentMethodLabel(method) {
   return labels[method] || method
 }
 
-function onSettlementCreated() {
+const expensesStore = useExpensesStore()
+
+async function onSettlementCreated() {
   showSettlementModal.value = false
   if (currentPropertyId.value) {
-    balanceStore.fetchBalanceDetails(currentPropertyId.value)
+    await balanceStore.fetchBalanceDetails(currentPropertyId.value)
   }
+  // Refresh expenses so "Da saldare" labels update to "Saldato"
+  await expensesStore.fetchExpenses({})
+  emit('settlement-created')
 }
 
 async function fetchCurrentProperty() {

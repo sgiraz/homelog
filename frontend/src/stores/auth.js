@@ -9,6 +9,13 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
 
+  const avatarUrl = computed(() => {
+    if (user.value?.avatar_path) {
+      return '/' + user.value.avatar_path
+    }
+    return null
+  })
+
   async function login(credentials) {
     try {
       const { data } = await authAPI.login(credentials)
@@ -37,11 +44,16 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  function updateUser(updatedUser) {
+    user.value = updatedUser
+    localStorage.setItem('user', JSON.stringify(updatedUser))
+  }
+
   function logout() {
     user.value = null
     token.value = null
     localStorage.clear()
   }
 
-  return { user, token, isAuthenticated, isAdmin, login, register, logout }
+  return { user, token, isAuthenticated, isAdmin, avatarUrl, login, register, updateUser, logout }
 })

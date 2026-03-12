@@ -186,6 +186,10 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 
 	// 9. HouseholdMembers (owned properties + user's own member records in other properties)
 	if len(memberIDs) > 0 {
+		// Clean up stale member IDs from other users' default split settings
+		for _, mid := range memberIDs {
+			cleanupSplitDefaults(tx, mid)
+		}
 		if err := tx.Unscoped().Where("id IN ?", memberIDs).Delete(&models.HouseholdMember{}).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione membri"})

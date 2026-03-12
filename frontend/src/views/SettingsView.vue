@@ -370,16 +370,56 @@
         <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Account</h2>
 
         <div class="flex items-center gap-4">
-          <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600
-                      flex items-center justify-center text-white text-xl font-bold">
-            {{ userInitials }}
+          <!-- Avatar with upload -->
+          <div class="relative group">
+            <img
+              v-if="authStore.avatarUrl"
+              :src="authStore.avatarUrl"
+              :alt="authStore.user?.name"
+              class="w-20 h-20 rounded-full object-cover"
+            />
+            <div
+              v-else
+              class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600
+                      flex items-center justify-center text-white text-2xl font-bold"
+            >
+              {{ userInitials }}
+            </div>
+            <!-- Upload overlay -->
+            <button
+              @click="$refs.avatarInput.click()"
+              class="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40
+                     flex items-center justify-center transition-all cursor-pointer"
+              :class="avatarUploading ? 'bg-black/40' : ''"
+              aria-label="Cambia foto profilo"
+            >
+              <svg v-if="!avatarUploading" class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <div v-else class="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            </button>
+            <input
+              ref="avatarInput"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              class="hidden"
+              @change="onAvatarSelected"
+            />
           </div>
-          <div>
+          <div class="flex-1">
             <div class="font-medium text-gray-900 dark:text-white">{{ authStore.user?.name }}</div>
             <div class="text-sm text-gray-600 dark:text-gray-400">{{ authStore.user?.email }}</div>
             <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">
               {{ authStore.user?.role === 'admin' ? 'Amministratore' : 'Utente' }}
             </div>
+            <button
+              v-if="authStore.avatarUrl"
+              @click="removeAvatar"
+              class="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400 mt-1"
+            >
+              Rimuovi foto
+            </button>
           </div>
         </div>
 
@@ -768,7 +808,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
-import { templatesAPI, categoriesAPI, exportAPI, authAPI, adminAPI } from '@/api/client'
+import { templatesAPI, categoriesAPI, exportAPI, authAPI, adminAPI, avatarAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
@@ -1182,6 +1222,48 @@ async function toggleAdminRole(member) {
   } catch (err) {
     console.error('Error toggling admin role:', err)
     window.$toast?.error(err.response?.data?.error || 'Errore durante il cambio ruolo')
+  }
+}
+
+// ── Avatar ──────────────────────────────────────────────────────────────────
+
+const avatarUploading = ref(false)
+const avatarInput = ref(null)
+
+async function onAvatarSelected(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) {
+    window.$toast?.error('Immagine troppo grande (max 5MB)')
+    return
+  }
+  avatarUploading.value = true
+  try {
+    const { data } = await avatarAPI.upload(file)
+    authStore.updateUser(data.user)
+    window.$toast?.success('Foto profilo aggiornata')
+  } catch (err) {
+    window.$toast?.error(err.response?.data?.error || 'Errore durante il caricamento')
+  } finally {
+    avatarUploading.value = false
+    if (avatarInput.value) avatarInput.value.value = ''
+  }
+}
+
+async function removeAvatar() {
+  const ok = await confirm({
+    title: 'Rimuovi foto profilo',
+    message: 'Sei sicuro di voler rimuovere la foto profilo?',
+    confirmText: 'Rimuovi',
+    variant: 'danger'
+  })
+  if (!ok) return
+  try {
+    const { data } = await avatarAPI.delete()
+    authStore.updateUser(data.user)
+    window.$toast?.success('Foto profilo rimossa')
+  } catch (err) {
+    window.$toast?.error('Errore durante la rimozione')
   }
 }
 

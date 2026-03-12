@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 # Build stage
 FROM golang:1.25-alpine AS builder
 
@@ -6,15 +8,17 @@ RUN apk add --no-cache git gcc musl-dev sqlite-dev
 
 WORKDIR /build
 
-# Copy go mod files
+# Copy go mod files first (cached layer)
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 # Copy source code
 COPY . .
 
 # Build binary (auto-detect architecture)
-RUN CGO_ENABLED=1 go build \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 go build \
     -ldflags="-s -w" \
     -o homelog-api \
     ./cmd/api/main.go
@@ -23,10 +27,8 @@ RUN CGO_ENABLED=1 go build \
 FROM alpine:3.19
 
 # Install runtime dependencies including poppler-utils for PDF processing
-RUN apk add --no-cache ca-certificates sqlite-libs tzdata wget poppler-utils
-
-# Create non-root user
-RUN addgroup -g 1000 homelog && \
+RUN apk add --no-cache ca-certificates sqlite-libs tzdata wget poppler-utils && \
+    addgroup -g 1000 homelog && \
     adduser -D -u 1000 -G homelog homelog
 
 WORKDIR /app
@@ -35,7 +37,7 @@ WORKDIR /app
 COPY --from=builder /build/homelog-api .
 
 # Create data directory
-RUN mkdir -p /app/data /app/uploads && \
+RUN mkdir -p /app/data /app/uploads /app/data/avatars && \
     chown -R homelog:homelog /app
 
 # Switch to non-root user

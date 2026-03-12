@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -277,5 +278,33 @@ func (h *MemberHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Clean up stale member ID from all users' default_split_with_member_ids
+	cleanupSplitDefaults(h.db, uint(memberID))
+
 	c.JSON(http.StatusOK, gin.H{"message": "Member deleted successfully"})
+}
+
+// cleanupSplitDefaults removes a deleted member ID from all users' default_split_with_member_ids JSON.
+func cleanupSplitDefaults(db *gorm.DB, deletedMemberID uint) {
+	var allSettings []models.UserSettings
+	db.Where("default_split_with_member_ids IS NOT NULL AND default_split_with_member_ids != ''").Find(&allSettings)
+
+	for _, s := range allSettings {
+		var ids []uint
+		if err := json.Unmarshal([]byte(s.DefaultSplitWithMemberIDs), &ids); err != nil {
+			continue
+		}
+
+		filtered := make([]uint, 0, len(ids))
+		for _, id := range ids {
+			if id != deletedMemberID {
+				filtered = append(filtered, id)
+			}
+		}
+
+		if len(filtered) != len(ids) {
+			newJSON, _ := json.Marshal(filtered)
+			db.Model(&s).Update("default_split_with_member_ids", string(newJSON))
+		}
+	}
 }

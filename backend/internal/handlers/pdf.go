@@ -55,6 +55,7 @@ type BillTemplateRule struct {
 	AnchorText      string `json:"anchor_text"`      // Label text to find as anchor (e.g., "Importo totale da pagare")
 	AnchorDirection string `json:"anchor_direction"` // "right", "below", "right_or_below"
 	GlobalSearch    bool   `json:"global_search"`    // For unique fields (POD/PDR): search entire document
+	MultiLine       bool   `json:"multi_line"`       // For text blocks: collect all text below anchor until next section
 }
 
 // ExtractedBillData represents data extracted from a PDF bill
@@ -88,6 +89,9 @@ type ExtractedBillData struct {
 	EstimatedReading             *float64 `json:"estimated_reading,omitempty"`     // Lettura stimata (mc)
 	EstimatedConsumption         *float64 `json:"estimated_consumption,omitempty"` // Consumo stimato (Smc)
 	PreviousEstimatedConsumption *float64 `json:"previous_estimated_consumption,omitempty"`
+
+	// Communication text (extracted from bill)
+	CommunicationText string `json:"communication_text,omitempty"`
 }
 
 // ExtractedContractData represents data extracted from a contract PDF
@@ -668,6 +672,8 @@ func (h *PDFHandler) extractBillDataWithTemplateAndWords(text string, template m
 		case "previous_estimated_consumption":
 			val := h.parseAmount(value)
 			extracted.PreviousEstimatedConsumption = &val
+		case "communication_text":
+			extracted.CommunicationText = value
 		}
 	}
 
@@ -683,6 +689,16 @@ func (h *PDFHandler) extractValueWithRule(rule BillTemplateRule, text string) st
 // extractValueWithRuleAndWords extracts a value using the best available strategy.
 // Priority: 1) Global search (POD/PDR) 2) Anchor-based 3) Position-based 4) Pattern-based
 func (h *PDFHandler) extractValueWithRuleAndWords(rule BillTemplateRule, text string, words []WordInfo) string {
+	// 0. Multi-line text block extraction (communication text)
+	if rule.MultiLine && rule.AnchorText != "" && len(words) > 0 {
+		value := h.extractMultiLineByAnchor(rule, words)
+		if value != "" {
+			log.Printf("Field %s matched by multi-line anchor '%s': %s", rule.Field, rule.AnchorText, value[:min(len(value), 80)])
+			return value
+		}
+		log.Printf("Field %s: multi-line anchor match failed, trying other strategies", rule.Field)
+	}
+
 	// 1. Global search for unique fields (POD/PDR, customer code)
 	if rule.GlobalSearch && rule.ValuePattern != "" && len(words) > 0 {
 		value := h.extractByGlobalSearch(rule, words)
@@ -894,6 +910,98 @@ func (h *PDFHandler) extractByAnchor(rule BillTemplateRule, words []WordInfo) st
 		return bestCandidate.text
 	}
 	return ""
+}
+
+// extractMultiLineByAnchor collects all text below an anchor heading until the next
+// section header or a large vertical gap, useful for communication/notes text blocks.
+func (h *PDFHandler) extractMultiLineByAnchor(rule BillTemplateRule, words []WordInfo) string {
+	anchors := findAnchorOccurrences(rule.AnchorText, words)
+	if len(anchors) == 0 {
+		return ""
+	}
+
+	// Use the first anchor occurrence
+	anchor := anchors[0]
+	anchorPage := anchor.Page
+	anchorY := anchor.LastWord.Y
+	anchorX := anchor.Words[0].X
+
+	// Collect words below the anchor on the same page
+	// Group by Y coordinate (line) to reconstruct text lines
+	type lineGroup struct {
+		y     float64
+		words []WordInfo
+	}
+
+	var lines []lineGroup
+	maxY := anchorY + 400 // Max distance below anchor (PDF units)
+
+	for _, w := range words {
+		if w.Page != anchorPage {
+			continue
+		}
+		// Must be below the anchor (with small tolerance for same-line words)
+		if w.Y <= anchorY+5 {
+			continue
+		}
+		// Don't go too far down
+		if w.Y > maxY {
+			continue
+		}
+		// Must be roughly within the same column area (not too far left/right)
+		if w.X < anchorX-50 {
+			continue
+		}
+
+		// Find or create line group
+		found := false
+		for i := range lines {
+			if abs(lines[i].y-w.Y) < 8 { // Same line tolerance
+				lines[i].words = append(lines[i].words, w)
+				found = true
+				break
+			}
+		}
+		if !found {
+			lines = append(lines, lineGroup{y: w.Y, words: []WordInfo{w}})
+		}
+	}
+
+	if len(lines) == 0 {
+		return ""
+	}
+
+	// Sort lines by Y
+	sort.Slice(lines, func(i, j int) bool {
+		return lines[i].y < lines[j].y
+	})
+
+	// Stop at large vertical gaps (>30 units) which indicate a new section
+	var resultLines []string
+	prevY := anchorY
+	for _, line := range lines {
+		if line.y-prevY > 40 && len(resultLines) > 0 {
+			break // Large gap = new section
+		}
+
+		// Sort words in this line by X
+		sort.Slice(line.words, func(i, j int) bool {
+			return line.words[i].X < line.words[j].X
+		})
+
+		// Join words into a line
+		var lineText []string
+		for _, w := range line.words {
+			lineText = append(lineText, w.Text)
+		}
+		text := strings.Join(lineText, " ")
+		if text != "" {
+			resultLines = append(resultLines, text)
+		}
+		prevY = line.y
+	}
+
+	return strings.Join(resultLines, "\n")
 }
 
 // findAnchorOccurrences finds all occurrences of an anchor text (multi-word sequence)
@@ -1666,7 +1774,7 @@ func (h *PDFHandler) CreateBillTemplate(c *gin.Context) {
 	var input struct {
 		Name            string             `json:"name" binding:"required"`
 		Provider        string             `json:"provider" binding:"required"`
-		UtilityType     string             `json:"utility_type" binding:"required,oneof=electricity gas water waste"`
+		UtilityType     string             `json:"utility_type" binding:"required,oneof=electricity gas water waste internet insurance affitto mutuo"`
 		IsDefault       bool               `json:"is_default"`
 		ExtractionRules []BillTemplateRule `json:"extraction_rules"`
 	}

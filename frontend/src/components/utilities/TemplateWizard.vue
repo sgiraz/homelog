@@ -92,6 +92,10 @@
             <option value="gas">Gas</option>
             <option value="water">Acqua</option>
             <option value="waste">Rifiuti</option>
+            <option value="internet">Internet</option>
+            <option value="insurance">Assicurazione</option>
+            <option value="affitto">Affitto</option>
+            <option value="mutuo">Mutuo</option>
           </select>
         </div>
 
@@ -263,7 +267,10 @@
                   v-else
                   class="text-gray-400 dark:text-gray-500 text-sm py-2 text-center border-2 border-dashed border-gray-200 dark:border-gray-600 rounded"
                 >
-                  Trascina qui...
+                  {{ field.multiLine ? 'Trascina una parola dalla sezione comunicazioni...' : 'Trascina qui...' }}
+                </div>
+                <div v-if="field.multiLine && mappings[field.key]" class="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
+                  Estrazione multi-riga: il testo sotto l'ancora verrà catturato automaticamente
                 </div>
               </div>
             </div>
@@ -487,7 +494,8 @@ const baseExtractionFields = [
   { key: 'period_start', label: 'Data Inizio Periodo', required: false },
   { key: 'period_end', label: 'Data Fine Periodo', required: false },
   { key: 'due_date', label: 'Data Scadenza', required: false },
-  { key: 'issue_date', label: 'Data Emissione', required: false }
+  { key: 'issue_date', label: 'Data Emissione', required: false },
+  { key: 'communication_text', label: 'Comunicazioni', required: false, multiLine: true }
 ]
 
 const gasExtraFields = [
@@ -502,14 +510,23 @@ const waterExtraFields = [
   { key: 'provider_reading', label: 'Lettura Contatore (mc)', required: false }
 ]
 
+const isMeteredTemplateType = computed(() => {
+  return ['electricity', 'gas', 'water', 'waste'].includes(template.value.utility_type)
+})
+
 const extractionFields = computed(() => {
+  let fields = baseExtractionFields
+  // Fixed-cost services: period_end is derived from billing frequency, not extracted
+  if (!isMeteredTemplateType.value) {
+    fields = fields.filter(f => f.key !== 'period_end')
+  }
   if (template.value.utility_type === 'gas') {
-    return [...baseExtractionFields, ...gasExtraFields]
+    return [...fields, ...gasExtraFields]
   }
   if (template.value.utility_type === 'water') {
-    return [...baseExtractionFields, ...waterExtraFields]
+    return [...fields, ...waterExtraFields]
   }
-  return baseExtractionFields
+  return fields
 })
 
 // Computed: tokens that have been mapped
@@ -630,6 +647,7 @@ function handleFieldDrop(event, fieldKey) {
 
   try {
     const tokenData = JSON.parse(event.dataTransfer.getData('application/json'))
+    const fieldDef = extractionFields.value.find(f => f.key === fieldKey)
 
     // Generate pattern for this field (includes position data)
     const patternInfo = generatePatternForField(
@@ -669,8 +687,10 @@ function handleFieldDrop(event, fieldKey) {
       contextAbove: patternInfo.contextAbove,
       // Anchor-based extraction
       anchorText: patternInfo.anchorText,
-      anchorDirection: patternInfo.anchorDirection,
+      anchorDirection: fieldDef?.multiLine ? 'below' : (patternInfo.anchorDirection || 'right_or_below'),
       globalSearch: patternInfo.globalSearch,
+      // Multi-line flag for text block fields (communication_text)
+      multiLine: fieldDef?.multiLine || false,
       // Context editor data
       selectedContext: autoSelected,
       allNeighbors: neighbors
@@ -833,7 +853,11 @@ function getUtilityTypeName(type) {
     electricity: 'Luce',
     gas: 'Gas',
     water: 'Acqua',
-    waste: 'Rifiuti'
+    waste: 'Rifiuti',
+    internet: 'Internet',
+    insurance: 'Assicurazione',
+    affitto: 'Affitto',
+    mutuo: 'Mutuo'
   }
   return names[type] || type
 }
@@ -884,7 +908,8 @@ async function saveTemplate() {
           // Anchor-based extraction
           anchor_text: mapping.anchorText || '',
           anchor_direction: mapping.anchorDirection || 'right_or_below',
-          global_search: mapping.globalSearch || false
+          global_search: mapping.globalSearch || false,
+          multi_line: mapping.multiLine || false
         })
       }
     }
@@ -939,7 +964,8 @@ onMounted(() => {
               pattern: rule.pattern || '',
               prefix: rule.prefix || '',
               suffix: rule.suffix || '',
-              valuePattern: rule.value_pattern || ''
+              valuePattern: rule.value_pattern || '',
+              multiLine: rule.multi_line || false
             }
           }
         }

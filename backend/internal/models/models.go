@@ -18,6 +18,7 @@ type User struct {
 	Name         string `gorm:"not null" json:"name"`
 	Role         string `gorm:"not null;default:'user'" json:"role"` // admin, user
 	IsActive     bool   `gorm:"not null;default:true" json:"is_active"`
+	AvatarPath   string `json:"avatar_path,omitempty"` // relative path: "avatars/1_abc123.jpg"
 
 	PasswordResetToken   string     `gorm:"index" json:"-"`
 	PasswordResetExpires *time.Time `json:"-"`
@@ -117,7 +118,9 @@ type Expense struct {
 	Splits      []ExpenseSplit   `gorm:"foreignKey:ExpenseID" json:"splits,omitempty"`
 }
 
-// Utility represents a utility service (electricity, gas, water, waste)
+// Utility represents a service (metered utilities or fixed-cost subscriptions).
+// Generalization: metered services (electricity, gas, water, waste) have readings/consumption;
+// fixed services (internet, insurance, affitto, mutuo) have recurring amounts and price tracking.
 type Utility struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
@@ -126,28 +129,83 @@ type Utility struct {
 
 	UserID       uint       `gorm:"not null;index" json:"user_id"`
 	PropertyID   uint       `gorm:"not null;index" json:"property_id"`
-	Type         string     `gorm:"not null" json:"type"` // electricity, gas, water, waste
+	Type         string     `gorm:"not null" json:"type"` // electricity, gas, water, waste, internet, insurance, affitto, mutuo
 	Provider     string     `gorm:"not null" json:"provider"`
 	CustomerCode string     `json:"customer_code"`
-	ServiceCode  string     `json:"service_code"` // POD, PDR, etc.
+	ServiceCode  string     `json:"service_code"` // POD, PDR, contract number, etc.
 	Address      string     `json:"address"`
 	StartDate    time.Time  `json:"start_date"`
 	EndDate      *time.Time `json:"end_date,omitempty"`
 	IsActive     bool       `gorm:"not null;default:true" json:"is_active"`
 
-	// Additional fields
-	PowerCapacity       float64 `json:"power_capacity,omitempty"` // For electricity (kW)
-	CustomerPortal      string  `json:"customer_portal,omitempty"`
-	Notes               string  `json:"notes,omitempty"`
-	AllowsSelfReading   *bool   `gorm:"default:true" json:"allows_self_reading"`  // Se il fornitore accetta autolettura
-	ComparisonThreshold float64 `gorm:"default:2.0" json:"comparison_threshold"` // Soglia base per letture stesso giorno (kWh/mc)
-	ThresholdPerDay     float64 `gorm:"default:1.0" json:"threshold_per_day"`    // Tolleranza aggiuntiva per ogni giorno di differenza
+	// Service classification
+	IsMetered bool `gorm:"not null;default:true" json:"is_metered"` // true for electricity/gas/water/waste, false for internet/insurance/affitto/mutuo
+
+	// Metered service fields
+	PowerCapacity       float64 `json:"power_capacity,omitempty"`              // For electricity (kW)
+	AllowsSelfReading   *bool   `gorm:"default:true" json:"allows_self_reading"` // Se il fornitore accetta autolettura
+	ComparisonThreshold float64 `gorm:"default:2.0" json:"comparison_threshold"` // Soglia base per letture stesso giorno
+	ThresholdPerDay     float64 `gorm:"default:1.0" json:"threshold_per_day"`    // Tolleranza aggiuntiva per giorno
+
+	// Fixed service fields
+	RecurringAmount  *float64 `json:"recurring_amount,omitempty"`                    // Periodic amount (for fixed services)
+	BillingInterval  int      `gorm:"not null;default:1" json:"billing_interval"`    // e.g. 2
+	BillingUnit      string   `gorm:"not null;default:'month'" json:"billing_unit"`  // day, week, month, year
+
+	// Expense auto-creation
+	AutoCreateExpense bool  `gorm:"not null;default:false" json:"auto_create_expense"` // Create expense when bill due date arrives
+	AutoMarkPaid      bool  `gorm:"not null;default:false" json:"auto_mark_paid"`      // Mark auto-created expense as paid (domiciliazione)
+	DefaultCategoryID *uint `gorm:"index" json:"default_category_id,omitempty"`         // Category for auto-created expenses
+	PaidByMemberID    *uint `gorm:"index" json:"paid_by_member_id,omitempty"`           // Default payer for auto-created expenses
+
+	// Common fields
+	CustomerPortal string `json:"customer_portal,omitempty"`
+	Notes          string `json:"notes,omitempty"`
 
 	// Relations
-	Property Property       `json:"property"`
-	Readings []MeterReading `gorm:"foreignKey:UtilityID" json:"readings,omitempty"`
-	Bills    []Bill         `gorm:"foreignKey:UtilityID" json:"bills,omitempty"`
-	Rates    []UtilityRate  `gorm:"foreignKey:UtilityID" json:"rates,omitempty"`
+	Property        Property               `json:"property"`
+	DefaultCategory *Category              `gorm:"foreignKey:DefaultCategoryID" json:"default_category,omitempty"`
+	PaidByMember    *HouseholdMember       `gorm:"foreignKey:PaidByMemberID" json:"paid_by_member,omitempty"`
+	Readings        []MeterReading         `gorm:"foreignKey:UtilityID" json:"readings,omitempty"`
+	Bills           []Bill                 `gorm:"foreignKey:UtilityID" json:"bills,omitempty"`
+	Rates           []UtilityRate          `gorm:"foreignKey:UtilityID" json:"rates,omitempty"`
+	PriceChanges    []PriceChange          `gorm:"foreignKey:UtilityID" json:"price_changes,omitempty"`
+	Communications  []ServiceCommunication `gorm:"foreignKey:UtilityID" json:"communications,omitempty"`
+}
+
+// PriceChange tracks historical price changes for fixed-cost services
+type PriceChange struct {
+	ID        uint      `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
+	UtilityID             uint       `gorm:"not null;index" json:"utility_id"`
+	EffectiveDate         time.Time  `gorm:"not null;index" json:"effective_date"`
+	OldAmount             float64    `gorm:"not null" json:"old_amount"`
+	NewAmount             float64    `gorm:"not null" json:"new_amount"`
+	Reason                string     `json:"reason,omitempty"`                  // e.g. "Modifica condizioni contrattuali"
+	CancellationDeadline  *time.Time `json:"cancellation_deadline,omitempty"`   // Deadline to cancel without penalty
+	SourceBillID          *uint      `gorm:"index" json:"source_bill_id,omitempty"` // Bill that announced this change
+}
+
+// ServiceCommunication represents an important communication extracted from a bill/invoice
+type ServiceCommunication struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	UtilityID      uint       `gorm:"not null;index" json:"utility_id"`
+	BillID         *uint      `gorm:"index" json:"bill_id,omitempty"` // Bill this was extracted from
+	Type           string     `gorm:"not null" json:"type"`           // price_change, contract_modification, info, privacy
+	Title          string     `gorm:"not null" json:"title"`
+	Content        string     `gorm:"type:text" json:"content"`
+	ActionDeadline *time.Time `json:"action_deadline,omitempty"` // e.g. "entro il 31 luglio 2025"
+	IsImportant    bool       `gorm:"not null;default:false" json:"is_important"`
+	IsRead         bool       `gorm:"not null;default:false" json:"is_read"`
+
+	// Relations
+	Utility Utility `gorm:"foreignKey:UtilityID" json:"utility,omitempty"`
 }
 
 // MeterReading represents a USER's manual meter reading (autolettura)

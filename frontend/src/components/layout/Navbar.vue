@@ -15,10 +15,10 @@
             :key="link.path"
             :to="link.path"
             class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-            :class="$route.path === link.path
+            :class="isActive(link.path)
               ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
               : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
-            :aria-current="$route.path === link.path ? 'page' : undefined"
+            :aria-current="isActive(link.path) ? 'page' : undefined"
           >
             {{ link.label }}
           </router-link>
@@ -26,22 +26,12 @@
       </div>
 
       <!-- Right: Actions -->
-      <div class="flex items-center gap-2">
-        <!-- User initials (desktop only) -->
-        <div class="hidden md:flex items-center gap-2 mr-1">
-          <div
-            class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium"
-            :title="authStore.user?.name"
-          >
-            {{ userInitials }}
-          </div>
-        </div>
-
+      <div class="flex items-center gap-1.5">
         <!-- Dark mode toggle -->
         <button
           @click="toggleDarkMode"
           class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          :aria-label="isDark ? 'Passa a modalità chiara' : 'Passa a modalità scura'"
+          :aria-label="isDark ? 'Passa a modalit\u00E0 chiara' : 'Passa a modalit\u00E0 scura'"
         >
           <svg v-if="isDark" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -53,18 +43,194 @@
           </svg>
         </button>
 
-        <!-- Logout (desktop) -->
-        <button
-          @click="handleLogout"
-          class="hidden md:block px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-        >
-          Logout
-        </button>
+        <!-- Notification bell -->
+        <div class="relative">
+          <button
+            @click="toggleNotifications"
+            class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
+            aria-label="Notifiche"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <!-- Badge -->
+            <span
+              v-if="unreadCount > 0"
+              class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center
+                     bg-red-500 text-white text-[10px] font-bold rounded-full px-1 leading-none"
+            >
+              {{ unreadCount > 9 ? '9+' : unreadCount }}
+            </span>
+          </button>
+
+          <!-- Notifications Dropdown -->
+          <Transition
+            enter-active-class="transition duration-150 ease-out"
+            enter-from-class="opacity-0 scale-95 -translate-y-1"
+            enter-to-class="opacity-100 scale-100 translate-y-0"
+            leave-active-class="transition duration-100 ease-in"
+            leave-from-class="opacity-100 scale-100 translate-y-0"
+            leave-to-class="opacity-0 scale-95 -translate-y-1"
+          >
+            <div
+              v-if="showNotifications"
+              class="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-gray-800 rounded-xl shadow-xl
+                     border border-gray-200 dark:border-gray-700 overflow-hidden z-50"
+            >
+              <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                <span class="text-sm font-semibold text-gray-900 dark:text-white">Notifiche</span>
+                <button
+                  v-if="notifications.length > 0"
+                  @click="markAllRead"
+                  class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Segna tutte come lette
+                </button>
+              </div>
+
+              <div class="max-h-80 overflow-y-auto">
+                <div v-if="loadingNotifications" class="py-8 text-center text-sm text-gray-400">
+                  Caricamento...
+                </div>
+                <div v-else-if="notifications.length === 0" class="py-8 text-center">
+                  <svg class="w-8 h-8 mx-auto text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  <p class="text-sm text-gray-400 dark:text-gray-500">Nessuna notifica</p>
+                </div>
+                <template v-else>
+                  <button
+                    v-for="notif in notifications"
+                    :key="notif.id"
+                    @click="openNotification(notif)"
+                    class="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-50 dark:border-gray-700/50 last:border-0"
+                    :class="{ 'bg-blue-50/50 dark:bg-blue-900/10': !notif.is_read }"
+                  >
+                    <div class="flex items-start gap-3">
+                      <div :class="['p-1.5 rounded-lg flex-shrink-0 mt-0.5', getUtilityBgClass(notif.utility?.type)]">
+                        <span class="text-sm">{{ getUtilityIcon(notif.utility?.type) }}</span>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                          <span class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {{ notif.utility?.provider || 'Servizio' }}
+                          </span>
+                          <span
+                            v-if="!notif.is_read"
+                            class="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"
+                          />
+                        </div>
+                        <p class="text-xs text-gray-600 dark:text-gray-300 mt-0.5 line-clamp-2">{{ notif.content || notif.title }}</p>
+                        <span class="text-[10px] text-gray-400 mt-1 block">{{ formatTimeAgo(notif.created_at) }}</span>
+                      </div>
+                    </div>
+                  </button>
+                </template>
+              </div>
+            </div>
+          </Transition>
+        </div>
+
+        <!-- Avatar + User Menu (desktop) -->
+        <div class="relative">
+          <!-- Mobile: direct link to settings -->
+          <router-link
+            to="/settings"
+            class="md:hidden flex items-center rounded-full transition-all"
+            :class="$route.path === '/settings' ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-800' : ''"
+            aria-label="Impostazioni"
+          >
+            <img
+              v-if="authStore.avatarUrl"
+              :src="authStore.avatarUrl"
+              :alt="authStore.user?.name"
+              class="w-9 h-9 rounded-full object-cover"
+            />
+            <div
+              v-else
+              class="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium"
+            >
+              {{ userInitials }}
+            </div>
+          </router-link>
+
+          <!-- Desktop: dropdown trigger -->
+          <button
+            @click="toggleUserMenu"
+            class="hidden md:flex items-center gap-2 rounded-xl pl-1 pr-2 py-1 transition-all hover:bg-gray-100 dark:hover:bg-gray-700"
+            :class="showUserMenu ? 'bg-gray-100 dark:bg-gray-700' : ''"
+          >
+            <img
+              v-if="authStore.avatarUrl"
+              :src="authStore.avatarUrl"
+              :alt="authStore.user?.name"
+              class="w-9 h-9 rounded-full object-cover"
+            />
+            <div
+              v-else
+              class="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium"
+            >
+              {{ userInitials }}
+            </div>
+            <span class="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300">
+              {{ authStore.user?.name?.split(' ')[0] }}
+              <svg class="w-3.5 h-3.5 text-gray-400 transition-transform" :class="{ 'rotate-180': showUserMenu }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </span>
+          </button>
+
+          <!-- User Dropdown Menu -->
+          <Transition
+            enter-active-class="transition duration-150 ease-out"
+            enter-from-class="opacity-0 scale-95 -translate-y-1"
+            enter-to-class="opacity-100 scale-100 translate-y-0"
+            leave-active-class="transition duration-100 ease-in"
+            leave-from-class="opacity-100 scale-100 translate-y-0"
+            leave-to-class="opacity-0 scale-95 -translate-y-1"
+          >
+            <div
+              v-if="showUserMenu"
+              class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl
+                     border border-gray-200 dark:border-gray-700 py-1 z-50"
+            >
+              <router-link
+                to="/settings"
+                @click="showUserMenu = false"
+                class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Impostazioni
+              </router-link>
+              <div class="border-t border-gray-100 dark:border-gray-700 my-1" />
+              <button
+                @click="handleLogout"
+                class="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors w-full text-left"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
+              </button>
+            </div>
+          </Transition>
+        </div>
       </div>
     </div>
   </nav>
 
-  <!-- Mobile Bottom Navigation — iOS Floating Pill Tab Bar -->
+  <!-- Click-outside overlay for dropdowns -->
+  <div
+    v-if="showNotifications || showUserMenu"
+    class="fixed inset-0 z-20"
+    @click="closeDropdowns"
+  />
+
+  <!-- Mobile Bottom Navigation — iOS Floating Pill Tab Bar (4 items) -->
   <div
     class="md:hidden fixed bottom-0 left-0 right-0 z-40"
     style="padding-bottom: env(safe-area-inset-bottom)"
@@ -76,7 +242,7 @@
           :key="link.path"
           :to="link.path"
           role="tab"
-          class="tab-item flex-1 flex flex-col items-center justify-center py-3 gap-1 relative transition-colors"
+          class="tab-item flex-1 flex flex-col items-center justify-center py-3.5 gap-1 relative transition-colors"
           :class="isActive(link.path)
             ? 'text-blue-500 dark:text-blue-400'
             : 'text-gray-500 dark:text-gray-400 active:text-gray-700 dark:active:text-gray-200'"
@@ -107,10 +273,6 @@
             <template v-else-if="link.id === 'projects'">
               <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" :fill="isActive(link.path) ? 'currentColor' : 'none'" :fill-opacity="isActive(link.path) ? '0.2' : '0'" />
             </template>
-            <!-- Settings -->
-            <template v-else-if="link.id === 'settings'">
-              <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066zM15 12a3 3 0 11-6 0 3 3 0 016 0z" :fill="isActive(link.path) ? 'currentColor' : 'none'" :fill-opacity="isActive(link.path) ? '0.15' : '0'" />
-            </template>
           </svg>
 
           <!-- Label -->
@@ -122,10 +284,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { communicationsAPI, utilitiesAPI } from '@/api/client'
 
 const router = useRouter()
 const route = useRoute()
@@ -133,12 +296,22 @@ const authStore = useAuthStore()
 const { isDark, toggleDarkMode } = useDarkMode()
 
 const navLinks = [
-  { path: '/',          label: 'Dashboard',    shortLabel: 'Home',      id: 'home' },
-  { path: '/expenses',  label: 'Spese',        shortLabel: 'Spese',     id: 'expenses' },
-  { path: '/utilities', label: 'Utenze',       shortLabel: 'Utenze',    id: 'utilities' },
-  { path: '/projects',  label: 'Progetti',     shortLabel: 'Progetti',  id: 'projects' },
-  { path: '/settings',  label: 'Impostazioni', shortLabel: 'Impostaz.', id: 'settings' },
+  { path: '/',          label: 'Dashboard',  shortLabel: 'Home',     id: 'home' },
+  { path: '/expenses',  label: 'Spese',      shortLabel: 'Spese',    id: 'expenses' },
+  { path: '/utilities', label: 'Servizi',     shortLabel: 'Servizi',  id: 'utilities' },
+  { path: '/projects',  label: 'Progetti',   shortLabel: 'Progetti', id: 'projects' },
 ]
+
+// Notifications
+const showNotifications = ref(false)
+const notifications = ref([])
+const unreadCount = ref(0)
+const loadingNotifications = ref(false)
+
+// User menu
+const showUserMenu = ref(false)
+
+let pollInterval = null
 
 function isActive(path) {
   if (path === '/') return route.path === '/'
@@ -150,10 +323,122 @@ const userInitials = computed(() => {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 })
 
+function getUtilityIcon(type) {
+  const icons = {
+    electricity: '\u26A1', gas: '\uD83D\uDD25', water: '\uD83D\uDCA7', waste: '\u267B\uFE0F',
+    internet: '\uD83C\uDF10', insurance: '\uD83D\uDEE1\uFE0F', affitto: '\uD83C\uDFE0', mutuo: '\uD83C\uDFE6'
+  }
+  return icons[type] || '\uD83D\uDCEC'
+}
+
+function getUtilityBgClass(type) {
+  const classes = {
+    electricity: 'bg-yellow-100 dark:bg-yellow-900/30',
+    gas: 'bg-orange-100 dark:bg-orange-900/30',
+    water: 'bg-blue-100 dark:bg-blue-900/30',
+    waste: 'bg-green-100 dark:bg-green-900/30',
+    internet: 'bg-indigo-100 dark:bg-indigo-900/30',
+    insurance: 'bg-emerald-100 dark:bg-emerald-900/30',
+    affitto: 'bg-purple-100 dark:bg-purple-900/30',
+    mutuo: 'bg-sky-100 dark:bg-sky-900/30',
+  }
+  return classes[type] || 'bg-gray-100 dark:bg-gray-700'
+}
+
+function formatTimeAgo(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  const now = new Date()
+  const diff = Math.floor((now - d) / 1000)
+  if (diff < 60) return 'Ora'
+  if (diff < 3600) return `${Math.floor(diff / 60)} min fa`
+  if (diff < 86400) return `${Math.floor(diff / 3600)} ore fa`
+  if (diff < 604800) return `${Math.floor(diff / 86400)} giorni fa`
+  return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
+}
+
+async function fetchUnreadCount() {
+  try {
+    const { data } = await communicationsAPI.getUnreadCount()
+    unreadCount.value = data.count || 0
+  } catch {
+    // Silent fail
+  }
+}
+
+async function fetchNotifications() {
+  loadingNotifications.value = true
+  try {
+    const { data } = await communicationsAPI.getAll({ limit: 20 })
+    notifications.value = data || []
+  } catch {
+    notifications.value = []
+  } finally {
+    loadingNotifications.value = false
+  }
+}
+
+function toggleNotifications() {
+  showUserMenu.value = false
+  showNotifications.value = !showNotifications.value
+  if (showNotifications.value) {
+    fetchNotifications()
+  }
+}
+
+function toggleUserMenu() {
+  showNotifications.value = false
+  showUserMenu.value = !showUserMenu.value
+}
+
+function closeDropdowns() {
+  showNotifications.value = false
+  showUserMenu.value = false
+}
+
+function openNotification(notif) {
+  // Mark as read
+  if (!notif.is_read && notif.utility) {
+    utilitiesAPI.markCommunicationRead(notif.utility.id, notif.id)
+    notif.is_read = true
+    unreadCount.value = Math.max(0, unreadCount.value - 1)
+  }
+  // Navigate to utility detail
+  if (notif.utility_id) {
+    router.push(`/utilities/${notif.utility_id}`)
+  }
+  closeDropdowns()
+}
+
+async function markAllRead() {
+  for (const notif of notifications.value) {
+    if (!notif.is_read && notif.utility) {
+      try {
+        await utilitiesAPI.markCommunicationRead(notif.utility.id, notif.id)
+        notif.is_read = true
+      } catch {
+        // Continue with others
+      }
+    }
+  }
+  unreadCount.value = 0
+}
+
 function handleLogout() {
+  showUserMenu.value = false
   authStore.logout()
   router.push('/login')
 }
+
+onMounted(() => {
+  fetchUnreadCount()
+  // Poll every 60 seconds
+  pollInterval = setInterval(fetchUnreadCount, 60000)
+})
+
+onUnmounted(() => {
+  if (pollInterval) clearInterval(pollInterval)
+})
 </script>
 
 <style scoped>
@@ -235,5 +520,13 @@ function handleLogout() {
 .tab-item:active {
   transform: scale(0.92);
   transition: transform 0.1s ease;
+}
+
+/* ─── Line clamp ─── */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>

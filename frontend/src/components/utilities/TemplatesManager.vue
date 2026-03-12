@@ -139,10 +139,8 @@ const deleting = ref(false)
 
 function getUtilityIcon(type) {
   const icons = {
-    electricity: '\u26A1',
-    gas: '\uD83D\uDD25',
-    water: '\uD83D\uDCA7',
-    waste: '\u267B\uFE0F'
+    electricity: '\u26A1', gas: '\uD83D\uDD25', water: '\uD83D\uDCA7', waste: '\u267B\uFE0F',
+    internet: '\uD83C\uDF10', insurance: '\uD83D\uDEE1\uFE0F', affitto: '\uD83C\uDFE0', mutuo: '\uD83C\uDFE6'
   }
   return icons[type] || '\u26A1'
 }
@@ -152,7 +150,11 @@ function getUtilityBgClass(type) {
     electricity: 'bg-yellow-100 dark:bg-yellow-900/30',
     gas: 'bg-orange-100 dark:bg-orange-900/30',
     water: 'bg-blue-100 dark:bg-blue-900/30',
-    waste: 'bg-green-100 dark:bg-green-900/30'
+    waste: 'bg-green-100 dark:bg-green-900/30',
+    internet: 'bg-indigo-100 dark:bg-indigo-900/30',
+    insurance: 'bg-emerald-100 dark:bg-emerald-900/30',
+    affitto: 'bg-purple-100 dark:bg-purple-900/30',
+    mutuo: 'bg-sky-100 dark:bg-sky-900/30',
   }
   return classes[type] || classes.electricity
 }

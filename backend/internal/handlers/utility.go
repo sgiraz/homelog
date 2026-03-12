@@ -80,7 +80,7 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 
 	var input struct {
 		PropertyID          uint       `json:"property_id" binding:"required"`
-		Type                string     `json:"type" binding:"required,oneof=electricity gas water waste"`
+		Type                string     `json:"type" binding:"required,oneof=electricity gas water waste internet insurance affitto mutuo"`
 		Provider            string     `json:"provider" binding:"required"`
 		CustomerCode        string     `json:"customer_code"`
 		ServiceCode         string     `json:"service_code"`
@@ -88,7 +88,13 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		StartDate           time.Time  `json:"start_date"`
 		EndDate             *time.Time `json:"end_date"`
 		IsActive            bool       `json:"is_active"`
+		IsMetered           *bool      `json:"is_metered"`
 		PowerCapacity       float64    `json:"power_capacity"`
+		RecurringAmount     *float64   `json:"recurring_amount"`
+		BillingInterval     *int       `json:"billing_interval"`                                                        // default 1
+		BillingUnit         string     `json:"billing_unit" binding:"omitempty,oneof=day week month year"`               // default "month"
+		PaidByMemberID      *uint      `json:"paid_by_member_id"`
+		DefaultCategoryID   *uint      `json:"default_category_id"`
 		CustomerPortal      string     `json:"customer_portal"`
 		Notes               string     `json:"notes"`
 		AllowsSelfReading   *bool      `json:"allows_self_reading"`  // nil = true (default)
@@ -112,7 +118,14 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Check if there's already an active utility of the same type for this property
+	// Determine if service is metered based on type (unless explicitly set)
+	meteredTypes := map[string]bool{"electricity": true, "gas": true, "water": true, "waste": true}
+	isMetered := meteredTypes[input.Type]
+	if input.IsMetered != nil {
+		isMetered = *input.IsMetered
+	}
+
+	// Check if there's already an active service of the same type for this property
 	var existingCount int64
 	h.db.Model(&models.Utility{}).
 		Where("property_id = ? AND type = ? AND is_active = ?", input.PropertyID, input.Type, true).
@@ -120,17 +133,15 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 
 	if existingCount > 0 {
 		typeLabels := map[string]string{
-			"electricity": "Luce",
-			"gas":         "Gas",
-			"water":       "Acqua",
-			"waste":       "Rifiuti",
+			"electricity": "Luce", "gas": "Gas", "water": "Acqua", "waste": "Rifiuti",
+			"internet": "Internet", "insurance": "Assicurazione", "affitto": "Affitto", "mutuo": "Mutuo",
 		}
 		label := typeLabels[input.Type]
 		if label == "" {
 			label = input.Type
 		}
 		c.JSON(http.StatusConflict, gin.H{
-			"error": fmt.Sprintf("Esiste già un'utenza %s attiva per questa proprietà. Disattiva quella esistente prima di crearne una nuova.", label),
+			"error": fmt.Sprintf("Esiste già un servizio %s attivo per questa proprietà. Disattiva quello esistente prima di crearne uno nuovo.", label),
 		})
 		return
 	}
@@ -153,6 +164,16 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		thresholdPerDay = *input.ThresholdPerDay
 	}
 
+	// Default billing frequency
+	billingInterval := 1
+	if input.BillingInterval != nil && *input.BillingInterval > 0 {
+		billingInterval = *input.BillingInterval
+	}
+	billingUnit := "month"
+	if input.BillingUnit != "" {
+		billingUnit = input.BillingUnit
+	}
+
 	utility := models.Utility{
 		UserID:              userID,
 		PropertyID:          input.PropertyID,
@@ -164,7 +185,13 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		StartDate:           input.StartDate,
 		EndDate:             input.EndDate,
 		IsActive:            true,
+		IsMetered:           isMetered,
 		PowerCapacity:       input.PowerCapacity,
+		RecurringAmount:     input.RecurringAmount,
+		BillingInterval:     billingInterval,
+		BillingUnit:         billingUnit,
+		PaidByMemberID:      input.PaidByMemberID,
+		DefaultCategoryID:   input.DefaultCategoryID,
 		CustomerPortal:      input.CustomerPortal,
 		Notes:               input.Notes,
 		AllowsSelfReading:   &allowsSelfReading,
@@ -206,11 +233,15 @@ func (h *UtilityHandler) Get(c *gin.Context) {
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", id, memberPropertyIDs).
 		Preload("Property").
+		Preload("PaidByMember").
 		Preload("Bills", func(db *gorm.DB) *gorm.DB {
 			return db.Order("period_end DESC")
 		}).
 		Preload("Readings", func(db *gorm.DB) *gorm.DB {
 			return db.Order("reading_date DESC")
+		}).
+		Preload("PriceChanges", func(db *gorm.DB) *gorm.DB {
+			return db.Order("effective_date DESC")
 		}).
 		First(&utility).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -269,6 +300,11 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 		AllowsSelfReading   *bool      `json:"allows_self_reading"`
 		ComparisonThreshold *float64   `json:"comparison_threshold"`
 		ThresholdPerDay     *float64   `json:"threshold_per_day"`
+		RecurringAmount     *float64   `json:"recurring_amount"`
+		BillingInterval     *int       `json:"billing_interval"`
+		BillingUnit         string     `json:"billing_unit" binding:"omitempty,oneof=day week month year"`
+		PaidByMemberID      *uint      `json:"paid_by_member_id"`
+		DefaultCategoryID   *uint      `json:"default_category_id"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -337,6 +373,17 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	if input.ThresholdPerDay != nil {
 		utility.ThresholdPerDay = *input.ThresholdPerDay
 	}
+	if input.RecurringAmount != nil {
+		utility.RecurringAmount = input.RecurringAmount
+	}
+	if input.BillingInterval != nil && *input.BillingInterval > 0 {
+		utility.BillingInterval = *input.BillingInterval
+	}
+	if input.BillingUnit != "" {
+		utility.BillingUnit = input.BillingUnit
+	}
+	utility.PaidByMemberID = input.PaidByMemberID
+	utility.DefaultCategoryID = input.DefaultCategoryID
 
 	if err := h.db.Save(&utility).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update utility"})
@@ -584,6 +631,8 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		IsPaid              bool       `json:"is_paid"`
 		PaidDate            *time.Time `json:"paid_date"`
 		PDFURL              string     `json:"pdf_url"`
+		// Communication (optional note from bill/invoice)
+		CommunicationText string `json:"communication_text"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -634,6 +683,26 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 
 	// Load utility + user reading relations
 	h.db.Preload("Utility").Preload("UserReading").First(&bill, bill.ID)
+
+	// Create ServiceCommunication if communication text was provided
+	if input.CommunicationText != "" {
+		comm := models.ServiceCommunication{
+			UtilityID:   uint(utilityID),
+			BillID:      &bill.ID,
+			Type:        "info",
+			Title:       "Comunicazione",
+			Content:     input.CommunicationText,
+			IsImportant: true,
+		}
+		if err := h.db.Create(&comm).Error; err != nil {
+			log.Printf("⚠️  Failed to create communication for bill %d: %v", bill.ID, err)
+		}
+	}
+
+	// Detect price changes for fixed-cost services
+	if !utility.IsMetered {
+		h.detectPriceChange(&utility, &bill)
+	}
 
 	// Auto-create expense if bill is already marked as paid on creation
 	if input.IsPaid {
@@ -774,6 +843,49 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 // Split logic: uses the paying user's default_split_with_member_ids setting.
 // If no default split configured, expense is created without split.
 // All split members (payer included) get is_settled=false.
+// detectPriceChange compares the new bill's amount with the previous bill
+// and creates a PriceChange record if the amount differs.
+func (h *UtilityHandler) detectPriceChange(utility *models.Utility, newBill *models.Bill) {
+	// Find the previous bill by period_start (the one just before this bill's period)
+	var prevBill models.Bill
+	err := h.db.Where("utility_id = ? AND id != ? AND period_start < ?",
+		utility.ID, newBill.ID, newBill.PeriodStart).
+		Order("period_start DESC").
+		First(&prevBill).Error
+	if err != nil {
+		return // No previous bill to compare
+	}
+
+	if prevBill.AmountTotal == newBill.AmountTotal {
+		return // Same price
+	}
+
+	// Check if this change was already recorded
+	var existing models.PriceChange
+	err = h.db.Where("utility_id = ? AND source_bill_id = ?", utility.ID, newBill.ID).
+		First(&existing).Error
+	if err == nil {
+		return // Already recorded
+	}
+
+	change := models.PriceChange{
+		UtilityID:    utility.ID,
+		EffectiveDate: newBill.PeriodStart,
+		OldAmount:    prevBill.AmountTotal,
+		NewAmount:    newBill.AmountTotal,
+		SourceBillID: &newBill.ID,
+	}
+
+	if err := h.db.Create(&change).Error; err != nil {
+		log.Printf("⚠️  Failed to create price change for utility %d: %v", utility.ID, err)
+		return
+	}
+
+	// Update utility recurring_amount to latest price
+	h.db.Model(utility).Update("recurring_amount", newBill.AmountTotal)
+	log.Printf("💰 Price change detected for utility %d: %.2f → %.2f", utility.ID, prevBill.AmountTotal, newBill.AmountTotal)
+}
+
 func (h *UtilityHandler) autoCreateExpenseFromBill(c *gin.Context, userID uint, bill *models.Bill) error {
 	// Load utility
 	var utility models.Utility
@@ -1017,6 +1129,8 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 		ProviderReadingF2     *float64   `json:"provider_reading_f2"`
 		ProviderReadingF3     *float64   `json:"provider_reading_f3"`
 		ProviderReading       *float64   `json:"provider_reading"`
+		// Communication (optional note from bill/invoice)
+		CommunicationText string `json:"communication_text"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -1049,6 +1163,28 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	if err := h.db.Save(&bill).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update bill"})
 		return
+	}
+
+	// Handle communication text: update existing or create new
+	if input.CommunicationText != "" {
+		var existingComm models.ServiceCommunication
+		err := h.db.Where("bill_id = ?", bill.ID).First(&existingComm).Error
+		if err == nil {
+			// Update existing
+			existingComm.Content = input.CommunicationText
+			h.db.Save(&existingComm)
+		} else {
+			// Create new
+			comm := models.ServiceCommunication{
+				UtilityID:   bill.UtilityID,
+				BillID:      &bill.ID,
+				Type:        "info",
+				Title:       "Comunicazione",
+				Content:     input.CommunicationText,
+				IsImportant: true,
+			}
+			h.db.Create(&comm)
+		}
 	}
 
 	c.JSON(http.StatusOK, bill)
@@ -1745,4 +1881,237 @@ func (h *UtilityHandler) calculateConsumptionAnalysis(utilityType string, bills 
 	}
 
 	return periods, summary
+}
+
+// GetCommunications returns all communications for a utility
+func (h *UtilityHandler) GetCommunications(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		return
+	}
+
+	// Verify access
+	var memberPropertyIDs []uint
+	h.db.Model(&models.HouseholdMember{}).
+		Where("user_id = ?", userID).
+		Pluck("property_id", &memberPropertyIDs)
+
+	var utility models.Utility
+	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
+		First(&utility).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+		return
+	}
+
+	var comms []models.ServiceCommunication
+	h.db.Where("utility_id = ?", utilityID).Order("created_at DESC").Find(&comms)
+
+	c.JSON(http.StatusOK, comms)
+}
+
+// AddCommunication creates a new communication for a utility
+func (h *UtilityHandler) AddCommunication(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		return
+	}
+
+	// Verify access
+	var memberPropertyIDs []uint
+	h.db.Model(&models.HouseholdMember{}).
+		Where("user_id = ?", userID).
+		Pluck("property_id", &memberPropertyIDs)
+
+	var utility models.Utility
+	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
+		First(&utility).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+		return
+	}
+
+	var input struct {
+		BillID         *uint      `json:"bill_id"`
+		Type           string     `json:"type" binding:"required,oneof=price_change contract_modification info privacy"`
+		Title          string     `json:"title" binding:"required"`
+		Content        string     `json:"content"`
+		ActionDeadline *time.Time `json:"action_deadline"`
+		IsImportant    bool       `json:"is_important"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	comm := models.ServiceCommunication{
+		UtilityID:      uint(utilityID),
+		BillID:         input.BillID,
+		Type:           input.Type,
+		Title:          input.Title,
+		Content:        input.Content,
+		ActionDeadline: input.ActionDeadline,
+		IsImportant:    input.IsImportant,
+	}
+
+	if err := h.db.Create(&comm).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create communication"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, comm)
+}
+
+// MarkCommunicationRead marks a communication as read
+func (h *UtilityHandler) MarkCommunicationRead(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	commID, err := strconv.ParseUint(c.Param("commId"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid communication ID"})
+		return
+	}
+
+	// Find the communication and verify access through utility
+	var comm models.ServiceCommunication
+	if err := h.db.First(&comm, commID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Communication not found"})
+		return
+	}
+
+	var memberPropertyIDs []uint
+	h.db.Model(&models.HouseholdMember{}).
+		Where("user_id = ?", userID).
+		Pluck("property_id", &memberPropertyIDs)
+
+	var utility models.Utility
+	if err := h.db.Where("id = ? AND property_id IN ?", comm.UtilityID, memberPropertyIDs).
+		First(&utility).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized"})
+		return
+	}
+
+	comm.IsRead = true
+	h.db.Save(&comm)
+
+	c.JSON(http.StatusOK, comm)
+}
+
+// DeleteCommunication deletes a communication
+func (h *UtilityHandler) DeleteCommunication(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	commID, err := strconv.ParseUint(c.Param("commId"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid communication ID"})
+		return
+	}
+
+	var comm models.ServiceCommunication
+	if err := h.db.First(&comm, commID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Communication not found"})
+		return
+	}
+
+	var memberPropertyIDs []uint
+	h.db.Model(&models.HouseholdMember{}).
+		Where("user_id = ?", userID).
+		Pluck("property_id", &memberPropertyIDs)
+
+	var utility models.Utility
+	if err := h.db.Where("id = ? AND property_id IN ?", comm.UtilityID, memberPropertyIDs).
+		First(&utility).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized"})
+		return
+	}
+
+	h.db.Delete(&comm)
+	c.JSON(http.StatusOK, gin.H{"message": "Communication deleted"})
+}
+
+// GetAllCommunications returns all communications across user's utilities
+func (h *UtilityHandler) GetAllCommunications(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var memberPropertyIDs []uint
+	h.db.Model(&models.HouseholdMember{}).
+		Where("user_id = ?", userID).
+		Pluck("property_id", &memberPropertyIDs)
+
+	var utilityIDs []uint
+	h.db.Model(&models.Utility{}).
+		Where("property_id IN ?", memberPropertyIDs).
+		Pluck("id", &utilityIDs)
+
+	query := h.db.Where("utility_id IN ?", utilityIDs).
+		Preload("Utility").
+		Order("created_at DESC")
+
+	// Filter by unread only
+	if c.Query("unread_only") == "true" {
+		query = query.Where("is_read = ?", false)
+	}
+
+	// Limit
+	limit := 50
+	if l, err := strconv.Atoi(c.Query("limit")); err == nil && l > 0 && l <= 100 {
+		limit = l
+	}
+	query = query.Limit(limit)
+
+	var comms []models.ServiceCommunication
+	query.Find(&comms)
+
+	c.JSON(http.StatusOK, comms)
+}
+
+// GetUnreadCount returns the count of unread communications
+func (h *UtilityHandler) GetUnreadCount(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var memberPropertyIDs []uint
+	h.db.Model(&models.HouseholdMember{}).
+		Where("user_id = ?", userID).
+		Pluck("property_id", &memberPropertyIDs)
+
+	var utilityIDs []uint
+	h.db.Model(&models.Utility{}).
+		Where("property_id IN ?", memberPropertyIDs).
+		Pluck("id", &utilityIDs)
+
+	var count int64
+	h.db.Model(&models.ServiceCommunication{}).
+		Where("utility_id IN ? AND is_read = ?", utilityIDs, false).
+		Count(&count)
+
+	c.JSON(http.StatusOK, gin.H{"count": count})
 }

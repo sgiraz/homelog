@@ -156,6 +156,16 @@ export const utilitiesAPI = {
     apiClient.get(`/utilities/${utilityId}/compare-readings`, {
       params: { threshold: baseThreshold, threshold_per_day: thresholdPerDay }
     }),
+  // Communications
+  getCommunications: (utilityId) => apiClient.get(`/utilities/${utilityId}/communications`),
+  addCommunication: (utilityId, data) => apiClient.post(`/utilities/${utilityId}/communications`, data),
+  markCommunicationRead: (utilityId, commId) => apiClient.put(`/utilities/${utilityId}/communications/${commId}/read`),
+  deleteCommunication: (utilityId, commId) => apiClient.delete(`/utilities/${utilityId}/communications/${commId}`),
+}
+
+export const communicationsAPI = {
+  getAll: (params) => apiClient.get('/communications', { params }),
+  getUnreadCount: () => apiClient.get('/communications/unread-count'),
 }
 
 export const templatesAPI = {
@@ -180,6 +190,17 @@ export const exportAPI = {
   exportUtilities: () => apiClient.get('/export/utilities', { responseType: 'blob' }),
   exportProjects: () => apiClient.get('/export/projects', { responseType: 'blob' }),
   importData: (data) => apiClient.post('/import', data),
+}
+
+export const avatarAPI = {
+  upload: (file) => {
+    const formData = new FormData()
+    formData.append('avatar', file)
+    return apiClient.post('/settings/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  delete: () => apiClient.delete('/settings/avatar'),
 }
 
 export const adminAPI = {
