@@ -132,10 +132,14 @@ func main() {
 				expenses.GET("/stats", expHandler.GetStats)
 			}
 
+			// Centralized communications (across all utilities)
+			utilHandler := handlers.NewUtilityHandler(db)
+			protected.GET("/communications", utilHandler.GetAllCommunications)
+			protected.GET("/communications/unread-count", utilHandler.GetUnreadCount)
+
 			// Utilities
 			utilities := protected.Group("/utilities")
 			{
-				utilHandler := handlers.NewUtilityHandler(db)
 				pdfHandler := handlers.NewPDFHandler(db)
 
 				utilities.GET("", utilHandler.List)
@@ -162,6 +166,12 @@ func main() {
 
 				// Reading comparison (autolettura vs lettura fornitore)
 				utilities.GET("/:id/compare-readings", utilHandler.CompareReadings)
+
+				// Communications
+				utilities.GET("/:id/communications", utilHandler.GetCommunications)
+				utilities.POST("/:id/communications", utilHandler.AddCommunication)
+				utilities.PUT("/:id/communications/:commId/read", utilHandler.MarkCommunicationRead)
+				utilities.DELETE("/:id/communications/:commId", utilHandler.DeleteCommunication)
 
 				// Contract upload (for creating new utilities)
 				utilities.POST("/contract/upload", middleware.AdminRequired(), pdfHandler.UploadContractPDF)
@@ -204,6 +214,8 @@ func main() {
 				settings.GET("", settingsHandler.Get)
 				settings.PUT("", settingsHandler.Update)
 				settings.PUT("/password", handlers.NewAuthHandler(db).ChangePassword)
+				settings.POST("/avatar", settingsHandler.UploadAvatar)
+				settings.DELETE("/avatar", settingsHandler.DeleteAvatar)
 			}
 
 			// Balance (per property) - nested under properties
@@ -259,6 +271,7 @@ func main() {
 
 	// Serve uploaded files
 	router.Static("/uploads", "./data/uploads")
+	router.Static("/avatars", "./data/avatars")
 
 	// Serve embedded frontend (SPA + static assets)
 	serveFrontend(router)

@@ -1,5 +1,5 @@
 <template>
-  <BaseModal title="Nuova Utenza" @close="$emit('close')">
+  <BaseModal title="Nuovo Servizio" @close="$emit('close')">
     <!-- PDF Contract Drop Zone -->
     <div class="mb-6">
       <div
@@ -71,17 +71,37 @@
     </div>
 
     <form @submit.prevent="handleSubmit" class="space-y-4">
-      <!-- Tipo Utenza -->
+      <!-- Tipo Servizio -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">
           Tipo *
         </label>
-        <div class="grid grid-cols-2 gap-2">
+        <!-- Category labels -->
+        <div class="text-xs text-gray-400 dark:text-gray-500 mb-1.5 font-medium uppercase tracking-wider">Utenze</div>
+        <div class="grid grid-cols-2 gap-2 mb-3">
           <button
-            v-for="type in utilityTypes"
+            v-for="type in meteredTypes"
             :key="type.value"
             type="button"
-            @click="form.type = type.value"
+            @click="selectType(type)"
+            :class="[
+              'p-3 rounded-lg border-2 transition-colors flex flex-col items-center gap-2',
+              form.type === type.value
+                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+            ]"
+          >
+            <span :class="['text-2xl', type.iconClass]">{{ type.icon }}</span>
+            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ type.label }}</span>
+          </button>
+        </div>
+        <div class="text-xs text-gray-400 dark:text-gray-500 mb-1.5 font-medium uppercase tracking-wider">Abbonamenti e Ricorrenti</div>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            v-for="type in fixedTypes"
+            :key="type.value"
+            type="button"
+            @click="selectType(type)"
             :class="[
               'p-3 rounded-lg border-2 transition-colors flex flex-col items-center gap-2',
               form.type === type.value
@@ -98,16 +118,16 @@
       <!-- Provider -->
       <Input
         v-model="form.provider"
-        label="Fornitore *"
-        placeholder="Nome del fornitore"
+        :label="isMetered ? 'Fornitore *' : 'Operatore / Ente *'"
+        :placeholder="isMetered ? 'Nome del fornitore' : 'es. WindTre, Allianz, Proprietario...'"
         required
       />
 
-      <!-- Service Code (POD/PDR) -->
+      <!-- Service Code (context-aware) -->
       <Input
         v-model="form.service_code"
-        :label="form.type === 'electricity' ? 'POD' : form.type === 'gas' ? 'PDR' : 'Codice Servizio'"
-        :placeholder="form.type === 'electricity' ? 'IT001E...' : form.type === 'gas' ? 'IT001...' : ''"
+        :label="serviceCodeLabel"
+        :placeholder="serviceCodePlaceholder"
         autocorrect="off"
         autocapitalize="off"
       />
@@ -115,15 +135,56 @@
       <!-- Customer Code -->
       <Input
         v-model="form.customer_code"
-        label="Codice Cliente"
-        placeholder="Numero cliente"
-        inputmode="numeric"
+        :label="isMetered ? 'Codice Cliente' : 'Numero Contratto'"
+        :placeholder="isMetered ? 'Numero cliente' : 'Riferimento contratto'"
       />
+
+      <!-- Recurring Amount (fixed services only) -->
+      <Input
+        v-if="!isMetered"
+        v-model="form.recurring_amount"
+        label="Importo ricorrente (€)"
+        type="number"
+        step="0.01"
+        placeholder="es. 29.99"
+        inputmode="decimal"
+      />
+
+      <!-- Billing Frequency (fixed services only) -->
+      <div v-if="!isMetered">
+        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+          Frequenza fatturazione
+        </label>
+        <div class="flex gap-2">
+          <input
+            v-model.number="form.billing_interval"
+            type="number"
+            min="1"
+            max="365"
+            inputmode="numeric"
+            class="w-20 px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base text-center
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <select
+            v-model="form.billing_unit"
+            class="flex-1 px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="day">{{ form.billing_interval === 1 ? 'Giorno' : 'Giorni' }}</option>
+            <option value="week">{{ form.billing_interval === 1 ? 'Settimana' : 'Settimane' }}</option>
+            <option value="month">{{ form.billing_interval === 1 ? 'Mese' : 'Mesi' }}</option>
+            <option value="year">{{ form.billing_interval === 1 ? 'Anno' : 'Anni' }}</option>
+          </select>
+        </div>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ frequencyPreview }}</p>
+      </div>
 
       <!-- Address (optional) -->
       <Input
         v-model="form.address"
-        label="Indirizzo fornitura"
+        :label="isMetered ? 'Indirizzo fornitura' : 'Indirizzo'"
         placeholder="Se diverso dall'indirizzo principale"
         autocomplete="street-address"
       />
@@ -155,8 +216,8 @@
         inputmode="url"
       />
 
-      <!-- Allows Self Reading -->
-      <div v-if="form.type !== 'waste'" class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+      <!-- Allows Self Reading (metered only, not waste) -->
+      <div v-if="isMetered && form.type !== 'waste'" class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <input
           type="checkbox"
           id="allows-self-reading"
@@ -173,15 +234,15 @@
         </div>
       </div>
 
-      <!-- Comparison Threshold -->
-      <div v-if="form.type !== 'waste'" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+      <!-- Comparison Threshold (metered only, not waste) -->
+      <div v-if="isMetered && form.type !== 'waste'" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <div class="flex items-center justify-between">
           <div>
             <label for="comparison-threshold" class="text-sm font-medium text-gray-900 dark:text-white">
               Soglia confronto letture
             </label>
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              Differenza kWh per segnalare anomalie
+              Differenza per segnalare anomalie
             </p>
           </div>
           <div class="flex items-center gap-2">
@@ -197,9 +258,32 @@
                      bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                      focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
-            <span class="text-sm text-gray-500 dark:text-gray-400">{{ form.type === 'electricity' ? 'kWh' : form.type === 'gas' ? 'Smc' : 'm³' }}</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">{{ consumptionUnitLabel }}</span>
           </div>
         </div>
+      </div>
+
+      <!-- Chi paga -->
+      <div v-if="members.length > 1">
+        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+          Chi paga
+        </label>
+        <select
+          v-model="form.paid_by_member_id"
+          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option :value="null">Non specificato</option>
+          <option
+            v-for="member in members"
+            :key="member.id"
+            :value="member.id"
+          >
+            {{ member.name }}{{ member.role ? ` (${member.role})` : '' }}
+          </option>
+        </select>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Chi paga di default le bollette/fatture di questo servizio</p>
       </div>
 
       <!-- Notes -->
@@ -235,9 +319,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useUtilitiesStore } from '@/stores/utilities'
-import apiClient, { utilitiesAPI } from '@/api/client'
+import apiClient, { utilitiesAPI, membersAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -259,21 +343,72 @@ const isDragging = ref(false)
 const pdfProcessing = ref(false)
 const pdfError = ref(null)
 const uploadedFile = ref(null)
+const members = ref([])
 
-const utilityTypes = [
-  { value: 'electricity', label: 'Luce', icon: '\u26A1', iconClass: 'text-yellow-500' },
-  { value: 'gas', label: 'Gas', icon: '\uD83D\uDD25', iconClass: 'text-orange-500' },
-  { value: 'water', label: 'Acqua', icon: '\uD83D\uDCA7', iconClass: 'text-blue-500' },
-  { value: 'waste', label: 'Rifiuti', icon: '\u267B\uFE0F', iconClass: 'text-green-500' }
+const meteredTypes = [
+  { value: 'electricity', label: 'Luce', icon: '\u26A1', iconClass: 'text-yellow-500', metered: true },
+  { value: 'gas', label: 'Gas', icon: '\uD83D\uDD25', iconClass: 'text-orange-500', metered: true },
+  { value: 'water', label: 'Acqua', icon: '\uD83D\uDCA7', iconClass: 'text-blue-500', metered: true },
+  { value: 'waste', label: 'Rifiuti', icon: '\u267B\uFE0F', iconClass: 'text-green-500', metered: true },
 ]
+
+const fixedTypes = [
+  { value: 'internet', label: 'Internet', icon: '\uD83C\uDF10', iconClass: 'text-indigo-500', metered: false },
+  { value: 'insurance', label: 'Assicurazione', icon: '\uD83D\uDEE1\uFE0F', iconClass: 'text-emerald-500', metered: false },
+  { value: 'affitto', label: 'Affitto', icon: '\uD83C\uDFE0', iconClass: 'text-purple-500', metered: false },
+  { value: 'mutuo', label: 'Mutuo', icon: '\uD83C\uDFE6', iconClass: 'text-sky-500', metered: false },
+]
+
+const isMetered = computed(() => {
+  const allTypes = [...meteredTypes, ...fixedTypes]
+  const found = allTypes.find(t => t.value === form.value.type)
+  return found ? found.metered : true
+})
+
+const serviceCodeLabel = computed(() => {
+  const labels = { electricity: 'POD', gas: 'PDR', internet: 'Numero linea', affitto: 'Riferimento contratto', mutuo: 'Numero mutuo' }
+  return labels[form.value.type] || 'Codice Servizio'
+})
+
+const serviceCodePlaceholder = computed(() => {
+  const placeholders = { electricity: 'IT001E...', gas: 'IT001...', internet: '04XXXXXXXX', affitto: '', mutuo: '' }
+  return placeholders[form.value.type] || ''
+})
+
+const consumptionUnitLabel = computed(() => {
+  const units = { electricity: 'kWh', gas: 'Smc', water: 'm\u00B3' }
+  return units[form.value.type] || ''
+})
+
+const frequencyPreview = computed(() => {
+  const n = form.value.billing_interval || 1
+  const u = form.value.billing_unit
+  const unitLabels = {
+    day: n === 1 ? 'giorno' : 'giorni',
+    week: n === 1 ? 'settimana' : 'settimane',
+    month: n === 1 ? 'mese' : 'mesi',
+    year: n === 1 ? 'anno' : 'anni'
+  }
+  return n === 1 ? `Ogni ${unitLabels[u]}` : `Ogni ${n} ${unitLabels[u]}`
+})
+
+function selectType(type) {
+  form.value.type = type.value
+  form.value.is_metered = type.metered
+}
 
 const form = ref({
   type: 'electricity',
+  is_metered: true,
   provider: '',
   service_code: '',
   customer_code: '',
   address: '',
   power_capacity: null,
+  recurring_amount: null,
+  billing_interval: 1,
+  billing_unit: 'month',
+  paid_by_member_id: null,
   start_date: '',
   customer_portal: '',
   notes: '',
@@ -346,16 +481,26 @@ function clearUploadedFile() {
 async function fetchCurrentProperty() {
   if (props.defaultPropertyId) {
     form.value.property_id = props.defaultPropertyId
-    return
-  }
-  try {
-    const { data } = await apiClient.get('/properties')
-    if (data && data.length > 0) {
-      const currentProp = data.find(p => p.is_current) || data[0]
-      form.value.property_id = currentProp.id
+  } else {
+    try {
+      const { data } = await apiClient.get('/properties')
+      if (data && data.length > 0) {
+        const currentProp = data.find(p => p.is_current) || data[0]
+        form.value.property_id = currentProp.id
+      }
+    } catch (err) {
+      console.error('Error fetching properties:', err)
     }
-  } catch (err) {
-    console.error('Error fetching properties:', err)
+  }
+
+  // Fetch household members for payer selection
+  if (form.value.property_id) {
+    try {
+      const { data } = await membersAPI.list(form.value.property_id)
+      members.value = data || []
+    } catch (err) {
+      console.error('Error fetching members:', err)
+    }
   }
 }
 
@@ -372,11 +517,15 @@ async function handleSubmit() {
     const utilityData = {
       ...form.value,
       power_capacity: form.value.power_capacity ? parseFloat(form.value.power_capacity) : 0,
+      recurring_amount: form.value.recurring_amount ? parseFloat(form.value.recurring_amount) : undefined,
+      billing_interval: form.value.billing_interval || 1,
+      billing_unit: form.value.billing_unit || 'month',
+      paid_by_member_id: form.value.paid_by_member_id || undefined,
       start_date: form.value.start_date ? new Date(form.value.start_date).toISOString() : new Date().toISOString()
     }
 
     await utilitiesStore.createUtility(utilityData)
-    window.$toast?.success('Utenza aggiunta con successo!')
+    window.$toast?.success('Servizio aggiunto con successo!')
     emit('created')
   } catch (err) {
     error.value = err.response?.data?.error || err.message || 'Errore durante il salvataggio'

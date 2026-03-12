@@ -7,8 +7,32 @@
 [![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D?logo=vue.js)](https://vuejs.org/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)](https://hub.docker.com/u/sgira)
 
-<!-- TODO: Add screenshot here -->
-<!-- ![HomeLog Dashboard](docs/images/dashboard.png) -->
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><strong>Dashboard</strong></td>
+    <td align="center"><strong>Spese</strong></td>
+    <td align="center"><strong>Utenze</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/dashboard.png" alt="Dashboard" width="280" /></td>
+    <td><img src="docs/screenshots/expenses.png" alt="Expenses" width="280" /></td>
+    <td><img src="docs/screenshots/utilities.png" alt="Utilities" width="280" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Dettaglio Utenza</strong></td>
+    <td align="center"><strong>Progetti</strong></td>
+    <td align="center"><strong>Impostazioni</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/utility-detail.png" alt="Utility Detail" width="280" /></td>
+    <td><img src="docs/screenshots/projects.png" alt="Projects" width="280" /></td>
+    <td><img src="docs/screenshots/settings.png" alt="Settings" width="280" /></td>
+  </tr>
+</table>
+
+<!-- To update: save screenshots as PNG in docs/screenshots/ with the names above -->
 
 ---
 

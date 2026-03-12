@@ -248,8 +248,14 @@ const otherUsers = computed(() => {
   return householdUsers.value.filter(u => u.id !== form.value.paid_by_member_id)
 })
 
+// Effective split members: exclude the payer and any stale/deleted member IDs
+const effectiveSplitMembers = computed(() => {
+  const validIds = new Set(otherUsers.value.map(u => u.id))
+  return form.value.split_with_member_ids.filter(id => validIds.has(id))
+})
+
 const totalPeople = computed(() => {
-  return form.value.split_with_member_ids.length + 1
+  return effectiveSplitMembers.value.length + 1
 })
 
 const splitAmount = computed(() => {
@@ -298,8 +304,13 @@ async function fetchUserSettings() {
       try {
         const defaultMembers = JSON.parse(data.default_split_with_member_ids)
         if (defaultMembers && defaultMembers.length > 0) {
-          // Filter out the payer's own member ID to avoid counting them twice
-          const filtered = defaultMembers.filter(id => id !== form.value.paid_by_member_id)
+          // Filter out the payer and any stale/deleted member IDs
+          const validOtherIds = new Set(
+            householdUsers.value
+              .filter(u => u.id !== form.value.paid_by_member_id)
+              .map(u => u.id)
+          )
+          const filtered = defaultMembers.filter(id => validOtherIds.has(id))
           if (filtered.length > 0) {
             form.value.is_split = true
             form.value.split_with_member_ids = filtered
@@ -347,8 +358,9 @@ watch(() => form.value.is_split, (newVal) => {
   }
 })
 
-watch(() => form.value.paid_by_member_id, () => {
-  form.value.split_with_member_ids = []
+watch(() => form.value.paid_by_member_id, (newPayerId) => {
+  // Remove the new payer from split members (they're already counted)
+  form.value.split_with_member_ids = form.value.split_with_member_ids.filter(id => id !== newPayerId)
 })
 
 watch(() => form.value.project_id, (newProjectId) => {
@@ -382,7 +394,7 @@ async function handleSubmit() {
       paid_by_member_id: form.value.paid_by_member_id,
       is_split: form.value.is_split,
       split_with_member_ids: form.value.is_split
-        ? form.value.split_with_member_ids.filter(id => id !== form.value.paid_by_member_id)
+        ? effectiveSplitMembers.value
         : []
     }
 

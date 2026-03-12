@@ -1,5 +1,5 @@
 <template>
-  <BaseModal :title="isEditing ? 'Modifica Bolletta' : 'Nuova Bolletta'" @close="$emit('close')">
+  <BaseModal :title="isEditing ? (isMetered ? 'Modifica Bolletta' : 'Modifica Fattura') : (isMetered ? 'Nuova Bolletta' : 'Nuova Fattura')" @close="$emit('close')">
 
       <!-- Template Selector (only for new bills) -->
       <div v-if="!isEditing && availableTemplates.length > 0" class="mb-4">
@@ -85,7 +85,7 @@
             </svg>
             <div>
               <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Trascina qui il PDF della bolletta
+                Trascina qui il PDF della {{ isMetered ? 'bolletta' : 'fattura' }}
               </p>
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 oppure clicca per selezionare
@@ -142,8 +142,9 @@
           />
         </div>
 
-        <!-- Consumo -->
+        <!-- Consumo (metered only) -->
         <Input
+          v-if="isMetered"
           v-model="form.consumption_total"
           :label="'Consumo (' + getConsumptionUnit(utility.type) + ')'"
           type="number"
@@ -152,16 +153,16 @@
           placeholder="0"
         />
 
-        <!-- Numero Bolletta -->
+        <!-- Numero Bolletta/Fattura -->
         <Input
           v-model="form.bill_number"
-          label="Numero Bolletta *"
-          placeholder="Es. 32455111"
+          :label="isMetered ? 'Numero Bolletta *' : 'Numero Fattura *'"
+          :placeholder="isMetered ? 'Es. 32455111' : 'Es. F2601900450'"
           required
         />
 
-        <!-- Autolettura di riferimento -->
-        <div class="space-y-2">
+        <!-- Autolettura di riferimento (metered only) -->
+        <div v-if="isMetered" class="space-y-2">
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Autolettura di riferimento
           </label>
@@ -210,8 +211,8 @@
           </div>
         </div>
 
-        <!-- Provider Readings Section -->
-        <div class="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+        <!-- Provider Readings Section (metered only) -->
+        <div v-if="isMetered" class="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-2">
               <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -364,8 +365,8 @@
           </div>
         </div>
 
-        <!-- Estimated consumption toggle (gas only) -->
-        <div v-if="utility.type === 'gas'" class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+        <!-- Estimated consumption toggle (gas only, metered) -->
+        <div v-if="isMetered && utility.type === 'gas'" class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
           <label class="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -403,6 +404,24 @@
           </div>
         </div>
 
+        <!-- Comunicazioni importanti (mostly for fixed services, but available for all) -->
+        <div>
+          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+            Comunicazioni importanti
+          </label>
+          <textarea
+            v-model="form.communication_text"
+            rows="3"
+            :placeholder="isMetered ? 'Eventuali comunicazioni rilevanti...' : 'Es. Modifica condizioni contrattuali, variazioni di prezzo...'"
+            class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            Inserisci comunicazioni importanti contenute nella {{ isMetered ? 'bolletta' : 'fattura' }} (variazioni prezzo, scadenze recesso, ecc.)
+          </p>
+        </div>
+
         <!-- Stato Pagamento -->
         <div class="flex items-center gap-3">
           <input
@@ -412,7 +431,7 @@
             class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
           <label for="is-paid" class="text-sm text-gray-900 dark:text-white cursor-pointer">
-            Già pagata
+            {{ isMetered ? 'Già pagata' : 'Già pagata' }}
           </label>
         </div>
 
@@ -454,6 +473,10 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'saved'])
 const utilitiesStore = useUtilitiesStore()
+
+const isMetered = computed(() => {
+  return ['electricity', 'gas', 'water', 'waste'].includes(props.utility?.type)
+})
 
 const loading = ref(false)
 const error = ref(null)
@@ -534,7 +557,9 @@ const form = ref({
   estimated_date: '',
   estimated_reading: null,  // Lettura stimata (mc) - user input
   // Transient: previous estimated consumption (not saved to DB)
-  previous_estimated_consumption: null
+  previous_estimated_consumption: null,
+  // Communication text (important notices from the bill/invoice)
+  communication_text: ''
 })
 
 // Track if we have provider readings
@@ -678,6 +703,15 @@ async function processFile(file) {
       if (data.previous_estimated_consumption != null && previousBillHasEstimate.value) {
         form.value.previous_estimated_consumption = data.previous_estimated_consumption
       }
+      // Communication text extracted from PDF
+      if (data.communication_text) {
+        form.value.communication_text = data.communication_text
+      }
+
+      // For fixed-cost services: infer missing period date from billing frequency
+      if (!isMetered.value && props.utility?.billing_interval && props.utility?.billing_unit) {
+        inferMissingPeriodDate()
+      }
     }
   } catch (err) {
     pdfError.value = err.response?.data?.error || 'Errore durante l\'estrazione dei dati dal PDF'
@@ -685,6 +719,34 @@ async function processFile(file) {
   } finally {
     pdfProcessing.value = false
   }
+}
+
+function inferMissingPeriodDate() {
+  if (!form.value.period_start) return
+
+  const interval = props.utility.billing_interval
+  const unit = props.utility.billing_unit
+  const start = new Date(form.value.period_start)
+  if (isNaN(start.getTime())) return
+
+  const end = new Date(start)
+  switch (unit) {
+    case 'day':
+      end.setDate(end.getDate() + interval)
+      break
+    case 'week':
+      end.setDate(end.getDate() + interval * 7)
+      break
+    case 'month':
+      end.setMonth(end.getMonth() + interval)
+      break
+    case 'year':
+      end.setFullYear(end.getFullYear() + interval)
+      break
+  }
+  // period_end = last day of the period (day before next period start)
+  end.setDate(end.getDate() - 1)
+  form.value.period_end = end.toISOString().split('T')[0]
 }
 
 function clearUploadedFile() {
@@ -695,7 +757,7 @@ function clearUploadedFile() {
 }
 
 async function handleSubmit() {
-  if (form.value.consumption_total == null || form.value.consumption_total === '') {
+  if (isMetered.value && (form.value.consumption_total == null || form.value.consumption_total === '')) {
     error.value = 'Il consumo è obbligatorio'
     return
   }
@@ -704,7 +766,7 @@ async function handleSubmit() {
   error.value = null
 
   try {
-    // If no reading selected but user entered an inline value, create the reading first
+    // If no reading selected but user entered an inline value, create the reading first (metered only)
     let resolvedReadingId = form.value.user_reading_id
     if (resolvedReadingId === null && inlineReadingValue.value != null && inlineReadingValue.value !== '') {
       const readingDate = form.value.period_end
@@ -745,7 +807,9 @@ async function handleSubmit() {
       estimated_reading: form.value.has_estimated && form.value.estimated_reading != null
         ? parseFloat(form.value.estimated_reading) : null,
       estimated_consumption: form.value.has_estimated && calculatedEstimatedConsumption.value != null
-        ? calculatedEstimatedConsumption.value : null
+        ? calculatedEstimatedConsumption.value : null,
+      // Communication text (saved as ServiceCommunication on backend)
+      communication_text: form.value.communication_text || ''
     }
 
     if (isEditing.value) {
@@ -939,7 +1003,19 @@ onMounted(async () => {
       has_estimated: props.bill.estimated_reading != null || props.bill.estimated_consumption != null,
       estimated_date: formatDateForInput(props.bill.estimated_date),
       estimated_reading: props.bill.estimated_reading,
-      previous_estimated_consumption: null
+      previous_estimated_consumption: null,
+      communication_text: ''
+    }
+
+    // Load existing communication for this bill (if any)
+    try {
+      const { data: comms } = await utilitiesAPI.getCommunications(props.utility.id)
+      const billComm = comms.find(c => c.bill_id === props.bill.id)
+      if (billComm) {
+        form.value.communication_text = billComm.content || ''
+      }
+    } catch (e) {
+      // Non-critical, ignore
     }
 
     // Se stiamo editando una bolletta con letture esistenti, mostra la collapsed view

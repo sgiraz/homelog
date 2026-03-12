@@ -62,6 +62,11 @@ func InitDatabase() (*gorm.DB, error) {
 func AutoMigrate(db *gorm.DB) error {
 	log.Println("🔄 Running database migrations...")
 
+	// Disable FK checks during migration — GORM may need to recreate tables
+	// to add new foreign keys, which fails if other tables reference them.
+	db.Exec("PRAGMA foreign_keys=OFF;")
+	defer db.Exec("PRAGMA foreign_keys=ON;")
+
 	err := db.AutoMigrate(
 		&models.User{},
 		&models.Property{},
@@ -73,6 +78,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.MeterReading{},
 		&models.Bill{},
 		&models.UtilityRate{},
+		&models.PriceChange{},
+		&models.ServiceCommunication{},
 		&models.Project{},
 		&models.UserSettings{},
 		&models.HouseholdSettings{},
@@ -86,8 +93,56 @@ func AutoMigrate(db *gorm.DB) error {
 		return fmt.Errorf("failed to migrate database: %w", err)
 	}
 
+	// Data migration: ensure is_metered is set correctly for existing utilities (force, not just NULL)
+	db.Exec(`UPDATE utilities SET is_metered = 1 WHERE type IN ('electricity', 'gas', 'water', 'waste')`)
+	db.Exec(`UPDATE utilities SET is_metered = 0 WHERE type IN ('internet', 'insurance', 'affitto', 'mutuo')`)
+	// Default billing frequency for existing utilities
+	db.Exec(`UPDATE utilities SET billing_interval = 1 WHERE billing_interval IS NULL OR billing_interval = 0`)
+	db.Exec(`UPDATE utilities SET billing_unit = 'month' WHERE billing_unit IS NULL OR billing_unit = ''`)
+
+	// Backfill price changes from existing bills of fixed-cost services
+	backfillPriceChanges(db)
+
 	log.Println("✅ Database migrations completed")
 	return nil
+}
+
+// backfillPriceChanges scans existing bills of fixed-cost services and creates
+// PriceChange records for any consecutive bills with different amounts.
+func backfillPriceChanges(db *gorm.DB) {
+	var utilities []models.Utility
+	db.Where("is_metered = ?", false).Find(&utilities)
+
+	for _, u := range utilities {
+		var bills []models.Bill
+		db.Where("utility_id = ?", u.ID).Order("period_start ASC").Find(&bills)
+
+		for i := 1; i < len(bills); i++ {
+			if bills[i].AmountTotal != bills[i-1].AmountTotal {
+				// Check if this exact change already exists (idempotent)
+				var existing models.PriceChange
+				if db.Where("utility_id = ? AND source_bill_id = ?", u.ID, bills[i].ID).
+					First(&existing).Error == nil {
+					continue
+				}
+				change := models.PriceChange{
+					UtilityID:     u.ID,
+					EffectiveDate: bills[i].PeriodStart,
+					OldAmount:     bills[i-1].AmountTotal,
+					NewAmount:     bills[i].AmountTotal,
+					SourceBillID:  &bills[i].ID,
+				}
+				db.Create(&change)
+			}
+		}
+
+		// Update recurring_amount to the latest bill's amount
+		if len(bills) > 0 {
+			db.Model(&u).Update("recurring_amount", bills[len(bills)-1].AmountTotal)
+		}
+	}
+
+	log.Println("✅ Price changes backfill completed")
 }
 
 // SeedDefaultCategories seeds global default categories (called once for first user)
