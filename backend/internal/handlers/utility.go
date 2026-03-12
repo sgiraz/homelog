@@ -1165,16 +1165,15 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 		return
 	}
 
-	// Handle communication text: update existing or create new
+	// Handle communication text: update/create/delete
+	var existingComm models.ServiceCommunication
+	commExists := h.db.Where("bill_id = ?", bill.ID).First(&existingComm).Error == nil
+
 	if input.CommunicationText != "" {
-		var existingComm models.ServiceCommunication
-		err := h.db.Where("bill_id = ?", bill.ID).First(&existingComm).Error
-		if err == nil {
-			// Update existing
+		if commExists {
 			existingComm.Content = input.CommunicationText
 			h.db.Save(&existingComm)
 		} else {
-			// Create new
 			comm := models.ServiceCommunication{
 				UtilityID:   bill.UtilityID,
 				BillID:      &bill.ID,
@@ -1185,6 +1184,9 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 			}
 			h.db.Create(&comm)
 		}
+	} else if commExists {
+		// Empty text means user wants to clear the communication
+		h.db.Delete(&existingComm)
 	}
 
 	c.JSON(http.StatusOK, bill)

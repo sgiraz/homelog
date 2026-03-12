@@ -604,6 +604,8 @@ function formatNumber(value) {
 
 function formatDateForInput(dateStr) {
   if (!dateStr) return ''
+  // If already in YYYY-MM-DD format, return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return ''
   return date.toISOString().split('T')[0]
@@ -726,26 +728,28 @@ function inferMissingPeriodDate() {
 
   const interval = props.utility.billing_interval
   const unit = props.utility.billing_unit
-  const start = new Date(form.value.period_start)
-  if (isNaN(start.getTime())) return
+  // Parse as UTC to avoid timezone/DST off-by-one issues
+  const parts = form.value.period_start.split('-')
+  const year = parseInt(parts[0]), month = parseInt(parts[1]) - 1, day = parseInt(parts[2])
+  const end = new Date(Date.UTC(year, month, day))
+  if (isNaN(end.getTime())) return
 
-  const end = new Date(start)
   switch (unit) {
     case 'day':
-      end.setDate(end.getDate() + interval)
+      end.setUTCDate(end.getUTCDate() + interval)
       break
     case 'week':
-      end.setDate(end.getDate() + interval * 7)
+      end.setUTCDate(end.getUTCDate() + interval * 7)
       break
     case 'month':
-      end.setMonth(end.getMonth() + interval)
+      end.setUTCMonth(end.getUTCMonth() + interval)
       break
     case 'year':
-      end.setFullYear(end.getFullYear() + interval)
+      end.setUTCFullYear(end.getUTCFullYear() + interval)
       break
   }
   // period_end = last day of the period (day before next period start)
-  end.setDate(end.getDate() - 1)
+  end.setUTCDate(end.getUTCDate() - 1)
   form.value.period_end = end.toISOString().split('T')[0]
 }
 
@@ -786,7 +790,7 @@ async function handleSubmit() {
       period_end: new Date(form.value.period_end).toISOString(),
       due_date: new Date(form.value.due_date).toISOString(),
       issue_date: new Date(form.value.issue_date).toISOString(),
-      consumption_total: parseFloat(form.value.consumption_total),
+      consumption_total: isMetered.value ? (parseFloat(form.value.consumption_total) || 0) : 0,
       conversion_coefficient: props.utility.type === 'gas' && form.value.conversion_coefficient
         ? parseFloat(form.value.conversion_coefficient)
         : null,
