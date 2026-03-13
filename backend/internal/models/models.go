@@ -158,14 +158,18 @@ type Utility struct {
 	DefaultCategoryID *uint `gorm:"index" json:"default_category_id,omitempty"`         // Category for auto-created expenses
 	PaidByMemberID    *uint `gorm:"index" json:"paid_by_member_id,omitempty"`           // Default payer for auto-created expenses
 
+	// Template
+	DefaultBillTemplateID *uint `gorm:"index" json:"default_bill_template_id,omitempty"` // Default bill extraction template
+
 	// Common fields
 	CustomerPortal string `json:"customer_portal,omitempty"`
 	Notes          string `json:"notes,omitempty"`
 
 	// Relations
-	Property        Property               `json:"property"`
-	DefaultCategory *Category              `gorm:"foreignKey:DefaultCategoryID" json:"default_category,omitempty"`
-	PaidByMember    *HouseholdMember       `gorm:"foreignKey:PaidByMemberID" json:"paid_by_member,omitempty"`
+	Property            Property               `json:"property"`
+	DefaultCategory     *Category              `gorm:"foreignKey:DefaultCategoryID" json:"default_category,omitempty"`
+	PaidByMember        *HouseholdMember       `gorm:"foreignKey:PaidByMemberID" json:"paid_by_member,omitempty"`
+	DefaultBillTemplate *BillTemplate          `gorm:"foreignKey:DefaultBillTemplateID" json:"default_bill_template,omitempty"`
 	Readings        []MeterReading         `gorm:"foreignKey:UtilityID" json:"readings,omitempty"`
 	Bills           []Bill                 `gorm:"foreignKey:UtilityID" json:"bills,omitempty"`
 	Rates           []UtilityRate          `gorm:"foreignKey:UtilityID" json:"rates,omitempty"`

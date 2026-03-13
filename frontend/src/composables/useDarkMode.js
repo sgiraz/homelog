@@ -1,35 +1,81 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
-// Module-level shared state — all useDarkMode() callers share the same ref
+/**
+ * Unified theme system — single source of truth for theme mode.
+ * Supports 'auto' (follows OS), 'light', 'dark'.
+ * All callers share the same reactive state (module-level refs).
+ */
+
+// The user's chosen mode: 'auto' | 'light' | 'dark'
+const themeMode = ref('auto')
+
+// Whether the page is actually in dark mode right now (derived)
 const isDark = ref(false)
 
-// Initialize from localStorage / system preference (runs once at module import)
-if (typeof window !== 'undefined') {
-  const stored = localStorage.getItem('theme')
-  if (stored === 'dark') {
-    isDark.value = true
+// OS preference media query
+let mediaQuery = null
+
+function applyTheme() {
+  const shouldBeDark = themeMode.value === 'dark'
+    || (themeMode.value === 'auto' && (mediaQuery?.matches ?? false))
+
+  isDark.value = shouldBeDark
+  if (shouldBeDark) {
     document.documentElement.classList.add('dark')
-  } else if (stored === 'light') {
-    isDark.value = false
   } else {
-    // No preference stored — follow system
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    isDark.value = prefersDark
-    if (prefersDark) document.documentElement.classList.add('dark')
+    document.documentElement.classList.remove('dark')
   }
 }
 
+// Initialize media query listener (runs once at module import)
+if (typeof window !== 'undefined') {
+  mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  mediaQuery.addEventListener('change', () => {
+    if (themeMode.value === 'auto') {
+      applyTheme()
+    }
+  })
+
+  // Read initial value from localStorage (before settings load from API)
+  const stored = localStorage.getItem('themeMode')
+  if (stored === 'dark' || stored === 'light' || stored === 'auto') {
+    themeMode.value = stored
+  } else {
+    // Migrate from old 'theme' key if present
+    const oldStored = localStorage.getItem('theme')
+    if (oldStored === 'dark' || oldStored === 'light') {
+      themeMode.value = oldStored
+    }
+    // else stays 'auto'
+  }
+
+  applyTheme()
+}
+
+// Re-apply whenever themeMode changes
+watch(themeMode, () => {
+  applyTheme()
+  localStorage.setItem('themeMode', themeMode.value)
+})
+
 export function useDarkMode() {
-  function toggleDarkMode() {
-    isDark.value = !isDark.value
-    if (isDark.value) {
-      document.documentElement.classList.add('dark')
-      localStorage.setItem('theme', 'dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-      localStorage.setItem('theme', 'light')
+  /**
+   * Set theme mode explicitly. Called from settings or on settings load.
+   * @param {'auto'|'light'|'dark'} mode
+   */
+  function setTheme(mode) {
+    if (mode === 'auto' || mode === 'light' || mode === 'dark') {
+      themeMode.value = mode
     }
   }
 
-  return { isDark, toggleDarkMode }
+  /**
+   * Toggle between light and dark (used by Navbar button).
+   * Switches to explicit light/dark, breaking out of 'auto'.
+   */
+  function toggleDarkMode() {
+    themeMode.value = isDark.value ? 'light' : 'dark'
+  }
+
+  return { isDark, themeMode, setTheme, toggleDarkMode }
 }

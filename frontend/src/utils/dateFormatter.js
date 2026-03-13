@@ -90,3 +90,90 @@ export function formatPeriod(start, end, settings = {}) {
 
   return `${startDate.toLocaleDateString(locale, options)} - ${endDate.toLocaleDateString(locale, options)}`
 }
+
+/**
+ * Format a compact period for tables (shorter than formatPeriod).
+ * Shows "MM/YY - MM/YY" for monthly periods, full date otherwise.
+ *
+ * @param {string|Date} start
+ * @param {string|Date} end
+ * @param {object} settings - { language: 'it' }
+ * @returns {string}
+ */
+export function formatPeriodCompact(start, end, settings = {}) {
+  if (!start || !end) return '-'
+
+  const language = settings.language || 'it'
+  const locale = getLocale(language)
+
+  const startDate = start instanceof Date ? start : new Date(start)
+  const endDate = end instanceof Date ? end : new Date(end)
+
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return '-'
+
+  const opts = { month: '2-digit', year: '2-digit' }
+  return `${startDate.toLocaleDateString(locale, opts)} – ${endDate.toLocaleDateString(locale, opts)}`
+}
+
+// ── Number formatting ──
+
+/**
+ * Map currency code → Intl currency symbol style
+ */
+const CURRENCY_MAP = {
+  EUR: 'EUR',
+  USD: 'USD',
+  GBP: 'GBP'
+}
+
+/**
+ * Format a number respecting user locale.
+ *
+ * @param {number} value
+ * @param {object} settings - { language: 'it' }
+ * @param {object} options - Intl.NumberFormat options override
+ * @returns {string}
+ */
+export function formatNumber(value, settings = {}, options = {}) {
+  if (value == null) return '-'
+  const locale = getLocale(settings.language || 'it')
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 3,
+    ...options
+  }).format(value)
+}
+
+/**
+ * Format a currency value respecting user locale and currency setting.
+ *
+ * @param {number} value
+ * @param {object} settings - { language: 'it', currency: 'EUR' }
+ * @param {object} options - Intl.NumberFormat options override
+ * @returns {string}
+ */
+export function formatCurrency(value, settings = {}, options = {}) {
+  const locale = getLocale(settings.language || 'it')
+  const currency = CURRENCY_MAP[settings.currency] || settings.currency || 'EUR'
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    ...options
+  }).format(value || 0)
+}
+
+/**
+ * Format a difference value with +/- sign.
+ *
+ * @param {number} value
+ * @param {object} settings - { language: 'it' }
+ * @returns {string}
+ */
+export function formatDiff(value, settings = {}) {
+  if (value == null) return '-'
+  const locale = getLocale(settings.language || 'it')
+  const formatted = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 3,
+    signDisplay: 'exceptZero'
+  }).format(value)
+  return formatted
+}

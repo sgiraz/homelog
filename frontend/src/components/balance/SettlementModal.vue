@@ -77,6 +77,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useBalanceStore } from '@/stores/balance'
+import { useSettingsStore } from '@/stores/settings'
+import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -107,6 +109,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'created'])
 
 const balanceStore = useBalanceStore()
+const settingsStore = useSettingsStore()
 
 const loading = ref(false)
 const error = ref(null)
@@ -119,10 +122,7 @@ const form = ref({
 })
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat('it-IT', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(value || 0)
+  return _formatCurrency(value, settingsStore.formatSettings)
 }
 
 async function handleSubmit() {

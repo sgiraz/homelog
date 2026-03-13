@@ -387,7 +387,7 @@ import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
-import { formatDate as _formatDate } from '@/utils/dateFormatter'
+import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import { categoriesAPI, projectsAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -502,7 +502,7 @@ function setupIntersectionObserver() {
 }
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value || 0)
+  return _formatCurrency(value, settingsStore.formatSettings)
 }
 
 function formatDate(dateStr) {

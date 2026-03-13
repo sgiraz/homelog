@@ -123,8 +123,8 @@
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-2">Date</h4>
           <div class="text-sm text-gray-600 dark:text-gray-400">
-            <div>Inizio: {{ new Date(projectData.start_date).toLocaleDateString('it-IT') }}</div>
-            <div>Fine: {{ new Date(projectData.end_date).toLocaleDateString('it-IT') }}</div>
+            <div>Inizio: {{ _formatDate(projectData.start_date, settingsStore.dateSettings) }}</div>
+            <div>Fine: {{ _formatDate(projectData.end_date, settingsStore.dateSettings) }}</div>
           </div>
         </div>
 
@@ -149,7 +149,7 @@
                   {{ expense.description }}
                 </div>
                 <div class="text-sm text-gray-600 dark:text-gray-400">
-                  {{ new Date(expense.date).toLocaleDateString('it-IT') }}
+                  {{ _formatDate(expense.date, settingsStore.dateSettings) }}
                   <span v-if="expense.category"> - {{ expense.category.name }}</span>
                 </div>
               </div>
@@ -204,6 +204,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useProjectsStore } from '@/stores/projects'
+import { useSettingsStore } from '@/stores/settings'
+import { formatCurrency as _formatCurrency, formatDate as _formatDate } from '@/utils/dateFormatter'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import EditProjectModal from './EditProjectModal.vue'
@@ -217,6 +219,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'updated', 'deleted'])
 const projectsStore = useProjectsStore()
+const settingsStore = useSettingsStore()
 
 const projectData = ref(props.project)
 const activeTab = ref('info')
@@ -229,7 +232,7 @@ const tabs = [
 ]
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value || 0)
+  return _formatCurrency(value, settingsStore.formatSettings)
 }
 
 function getStatusLabel(status) {
@@ -248,8 +251,8 @@ function getStatusColor(status) {
 }
 
 function formatDateRange(start, end) {
-  const s = new Date(start).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })
-  const e = new Date(end).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
+  const s = _formatDate(start, settingsStore.dateSettings)
+  const e = _formatDate(end, settingsStore.dateSettings)
   return `${s} - ${e}`
 }
 

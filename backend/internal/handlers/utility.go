@@ -234,6 +234,7 @@ func (h *UtilityHandler) Get(c *gin.Context) {
 	if err := h.db.Where("id = ? AND property_id IN ?", id, memberPropertyIDs).
 		Preload("Property").
 		Preload("PaidByMember").
+		Preload("DefaultBillTemplate").
 		Preload("Bills", func(db *gorm.DB) *gorm.DB {
 			return db.Order("period_end DESC")
 		}).
@@ -303,8 +304,9 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 		RecurringAmount     *float64   `json:"recurring_amount"`
 		BillingInterval     *int       `json:"billing_interval"`
 		BillingUnit         string     `json:"billing_unit" binding:"omitempty,oneof=day week month year"`
-		PaidByMemberID      *uint      `json:"paid_by_member_id"`
-		DefaultCategoryID   *uint      `json:"default_category_id"`
+		PaidByMemberID        *uint      `json:"paid_by_member_id"`
+		DefaultCategoryID     *uint      `json:"default_category_id"`
+		DefaultBillTemplateID *uint      `json:"default_bill_template_id"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -384,6 +386,7 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	}
 	utility.PaidByMemberID = input.PaidByMemberID
 	utility.DefaultCategoryID = input.DefaultCategoryID
+	utility.DefaultBillTemplateID = input.DefaultBillTemplateID
 
 	if err := h.db.Save(&utility).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update utility"})
@@ -392,6 +395,8 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 
 	// Reload with relations
 	h.db.Preload("Property").
+		Preload("PaidByMember").
+		Preload("DefaultBillTemplate").
 		Preload("Bills", func(db *gorm.DB) *gorm.DB {
 			return db.Order("period_end DESC").Limit(3)
 		}).

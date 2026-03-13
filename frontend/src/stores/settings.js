@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import apiClient from '@/api/client'
+import { useDarkMode } from '@/composables/useDarkMode'
 
 export const useSettingsStore = defineStore('settings', () => {
   // State
@@ -20,8 +21,16 @@ export const useSettingsStore = defineStore('settings', () => {
     language: language.value
   }))
 
+  // Includes currency for formatCurrency/formatNumber
+  const formatSettings = computed(() => ({
+    date_format: dateFormat.value,
+    language: language.value,
+    currency: currency.value
+  }))
+
   // Actions
   async function loadSettings() {
+    const { setTheme } = useDarkMode()
     try {
       const { data } = await apiClient.get('/settings')
       theme.value = data.theme || 'auto'
@@ -30,6 +39,9 @@ export const useSettingsStore = defineStore('settings', () => {
       dateFormat.value = data.date_format || 'DD/MM/YYYY'
       emailNotifications.value = data.email_notifications ?? true
       billReminders.value = data.bill_reminders ?? true
+
+      // Apply theme from server settings
+      setTheme(theme.value)
 
       if (data.default_split_with_member_ids) {
         try {
@@ -56,11 +68,15 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function updateSettings(updates) {
+    const { setTheme } = useDarkMode()
     try {
       const payload = { ...updates }
 
       // Apply updates locally
-      if (payload.theme !== undefined) theme.value = payload.theme
+      if (payload.theme !== undefined) {
+        theme.value = payload.theme
+        setTheme(payload.theme)
+      }
       if (payload.currency !== undefined) currency.value = payload.currency
       if (payload.language !== undefined) language.value = payload.language
       if (payload.date_format !== undefined) dateFormat.value = payload.date_format
@@ -105,6 +121,7 @@ export const useSettingsStore = defineStore('settings', () => {
     loaded,
     // Getters
     dateSettings,
+    formatSettings,
     // Actions
     loadSettings,
     updateSettings,

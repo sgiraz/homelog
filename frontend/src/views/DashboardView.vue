@@ -418,7 +418,7 @@ import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { categoriesAPI, projectsAPI, expensesAPI } from '@/api/client'
-import { formatDate as _formatDate } from '@/utils/dateFormatter'
+import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import { useConfirm } from '@/composables/useConfirm'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -591,10 +591,7 @@ async function fetchFiltersData() {
 }
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat('it-IT', {
-    style: 'currency',
-    currency: settingsStore.currency || 'EUR'
-  }).format(value || 0)
+  return _formatCurrency(value, settingsStore.formatSettings)
 }
 
 function formatDate(dateStr) {

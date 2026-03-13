@@ -13,8 +13,12 @@ import {
   Tooltip,
   Legend
 } from 'chart.js'
+import { useSettingsStore } from '@/stores/settings'
+import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
+
+const settingsStore = useSettingsStore()
 
 const props = defineProps({
   chartData: {
@@ -71,10 +75,7 @@ const defaultOptions = computed(() => ({
     tooltip: {
       callbacks: {
         label: (ctx) => {
-          const value = new Intl.NumberFormat('it-IT', {
-            style: 'currency',
-            currency: props.currency
-          }).format(ctx.parsed)
+          const value = _formatCurrency(ctx.parsed, settingsStore.formatSettings)
           const total = ctx.dataset.data.reduce((a, b) => a + b, 0)
           const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : '0'
           return ` ${value} (${pct}%)`

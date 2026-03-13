@@ -226,7 +226,7 @@ import { ref, computed, onMounted, h } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
-import { formatDate as _formatDate } from '@/utils/dateFormatter'
+import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatNumber as _formatNumber } from '@/utils/dateFormatter'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -441,7 +441,7 @@ function getLastConsumption(utility) {
     const bill = utility.bills[0]
     const num = parseFloat(bill.consumption_total)
     const truncated = Math.trunc(num * 1000) / 1000
-    const value = bill.consumption_total != null ? truncated.toFixed(3).replace(/\.?0+$/, '') : bill.consumption_total
+    const value = bill.consumption_total != null ? _formatNumber(truncated, settingsStore.formatSettings) : bill.consumption_total
     return `${value} ${getConsumptionUnit(utility.type)}`
   }
   return '-'
@@ -462,7 +462,7 @@ function getLastBillDueDate(utility) {
 }
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value || 0)
+  return _formatCurrency(value, settingsStore.formatSettings)
 }
 
 function formatDate(dateStr) {

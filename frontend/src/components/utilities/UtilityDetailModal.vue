@@ -359,7 +359,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { utilitiesAPI } from '@/api/client'
-import { formatDate as _formatDate, formatPeriod as _formatPeriod } from '@/utils/dateFormatter'
+import { formatDate as _formatDate, formatPeriod as _formatPeriod, formatCurrency as _formatCurrency, formatNumber as _formatNumber } from '@/utils/dateFormatter'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import AddBillModal from './AddBillModal.vue'
@@ -509,14 +509,12 @@ function getThresholdUnit() {
 }
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value || 0)
+  return _formatCurrency(value, settingsStore.formatSettings)
 }
 
 function formatConsumption(value) {
   if (value == null) return '-'
-  const num = parseFloat(value)
-  const truncated = Math.trunc(num * 1000) / 1000
-  return truncated.toFixed(3).replace(/\.?0+$/, '')
+  return _formatNumber(parseFloat(value), settingsStore.formatSettings)
 }
 
 function formatDate(dateStr) {

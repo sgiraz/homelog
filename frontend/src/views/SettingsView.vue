@@ -389,42 +389,6 @@
         </div>
       </Card>
 
-      <!-- Default Templates -->
-      <Card class="p-6">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Template Predefiniti Bollette</h2>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Seleziona il template predefinito per ogni tipo di utenza.
-        </p>
-
-        <div class="space-y-4">
-          <div v-for="utilityType in utilityTypes" :key="utilityType.key">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {{ utilityType.label }}
-            </label>
-            <select
-              v-model="defaultTemplates[utilityType.key]"
-              @change="updateUserSettings"
-              class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option :value="null">Nessun template (auto)</option>
-              <option
-                v-for="tpl in getTemplatesForType(utilityType.key)"
-                :key="tpl.id"
-                :value="tpl.id"
-              >
-                {{ tpl.name }} - {{ tpl.provider }}
-              </option>
-            </select>
-          </div>
-
-          <div v-if="allTemplates.length === 0" class="text-sm text-gray-500 dark:text-gray-400 italic p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            Nessun template disponibile. Crea i template dalla pagina Utenze.
-          </div>
-        </div>
-      </Card>
-
       <!-- Account -->
       <Card class="p-6">
         <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Account</h2>
@@ -821,7 +785,8 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
-import { templatesAPI, categoriesAPI, exportAPI, authAPI, adminAPI, avatarAPI } from '@/api/client'
+import { useDarkMode } from '@/composables/useDarkMode'
+import { categoriesAPI, exportAPI, authAPI, adminAPI, avatarAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import AvatarCropModal from '@/components/common/AvatarCropModal.vue'
 import Button from '@/components/common/Button.vue'
@@ -832,6 +797,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
+const { setTheme } = useDarkMode()
 
 // Tabs
 const activeTab = ref('famiglia')
@@ -849,26 +815,6 @@ const householdMembers = ref([])
 const defaultSplitMemberIds = ref([])
 const currentUserMemberId = ref(null)
 const newMemberName = ref('')
-
-// Templates
-const allTemplates = ref([])
-const defaultTemplates = ref({
-  electricity: null,
-  gas: null,
-  water: null,
-  waste: null
-})
-
-const utilityTypes = [
-  { key: 'electricity', label: 'Luce' },
-  { key: 'gas', label: 'Gas' },
-  { key: 'water', label: 'Acqua' },
-  { key: 'waste', label: 'Rifiuti' }
-]
-
-function getTemplatesForType(type) {
-  return allTemplates.value.filter(t => t.utility_type === type)
-}
 
 const preferences = ref({
   theme: 'auto',
@@ -1092,6 +1038,8 @@ async function loadUserSettings() {
       language: data.language || 'it',
       date_format: data.date_format || 'DD/MM/YYYY'
     }
+    // Sync theme composable with server value
+    setTheme(preferences.value.theme)
 
     if (data.default_split_with_member_ids) {
       try {
@@ -1101,31 +1049,8 @@ async function loadUserSettings() {
       }
     }
 
-    if (data.default_templates) {
-      try {
-        const parsed = JSON.parse(data.default_templates)
-        defaultTemplates.value = {
-          electricity: parsed.electricity || null,
-          gas: parsed.gas || null,
-          water: parsed.water || null,
-          waste: parsed.waste || null
-        }
-      } catch (e) {
-        console.error('Error parsing default_templates:', e)
-      }
-    }
   } catch (err) {
     console.log('Using default user settings')
-  }
-}
-
-async function loadTemplates() {
-  try {
-    const { data } = await templatesAPI.listBillTemplates()
-    allTemplates.value = data || []
-  } catch (err) {
-    console.error('Error loading templates:', err)
-    allTemplates.value = []
   }
 }
 
@@ -1149,11 +1074,11 @@ async function updateUserSettings() {
       currency: preferences.value.currency,
       language: preferences.value.language,
       date_format: preferences.value.date_format,
-      default_split_with_member_ids: JSON.stringify(defaultSplitMemberIds.value),
-      default_templates: JSON.stringify(defaultTemplates.value)
+      default_split_with_member_ids: JSON.stringify(defaultSplitMemberIds.value)
     }
     await apiClient.put('/settings', payload)
     settingsStore.theme = preferences.value.theme
+    setTheme(preferences.value.theme)
     settingsStore.currency = preferences.value.currency
     settingsStore.language = preferences.value.language
     settingsStore.dateFormat = preferences.value.date_format
@@ -1439,7 +1364,6 @@ async function doImport() {
 
 onMounted(() => {
   loadUserSettings()
-  loadTemplates()
   fetchCurrentProperty()
   fetchCategories()
   if (authStore.user?.role === 'admin') {

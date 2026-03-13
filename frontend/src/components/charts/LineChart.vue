@@ -18,8 +18,12 @@ import {
   Legend,
   Filler
 } from 'chart.js'
+import { useSettingsStore } from '@/stores/settings'
+import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
+
+const settingsStore = useSettingsStore()
 
 const props = defineProps({
   chartData: {
@@ -36,17 +40,14 @@ const props = defineProps({
   }
 })
 
-const defaultOptions = {
+const defaultOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
     legend: { display: false },
     tooltip: {
       callbacks: {
-        label: (ctx) => new Intl.NumberFormat('it-IT', {
-          style: 'currency',
-          currency: props.currency
-        }).format(ctx.parsed.y)
+        label: (ctx) => _formatCurrency(ctx.parsed.y, settingsStore.formatSettings)
       }
     }
   },
@@ -54,11 +55,7 @@ const defaultOptions = {
     y: {
       beginAtZero: true,
       ticks: {
-        callback: (value) => new Intl.NumberFormat('it-IT', {
-          style: 'currency',
-          currency: props.currency,
-          maximumFractionDigits: 0
-        }).format(value)
+        callback: (value) => _formatCurrency(value, settingsStore.formatSettings, { maximumFractionDigits: 0 })
       }
     }
   },
@@ -71,10 +68,10 @@ const defaultOptions = {
       hoverRadius: 6
     }
   }
-}
+}))
 
 const mergedOptions = computed(() => ({
-  ...defaultOptions,
+  ...defaultOptions.value,
   ...props.chartOptions
 }))
 </script>

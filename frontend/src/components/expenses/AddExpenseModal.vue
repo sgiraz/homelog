@@ -204,6 +204,8 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
+import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import apiClient, { categoriesAPI, projectsAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
@@ -213,6 +215,7 @@ import Button from '@/components/common/Button.vue'
 const emit = defineEmits(['close', 'created'])
 const expensesStore = useExpensesStore()
 const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
 
 const loading = ref(false)
 const error = ref(null)
@@ -264,10 +267,7 @@ const splitAmount = computed(() => {
 })
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat('it-IT', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(value || 0)
+  return _formatCurrency(value, settingsStore.formatSettings)
 }
 
 async function fetchCategories() {

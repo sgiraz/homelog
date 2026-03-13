@@ -35,6 +35,16 @@
         </a>
         <button
           v-if="authStore.isAdmin"
+          @click="showEditModal = true"
+          class="p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+          title="Modifica servizio"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </button>
+        <button
+          v-if="authStore.isAdmin"
           @click="confirmDeleteUtility"
           class="p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 dark:hover:text-red-400"
           title="Elimina servizio"
@@ -497,6 +507,14 @@
       @close="closeReadingModal"
       @saved="onReadingSaved"
     />
+
+    <!-- Edit utility modal -->
+    <EditUtilityModal
+      v-if="showEditModal"
+      :utility="utility"
+      @close="showEditModal = false"
+      @updated="onUtilityUpdated"
+    />
   </div>
 </template>
 
@@ -508,11 +526,12 @@ import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
 import { utilitiesAPI } from '@/api/client'
-import { formatDate as _formatDate, formatPeriod as _formatPeriod } from '@/utils/dateFormatter'
+import { formatDate as _formatDate, formatPeriod as _formatPeriod, formatNumber as _formatNumber, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import AddBillModal from '@/components/utilities/AddBillModal.vue'
 import AddReadingModal from '@/components/utilities/AddReadingModal.vue'
+import EditUtilityModal from '@/components/utilities/EditUtilityModal.vue'
 import ReadingComparisonCard from '@/components/utilities/ReadingComparisonCard.vue'
 
 const route = useRoute()
@@ -534,6 +553,9 @@ const billDateTo = ref('')
 
 // Reading bill map
 const readingBillMap = ref({})
+
+// Edit utility modal
+const showEditModal = ref(false)
 
 // Bill modal
 const showBillModal = ref(false)
@@ -701,13 +723,12 @@ const analysisData = computed(() => {
 // ── Functions ──
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value || 0)
+  return _formatCurrency(value, settingsStore.formatSettings)
 }
 
 function formatConsumption(value) {
   if (value == null || value === 0) return '0'
-  const num = parseFloat(value)
-  return Math.trunc(num * 1000) / 1000
+  return _formatNumber(parseFloat(value), settingsStore.formatSettings)
 }
 
 function formatDate(dateStr) {
@@ -866,6 +887,12 @@ async function confirmDeleteReading(reading) {
 }
 
 // ── Utility Operations ──
+
+async function onUtilityUpdated(updatedUtility) {
+  showEditModal.value = false
+  utility.value = updatedUtility
+  window.$toast?.success('Servizio aggiornato')
+}
 
 async function confirmDeleteUtility() {
   const ok = await confirm({

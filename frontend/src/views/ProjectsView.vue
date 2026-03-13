@@ -178,6 +178,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
+import { formatCurrency as _formatCurrency, formatDate as _formatDate } from '@/utils/dateFormatter'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -186,6 +188,7 @@ import ProjectDetailModal from '@/components/projects/ProjectDetailModal.vue'
 
 const projectsStore = useProjectsStore()
 const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
 
 function isOwner(project) {
   return project.user_id === authStore.user?.id
@@ -217,7 +220,7 @@ const filteredProjects = computed(() => {
 })
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value || 0)
+  return _formatCurrency(value, settingsStore.formatSettings)
 }
 
 function getStatusLabel(status) {
@@ -236,9 +239,9 @@ function getStatusColor(status) {
 }
 
 function formatDateRange(start, end) {
-  const startDate = new Date(start).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })
-  const endDate = new Date(end).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
-  return `${startDate} - ${endDate}`
+  const s = _formatDate(start, settingsStore.dateSettings)
+  const e = _formatDate(end, settingsStore.dateSettings)
+  return `${s} - ${e}`
 }
 
 function isOverdue(project) {

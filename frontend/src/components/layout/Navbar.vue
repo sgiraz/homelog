@@ -29,7 +29,7 @@
       <div class="flex items-center gap-1.5">
         <!-- Dark mode toggle -->
         <button
-          @click="toggleDarkMode"
+          @click="handleToggleDarkMode"
           class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           :aria-label="isDark ? 'Passa a modalit\u00E0 chiara' : 'Passa a modalit\u00E0 scura'"
         >
@@ -287,13 +287,22 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
 import { useDarkMode } from '@/composables/useDarkMode'
 import { communicationsAPI, utilitiesAPI } from '@/api/client'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
-const { isDark, toggleDarkMode } = useDarkMode()
+const settingsStore = useSettingsStore()
+const { isDark, themeMode, toggleDarkMode } = useDarkMode()
+
+// When Navbar toggle is clicked, also persist to settings backend
+function handleToggleDarkMode() {
+  toggleDarkMode()
+  // Sync to settings store + backend
+  settingsStore.updateSettings({ theme: themeMode.value })
+}
 
 const navLinks = [
   { path: '/',          label: 'Dashboard',  shortLabel: 'Home',     id: 'home' },
@@ -354,7 +363,7 @@ function formatTimeAgo(dateStr) {
   if (diff < 3600) return `${Math.floor(diff / 60)} min fa`
   if (diff < 86400) return `${Math.floor(diff / 3600)} ore fa`
   if (diff < 604800) return `${Math.floor(diff / 86400)} giorni fa`
-  return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
+  return d.toLocaleDateString(settingsStore.language === 'en' ? 'en-US' : 'it-IT', { day: 'numeric', month: 'short' })
 }
 
 async function fetchUnreadCount() {

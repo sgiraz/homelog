@@ -454,6 +454,8 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useUtilitiesStore } from '@/stores/utilities'
+import { useSettingsStore } from '@/stores/settings'
+import { formatDate as _formatDate, formatNumber as _formatNumber } from '@/utils/dateFormatter'
 import { utilitiesAPI, templatesAPI } from '@/api/client'
 import apiClient from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -473,6 +475,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'saved'])
 const utilitiesStore = useUtilitiesStore()
+const settingsStore = useSettingsStore()
 
 const isMetered = computed(() => {
   return ['electricity', 'gas', 'water', 'waste'].includes(props.utility?.type)
@@ -509,8 +512,8 @@ const sortedReadings = computed(() => {
 
 function formatReadingOption(r) {
   const d = new Date(r.reading_date)
-  const dateStr = d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  const val = r.value != null ? r.value.toLocaleString('it-IT', { maximumFractionDigits: 3 }) : '-'
+  const dateStr = _formatDate(d, settingsStore.dateSettings)
+  const val = r.value != null ? _formatNumber(r.value, settingsStore.formatSettings) : '-'
   const unit = readingUnit.value
   return `${dateStr} — ${val} ${unit}`
 }
@@ -599,7 +602,7 @@ function getConsumptionUnit(type) {
 
 function formatNumber(value) {
   if (value == null) return '-'
-  return value.toLocaleString('it-IT', { maximumFractionDigits: 3 })
+  return _formatNumber(value, settingsStore.formatSettings)
 }
 
 function formatDateForInput(dateStr) {

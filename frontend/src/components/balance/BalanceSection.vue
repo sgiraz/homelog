@@ -128,7 +128,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useBalanceStore } from '@/stores/balance'
 import { useSettingsStore } from '@/stores/settings'
 import { useExpensesStore } from '@/stores/expenses'
-import { formatDate as _formatDate } from '@/utils/dateFormatter'
+import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -153,10 +153,7 @@ const totalSettled = computed(() => {
 })
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat('it-IT', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(value || 0)
+  return _formatCurrency(value, settingsStore.formatSettings)
 }
 
 function formatDate(dateStr) {
