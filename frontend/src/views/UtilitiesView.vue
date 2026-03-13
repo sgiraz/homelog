@@ -222,6 +222,8 @@
 </template>
 
 <script setup>
+defineOptions({ name: 'UtilitiesView' })
+
 import { ref, computed, onMounted, h } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUtilitiesStore } from '@/stores/utilities'

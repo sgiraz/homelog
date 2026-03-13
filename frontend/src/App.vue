@@ -16,10 +16,10 @@
       :class="authStore.isAuthenticated ? 'max-w-7xl mx-auto p-6 pb-24 md:pb-6' : ''"
       tabindex="-1"
     >
-      <router-view v-slot="{ Component }">
-        <Transition name="page" mode="out-in">
-          <component :is="Component" />
-        </Transition>
+      <router-view v-slot="{ Component, route }">
+        <keep-alive :include="cachedViews">
+          <component :is="Component" :key="route.path" />
+        </keep-alive>
       </router-view>
     </main>
 
@@ -39,6 +39,9 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 
+// Cache main views to avoid re-mount flicker on navigation
+const cachedViews = ['DashboardView', 'ExpensesView', 'UtilitiesView', 'ProjectsView', 'SettingsView']
+
 if (authStore.isAuthenticated) {
   settingsStore.loadSettings()
 }
@@ -52,17 +55,3 @@ watch(() => authStore.isAuthenticated, (isAuth) => {
 })
 </script>
 
-<style>
-.page-enter-active,
-.page-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-.page-enter-from {
-  opacity: 0;
-  transform: translateY(8px);
-}
-.page-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
-</style>

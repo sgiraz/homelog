@@ -175,6 +175,8 @@
 </template>
 
 <script setup>
+defineOptions({ name: 'ProjectsView' })
+
 import { ref, computed, onMounted } from 'vue'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
@@ -195,15 +197,15 @@ function isOwner(project) {
 }
 const showAddModal = ref(false)
 const selectedProject = ref(null)
-const selectedStatus = ref('')
 const currentPropertyId = ref(null)
 
+const selectedStatus = ref('active')
+
 const statuses = [
-  { value: '', label: 'Tutti', icon: '📋' },
-  { value: 'planned', label: 'Pianificati', icon: '📅' },
   { value: 'active', label: 'Attivi', icon: '🔨' },
+  { value: 'planned', label: 'Pianificati', icon: '📅' },
   { value: 'completed', label: 'Completati', icon: '✅' },
-  { value: 'cancelled', label: 'Annullati', icon: '❌' }
+  { value: '', label: 'Tutti', icon: '📋' }
 ]
 
 const defaultStats = { total_budget: 0, total_spent: 0, remaining: 0, percentage_spent: 0, expense_count: 0 }
@@ -216,6 +218,9 @@ function ensureStats(project) {
 const filteredProjects = computed(() => {
   const all = projectsStore.projects.map(ensureStats)
   if (selectedStatus.value === '') return all
+  if (selectedStatus.value === 'completed') {
+    return all.filter(p => p.status === 'completed' || p.status === 'cancelled')
+  }
   return all.filter(p => p.status === selectedStatus.value)
 })
 

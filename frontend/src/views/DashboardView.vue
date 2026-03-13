@@ -413,6 +413,8 @@
 </template>
 
 <script setup>
+defineOptions({ name: 'DashboardView' })
+
 import { ref, computed, onMounted, Transition } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'

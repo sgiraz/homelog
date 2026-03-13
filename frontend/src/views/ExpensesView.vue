@@ -381,6 +381,8 @@
 </template>
 
 <script setup>
+defineOptions({ name: 'ExpensesView' })
+
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useExpensesStore } from '@/stores/expenses'
