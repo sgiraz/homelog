@@ -1,103 +1,16 @@
 <template>
   <BaseModal :title="isEditing ? (isMetered ? 'Modifica Bolletta' : 'Modifica Fattura') : (isMetered ? 'Nuova Bolletta' : 'Nuova Fattura')" @close="$emit('close')">
 
-      <!-- Template Selector (only for new bills) -->
-      <div v-if="!isEditing && availableTemplates.length > 0" class="mb-4">
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Template Estrazione
-        </label>
-        <select
-          v-model="selectedTemplateId"
-          class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-        >
-          <option :value="null">Automatico (rileva dal fornitore)</option>
-          <option
-            v-for="tpl in availableTemplates"
-            :key="tpl.id"
-            :value="tpl.id"
-          >
-            {{ tpl.name }}{{ tpl.is_default ? ' (predefinito)' : '' }}
-          </option>
-        </select>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Seleziona il template per estrarre i dati dal PDF
-        </p>
-      </div>
-
-      <!-- PDF Drop Zone (only for new bills) -->
-      <div
+      <!-- PDF Upload (only for new bills) -->
+      <PDFUploadZone
         v-if="!isEditing"
-        class="mb-6"
-      >
-        <div
-          :class="[
-            'border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer',
-            isDragging
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500',
-            pdfProcessing ? 'opacity-50 pointer-events-none' : ''
-          ]"
-          @dragover.prevent="isDragging = true"
-          @dragleave.prevent="isDragging = false"
-          @drop.prevent="handleDrop"
-          @click="triggerFileInput"
-        >
-          <input
-            ref="fileInput"
-            type="file"
-            accept=".pdf"
-            class="hidden"
-            @change="handleFileSelect"
-          />
-
-          <div v-if="pdfProcessing" class="flex flex-col items-center gap-2">
-            <svg class="w-8 h-8 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span class="text-sm text-gray-600 dark:text-gray-400">Estrazione dati dal PDF...</span>
-          </div>
-
-          <div v-else-if="uploadedFile" class="flex items-center justify-center gap-3">
-            <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div class="text-left">
-              <p class="text-sm font-medium text-gray-900 dark:text-white">{{ uploadedFile.name }}</p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Dati estratti automaticamente</p>
-            </div>
-            <button
-              type="button"
-              @click.stop="clearUploadedFile"
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <div v-else class="flex flex-col items-center gap-2">
-            <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            <div>
-              <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Trascina qui il PDF della {{ isMetered ? 'bolletta' : 'fattura' }}
-              </p>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                oppure clicca per selezionare
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="pdfError" class="mt-2 text-sm text-red-600 dark:text-red-400">
-          {{ pdfError }}
-        </div>
-      </div>
+        :utility-id="utility.id"
+        :utility-type="utility.type"
+        :is-metered="isMetered"
+        :billing-interval="utility.billing_interval"
+        :billing-unit="utility.billing_unit"
+        @extracted="onPDFExtracted"
+      />
 
       <form @submit.prevent="handleSubmit" class="space-y-4">
         <!-- Importo Totale -->
@@ -146,7 +59,7 @@
         <Input
           v-if="isMetered"
           v-model="form.consumption_total"
-          :label="'Consumo (' + getConsumptionUnit(utility.type) + ')'"
+          :label="'Consumo (' + consumptionUnit + ')'"
           type="number"
           step="0.001"
           min="0"
@@ -170,13 +83,12 @@
             Associa l'autolettura corrispondente alla lettura finale di questa bolletta
           </p>
 
-          <!-- Dropdown letture esistenti -->
           <select
             v-model="form.user_reading_id"
             class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                    focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            @change="onReadingSelected"
+            @change="inlineReadingValue = null"
           >
             <option :value="null">-- Nessuna autolettura --</option>
             <option
@@ -188,7 +100,7 @@
             </option>
           </select>
 
-          <!-- Campo opzionale per creare una lettura al volo quando nessuna è selezionata -->
+          <!-- Inline reading creation -->
           <div v-if="form.user_reading_id === null" class="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
             <p class="text-xs text-amber-700 dark:text-amber-300 mb-2">
               Puoi inserire una lettura al volo (verrà creata automaticamente):
@@ -224,7 +136,7 @@
             </div>
             <button
               type="button"
-              @click="toggleProviderReadingsEdit"
+              @click="isEditingProviderReadings = !isEditingProviderReadings"
               class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
             >
               {{ isEditingProviderReadings ? 'Nascondi' : 'Modifica' }}
@@ -232,7 +144,7 @@
           </div>
 
           <!-- Collapsed view when readings exist -->
-          <div v-show="showCollapsedView">
+          <div v-show="hasProviderReadings && !isEditingProviderReadings">
             <div v-if="utility.type === 'electricity'" class="grid grid-cols-3 gap-2 text-center">
               <div class="bg-white dark:bg-gray-800 rounded p-2">
                 <p class="text-xs text-red-600 dark:text-red-400 font-medium">F1</p>
@@ -262,7 +174,7 @@
           </div>
 
           <!-- Expanded form for manual entry -->
-          <div v-show="showExpandedForm" class="space-y-3">
+          <div v-show="isEditingProviderReadings" class="space-y-3">
             <p class="text-xs text-gray-500 dark:text-gray-400">
               Inserisci le letture riportate in bolletta per confrontarle con le tue autoletture
             </p>
@@ -271,39 +183,18 @@
             <div v-if="utility.type === 'electricity'" class="grid grid-cols-3 gap-2">
               <div>
                 <label class="block text-xs text-red-600 dark:text-red-400 mb-1 font-medium">F1 (kWh)</label>
-                <input
-                  v-model="form.provider_reading_f1"
-                  type="number"
-                  step="0.001"
-                  placeholder="0"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                <input v-model="form.provider_reading_f1" type="number" step="0.001" placeholder="0"
+                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
               </div>
               <div>
                 <label class="block text-xs text-yellow-600 dark:text-yellow-400 mb-1 font-medium">F2 (kWh)</label>
-                <input
-                  v-model="form.provider_reading_f2"
-                  type="number"
-                  step="0.001"
-                  placeholder="0"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                <input v-model="form.provider_reading_f2" type="number" step="0.001" placeholder="0"
+                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
               </div>
               <div>
                 <label class="block text-xs text-green-600 dark:text-green-400 mb-1 font-medium">F3 (kWh)</label>
-                <input
-                  v-model="form.provider_reading_f3"
-                  type="number"
-                  step="0.001"
-                  placeholder="0"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                <input v-model="form.provider_reading_f3" type="number" step="0.001" placeholder="0"
+                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
               </div>
             </div>
 
@@ -311,40 +202,18 @@
             <div v-else-if="utility.type === 'gas'" class="space-y-3">
               <div>
                 <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Lettura Contatore (mc)</label>
-                <input
-                  v-model="form.provider_reading"
-                  type="number"
-                  step="0.001"
-                  placeholder="0"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                <input v-model="form.provider_reading" type="number" step="0.001" placeholder="0"
+                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
               </div>
               <div>
                 <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Coefficiente di Conversione (C)</label>
-                <input
-                  v-model="form.conversion_coefficient"
-                  type="number"
-                  step="0.00000001"
-                  min="0"
-                  placeholder="1.00000000"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                <input v-model="form.conversion_coefficient" type="number" step="0.00000001" min="0" placeholder="1.00000000"
+                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
               </div>
               <div v-if="previousBillHasEstimate && !previousBill?.estimated_reading">
                 <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Consumi Precedenti Stimati (Smc)</label>
-                <input
-                  v-model="form.previous_estimated_consumption"
-                  type="number"
-                  step="0.000001"
-                  placeholder="0"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                <input v-model="form.previous_estimated_consumption" type="number" step="0.000001" placeholder="0"
+                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">La bolletta precedente contiene una stima di {{ formatNumber(previousBill.estimated_consumption) }} Smc</p>
               </div>
             </div>
@@ -352,51 +221,29 @@
             <!-- Water single reading -->
             <div v-else-if="utility.type === 'water'">
               <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Lettura Contatore (mc)</label>
-              <input
-                v-model="form.provider_reading"
-                type="number"
-                step="0.001"
-                placeholder="0"
-                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                       focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
+              <input v-model="form.provider_reading" type="number" step="0.001" placeholder="0"
+                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
             </div>
           </div>
         </div>
 
-        <!-- Estimated consumption toggle (gas only, metered) -->
+        <!-- Estimated consumption toggle (gas only) -->
         <div v-if="isMetered && utility.type === 'gas'" class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
           <label class="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              v-model="form.has_estimated"
-              class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
-            />
+            <input type="checkbox" v-model="form.has_estimated"
+              class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
             <span class="text-sm text-gray-700 dark:text-gray-300">Contiene lettura stimata</span>
           </label>
           <div v-if="form.has_estimated" class="mt-3 space-y-3 pl-4 border-l-2 border-amber-300 dark:border-amber-600">
             <div>
               <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Data stima</label>
-              <input
-                v-model="form.estimated_date"
-                type="date"
-                class="w-full min-w-0 max-w-full box-border px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                       focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
+              <input v-model="form.estimated_date" type="date"
+                class="w-full min-w-0 max-w-full box-border px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500" />
             </div>
             <div>
               <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Lettura Stimata (mc)</label>
-              <input
-                v-model="form.estimated_reading"
-                type="number"
-                step="0.001"
-                placeholder="0"
-                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                       focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
+              <input v-model="form.estimated_reading" type="number" step="0.001" placeholder="0"
+                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500" />
               <p v-if="calculatedEstimatedConsumption != null" class="text-xs text-amber-600 dark:text-amber-400 mt-1">
                 Consumo stimato: {{ formatNumber(calculatedEstimatedConsumption) }} Smc
               </p>
@@ -404,7 +251,7 @@
           </div>
         </div>
 
-        <!-- Comunicazioni importanti (mostly for fixed services, but available for all) -->
+        <!-- Comunicazioni importanti -->
         <div>
           <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
             Comunicazioni importanti
@@ -424,27 +271,23 @@
 
         <!-- Stato Pagamento -->
         <div class="flex items-center gap-3">
-          <input
-            type="checkbox"
-            id="is-paid"
-            v-model="form.is_paid"
-            class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-          />
+          <input type="checkbox" id="is-paid" v-model="form.is_paid"
+            class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
           <label for="is-paid" class="text-sm text-gray-900 dark:text-white cursor-pointer">
-            {{ isMetered ? 'Già pagata' : 'Già pagata' }}
+            Già pagata
           </label>
         </div>
 
-        <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
-          {{ error }}
+        <div v-if="submitError" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+          {{ submitError }}
         </div>
 
         <div class="flex gap-3 pt-4">
           <Button type="button" variant="secondary" @click="$emit('close')" class="flex-1">
             Annulla
           </Button>
-          <Button type="submit" :disabled="loading" class="flex-1">
-            {{ loading ? 'Salvataggio...' : 'Salva' }}
+          <Button type="submit" :disabled="saving" class="flex-1">
+            {{ saving ? 'Salvataggio...' : 'Salva' }}
           </Button>
         </div>
       </form>
@@ -452,88 +295,53 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { formatDate as _formatDate, formatNumber as _formatNumber } from '@/utils/dateFormatter'
-import { utilitiesAPI, templatesAPI } from '@/api/client'
-import apiClient from '@/api/client'
+import { utilitiesAPI } from '@/api/client'
+import { useConsumptionCalculation } from '@/composables/useConsumptionCalculation'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
+import PDFUploadZone from '@/components/utilities/PDFUploadZone.vue'
 
 const props = defineProps({
-  utility: {
-    type: Object,
-    required: true
-  },
-  bill: {
-    type: Object,
-    default: null
-  }
+  utility: { type: Object, required: true },
+  bill: { type: Object, default: null }
 })
 
 const emit = defineEmits(['close', 'saved'])
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 
-const isMetered = computed(() => {
-  return ['electricity', 'gas', 'water', 'waste'].includes(props.utility?.type)
-})
+const isMetered = computed(() => ['electricity', 'gas', 'water', 'waste'].includes(props.utility?.type))
+const isEditing = computed(() => !!props.bill)
 
-const loading = ref(false)
-const error = ref(null)
-const fileInput = ref(null)
-const isDragging = ref(false)
-const pdfProcessing = ref(false)
-const pdfError = ref(null)
-const uploadedFile = ref(null)
-
-// Template selection
-const availableTemplates = ref([])
-const selectedTemplateId = ref(null)
-const loadingTemplates = ref(false)
+const saving = ref(false)
+const submitError = ref(null)
 
 // Available readings for this utility
 const availableReadings = ref([])
-const inlineReadingValue = ref(null) // value entered inline when no reading exists
+const inlineReadingValue = ref(null)
 
 const readingUnit = computed(() => {
   const type = props.utility?.type
   if (type === 'electricity') return 'kWh'
-  if (type === 'gas') return 'mc'
-  if (type === 'water') return 'mc'
+  if (type === 'gas' || type === 'water') return 'mc'
   return ''
+})
+
+const consumptionUnit = computed(() => {
+  const units = { electricity: 'kWh', gas: 'Smc', water: 'mc', waste: '' }
+  return units[props.utility?.type] || ''
 })
 
 const sortedReadings = computed(() => {
   return [...availableReadings.value].sort((a, b) => new Date(b.reading_date) - new Date(a.reading_date))
 })
 
-function formatReadingOption(r) {
-  const d = new Date(r.reading_date)
-  const dateStr = _formatDate(d, settingsStore.dateSettings)
-  const val = r.value != null ? _formatNumber(r.value, settingsStore.formatSettings) : '-'
-  const unit = readingUnit.value
-  return `${dateStr} — ${val} ${unit}`
-}
-
-function onReadingSelected() {
-  inlineReadingValue.value = null
-}
-
-async function fetchReadings() {
-  try {
-    const { data } = await utilitiesAPI.getReadings(props.utility.id)
-    availableReadings.value = data || []
-  } catch (err) {
-    console.error('Error loading readings:', err)
-  }
-}
-
-const isEditing = computed(() => !!props.bill)
-
-// Stato per l'editing delle letture fornitore - inizializzato in onMounted
+// Provider readings edit state
 const isEditingProviderReadings = ref(true)
 
 const form = ref({
@@ -547,25 +355,19 @@ const form = ref({
   user_reading_id: null,
   reading_type: 'actual',
   is_paid: false,
-  // Provider readings (letture rilevate)
   provider_reading_date: null,
   provider_reading_f1: null,
   provider_reading_f2: null,
   provider_reading_f3: null,
   provider_reading: null,
-  // Gas conversion coefficient
   conversion_coefficient: null,
-  // Estimated reading fields
   has_estimated: false,
   estimated_date: '',
-  estimated_reading: null,  // Lettura stimata (mc) - user input
-  // Transient: previous estimated consumption (not saved to DB)
+  estimated_reading: null,
   previous_estimated_consumption: null,
-  // Communication text (important notices from the bill/invoice)
   communication_text: ''
 })
 
-// Track if we have provider readings
 const hasProviderReadings = computed(() => {
   if (props.utility?.type === 'electricity') {
     return form.value.provider_reading_f1 || form.value.provider_reading_f2 || form.value.provider_reading_f3
@@ -576,207 +378,86 @@ const hasProviderReadings = computed(() => {
   return form.value.provider_reading != null
 })
 
-// Computed properties per la UI - logica centralizzata e chiara
-const showCollapsedView = computed(() => {
-  return hasProviderReadings.value && !isEditingProviderReadings.value
-})
+// Consumption calculation composable
+const { previousBill, previousBillHasEstimate, calculatedEstimatedConsumption } = useConsumptionCalculation(
+  form,
+  computed(() => props.utility),
+  isEditing,
+  props.bill
+)
 
-const showExpandedForm = computed(() => {
-  return isEditingProviderReadings.value
-})
-
-// Toggle per il pulsante Modifica/Nascondi
-function toggleProviderReadingsEdit() {
-  isEditingProviderReadings.value = !isEditingProviderReadings.value
-}
-
-function getConsumptionUnit(type) {
-  const units = {
-    electricity: 'kWh',
-    gas: 'Smc',
-    water: 'mc',
-    waste: ''
-  }
-  return units[type] || ''
-}
+// ── Helpers ──
 
 function formatNumber(value) {
   if (value == null) return '-'
   return _formatNumber(value, settingsStore.formatSettings)
 }
 
+function formatReadingOption(r) {
+  const d = new Date(r.reading_date)
+  const dateStr = _formatDate(d, settingsStore.dateSettings)
+  const val = r.value != null ? _formatNumber(r.value, settingsStore.formatSettings) : '-'
+  return `${dateStr} — ${val} ${readingUnit.value}`
+}
+
 function formatDateForInput(dateStr) {
   if (!dateStr) return ''
-  // If already in YYYY-MM-DD format, return as-is
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return ''
   return date.toISOString().split('T')[0]
 }
 
-function triggerFileInput() {
-  fileInput.value?.click()
+// ── PDF Extraction ──
+
+function onPDFExtracted(data) {
+  if (!data) return
+  form.value.amount_total = data.amount_total
+  if (data.consumption_total != null) form.value.consumption_total = data.consumption_total
+  if (data.conversion_coefficient != null) form.value.conversion_coefficient = data.conversion_coefficient
+  if (data.period_start) form.value.period_start = data.period_start
+  if (data.period_end) form.value.period_end = data.period_end
+  if (data.due_date) form.value.due_date = data.due_date
+  if (data.issue_date) form.value.issue_date = data.issue_date
+  if (data.bill_number) form.value.bill_number = data.bill_number
+  if (data.reading_type) form.value.reading_type = data.reading_type
+  if (data.provider_reading_date) form.value.provider_reading_date = data.provider_reading_date
+  if (data.provider_reading_f1 != null) form.value.provider_reading_f1 = data.provider_reading_f1
+  if (data.provider_reading_f2 != null) form.value.provider_reading_f2 = data.provider_reading_f2
+  if (data.provider_reading_f3 != null) form.value.provider_reading_f3 = data.provider_reading_f3
+  if (data.provider_reading != null) form.value.provider_reading = data.provider_reading
+  if (data.estimated_date) { form.value.estimated_date = data.estimated_date; form.value.has_estimated = true }
+  if (data.estimated_reading != null) { form.value.estimated_reading = data.estimated_reading; form.value.has_estimated = true }
+  if (data.previous_estimated_consumption != null && previousBillHasEstimate.value) {
+    form.value.previous_estimated_consumption = data.previous_estimated_consumption
+  }
+  if (data.communication_text) form.value.communication_text = data.communication_text
 }
 
-function handleFileSelect(event) {
-  const file = event.target.files?.[0]
-  if (file) {
-    processFile(file)
-  }
-}
+// ── Readings ──
 
-function handleDrop(event) {
-  isDragging.value = false
-  const file = event.dataTransfer?.files?.[0]
-  if (file && file.type === 'application/pdf') {
-    processFile(file)
-  } else {
-    pdfError.value = 'Per favore carica un file PDF'
-  }
-}
-
-async function processFile(file) {
-  if (file.type !== 'application/pdf') {
-    pdfError.value = 'Per favore carica un file PDF'
-    return
-  }
-
-  pdfProcessing.value = true
-  pdfError.value = null
-
+async function fetchReadings() {
   try {
-    // Pass the selected template ID (or null for auto-detection)
-    const { data } = await utilitiesAPI.uploadBillPDF(props.utility.id, file, selectedTemplateId.value)
-    uploadedFile.value = file
-
-    // Auto-fill form with extracted data (backend returns data directly)
-    if (data) {
- //     if (data.amount_total != null) {
-        form.value.amount_total = data.amount_total
- //     }
-      if (data.consumption_total != null) {
-        form.value.consumption_total = data.consumption_total
-      }
-      if (data.conversion_coefficient != null) {
-        form.value.conversion_coefficient = data.conversion_coefficient
-      }
-      if (data.period_start) {
-        form.value.period_start = formatDateForInput(data.period_start)
-      }
-      if (data.period_end) {
-        form.value.period_end = formatDateForInput(data.period_end)
-      }
-      if (data.due_date) {
-        form.value.due_date = formatDateForInput(data.due_date)
-      }
-      if (data.issue_date) {
-        form.value.issue_date = formatDateForInput(data.issue_date)
-      }
-      if (data.bill_number) {
-        form.value.bill_number = data.bill_number
-      }
-      if (data.reading_type) {
-        form.value.reading_type = data.reading_type
-      }
-      // Provider readings (letture rilevate dal fornitore)
-      if (data.provider_reading_date) {
-        form.value.provider_reading_date = formatDateForInput(data.provider_reading_date)
-      }
-      if (data.provider_reading_f1 != null) {
-        form.value.provider_reading_f1 = data.provider_reading_f1
-      }
-      if (data.provider_reading_f2 != null) {
-        form.value.provider_reading_f2 = data.provider_reading_f2
-      }
-      if (data.provider_reading_f3 != null) {
-        form.value.provider_reading_f3 = data.provider_reading_f3
-      }
-      if (data.provider_reading != null) {
-        form.value.provider_reading = data.provider_reading
-      }
-      // Estimated reading fields
-      if (data.estimated_date) {
-        form.value.estimated_date = formatDateForInput(data.estimated_date)
-        form.value.has_estimated = true
-      }
-      if (data.estimated_reading != null) {
-        form.value.estimated_reading = data.estimated_reading
-        form.value.has_estimated = true
-      }
-      // Only set previous_estimated_consumption if previous bill actually has an estimate
-      // Template extraction might incorrectly pick up values from unrelated sections
-      if (data.previous_estimated_consumption != null && previousBillHasEstimate.value) {
-        form.value.previous_estimated_consumption = data.previous_estimated_consumption
-      }
-      // Communication text extracted from PDF
-      if (data.communication_text) {
-        form.value.communication_text = data.communication_text
-      }
-
-      // For fixed-cost services: infer missing period date from billing frequency
-      if (!isMetered.value && props.utility?.billing_interval && props.utility?.billing_unit) {
-        inferMissingPeriodDate()
-      }
-    }
+    const { data } = await utilitiesAPI.getReadings(props.utility.id)
+    availableReadings.value = data || []
   } catch (err) {
-    pdfError.value = err.response?.data?.error || 'Errore durante l\'estrazione dei dati dal PDF'
-    console.error('PDF extraction error:', err)
-  } finally {
-    pdfProcessing.value = false
+    console.error('Error loading readings:', err)
   }
 }
 
-function inferMissingPeriodDate() {
-  // Only infer when period_end is missing (don't overwrite PDF-extracted or manual values)
-  if (!form.value.period_start || form.value.period_end) return
-
-  const interval = props.utility.billing_interval
-  const unit = props.utility.billing_unit
-  if (!['day', 'week', 'month', 'year'].includes(unit)) return
-
-  // Parse as UTC to avoid timezone/DST off-by-one issues
-  const parts = form.value.period_start.split('-')
-  const year = parseInt(parts[0]), month = parseInt(parts[1]) - 1, day = parseInt(parts[2])
-  const end = new Date(Date.UTC(year, month, day))
-  if (isNaN(end.getTime())) return
-
-  switch (unit) {
-    case 'day':
-      end.setUTCDate(end.getUTCDate() + interval)
-      break
-    case 'week':
-      end.setUTCDate(end.getUTCDate() + interval * 7)
-      break
-    case 'month':
-      end.setUTCMonth(end.getUTCMonth() + interval)
-      break
-    case 'year':
-      end.setUTCFullYear(end.getUTCFullYear() + interval)
-      break
-  }
-  // period_end = last day of the period (day before next period start)
-  end.setUTCDate(end.getUTCDate() - 1)
-  form.value.period_end = end.toISOString().split('T')[0]
-}
-
-function clearUploadedFile() {
-  uploadedFile.value = null
-  if (fileInput.value) {
-    fileInput.value.value = ''
-  }
-}
+// ── Submit ──
 
 async function handleSubmit() {
   if (isMetered.value && (form.value.consumption_total == null || form.value.consumption_total === '')) {
-    error.value = 'Il consumo è obbligatorio'
+    submitError.value = 'Il consumo è obbligatorio'
     return
   }
 
-  loading.value = true
-  error.value = null
+  saving.value = true
+  submitError.value = null
 
   try {
-    // If no reading selected but user entered an inline value, create the reading first (metered only)
+    // Create inline reading if needed
     let resolvedReadingId = form.value.user_reading_id
     if (resolvedReadingId === null && inlineReadingValue.value != null && inlineReadingValue.value !== '') {
       const readingDate = form.value.period_end
@@ -798,27 +479,23 @@ async function handleSubmit() {
       issue_date: new Date(form.value.issue_date).toISOString(),
       consumption_total: isMetered.value ? (parseFloat(form.value.consumption_total) || 0) : 0,
       conversion_coefficient: props.utility.type === 'gas' && form.value.conversion_coefficient
-        ? parseFloat(form.value.conversion_coefficient)
-        : null,
+        ? parseFloat(form.value.conversion_coefficient) : null,
       bill_number: form.value.bill_number,
       user_reading_id: resolvedReadingId || null,
       reading_type: form.value.reading_type,
       is_paid: form.value.is_paid,
       paid_date: form.value.is_paid ? new Date().toISOString() : null,
-      // Provider readings (letture rilevate dal fornitore)
       provider_reading_date: form.value.provider_reading_date ? new Date(form.value.provider_reading_date).toISOString() : null,
       provider_reading_f1: form.value.provider_reading_f1 ? parseFloat(form.value.provider_reading_f1) : null,
       provider_reading_f2: form.value.provider_reading_f2 ? parseFloat(form.value.provider_reading_f2) : null,
       provider_reading_f3: form.value.provider_reading_f3 ? parseFloat(form.value.provider_reading_f3) : null,
       provider_reading: form.value.provider_reading ? parseFloat(form.value.provider_reading) : null,
-      // Estimated reading/consumption (only if toggle is on)
       estimated_date: form.value.has_estimated && form.value.estimated_date
         ? new Date(form.value.estimated_date).toISOString() : null,
       estimated_reading: form.value.has_estimated && form.value.estimated_reading != null
         ? parseFloat(form.value.estimated_reading) : null,
       estimated_consumption: form.value.has_estimated && calculatedEstimatedConsumption.value != null
         ? calculatedEstimatedConsumption.value : null,
-      // Communication text (saved as ServiceCommunication on backend)
       communication_text: form.value.communication_text || ''
     }
 
@@ -829,164 +506,13 @@ async function handleSubmit() {
     }
     emit('saved')
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || 'Errore durante il salvataggio'
+    submitError.value = err.response?.data?.error || err.message || 'Errore durante il salvataggio'
   } finally {
-    loading.value = false
+    saving.value = false
   }
 }
 
-async function loadTemplates() {
-  if (isEditing.value) return
-
-  loadingTemplates.value = true
-  try {
-    // Load all templates for this utility type
-    const { data } = await templatesAPI.listBillTemplates()
-    availableTemplates.value = data.filter(t => t.utility_type === props.utility.type)
-
-    // Try to get default template from user settings
-    try {
-      const { data: settings } = await apiClient.get('/settings')
-      if (settings.default_templates) {
-        const defaultTemplates = JSON.parse(settings.default_templates)
-        const defaultId = defaultTemplates[props.utility.type]
-        if (defaultId && availableTemplates.value.some(t => t.id === defaultId)) {
-          selectedTemplateId.value = defaultId
-        }
-      }
-    } catch (e) {
-      // Ignore settings error, use auto-detection
-    }
-  } catch (err) {
-    console.error('Error loading templates:', err)
-  } finally {
-    loadingTemplates.value = false
-  }
-}
-
-// Find the previous bill based on the period_start of the bill being uploaded.
-// Looks for the most recent bill whose period_end is before the current bill's period_start.
-const previousBill = computed(() => {
-  const bills = props.utility?.bills
-  if (!bills?.length) return null
-
-  const currentStart = form.value.period_start
-  if (!currentStart) return null
-  const currentStartDate = new Date(currentStart)
-  if (isNaN(currentStartDate.getTime())) return null
-
-  // Bills are sorted by period_end DESC from backend
-  // Find the first bill whose period_end < current period_start
-  for (const bill of bills) {
-    if (isEditing.value && props.bill?.id === bill.id) continue
-    const billEnd = new Date(bill.period_end)
-    if (isNaN(billEnd.getTime())) continue
-    if (billEnd <= currentStartDate) {
-      return bill
-    }
-  }
-  return null
-})
-
-// Check if previous bill contains an estimated consumption
-const previousBillHasEstimate = computed(() => {
-  return previousBill.value?.estimated_consumption != null
-})
-
-// Get the effective previous reading: use estimated_reading if previous bill had an estimate
-const previousReading = computed(() => {
-  const prev = previousBill.value
-  if (!prev) return null
-  // If previous bill had an estimated reading, the meter continued from there
-  if (prev.estimated_reading != null) return prev.estimated_reading
-  return prev.provider_reading
-})
-
-// Calculate estimated consumption from estimated_reading and provider_reading
-const calculatedEstimatedConsumption = computed(() => {
-  if (!form.value.has_estimated) return null
-  const estReading = parseFloat(form.value.estimated_reading)
-  const provReading = parseFloat(form.value.provider_reading)
-  const C = parseFloat(form.value.conversion_coefficient)
-  if (isNaN(estReading) || isNaN(provReading) || isNaN(C) || C <= 0) return null
-  const diff = estReading - provReading
-  if (diff < 0) return null
-  return Math.round(diff * C * 1000000) / 1000000
-})
-
-// Calculate consumption from provider readings difference
-// Electricity: (F1_curr - F1_prev) + (F2_curr - F2_prev) + (F3_curr - F3_prev)
-// Gas: (current_mc - previous_mc) × C + estimated_consumption (if has_estimated)
-// Water: current_mc - previous_mc
-function calculateConsumption() {
-  const type = props.utility?.type
-  const prev = previousBill.value
-
-  if (type === 'electricity') {
-    if (!prev) return
-    const f1Curr = parseFloat(form.value.provider_reading_f1)
-    const f2Curr = parseFloat(form.value.provider_reading_f2)
-    const f3Curr = parseFloat(form.value.provider_reading_f3)
-    const f1Prev = prev.provider_reading_f1
-    const f2Prev = prev.provider_reading_f2
-    const f3Prev = prev.provider_reading_f3
-    // Need at least one valid pair
-    let total = 0
-    let hasPair = false
-    if (!isNaN(f1Curr) && f1Prev != null) { total += f1Curr - f1Prev; hasPair = true }
-    if (!isNaN(f2Curr) && f2Prev != null) { total += f2Curr - f2Prev; hasPair = true }
-    if (!isNaN(f3Curr) && f3Prev != null) { total += f3Curr - f3Prev; hasPair = true }
-    if (!hasPair || total < 0) return
-    form.value.consumption_total = Math.round(total * 1000) / 1000
-    return
-  }
-
-  if (type !== 'gas' && type !== 'water') return
-
-  const current = parseFloat(form.value.provider_reading)
-  if (!current || isNaN(current)) return
-  const prevReading = previousReading.value
-  if (prevReading == null) return
-
-  const diff = current - prevReading
-  if (diff < 0) return // Sanity check: reading should increase
-
-  if (type === 'gas') {
-    const C = parseFloat(form.value.conversion_coefficient)
-    if (C > 0) {
-      let consumption = diff * C
-      // If previous bill had estimated_consumption but NO estimated_reading (legacy data),
-      // subtract it because previousReading used provider_reading as base.
-      // When estimated_reading is used as base, the math already accounts for it.
-      const prev = previousBill.value
-      if (previousBillHasEstimate.value && prev?.estimated_reading == null) {
-        const prevEstimated = parseFloat(form.value.previous_estimated_consumption)
-        if (!isNaN(prevEstimated) && prevEstimated > 0) {
-          consumption -= prevEstimated
-        }
-      }
-      // Add estimated consumption for current bill (if has_estimated)
-      if (calculatedEstimatedConsumption.value != null) {
-        consumption += calculatedEstimatedConsumption.value
-      }
-      form.value.consumption_total = Math.round(consumption * 1000) / 1000
-    }
-  } else {
-    form.value.consumption_total = Math.round(diff * 1000) / 1000
-  }
-}
-
-// Recalculate consumption when readings or relevant inputs change
-watch(() => form.value.provider_reading, () => calculateConsumption())
-watch(() => form.value.conversion_coefficient, () => calculateConsumption())
-watch(() => form.value.provider_reading_f1, () => calculateConsumption())
-watch(() => form.value.provider_reading_f2, () => calculateConsumption())
-watch(() => form.value.provider_reading_f3, () => calculateConsumption())
-watch(() => form.value.previous_estimated_consumption, () => calculateConsumption())
-watch(() => form.value.estimated_reading, () => calculateConsumption())
-watch(() => form.value.has_estimated, () => calculateConsumption())
-// When period_start changes, previousBill changes, so recalculate
-watch(() => form.value.period_start, () => calculateConsumption())
+// ── Init ──
 
 onMounted(async () => {
   if (props.bill) {
@@ -1001,15 +527,12 @@ onMounted(async () => {
       user_reading_id: props.bill.user_reading_id || null,
       reading_type: props.bill.reading_type || 'actual',
       is_paid: props.bill.is_paid || false,
-      // Provider readings
       provider_reading_date: formatDateForInput(props.bill.provider_reading_date),
       provider_reading_f1: props.bill.provider_reading_f1,
       provider_reading_f2: props.bill.provider_reading_f2,
       provider_reading_f3: props.bill.provider_reading_f3,
       provider_reading: props.bill.provider_reading,
-      // Gas conversion coefficient
       conversion_coefficient: props.bill.conversion_coefficient || null,
-      // Estimated reading
       has_estimated: props.bill.estimated_reading != null || props.bill.estimated_consumption != null,
       estimated_date: formatDateForInput(props.bill.estimated_date),
       estimated_reading: props.bill.estimated_reading,
@@ -1017,31 +540,23 @@ onMounted(async () => {
       communication_text: ''
     }
 
-    // Load existing communication for this bill (if any)
+    // Load existing communication
     try {
       const { data: comms } = await utilitiesAPI.getCommunications(props.utility.id)
       const billComm = comms.find(c => c.bill_id === props.bill.id)
-      if (billComm) {
-        form.value.communication_text = billComm.content || ''
-      }
-    } catch (e) {
-      // Non-critical, ignore
-    }
+      if (billComm) form.value.communication_text = billComm.content || ''
+    } catch { /* non-critical */ }
 
-    // Se stiamo editando una bolletta con letture esistenti, mostra la collapsed view
-    const hasExistingReadings = props.utility?.type === 'electricity'
+    // Collapse provider readings if they exist
+    const hasExisting = props.utility?.type === 'electricity'
       ? (props.bill.provider_reading_f1 || props.bill.provider_reading_f2 || props.bill.provider_reading_f3)
       : props.bill.provider_reading != null
-
-    if (hasExistingReadings) {
-      isEditingProviderReadings.value = false
-    }
+    if (hasExisting) isEditingProviderReadings.value = false
   }
 
-  // Load readings and templates in parallel
   await fetchReadings()
 
-  // For new bills, auto-suggest the reading closest to period_end
+  // Auto-suggest closest reading for new bills
   if (!props.bill && sortedReadings.value.length > 0 && form.value.period_end) {
     const periodEnd = new Date(form.value.period_end)
     let closest = null
@@ -1050,11 +565,9 @@ onMounted(async () => {
       const diff = Math.abs(new Date(r.reading_date) - periodEnd)
       if (diff < closestDiff) { closestDiff = diff; closest = r }
     }
-    if (closest && closestDiff <= 45 * 24 * 60 * 60 * 1000) { // within 45 days
+    if (closest && closestDiff <= 45 * 24 * 60 * 60 * 1000) {
       form.value.user_reading_id = closest.id
     }
   }
-
-  loadTemplates()
 })
 </script>

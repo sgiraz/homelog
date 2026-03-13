@@ -5,26 +5,38 @@ import { projectsAPI } from '@/api/client'
 export const useProjectsStore = defineStore('projects', () => {
   const projects = ref([])
   const loading = ref(false)
+  const saving = ref(false)
   const error = ref(null)
 
+  // Deduplication: track in-flight fetch
+  let fetchPromise = null
+
   async function fetchProjects(propertyId, status = '') {
+    // Deduplicate: if already fetching, return existing promise
+    if (fetchPromise) return fetchPromise
+
     loading.value = true
     error.value = null
-    try {
-      const params = { property_id: propertyId }
-      if (status) params.status = status
 
-      const { data } = await projectsAPI.list(params)
-      projects.value = data || []
-    } catch (err) {
-      error.value = err.message
-      throw err
-    } finally {
-      loading.value = false
-    }
+    fetchPromise = projectsAPI.list({ property_id: propertyId, ...(status && { status }) })
+      .then(({ data }) => {
+        projects.value = data || []
+      })
+      .catch(err => {
+        error.value = err.message
+        throw err
+      })
+      .finally(() => {
+        loading.value = false
+        fetchPromise = null
+      })
+
+    return fetchPromise
   }
 
   async function createProject(project) {
+    saving.value = true
+    error.value = null
     try {
       const { data } = await projectsAPI.create(project)
       // Backend Create returns raw project without stats - add defaults
@@ -40,10 +52,14 @@ export const useProjectsStore = defineStore('projects', () => {
     } catch (err) {
       error.value = err.message
       throw err
+    } finally {
+      saving.value = false
     }
   }
 
   async function updateProject(id, project) {
+    saving.value = true
+    error.value = null
     try {
       const { data } = await projectsAPI.update(id, project)
       const index = projects.value.findIndex(p => p.id === id)
@@ -54,22 +70,29 @@ export const useProjectsStore = defineStore('projects', () => {
     } catch (err) {
       error.value = err.message
       throw err
+    } finally {
+      saving.value = false
     }
   }
 
   async function deleteProject(id) {
+    saving.value = true
+    error.value = null
     try {
       await projectsAPI.delete(id)
       projects.value = projects.value.filter(p => p.id !== id)
     } catch (err) {
       error.value = err.message
       throw err
+    } finally {
+      saving.value = false
     }
   }
 
   return {
     projects,
     loading,
+    saving,
     error,
     fetchProjects,
     createProject,

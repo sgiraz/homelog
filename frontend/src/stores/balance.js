@@ -12,6 +12,7 @@ export const useBalanceStore = defineStore('balance', () => {
   const unsettledSplits = ref([])
   const settlements = ref([])
   const loading = ref(false)
+  const saving = ref(false)
   const error = ref(null)
 
   async function fetchBalance(propertyId = 1) {
@@ -26,7 +27,6 @@ export const useBalanceStore = defineStore('balance', () => {
       otherMemberId.value = data.other_member_id || null
       message.value = data.message || ''
     } catch (err) {
-      // If no balance data, just set to 0
       balance.value = 0
       error.value = err.response?.data?.error || err.message
     } finally {
@@ -57,6 +57,8 @@ export const useBalanceStore = defineStore('balance', () => {
   }
 
   async function createSettlement(settlementData) {
+    saving.value = true
+    error.value = null
     try {
       const { data } = await settlementsAPI.create(settlementData)
       // Refresh balance after settlement
@@ -65,6 +67,8 @@ export const useBalanceStore = defineStore('balance', () => {
     } catch (err) {
       error.value = err.response?.data?.error || err.message
       throw err
+    } finally {
+      saving.value = false
     }
   }
 
@@ -88,6 +92,7 @@ export const useBalanceStore = defineStore('balance', () => {
     unsettledSplits,
     settlements,
     loading,
+    saving,
     error,
     fetchBalance,
     fetchBalanceDetails,

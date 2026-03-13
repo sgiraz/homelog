@@ -5,8 +5,13 @@ import { utilitiesAPI } from '@/api/client'
 export const useUtilitiesStore = defineStore('utilities', () => {
   const utilities = ref([])
   const loading = ref(false)
+  const saving = ref(false)
   const error = ref(null)
   const selectedUtility = ref(null)
+
+  // Deduplication: track in-flight fetch to prevent parallel calls
+  let fetchListPromise = null
+  let fetchDetailPromise = null
 
   // Computed properties
   const unpaidBillsCount = computed(() => {
@@ -49,39 +54,53 @@ export const useUtilitiesStore = defineStore('utilities', () => {
 
   // Actions
   async function fetchUtilities(params = {}) {
+    // Deduplicate: if already fetching with same params, return existing promise
+    if (fetchListPromise) return fetchListPromise
+
     loading.value = true
     error.value = null
 
-    try {
-      const { data } = await utilitiesAPI.list(params)
-      utilities.value = data || []
-    } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to fetch utilities'
-      console.error('Error fetching utilities:', err)
-    } finally {
-      loading.value = false
-    }
+    fetchListPromise = utilitiesAPI.list(params)
+      .then(({ data }) => {
+        utilities.value = data || []
+      })
+      .catch(err => {
+        error.value = err.response?.data?.error || 'Failed to fetch utilities'
+        console.error('Error fetching utilities:', err)
+      })
+      .finally(() => {
+        loading.value = false
+        fetchListPromise = null
+      })
+
+    return fetchListPromise
   }
 
   async function fetchUtility(id) {
-    loading.value = true
+    // Deduplicate: if already fetching this utility, return existing promise
+    if (fetchDetailPromise) return fetchDetailPromise
+
     error.value = null
 
-    try {
-      const { data } = await utilitiesAPI.get(id)
-      selectedUtility.value = data
-      return data
-    } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to fetch utility'
-      console.error('Error fetching utility:', err)
-      throw err
-    } finally {
-      loading.value = false
-    }
+    fetchDetailPromise = utilitiesAPI.get(id)
+      .then(({ data }) => {
+        selectedUtility.value = data
+        return data
+      })
+      .catch(err => {
+        error.value = err.response?.data?.error || 'Failed to fetch utility'
+        console.error('Error fetching utility:', err)
+        throw err
+      })
+      .finally(() => {
+        fetchDetailPromise = null
+      })
+
+    return fetchDetailPromise
   }
 
   async function createUtility(utilityData) {
-    loading.value = true
+    saving.value = true
     error.value = null
 
     try {
@@ -93,12 +112,12 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       console.error('Error creating utility:', err)
       throw err
     } finally {
-      loading.value = false
+      saving.value = false
     }
   }
 
   async function updateUtility(id, utilityData) {
-    loading.value = true
+    saving.value = true
     error.value = null
 
     try {
@@ -113,12 +132,12 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       console.error('Error updating utility:', err)
       throw err
     } finally {
-      loading.value = false
+      saving.value = false
     }
   }
 
   async function deleteUtility(id) {
-    loading.value = true
+    saving.value = true
     error.value = null
 
     try {
@@ -129,18 +148,17 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       console.error('Error deleting utility:', err)
       throw err
     } finally {
-      loading.value = false
+      saving.value = false
     }
   }
 
-  // Bill actions
+  // Bill actions — use saving flag, fetchUtility without touching loading
   async function addBill(utilityId, billData) {
-    loading.value = true
+    saving.value = true
     error.value = null
 
     try {
       const { data } = await utilitiesAPI.addBill(utilityId, billData)
-      // Refresh the utility to get updated bills
       await fetchUtility(utilityId)
       return data
     } catch (err) {
@@ -148,17 +166,16 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       console.error('Error adding bill:', err)
       throw err
     } finally {
-      loading.value = false
+      saving.value = false
     }
   }
 
   async function updateBill(utilityId, billId, billData) {
-    loading.value = true
+    saving.value = true
     error.value = null
 
     try {
       const { data } = await utilitiesAPI.updateBill(utilityId, billId, billData)
-      // Refresh the utility to get updated bills
       await fetchUtility(utilityId)
       return data
     } catch (err) {
@@ -166,17 +183,16 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       console.error('Error updating bill:', err)
       throw err
     } finally {
-      loading.value = false
+      saving.value = false
     }
   }
 
   async function updateBillFull(utilityId, billId, billData) {
-    loading.value = true
+    saving.value = true
     error.value = null
 
     try {
       const { data } = await utilitiesAPI.updateBillFull(utilityId, billId, billData)
-      // Refresh the utility to get updated bills
       await fetchUtility(utilityId)
       return data
     } catch (err) {
@@ -184,35 +200,33 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       console.error('Error updating bill:', err)
       throw err
     } finally {
-      loading.value = false
+      saving.value = false
     }
   }
 
   async function deleteBill(utilityId, billId) {
-    loading.value = true
+    saving.value = true
     error.value = null
 
     try {
       await utilitiesAPI.deleteBill(utilityId, billId)
-      // Refresh the utility to get updated bills
       await fetchUtility(utilityId)
     } catch (err) {
       error.value = err.response?.data?.error || 'Failed to delete bill'
       console.error('Error deleting bill:', err)
       throw err
     } finally {
-      loading.value = false
+      saving.value = false
     }
   }
 
   // Reading actions
   async function addReading(utilityId, readingData) {
-    loading.value = true
+    saving.value = true
     error.value = null
 
     try {
       const { data } = await utilitiesAPI.addReading(utilityId, readingData)
-      // Refresh the utility to get updated readings
       await fetchUtility(utilityId)
       return data
     } catch (err) {
@@ -220,17 +234,16 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       console.error('Error adding reading:', err)
       throw err
     } finally {
-      loading.value = false
+      saving.value = false
     }
   }
 
   async function updateReading(utilityId, readingId, readingData) {
-    loading.value = true
+    saving.value = true
     error.value = null
 
     try {
       const { data } = await utilitiesAPI.updateReading(utilityId, readingId, readingData)
-      // Refresh the utility to get updated readings
       await fetchUtility(utilityId)
       return data
     } catch (err) {
@@ -238,24 +251,23 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       console.error('Error updating reading:', err)
       throw err
     } finally {
-      loading.value = false
+      saving.value = false
     }
   }
 
   async function deleteReading(utilityId, readingId) {
-    loading.value = true
+    saving.value = true
     error.value = null
 
     try {
       await utilitiesAPI.deleteReading(utilityId, readingId)
-      // Refresh the utility to get updated readings
       await fetchUtility(utilityId)
     } catch (err) {
       error.value = err.response?.data?.error || 'Failed to delete reading'
       console.error('Error deleting reading:', err)
       throw err
     } finally {
-      loading.value = false
+      saving.value = false
     }
   }
 
@@ -267,6 +279,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
     // State
     utilities,
     loading,
+    saving,
     error,
     selectedUtility,
 
