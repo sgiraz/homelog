@@ -13,6 +13,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const defaultTemplates = ref({})
   const emailNotifications = ref(true)
   const billReminders = ref(true)
+  const notificationRetentionDays = ref(90)
   const loaded = ref(false)
 
   // Getters - provides { date_format, language } object for formatDate/formatPeriod
@@ -39,6 +40,7 @@ export const useSettingsStore = defineStore('settings', () => {
       dateFormat.value = data.date_format || 'DD/MM/YYYY'
       emailNotifications.value = data.email_notifications ?? true
       billReminders.value = data.bill_reminders ?? true
+      notificationRetentionDays.value = data.notification_retention_days ?? 90
 
       // Apply theme from server settings
       setTheme(theme.value)
@@ -105,6 +107,7 @@ export const useSettingsStore = defineStore('settings', () => {
     defaultTemplates.value = {}
     emailNotifications.value = true
     billReminders.value = true
+    notificationRetentionDays.value = 90
     loaded.value = false
   }
 
@@ -118,6 +121,7 @@ export const useSettingsStore = defineStore('settings', () => {
     defaultTemplates,
     emailNotifications,
     billReminders,
+    notificationRetentionDays,
     loaded,
     // Getters
     dateSettings,

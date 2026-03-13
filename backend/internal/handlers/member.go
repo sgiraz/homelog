@@ -29,7 +29,8 @@ type MemberResponse struct {
 	Name       string `json:"name"`
 	Role       string `json:"role,omitempty"`
 	IsVirtual  bool   `json:"is_virtual"`
-	UserRole   string `json:"user_role,omitempty"` // "admin" or "user" (from linked User account)
+	UserRole   string `json:"user_role,omitempty"`   // "admin" or "user" (from linked User account)
+	AvatarPath string `json:"avatar_path,omitempty"` // relative path e.g. "avatars/2_123.jpg"
 }
 
 // CreateMemberRequest represents the request for creating a member
@@ -79,6 +80,7 @@ func (h *MemberHandler) List(c *gin.Context) {
 		}
 		if m.User != nil {
 			resp.UserRole = m.User.Role
+			resp.AvatarPath = m.User.AvatarPath
 		}
 		response[i] = resp
 	}

@@ -166,6 +166,7 @@ export const utilitiesAPI = {
 export const communicationsAPI = {
   getAll: (params) => apiClient.get('/communications', { params }),
   getUnreadCount: () => apiClient.get('/communications/unread-count'),
+  deleteAllRead: () => apiClient.delete('/communications/read'),
 }
 
 export const templatesAPI = {

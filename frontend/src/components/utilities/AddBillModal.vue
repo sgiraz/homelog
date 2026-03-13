@@ -9,6 +9,7 @@
         :is-metered="isMetered"
         :billing-interval="utility.billing_interval"
         :billing-unit="utility.billing_unit"
+        :default-template-id="utility.default_bill_template_id"
         @extracted="onPDFExtracted"
       />
 

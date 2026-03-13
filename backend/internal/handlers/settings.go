@@ -50,6 +50,7 @@ type UserSettingsResponse struct {
 	DefaultTemplates          string `json:"default_templates"`             // JSON object as string e.g. {"electricity": 1}
 	EmailNotifications        bool   `json:"email_notifications"`
 	BillReminders             bool   `json:"bill_reminders"`
+	NotificationRetentionDays int    `json:"notification_retention_days"`
 }
 
 // UpdateUserSettingsRequest represents the request for updating user settings
@@ -62,6 +63,7 @@ type UpdateUserSettingsRequest struct {
 	DefaultTemplates          *string `json:"default_templates,omitempty"`             // JSON object as string
 	EmailNotifications        *bool   `json:"email_notifications,omitempty"`
 	BillReminders             *bool   `json:"bill_reminders,omitempty"`
+	NotificationRetentionDays *int    `json:"notification_retention_days,omitempty"`
 }
 
 // Get - GET /api/v1/settings
@@ -87,6 +89,7 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 				DefaultTemplates:          "",
 				EmailNotifications:        true,
 				BillReminders:             true,
+				NotificationRetentionDays: 90,
 			})
 			return
 		}
@@ -99,6 +102,11 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 		dateFormat = "DD/MM/YYYY"
 	}
 
+	retentionDays := settings.NotificationRetentionDays
+	if retentionDays == 0 {
+		retentionDays = 90
+	}
+
 	c.JSON(http.StatusOK, UserSettingsResponse{
 		Theme:                     settings.Theme,
 		Currency:                  settings.Currency,
@@ -108,6 +116,7 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 		DefaultTemplates:          settings.DefaultTemplates,
 		EmailNotifications:        settings.EmailNotifications,
 		BillReminders:             settings.BillDueAlertDays > 0,
+		NotificationRetentionDays: retentionDays,
 	})
 }
 
@@ -175,6 +184,9 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 			settings.BillDueAlertDays = 0
 		}
 	}
+	if req.NotificationRetentionDays != nil {
+		settings.NotificationRetentionDays = *req.NotificationRetentionDays
+	}
 
 	// Save settings
 	if settings.ID == 0 {
@@ -194,6 +206,11 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 		updateDateFormat = "DD/MM/YYYY"
 	}
 
+	updateRetentionDays := settings.NotificationRetentionDays
+	if updateRetentionDays == 0 {
+		updateRetentionDays = 90
+	}
+
 	c.JSON(http.StatusOK, UserSettingsResponse{
 		Theme:                     settings.Theme,
 		Currency:                  settings.Currency,
@@ -203,6 +220,7 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 		DefaultTemplates:          settings.DefaultTemplates,
 		EmailNotifications:        settings.EmailNotifications,
 		BillReminders:             settings.BillDueAlertDays > 0,
+		NotificationRetentionDays: updateRetentionDays,
 	})
 }
 

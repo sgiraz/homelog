@@ -2075,8 +2075,33 @@ func (h *UtilityHandler) DeleteCommunication(c *gin.Context) {
 		return
 	}
 
-	h.db.Delete(&comm)
+	h.db.Unscoped().Delete(&comm)
 	c.JSON(http.StatusOK, gin.H{"message": "Communication deleted"})
+}
+
+// DeleteReadCommunications bulk-deletes all read communications for the user
+func (h *UtilityHandler) DeleteReadCommunications(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var memberPropertyIDs []uint
+	h.db.Model(&models.HouseholdMember{}).
+		Where("user_id = ?", userID).
+		Pluck("property_id", &memberPropertyIDs)
+
+	var utilityIDs []uint
+	h.db.Model(&models.Utility{}).
+		Where("property_id IN ?", memberPropertyIDs).
+		Pluck("id", &utilityIDs)
+
+	result := h.db.Unscoped().
+		Where("utility_id IN ? AND is_read = ?", utilityIDs, true).
+		Delete(&models.ServiceCommunication{})
+
+	c.JSON(http.StatusOK, gin.H{"deleted": result.RowsAffected})
 }
 
 // GetAllCommunications returns all communications across user's utilities
@@ -2097,6 +2122,19 @@ func (h *UtilityHandler) GetAllCommunications(c *gin.Context) {
 		Where("property_id IN ?", memberPropertyIDs).
 		Pluck("id", &utilityIDs)
 
+	// Auto-cleanup: delete communications older than retention days
+	var settings models.UserSettings
+	if err := h.db.Where("user_id = ?", userID).First(&settings).Error; err == nil {
+		retentionDays := settings.NotificationRetentionDays
+		if retentionDays == 0 {
+			retentionDays = 90
+		}
+		cutoff := time.Now().AddDate(0, 0, -retentionDays)
+		h.db.Unscoped().
+			Where("utility_id IN ? AND created_at < ?", utilityIDs, cutoff).
+			Delete(&models.ServiceCommunication{})
+	}
+
 	query := h.db.Where("utility_id IN ?", utilityIDs).
 		Preload("Utility").
 		Order("created_at DESC")
@@ -2104,6 +2142,11 @@ func (h *UtilityHandler) GetAllCommunications(c *gin.Context) {
 	// Filter by unread only
 	if c.Query("unread_only") == "true" {
 		query = query.Where("is_read = ?", false)
+	}
+
+	// Filter by read only
+	if c.Query("read_only") == "true" {
+		query = query.Where("is_read = ?", true)
 	}
 
 	// Limit

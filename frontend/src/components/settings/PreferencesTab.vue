@@ -66,6 +66,34 @@
       </div>
     </Card>
 
+    <!-- Notifications -->
+    <Card class="p-6">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Notifiche</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Conserva notifiche per (giorni)
+          </label>
+          <select
+            v-model.number="notificationRetentionDays"
+            @change="updateRetentionDays"
+            class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option :value="30">30 giorni</option>
+            <option :value="60">60 giorni</option>
+            <option :value="90">90 giorni</option>
+            <option :value="180">180 giorni</option>
+            <option :value="365">1 anno</option>
+          </select>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Le notifiche più vecchie verranno eliminate automaticamente.
+          </p>
+        </div>
+      </div>
+    </Card>
+
     <!-- Account -->
     <Card class="p-6">
       <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Account</h2>
@@ -150,6 +178,8 @@ const preferences = ref({
   date_format: 'DD/MM/YYYY'
 })
 
+const notificationRetentionDays = ref(90)
+
 // Change password
 const showChangePassword = ref(false)
 const pwLoading = ref(false)
@@ -166,10 +196,20 @@ async function loadUserSettings() {
       language: data.language || 'it',
       date_format: data.date_format || 'DD/MM/YYYY'
     }
+    notificationRetentionDays.value = data.notification_retention_days ?? 90
     // Sync theme composable with server value
     setTheme(preferences.value.theme)
   } catch (err) {
     console.log('Using default user settings')
+  }
+}
+
+async function updateRetentionDays() {
+  try {
+    await apiClient.put('/settings', { notification_retention_days: notificationRetentionDays.value })
+    settingsStore.notificationRetentionDays = notificationRetentionDays.value
+  } catch (err) {
+    console.error('Error updating retention days:', err)
   }
 }
 

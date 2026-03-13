@@ -137,6 +137,7 @@ func main() {
 			utilHandler := handlers.NewUtilityHandler(db)
 			protected.GET("/communications", utilHandler.GetAllCommunications)
 			protected.GET("/communications/unread-count", utilHandler.GetUnreadCount)
+			protected.DELETE("/communications/read", utilHandler.DeleteReadCommunications)
 
 			// Utilities
 			utilities := protected.Group("/utilities")

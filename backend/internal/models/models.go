@@ -375,6 +375,9 @@ type UserSettings struct {
 	BillDueAlertDays    int  `gorm:"not null;default:3" json:"bill_due_alert_days"`
 	ReadingReminderDays int  `gorm:"not null;default:7" json:"reading_reminder_days"`
 
+	// Retention
+	NotificationRetentionDays int `gorm:"not null;default:90" json:"notification_retention_days"`
+
 	// Thresholds
 	AnomalyThreshold float64 `gorm:"not null;default:5.0" json:"anomaly_threshold"` // Percentage
 }

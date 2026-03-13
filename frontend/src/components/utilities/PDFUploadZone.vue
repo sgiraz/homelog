@@ -110,6 +110,7 @@ const props = defineProps({
   isMetered: { type: Boolean, default: true },
   billingInterval: { type: Number, default: null },
   billingUnit: { type: String, default: null },
+  defaultTemplateId: { type: Number, default: null },
 })
 
 const emit = defineEmits(['extracted'])
@@ -215,6 +216,13 @@ async function loadTemplates() {
     const { data } = await templatesAPI.listBillTemplates()
     availableTemplates.value = data.filter(t => t.utility_type === props.utilityType)
 
+    // Priority 1: service-level default template (from utility.default_bill_template_id)
+    if (props.defaultTemplateId && availableTemplates.value.some(t => t.id === props.defaultTemplateId)) {
+      selectedTemplateId.value = props.defaultTemplateId
+      return
+    }
+
+    // Priority 2: user-level default template (from settings.default_templates by type)
     try {
       const { data: settings } = await apiClient.get('/settings')
       if (settings.default_templates) {

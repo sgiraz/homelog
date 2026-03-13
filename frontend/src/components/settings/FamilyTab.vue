@@ -56,9 +56,18 @@
                   class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                 />
                 <div class="flex items-center gap-2 flex-1 min-w-0">
-                  <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900
+                  <img
+                    v-if="member.avatar_path"
+                    :src="'/' + member.avatar_path"
+                    :alt="member.name"
+                    class="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                  />
+                  <div
+                    v-else
+                    class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900
                               flex items-center justify-center text-sm font-medium
-                              text-blue-600 dark:text-blue-300 flex-shrink-0">
+                              text-blue-600 dark:text-blue-300 flex-shrink-0"
+                  >
                     {{ getInitials(member.name) }}
                   </div>
                   <span class="text-gray-900 dark:text-white truncate">{{ member.name }}</span>

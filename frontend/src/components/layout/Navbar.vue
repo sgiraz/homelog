@@ -128,6 +128,17 @@
                   </button>
                 </template>
               </div>
+
+              <!-- View all link -->
+              <router-link
+                to="/notifications"
+                @click="closeDropdowns"
+                class="block text-center px-4 py-2.5 text-sm font-medium text-blue-600 dark:text-blue-400
+                       hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
+                       border-t border-gray-100 dark:border-gray-700"
+              >
+                Vedi tutte
+              </router-link>
             </div>
           </Transition>
         </div>
