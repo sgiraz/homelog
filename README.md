@@ -13,22 +13,22 @@
   <tr>
     <td align="center"><strong>Dashboard</strong></td>
     <td align="center"><strong>Spese</strong></td>
-    <td align="center"><strong>Utenze</strong></td>
+    <td align="center"><strong>Servizi</strong></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/dashboard.png" alt="Dashboard" width="280" /></td>
-    <td><img src="docs/screenshots/expenses.png" alt="Expenses" width="280" /></td>
-    <td><img src="docs/screenshots/utilities.png" alt="Utilities" width="280" /></td>
+    <td><img src="docs/screenshots/dashboard.jpg" alt="Dashboard" width="280" /></td>
+    <td><img src="docs/screenshots/expenses.jpg" alt="Expenses" width="280" /></td>
+    <td><img src="docs/screenshots/services.jpg" alt="Services" width="280" /></td>
   </tr>
   <tr>
-    <td align="center"><strong>Dettaglio Utenza</strong></td>
+    <td align="center"><strong>Dettaglio Servizio</strong></td>
     <td align="center"><strong>Progetti</strong></td>
     <td align="center"><strong>Impostazioni</strong></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/utility-detail.png" alt="Utility Detail" width="280" /></td>
-    <td><img src="docs/screenshots/projects.png" alt="Projects" width="280" /></td>
-    <td><img src="docs/screenshots/settings.png" alt="Settings" width="280" /></td>
+    <td><img src="docs/screenshots/service-details.jpg" alt="Service Detail" width="280" /></td>
+    <td><img src="docs/screenshots/projects.jpg" alt="Projects" width="280" /></td>
+    <td><img src="docs/screenshots/settings.jpg" alt="Settings" width="280" /></td>
   </tr>
 </table>
 
