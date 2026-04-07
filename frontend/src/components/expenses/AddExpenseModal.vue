@@ -1,32 +1,29 @@
 <template>
   <BaseModal title="Nuova Spesa" @close="$emit('close')">
-    <!-- Quick Templates -->
-    <div v-if="expenseTemplates.length > 0" class="mb-4">
-      <div class="flex items-center justify-between mb-2">
-        <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Modelli rapidi</label>
-      </div>
-      <div class="flex gap-2 flex-wrap">
-        <button
-          v-for="tpl in expenseTemplates"
-          :key="tpl.id"
-          type="button"
-          @click="applyTemplate(tpl)"
-          :class="[
-            'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border',
-            appliedTemplateId === tpl.id
-              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
-              : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
-          ]"
-        >
-          <span v-if="tpl.icon">{{ tpl.icon }}</span>
-          <span v-else-if="tpl.category">{{ tpl.category.icon }}</span>
-          <span>{{ tpl.name }}</span>
-          <span v-if="tpl.amount" class="text-xs opacity-70">{{ formatCurrency(tpl.amount) }}</span>
-        </button>
-      </div>
-    </div>
-
     <form @submit.prevent="handleSubmit" class="space-y-4">
+      <!-- Quick Templates -->
+      <div v-if="expenseTemplates.length > 0">
+        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+          Modello rapido
+        </label>
+        <select
+          v-model.number="selectedTemplateId"
+          @change="onTemplateSelect"
+          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option :value="null">— Nessun modello —</option>
+          <option
+            v-for="tpl in expenseTemplates"
+            :key="tpl.id"
+            :value="tpl.id"
+          >
+            {{ tpl.icon || tpl.category?.icon || '' }} {{ tpl.name }}{{ tpl.amount ? ` (${formatCurrency(tpl.amount)})` : '' }}
+          </option>
+        </select>
+      </div>
+
       <Input
         v-model="form.amount"
         label="Importo *"
@@ -267,7 +264,7 @@ const userSettings = ref(null)
 const categories = ref([])
 const activeProjects = ref([])
 const expenseTemplates = ref([])
-const appliedTemplateId = ref(null)
+const selectedTemplateId = ref(null)
 
 const householdUsers = ref([])
 const currentPropertyId = ref(null)
@@ -433,8 +430,10 @@ async function fetchExpenseTemplates() {
   }
 }
 
-function applyTemplate(tpl) {
-  appliedTemplateId.value = tpl.id
+function onTemplateSelect() {
+  if (!selectedTemplateId.value) return
+  const tpl = expenseTemplates.value.find(t => t.id === selectedTemplateId.value)
+  if (!tpl) return
   if (tpl.amount) form.value.amount = tpl.amount
   form.value.description = tpl.description || tpl.name
   form.value.category_id = tpl.category_id

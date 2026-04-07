@@ -97,10 +97,19 @@
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ tpl.name }}</div>
             <div class="text-xs text-gray-500 dark:text-gray-400">
-              {{ tpl.category?.name }}
+              {{ tpl.category?.name }}<span v-if="tpl.subcategory"> / {{ tpl.subcategory.name }}</span>
               <span v-if="tpl.amount"> · {{ formatCurrency(tpl.amount) }}</span>
             </div>
           </div>
+          <button
+            type="button"
+            @click="editTemplate(tpl)"
+            class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-400 hover:text-blue-500"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
           <button
             type="button"
             @click="deleteTemplate(tpl)"
@@ -135,6 +144,7 @@
             <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Categoria *</label>
             <select
               v-model.number="tplForm.category_id"
+              @change="tplForm.subcategory_id = null"
               required
               class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
@@ -146,11 +156,25 @@
             </select>
           </div>
         </div>
+        <div v-if="tplSubcategories.length > 0">
+          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Sottocategoria (opzionale)</label>
+          <select
+            v-model.number="tplForm.subcategory_id"
+            class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option :value="null">Nessuna sottocategoria</option>
+            <option v-for="sub in tplSubcategories" :key="sub.id" :value="sub.id">
+              {{ sub.name }}
+            </option>
+          </select>
+        </div>
         <div class="flex gap-2">
-          <Button size="sm" @click="handleCreateTemplate" :disabled="!tplForm.name || !tplForm.category_id">
-            Salva
+          <Button size="sm" @click="handleSaveTemplate" :disabled="!tplForm.name || !tplForm.category_id">
+            {{ editingTemplateId ? 'Aggiorna' : 'Salva' }}
           </Button>
-          <Button size="sm" variant="secondary" @click="showAddTemplate = false">
+          <Button size="sm" variant="secondary" @click="cancelTemplateForm">
             Annulla
           </Button>
         </div>
@@ -246,7 +270,7 @@
 <script setup>
 defineOptions({ name: 'PreferencesTab' })
 
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -276,8 +300,15 @@ const notificationRetentionDays = ref(90)
 const templates = ref([])
 const templatesLoading = ref(false)
 const showAddTemplate = ref(false)
+const editingTemplateId = ref(null)
 const tplCategories = ref([])
-const tplForm = ref({ name: '', amount: 0, category_id: null })
+const tplForm = ref({ name: '', amount: 0, category_id: null, subcategory_id: null })
+
+const tplSubcategories = computed(() => {
+  if (!tplForm.value.category_id) return []
+  const cat = tplCategories.value.find(c => c.id === tplForm.value.category_id)
+  return cat?.subcategories || []
+})
 
 function formatCurrency(value) {
   return _formatCurrency(value, settingsStore.formatSettings)
@@ -307,19 +338,45 @@ async function loadCategories() {
   }
 }
 
-async function handleCreateTemplate() {
+function editTemplate(tpl) {
+  editingTemplateId.value = tpl.id
+  tplForm.value = {
+    name: tpl.name,
+    amount: tpl.amount || 0,
+    category_id: tpl.category_id,
+    subcategory_id: tpl.subcategory_id || null,
+  }
+  showAddTemplate.value = true
+}
+
+function cancelTemplateForm() {
+  showAddTemplate.value = false
+  editingTemplateId.value = null
+  tplForm.value = { name: '', amount: 0, category_id: tplCategories.value[0]?.id, subcategory_id: null }
+}
+
+async function handleSaveTemplate() {
   try {
-    const { data } = await expenseTemplatesAPI.create({
+    const payload = {
       name: tplForm.value.name,
       amount: parseFloat(tplForm.value.amount) || 0,
       category_id: tplForm.value.category_id,
-    })
-    templates.value.push(data)
-    tplForm.value = { name: '', amount: 0, category_id: tplCategories.value[0]?.id }
-    showAddTemplate.value = false
-    window.$toast?.success('Modello creato!')
+    }
+    if (tplForm.value.subcategory_id) payload.subcategory_id = tplForm.value.subcategory_id
+
+    if (editingTemplateId.value) {
+      const { data } = await expenseTemplatesAPI.update(editingTemplateId.value, payload)
+      const idx = templates.value.findIndex(t => t.id === editingTemplateId.value)
+      if (idx !== -1) templates.value[idx] = data
+      window.$toast?.success('Modello aggiornato!')
+    } else {
+      const { data } = await expenseTemplatesAPI.create(payload)
+      templates.value.push(data)
+      window.$toast?.success('Modello creato!')
+    }
+    cancelTemplateForm()
   } catch (err) {
-    window.$toast?.error('Errore nella creazione del modello')
+    window.$toast?.error(editingTemplateId.value ? 'Errore nell\'aggiornamento' : 'Errore nella creazione del modello')
   }
 }
 
