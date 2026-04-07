@@ -348,7 +348,7 @@ type Project struct {
 	Property   *Property       `json:"property,omitempty"`
 	Expenses   []Expense       `gorm:"foreignKey:ProjectID" json:"expenses,omitempty"`
 	SharedWith []User          `gorm:"many2many:project_members;" json:"shared_with,omitempty"`
-	Members    []ProjectMember `gorm:"foreignKey:ProjectID" json:"members,omitempty"`
+	Members    []ProjectMember `gorm:"foreignKey:ProjectID" json:"-"`
 }
 
 // ProjectMember is the join table for Project <-> User with role

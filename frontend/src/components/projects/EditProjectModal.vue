@@ -111,14 +111,12 @@
                 type="checkbox"
                 :checked="isMemberSelected(member.user_id)"
                 @change="toggleMember(member.user_id)"
-                :disabled="!member.user_id"
                 class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0"
               />
               <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-xs font-medium text-purple-700 dark:text-purple-300 flex-shrink-0">
                 {{ getInitials(member.name) }}
               </div>
               <span class="text-sm text-gray-900 dark:text-white truncate">{{ member.name }}</span>
-              <span v-if="!member.user_id" class="text-xs text-gray-400 flex-shrink-0">(virtuale)</span>
             </label>
             <select
               v-if="isMemberSelected(member.user_id)"

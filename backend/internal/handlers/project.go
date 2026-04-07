@@ -277,7 +277,10 @@ func (h *ProjectHandler) Create(c *gin.Context) {
 		return
 	}
 
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create project"})
+		return
+	}
 
 	// Reload with associations
 	h.db.Preload("SharedWith").Preload("Members").Preload("Members.User").First(&project, project.ID)
@@ -358,8 +361,22 @@ func (h *ProjectHandler) Update(c *gin.Context) {
 		return
 	}
 
-	startDate, _ := time.Parse("2006-01-02", req.StartDate)
-	endDate, _ := time.Parse("2006-01-02", req.EndDate)
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format"})
+		return
+	}
+
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format"})
+		return
+	}
+
+	if endDate.Before(startDate) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "End date must be after start date"})
+		return
+	}
 
 	project.Name = req.Name
 	project.Icon = req.Icon
@@ -387,7 +404,10 @@ func (h *ProjectHandler) Update(c *gin.Context) {
 		return
 	}
 
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update project"})
+		return
+	}
 
 	// Reload with associations
 	h.db.Preload("SharedWith").Preload("Members").Preload("Members.User").First(&project, project.ID)
