@@ -297,7 +297,7 @@ const router = useRouter()
 const projectsStore = useProjectsStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
-const confirm = useConfirm()
+const { confirm } = useConfirm()
 
 const project = ref(null)
 const loading = ref(true)
