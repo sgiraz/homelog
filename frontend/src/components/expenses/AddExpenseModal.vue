@@ -212,6 +212,13 @@ import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 
 
+const props = defineProps({
+  projectId: {
+    type: Number,
+    default: null
+  }
+})
+
 const emit = defineEmits(['close', 'created'])
 const expensesStore = useExpensesStore()
 const authStore = useAuthStore()
@@ -235,7 +242,7 @@ const form = ref({
   paid_by_member_id: null,
   is_split: false,
   split_with_member_ids: [],
-  project_id: null,
+  project_id: props.projectId,
   property_id: null
 })
 

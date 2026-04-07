@@ -163,14 +163,6 @@
       @created="onProjectCreated"
     />
 
-    <!-- Detail Modal -->
-    <ProjectDetailModal
-      v-if="selectedProject"
-      :project="selectedProject"
-      @close="selectedProject = null"
-      @updated="onProjectUpdated"
-      @deleted="onProjectDeleted"
-    />
   </div>
 </template>
 
@@ -178,6 +170,7 @@
 defineOptions({ name: 'ProjectsView' })
 
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -186,8 +179,8 @@ import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import AddProjectModal from '@/components/projects/AddProjectModal.vue'
-import ProjectDetailModal from '@/components/projects/ProjectDetailModal.vue'
 
+const router = useRouter()
 const projectsStore = useProjectsStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
@@ -197,7 +190,6 @@ function isOwner(project) {
   return project.members?.some(m => m.id === authStore.user?.id && m.role === 'owner') || false
 }
 const showAddModal = ref(false)
-const selectedProject = ref(null)
 const currentPropertyId = ref(null)
 
 const selectedStatus = ref('active')
@@ -256,7 +248,7 @@ function isOverdue(project) {
 }
 
 function viewProject(project) {
-  selectedProject.value = project
+  router.push(`/projects/${project.id}`)
 }
 
 async function fetchCurrentProperty() {
@@ -279,16 +271,6 @@ function loadProjects() {
 
 function onProjectCreated() {
   showAddModal.value = false
-  loadProjects()
-}
-
-function onProjectUpdated() {
-  selectedProject.value = null
-  loadProjects()
-}
-
-function onProjectDeleted() {
-  selectedProject.value = null
   loadProjects()
 }
 
