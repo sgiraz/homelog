@@ -193,7 +193,8 @@ const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 
 function isOwner(project) {
-  return project.user_id === authStore.user?.id
+  if (project.user_id === authStore.user?.id) return true
+  return project.members?.some(m => m.id === authStore.user?.id && m.role === 'owner')
 }
 const showAddModal = ref(false)
 const selectedProject = ref(null)

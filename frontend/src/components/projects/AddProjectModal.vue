@@ -101,27 +101,39 @@
           Condividi con
         </label>
         <div class="space-y-2">
-          <label
+          <div
             v-for="member in otherMembers"
             :key="member.id"
-            class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+            class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
           >
-            <input
-              type="checkbox"
-              :value="member.user_id"
-              v-model="form.shared_with_user_ids"
-              :disabled="!member.user_id"
-              class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-            />
-            <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-xs font-medium text-purple-700 dark:text-purple-300">
-              {{ getInitials(member.name) }}
-            </div>
-            <span class="text-sm text-gray-900 dark:text-white">{{ member.name }}</span>
-            <span v-if="!member.user_id" class="text-xs text-gray-400">(virtuale, non condivisibile)</span>
-          </label>
+            <label class="flex items-center gap-3 cursor-pointer flex-1 min-w-0">
+              <input
+                type="checkbox"
+                :checked="isMemberSelected(member.user_id)"
+                @change="toggleMember(member.user_id)"
+                :disabled="!member.user_id"
+                class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0"
+              />
+              <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-xs font-medium text-purple-700 dark:text-purple-300 flex-shrink-0">
+                {{ getInitials(member.name) }}
+              </div>
+              <span class="text-sm text-gray-900 dark:text-white truncate">{{ member.name }}</span>
+              <span v-if="!member.user_id" class="text-xs text-gray-400 flex-shrink-0">(virtuale)</span>
+            </label>
+            <select
+              v-if="isMemberSelected(member.user_id)"
+              :value="getMemberRole(member.user_id)"
+              @change="setMemberRole(member.user_id, $event.target.value)"
+              class="text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-600
+                     bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex-shrink-0"
+            >
+              <option value="member">Membro</option>
+              <option value="owner">Co-proprietario</option>
+            </select>
+          </div>
         </div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-          I membri condivisi potranno vedere il progetto e aggiungere spese ad esso.
+          I membri possono aggiungere spese. I co-proprietari possono anche modificare il progetto.
         </p>
       </div>
 
@@ -170,7 +182,7 @@ const form = ref({
   end_date: '',
   status: 'planned',
   property_id: null,
-  shared_with_user_ids: []
+  members: []
 })
 
 const icons = ['🏗️', '🔨', '🎨', '🛠️', '🏠', '🚪', '🪟', '💡', '🔌', '🚿', '🛏️', '🍽️', '🌳', '🏊', '🎉', '💍', '✈️', '🎓']
@@ -181,6 +193,28 @@ const otherMembers = computed(() =>
 
 function getInitials(name) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+}
+
+function isMemberSelected(userId) {
+  return form.value.members.some(m => m.user_id === userId)
+}
+
+function getMemberRole(userId) {
+  return form.value.members.find(m => m.user_id === userId)?.role || 'member'
+}
+
+function toggleMember(userId) {
+  const idx = form.value.members.findIndex(m => m.user_id === userId)
+  if (idx >= 0) {
+    form.value.members.splice(idx, 1)
+  } else {
+    form.value.members.push({ user_id: userId, role: 'member' })
+  }
+}
+
+function setMemberRole(userId, role) {
+  const member = form.value.members.find(m => m.user_id === userId)
+  if (member) member.role = role
 }
 
 async function fetchCurrentPropertyAndMembers() {

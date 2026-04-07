@@ -345,9 +345,18 @@ type Project struct {
 	Status      string    `gorm:"not null;default:'active'" json:"status"` // active, completed, cancelled
 
 	// Relations
-	Property   *Property `json:"property,omitempty"`
-	Expenses   []Expense `gorm:"foreignKey:ProjectID" json:"expenses,omitempty"`
-	SharedWith []User    `gorm:"many2many:project_members;" json:"shared_with,omitempty"`
+	Property   *Property       `json:"property,omitempty"`
+	Expenses   []Expense       `gorm:"foreignKey:ProjectID" json:"expenses,omitempty"`
+	SharedWith []User          `gorm:"many2many:project_members;" json:"shared_with,omitempty"`
+	Members    []ProjectMember `gorm:"foreignKey:ProjectID" json:"members,omitempty"`
+}
+
+// ProjectMember is the join table for Project <-> User with role
+type ProjectMember struct {
+	ProjectID uint   `gorm:"primaryKey" json:"project_id"`
+	UserID    uint   `gorm:"primaryKey" json:"user_id"`
+	Role      string `gorm:"not null;default:'member'" json:"role"` // owner, member
+	User      User   `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }
 
 // UserSettings represents user preferences

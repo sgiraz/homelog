@@ -3,6 +3,7 @@ package handlers
 import (
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,16 +20,22 @@ func NewProjectHandler(db *gorm.DB) *ProjectHandler {
 	return &ProjectHandler{db: db}
 }
 
+type MemberRoleInput struct {
+	UserID uint   `json:"user_id" binding:"required"`
+	Role   string `json:"role"` // "owner" or "member", defaults to "member"
+}
+
 type CreateProjectRequest struct {
-	PropertyID       *uint   `json:"property_id"`
-	Name             string  `json:"name" binding:"required"`
-	Icon             string  `json:"icon"`
-	Description      string  `json:"description"`
-	Budget           float64 `json:"budget" binding:"required,gt=0"`
-	StartDate        string  `json:"start_date" binding:"required"`
-	EndDate          string  `json:"end_date" binding:"required"`
-	Status           string  `json:"status"`
-	SharedWithUserIDs []uint `json:"shared_with_user_ids"`
+	PropertyID        *uint             `json:"property_id"`
+	Name              string            `json:"name" binding:"required"`
+	Icon              string            `json:"icon"`
+	Description       string            `json:"description"`
+	Budget            float64           `json:"budget" binding:"required,gt=0"`
+	StartDate         string            `json:"start_date" binding:"required"`
+	EndDate           string            `json:"end_date" binding:"required"`
+	Status            string            `json:"status"`
+	SharedWithUserIDs []uint            `json:"shared_with_user_ids"` // backward compat
+	Members           []MemberRoleInput `json:"members,omitempty"`   // new: with roles
 }
 
 type ProjectStatsResponse struct {
@@ -37,6 +44,85 @@ type ProjectStatsResponse struct {
 	Remaining       float64 `json:"remaining"`
 	PercentageSpent float64 `json:"percentage_spent"`
 	ExpenseCount    int     `json:"expense_count"`
+}
+
+type ProjectMemberResponse struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+	Role string `json:"role"` // creator, owner, member
+}
+
+// canManageProject checks if the user is the creator or has "owner" role
+func (h *ProjectHandler) canManageProject(projectID string, userID uint) (models.Project, bool) {
+	var project models.Project
+	id, err := strconv.ParseUint(projectID, 10, 32)
+	if err != nil {
+		return project, false
+	}
+	if err := h.db.Where(
+		"id = ? AND (user_id = ? OR id IN (SELECT project_id FROM project_members WHERE user_id = ? AND role = 'owner'))",
+		id, userID, userID,
+	).First(&project).Error; err != nil {
+		return project, false
+	}
+	return project, true
+}
+
+// buildMembersResponse builds the members list including the creator
+func (h *ProjectHandler) buildMembersResponse(project models.Project) []ProjectMemberResponse {
+	var members []ProjectMemberResponse
+
+	// Add creator
+	var creator models.User
+	if err := h.db.First(&creator, project.UserID).Error; err == nil {
+		members = append(members, ProjectMemberResponse{
+			ID:   creator.ID,
+			Name: creator.Name,
+			Role: "creator",
+		})
+	}
+
+	// Add shared members with their roles
+	var projectMembers []models.ProjectMember
+	h.db.Where("project_id = ?", project.ID).Preload("User").Find(&projectMembers)
+	for _, pm := range projectMembers {
+		members = append(members, ProjectMemberResponse{
+			ID:   pm.User.ID,
+			Name: pm.User.Name,
+			Role: pm.Role,
+		})
+	}
+
+	return members
+}
+
+// setProjectMembers replaces all shared members with the given list
+func (h *ProjectHandler) setProjectMembers(project *models.Project, req CreateProjectRequest, creatorID uint) {
+	// Delete existing members
+	h.db.Where("project_id = ?", project.ID).Delete(&models.ProjectMember{})
+
+	if len(req.Members) > 0 {
+		// New format: members with roles
+		for _, m := range req.Members {
+			if m.UserID == creatorID {
+				continue
+			}
+			role := m.Role
+			if role != "owner" {
+				role = "member"
+			}
+			pm := models.ProjectMember{ProjectID: project.ID, UserID: m.UserID, Role: role}
+			h.db.Create(&pm)
+		}
+	} else if len(req.SharedWithUserIDs) > 0 {
+		// Backward compat: all as "member"
+		var users []models.User
+		h.db.Where("id IN ? AND id != ?", req.SharedWithUserIDs, creatorID).Find(&users)
+		for _, u := range users {
+			pm := models.ProjectMember{ProjectID: project.ID, UserID: u.ID, Role: "member"}
+			h.db.Create(&pm)
+		}
+	}
 }
 
 // List - GET /api/v1/projects?property_id=X&status=active
@@ -62,6 +148,8 @@ func (h *ProjectHandler) List(c *gin.Context) {
 	var projects []models.Project
 	if err := query.Preload("Expenses").
 		Preload("SharedWith").
+		Preload("Members").
+		Preload("Members.User").
 		Order("status ASC, start_date DESC").
 		Find(&projects).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch projects"})
@@ -70,7 +158,8 @@ func (h *ProjectHandler) List(c *gin.Context) {
 
 	type ProjectWithStats struct {
 		models.Project
-		Stats ProjectStatsResponse `json:"stats"`
+		Stats   ProjectStatsResponse    `json:"stats"`
+		Members []ProjectMemberResponse `json:"members"`
 	}
 
 	projectsWithStats := make([]ProjectWithStats, len(projects))
@@ -79,6 +168,7 @@ func (h *ProjectHandler) List(c *gin.Context) {
 		projectsWithStats[i] = ProjectWithStats{
 			Project: proj,
 			Stats:   stats,
+			Members: h.buildMembersResponse(proj),
 		}
 	}
 
@@ -148,22 +238,20 @@ func (h *ProjectHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Share with specified users (only users different from creator)
-	if len(req.SharedWithUserIDs) > 0 {
-		var users []models.User
-		h.db.Where("id IN ? AND id != ?", req.SharedWithUserIDs, userID).Find(&users)
-		if len(users) > 0 {
-			if err := h.db.Model(&project).Association("SharedWith").Append(&users); err != nil {
-				log.Printf("⚠️  Failed to set shared_with for project %d: %v", project.ID, err)
-			}
-		}
-	}
+	// Add shared members with roles
+	h.setProjectMembers(&project, req, userID)
 
 	// Reload with associations
-	h.db.Preload("SharedWith").First(&project, project.ID)
+	h.db.Preload("SharedWith").Preload("Members").Preload("Members.User").First(&project, project.ID)
 
-	log.Printf("Project created: ID=%d, Name=%s, Budget=%.2f, SharedWith=%d users", project.ID, project.Name, project.Budget, len(project.SharedWith))
-	c.JSON(http.StatusCreated, project)
+	log.Printf("Project created: ID=%d, Name=%s, Budget=%.2f, Members=%d", project.ID, project.Name, project.Budget, len(project.Members))
+	c.JSON(http.StatusCreated, struct {
+		models.Project
+		Members []ProjectMemberResponse `json:"members"`
+	}{
+		Project: project,
+		Members: h.buildMembersResponse(project),
+	})
 }
 
 // Get - GET /api/v1/projects/:id
@@ -179,6 +267,8 @@ func (h *ProjectHandler) Get(c *gin.Context) {
 		Preload("Expenses").
 		Preload("Expenses.Category").
 		Preload("SharedWith").
+		Preload("Members").
+		Preload("Members.User").
 		First(&project).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
@@ -192,24 +282,25 @@ func (h *ProjectHandler) Get(c *gin.Context) {
 
 	response := struct {
 		models.Project
-		Stats ProjectStatsResponse `json:"stats"`
+		Stats   ProjectStatsResponse    `json:"stats"`
+		Members []ProjectMemberResponse `json:"members"`
 	}{
 		Project: project,
 		Stats:   stats,
+		Members: h.buildMembersResponse(project),
 	}
 
 	c.JSON(http.StatusOK, response)
 }
 
-// Update - PUT /api/v1/projects/:id (creator only)
+// Update - PUT /api/v1/projects/:id (creator or owner role)
 func (h *ProjectHandler) Update(c *gin.Context) {
 	userID, _ := middleware.GetUserID(c)
 	projectID := c.Param("id")
 
-	// Only creator can edit
-	var project models.Project
-	if err := h.db.Where("id = ? AND user_id = ?", projectID, userID).First(&project).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found or you are not the creator"})
+	project, canManage := h.canManageProject(projectID, userID)
+	if !canManage {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only project owners can edit"})
 		return
 	}
 
@@ -238,30 +329,30 @@ func (h *ProjectHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Replace shared users (only users different from creator)
-	var users []models.User
-	if len(req.SharedWithUserIDs) > 0 {
-		h.db.Where("id IN ? AND id != ?", req.SharedWithUserIDs, userID).Find(&users)
-	}
-	if err := h.db.Model(&project).Association("SharedWith").Replace(&users); err != nil {
-		log.Printf("⚠️  Failed to update shared_with for project %d: %v", project.ID, err)
-	}
+	// Replace members with roles
+	h.setProjectMembers(&project, req, project.UserID)
 
 	// Reload with associations
-	h.db.Preload("SharedWith").First(&project, project.ID)
+	h.db.Preload("SharedWith").Preload("Members").Preload("Members.User").First(&project, project.ID)
 
 	log.Printf("Project updated: ID=%d, Name=%s", project.ID, project.Name)
-	c.JSON(http.StatusOK, project)
+	c.JSON(http.StatusOK, struct {
+		models.Project
+		Members []ProjectMemberResponse `json:"members"`
+	}{
+		Project: project,
+		Members: h.buildMembersResponse(project),
+	})
 }
 
-// Delete - DELETE /api/v1/projects/:id (creator only)
+// Delete - DELETE /api/v1/projects/:id (creator or owner role)
 func (h *ProjectHandler) Delete(c *gin.Context) {
 	userID, _ := middleware.GetUserID(c)
 	projectID := c.Param("id")
 
-	var project models.Project
-	if err := h.db.Where("id = ? AND user_id = ?", projectID, userID).First(&project).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found or you are not the creator"})
+	project, canManage := h.canManageProject(projectID, userID)
+	if !canManage {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only project owners can delete"})
 		return
 	}
 
@@ -277,7 +368,8 @@ func (h *ProjectHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Clear shared_with associations before deleting
+	// Clear members before deleting
+	h.db.Where("project_id = ?", project.ID).Delete(&models.ProjectMember{})
 	h.db.Model(&project).Association("SharedWith").Clear()
 
 	if err := h.db.Delete(&project).Error; err != nil {
