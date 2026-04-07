@@ -463,6 +463,29 @@ type BillTemplate struct {
 	User User `json:"user,omitempty"`
 }
 
+// ExpenseTemplate represents a reusable expense template for quick entry
+type ExpenseTemplate struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	UserID        uint    `gorm:"not null;index" json:"user_id"`
+	Name          string  `gorm:"not null" json:"name"`
+	Icon          string  `json:"icon"`
+	Amount        float64 `json:"amount"`                              // 0 means "ask every time"
+	Description   string  `json:"description"`
+	CategoryID    uint    `gorm:"not null;index" json:"category_id"`
+	SubcategoryID *uint   `gorm:"index" json:"subcategory_id,omitempty"`
+	ProjectID     *uint   `gorm:"index" json:"project_id,omitempty"`
+	SortOrder     int     `gorm:"not null;default:0" json:"sort_order"`
+
+	// Relations
+	Category    Category     `json:"category"`
+	Subcategory *Subcategory `json:"subcategory,omitempty"`
+	Project     *Project     `json:"project,omitempty"`
+}
+
 // ContractTemplate represents extraction rules for utility contracts
 type ContractTemplate struct {
 	ID        uint           `gorm:"primarykey" json:"id"`

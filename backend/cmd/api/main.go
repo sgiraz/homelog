@@ -209,6 +209,16 @@ func main() {
 				projects.DELETE("/:id", projHandler.Delete)
 			}
 
+			// Expense templates
+			expTplHandler := handlers.NewExpenseTemplateHandler(db)
+			expTemplates := protected.Group("/expense-templates")
+			{
+				expTemplates.GET("", expTplHandler.List)
+				expTemplates.POST("", expTplHandler.Create)
+				expTemplates.PUT("/:id", expTplHandler.Update)
+				expTemplates.DELETE("/:id", expTplHandler.Delete)
+			}
+
 			// User settings
 			settingsHandler := handlers.NewSettingsHandler(db)
 			settings := protected.Group("/settings")

@@ -1,6 +1,29 @@
 <template>
   <BaseModal title="Nuova Spesa" @close="$emit('close')">
     <form @submit.prevent="handleSubmit" class="space-y-4">
+      <!-- Quick Templates -->
+      <div v-if="expenseTemplates.length > 0">
+        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+          Modello rapido
+        </label>
+        <select
+          v-model.number="selectedTemplateId"
+          @change="onTemplateSelect"
+          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option :value="null">— Nessun modello —</option>
+          <option
+            v-for="tpl in expenseTemplates"
+            :key="tpl.id"
+            :value="tpl.id"
+          >
+            {{ tpl.icon || tpl.category?.icon || '' }} {{ tpl.name }}{{ tpl.amount ? ` (${formatCurrency(tpl.amount)})` : '' }}
+          </option>
+        </select>
+      </div>
+
       <Input
         v-model="form.amount"
         label="Importo *"
@@ -188,6 +211,17 @@
         {{ error }}
       </div>
 
+      <!-- Save as template -->
+      <div v-if="form.category_id && form.description" class="border-t border-gray-200 dark:border-gray-700 pt-3">
+        <button
+          type="button"
+          @click="saveAsTemplate"
+          class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+        >
+          + Salva come modello rapido
+        </button>
+      </div>
+
       <div class="flex gap-3 pt-2">
         <Button type="button" variant="secondary" @click="$emit('close')" class="flex-1">
           Annulla
@@ -206,7 +240,7 @@ import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
-import apiClient, { categoriesAPI, projectsAPI } from '@/api/client'
+import apiClient, { categoriesAPI, projectsAPI, expenseTemplatesAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -229,6 +263,8 @@ const error = ref(null)
 const userSettings = ref(null)
 const categories = ref([])
 const activeProjects = ref([])
+const expenseTemplates = ref([])
+const selectedTemplateId = ref(null)
 
 const householdUsers = ref([])
 const currentPropertyId = ref(null)
@@ -385,6 +421,45 @@ watch(() => form.value.project_id, (newProjectId) => {
   }
 })
 
+async function fetchExpenseTemplates() {
+  try {
+    const { data } = await expenseTemplatesAPI.list()
+    expenseTemplates.value = data || []
+  } catch (err) {
+    console.error('Error fetching expense templates:', err)
+  }
+}
+
+function onTemplateSelect() {
+  if (!selectedTemplateId.value) return
+  const tpl = expenseTemplates.value.find(t => t.id === selectedTemplateId.value)
+  if (!tpl) return
+  if (tpl.amount) form.value.amount = tpl.amount
+  form.value.description = tpl.description || tpl.name
+  form.value.category_id = tpl.category_id
+  form.value.subcategory_id = tpl.subcategory_id || null
+  if (tpl.project_id && !props.projectId) form.value.project_id = tpl.project_id
+}
+
+async function saveAsTemplate() {
+  const cat = categories.value.find(c => c.id === form.value.category_id)
+  try {
+    const { data } = await expenseTemplatesAPI.create({
+      name: form.value.description,
+      icon: cat?.icon || '',
+      amount: parseFloat(form.value.amount) || 0,
+      description: form.value.description,
+      category_id: form.value.category_id,
+      subcategory_id: form.value.subcategory_id || undefined,
+      project_id: form.value.project_id || undefined,
+    })
+    expenseTemplates.value.push(data)
+    window.$toast?.success('Modello salvato!')
+  } catch (err) {
+    window.$toast?.error('Errore nel salvataggio del modello')
+  }
+}
+
 async function handleSubmit() {
   loading.value = true
   error.value = null
@@ -418,6 +493,7 @@ async function handleSubmit() {
 
 onMounted(async () => {
   fetchCategories()
+  fetchExpenseTemplates()
   await fetchCurrentProperty()
   await fetchHouseholdUsers()
   await fetchUserSettings()
