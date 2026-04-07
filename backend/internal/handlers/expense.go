@@ -129,12 +129,15 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 		query = query.Where("project_id = ?", projectID)
 	}
 
+	// Parse date filters once — reused for both query and countQuery
+	var parsedFrom, parsedTo *time.Time
 	if from := c.Query("from"); from != "" {
 		t, err := time.Parse("2006-01-02", from)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid 'from' date format. Use YYYY-MM-DD"})
 			return
 		}
+		parsedFrom = &t
 		query = query.Where("date >= ?", t)
 	}
 
@@ -144,7 +147,9 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid 'to' date format. Use YYYY-MM-DD"})
 			return
 		}
-		query = query.Where("date < ?", t.AddDate(0, 0, 1))
+		endOfDay := t.AddDate(0, 0, 1)
+		parsedTo = &endOfDay
+		query = query.Where("date < ?", endOfDay)
 	}
 
 	if search := c.Query("search"); search != "" {
@@ -180,15 +185,11 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	if projectID := c.Query("project_id"); projectID != "" {
 		countQuery = countQuery.Where("project_id = ?", projectID)
 	}
-	if from := c.Query("from"); from != "" {
-		if t, err := time.Parse("2006-01-02", from); err == nil {
-			countQuery = countQuery.Where("date >= ?", t)
-		}
+	if parsedFrom != nil {
+		countQuery = countQuery.Where("date >= ?", *parsedFrom)
 	}
-	if to := c.Query("to"); to != "" {
-		if t, err := time.Parse("2006-01-02", to); err == nil {
-			countQuery = countQuery.Where("date < ?", t.AddDate(0, 0, 1))
-		}
+	if parsedTo != nil {
+		countQuery = countQuery.Where("date < ?", *parsedTo)
 	}
 	if search := c.Query("search"); search != "" {
 		countQuery = countQuery.Where("description LIKE ?", "%"+search+"%")
