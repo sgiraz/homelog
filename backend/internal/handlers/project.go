@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -52,40 +54,41 @@ type ProjectMemberResponse struct {
 	Role string `json:"role"` // creator, owner, member
 }
 
-// canManageProject checks if the user is the creator or has "owner" role
-func (h *ProjectHandler) canManageProject(projectID string, userID uint) (models.Project, bool) {
+var errBadProjectID = errors.New("bad_id")
+
+// canManageProject checks if the user is the creator or has "owner" role.
+// Returns errBadProjectID for invalid IDs, gorm.ErrRecordNotFound for not found/unauthorized.
+func (h *ProjectHandler) canManageProject(projectID string, userID uint) (models.Project, error) {
 	var project models.Project
 	id, err := strconv.ParseUint(projectID, 10, 32)
 	if err != nil {
-		return project, false
+		return project, errBadProjectID
 	}
 	if err := h.db.Where(
 		"id = ? AND (user_id = ? OR id IN (SELECT project_id FROM project_members WHERE user_id = ? AND role = 'owner'))",
 		id, userID, userID,
 	).First(&project).Error; err != nil {
-		return project, false
+		return project, err
 	}
-	return project, true
+	return project, nil
 }
 
-// buildMembersResponse builds the members list including the creator
-func (h *ProjectHandler) buildMembersResponse(project models.Project) []ProjectMemberResponse {
+// buildMembersResponse builds the members list from already-preloaded data.
+// creatorUser should be preloaded or fetched once per batch, not per call.
+func buildMembersResponse(project models.Project, creatorUser *models.User) []ProjectMemberResponse {
 	var members []ProjectMemberResponse
 
 	// Add creator
-	var creator models.User
-	if err := h.db.First(&creator, project.UserID).Error; err == nil {
+	if creatorUser != nil {
 		members = append(members, ProjectMemberResponse{
-			ID:   creator.ID,
-			Name: creator.Name,
+			ID:   creatorUser.ID,
+			Name: creatorUser.Name,
 			Role: "creator",
 		})
 	}
 
-	// Add shared members with their roles
-	var projectMembers []models.ProjectMember
-	h.db.Where("project_id = ?", project.ID).Preload("User").Find(&projectMembers)
-	for _, pm := range projectMembers {
+	// Add shared members from preloaded Members relation
+	for _, pm := range project.Members {
 		members = append(members, ProjectMemberResponse{
 			ID:   pm.User.ID,
 			Name: pm.User.Name,
@@ -96,10 +99,12 @@ func (h *ProjectHandler) buildMembersResponse(project models.Project) []ProjectM
 	return members
 }
 
-// setProjectMembers replaces all shared members with the given list
-func (h *ProjectHandler) setProjectMembers(project *models.Project, req CreateProjectRequest, creatorID uint) {
+// setProjectMembers replaces all shared members with the given list in a transaction.
+func (h *ProjectHandler) setProjectMembers(tx *gorm.DB, project *models.Project, req CreateProjectRequest, creatorID uint) error {
 	// Delete existing members
-	h.db.Where("project_id = ?", project.ID).Delete(&models.ProjectMember{})
+	if err := tx.Where("project_id = ?", project.ID).Delete(&models.ProjectMember{}).Error; err != nil {
+		return fmt.Errorf("failed to clear project members: %w", err)
+	}
 
 	if len(req.Members) > 0 {
 		// New format: members with roles
@@ -112,17 +117,23 @@ func (h *ProjectHandler) setProjectMembers(project *models.Project, req CreatePr
 				role = "member"
 			}
 			pm := models.ProjectMember{ProjectID: project.ID, UserID: m.UserID, Role: role}
-			h.db.Create(&pm)
+			if err := tx.Create(&pm).Error; err != nil {
+				return fmt.Errorf("failed to add member %d: %w", m.UserID, err)
+			}
 		}
 	} else if len(req.SharedWithUserIDs) > 0 {
 		// Backward compat: all as "member"
 		var users []models.User
-		h.db.Where("id IN ? AND id != ?", req.SharedWithUserIDs, creatorID).Find(&users)
+		tx.Where("id IN ? AND id != ?", req.SharedWithUserIDs, creatorID).Find(&users)
 		for _, u := range users {
 			pm := models.ProjectMember{ProjectID: project.ID, UserID: u.ID, Role: "member"}
-			h.db.Create(&pm)
+			if err := tx.Create(&pm).Error; err != nil {
+				return fmt.Errorf("failed to add member %d: %w", u.ID, err)
+			}
 		}
 	}
+
+	return nil
 }
 
 // List - GET /api/v1/projects?property_id=X&status=active
@@ -156,6 +167,24 @@ func (h *ProjectHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Batch-fetch all unique creator user IDs to avoid N+1
+	creatorIDs := make(map[uint]bool)
+	for _, proj := range projects {
+		creatorIDs[proj.UserID] = true
+	}
+	var creatorUsers []models.User
+	if len(creatorIDs) > 0 {
+		ids := make([]uint, 0, len(creatorIDs))
+		for id := range creatorIDs {
+			ids = append(ids, id)
+		}
+		h.db.Where("id IN ?", ids).Find(&creatorUsers)
+	}
+	creatorMap := make(map[uint]*models.User)
+	for i := range creatorUsers {
+		creatorMap[creatorUsers[i].ID] = &creatorUsers[i]
+	}
+
 	type ProjectWithStats struct {
 		models.Project
 		Stats   ProjectStatsResponse    `json:"stats"`
@@ -168,7 +197,7 @@ func (h *ProjectHandler) List(c *gin.Context) {
 		projectsWithStats[i] = ProjectWithStats{
 			Project: proj,
 			Stats:   stats,
-			Members: h.buildMembersResponse(proj),
+			Members: buildMembersResponse(proj, creatorMap[proj.UserID]),
 		}
 	}
 
@@ -233,16 +262,28 @@ func (h *ProjectHandler) Create(c *gin.Context) {
 		Status:      status,
 	}
 
-	if err := h.db.Create(&project).Error; err != nil {
+	tx := h.db.Begin()
+
+	if err := tx.Create(&project).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create project"})
 		return
 	}
 
 	// Add shared members with roles
-	h.setProjectMembers(&project, req, userID)
+	if err := h.setProjectMembers(tx, &project, req, userID); err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to set project members"})
+		return
+	}
+
+	tx.Commit()
 
 	// Reload with associations
 	h.db.Preload("SharedWith").Preload("Members").Preload("Members.User").First(&project, project.ID)
+
+	var creator models.User
+	h.db.First(&creator, userID)
 
 	log.Printf("Project created: ID=%d, Name=%s, Budget=%.2f, Members=%d", project.ID, project.Name, project.Budget, len(project.Members))
 	c.JSON(http.StatusCreated, struct {
@@ -250,7 +291,7 @@ func (h *ProjectHandler) Create(c *gin.Context) {
 		Members []ProjectMemberResponse `json:"members"`
 	}{
 		Project: project,
-		Members: h.buildMembersResponse(project),
+		Members: buildMembersResponse(project, &creator),
 	})
 }
 
@@ -278,6 +319,9 @@ func (h *ProjectHandler) Get(c *gin.Context) {
 		return
 	}
 
+	var creator models.User
+	h.db.First(&creator, project.UserID)
+
 	stats := calculateProjectStats(project)
 
 	response := struct {
@@ -287,7 +331,7 @@ func (h *ProjectHandler) Get(c *gin.Context) {
 	}{
 		Project: project,
 		Stats:   stats,
-		Members: h.buildMembersResponse(project),
+		Members: buildMembersResponse(project, &creator),
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -298,9 +342,13 @@ func (h *ProjectHandler) Update(c *gin.Context) {
 	userID, _ := middleware.GetUserID(c)
 	projectID := c.Param("id")
 
-	project, canManage := h.canManageProject(projectID, userID)
-	if !canManage {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Only project owners can edit"})
+	project, err := h.canManageProject(projectID, userID)
+	if err != nil {
+		if errors.Is(err, errBadProjectID) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		} else {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Only the project creator or co-owners can edit"})
+		}
 		return
 	}
 
@@ -324,16 +372,28 @@ func (h *ProjectHandler) Update(c *gin.Context) {
 		project.Status = req.Status
 	}
 
-	if err := h.db.Save(&project).Error; err != nil {
+	tx := h.db.Begin()
+
+	if err := tx.Save(&project).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update project"})
 		return
 	}
 
 	// Replace members with roles
-	h.setProjectMembers(&project, req, project.UserID)
+	if err := h.setProjectMembers(tx, &project, req, project.UserID); err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update project members"})
+		return
+	}
+
+	tx.Commit()
 
 	// Reload with associations
 	h.db.Preload("SharedWith").Preload("Members").Preload("Members.User").First(&project, project.ID)
+
+	var creator models.User
+	h.db.First(&creator, project.UserID)
 
 	log.Printf("Project updated: ID=%d, Name=%s", project.ID, project.Name)
 	c.JSON(http.StatusOK, struct {
@@ -341,7 +401,7 @@ func (h *ProjectHandler) Update(c *gin.Context) {
 		Members []ProjectMemberResponse `json:"members"`
 	}{
 		Project: project,
-		Members: h.buildMembersResponse(project),
+		Members: buildMembersResponse(project, &creator),
 	})
 }
 
@@ -350,9 +410,13 @@ func (h *ProjectHandler) Delete(c *gin.Context) {
 	userID, _ := middleware.GetUserID(c)
 	projectID := c.Param("id")
 
-	project, canManage := h.canManageProject(projectID, userID)
-	if !canManage {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Only project owners can delete"})
+	project, err := h.canManageProject(projectID, userID)
+	if err != nil {
+		if errors.Is(err, errBadProjectID) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		} else {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Only the project creator or co-owners can delete"})
+		}
 		return
 	}
 

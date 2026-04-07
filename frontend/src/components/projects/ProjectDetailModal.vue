@@ -230,7 +230,7 @@ const showEditModal = ref(false)
 const canManage = computed(() => {
   const p = projectData.value
   if (p.user_id === authStore.user?.id) return true
-  return p.members?.some(m => m.id === authStore.user?.id && m.role === 'owner')
+  return p.members?.some(m => m.id === authStore.user?.id && m.role === 'owner') || false
 })
 
 const tabs = [
