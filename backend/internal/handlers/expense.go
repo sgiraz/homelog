@@ -295,10 +295,13 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		}
 	}
 
-	// Verify project belongs to user (if provided)
+	// Verify project is accessible to user (owner or shared member)
 	if req.ProjectID != nil {
 		var project models.Project
-		if err := h.db.Where("id = ? AND user_id = ?", *req.ProjectID, userID).First(&project).Error; err != nil {
+		if err := h.db.Where(
+			"id = ? AND (user_id = ? OR id IN (SELECT project_id FROM project_members WHERE user_id = ?))",
+			*req.ProjectID, userID, userID,
+		).First(&project).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project"})
 			return
 		}
@@ -516,7 +519,10 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 
 		if req.ProjectID != nil {
 			var project models.Project
-			if err := h.db.Where("id = ? AND user_id = ?", *req.ProjectID, userID).First(&project).Error; err != nil {
+			if err := h.db.Where(
+				"id = ? AND (user_id = ? OR id IN (SELECT project_id FROM project_members WHERE user_id = ?))",
+				*req.ProjectID, userID, userID,
+			).First(&project).Error; err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project"})
 				return
 			}

@@ -64,6 +64,11 @@ func AutoMigrate(db *gorm.DB) error {
 	db.Exec("PRAGMA foreign_keys=OFF;")
 	defer db.Exec("PRAGMA foreign_keys=ON;")
 
+	// Register custom join table for Project <-> User with role column
+	if err := db.SetupJoinTable(&models.Project{}, "SharedWith", &models.ProjectMember{}); err != nil {
+		return fmt.Errorf("failed to setup project_members join table: %w", err)
+	}
+
 	err := db.AutoMigrate(
 		&models.User{},
 		&models.Property{},
@@ -89,6 +94,9 @@ func AutoMigrate(db *gorm.DB) error {
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
 	}
+
+	// Data migration: set default role for existing project members
+	db.Exec(`UPDATE project_members SET role = 'member' WHERE role IS NULL OR role = ''`)
 
 	// Data migration: ensure is_metered is set correctly for existing utilities (force, not just NULL)
 	db.Exec(`UPDATE utilities SET is_metered = 1 WHERE type IN ('electricity', 'gas', 'water', 'waste')`)

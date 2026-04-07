@@ -17,7 +17,7 @@
         </div>
 
         <div class="flex items-center gap-2">
-          <Button variant="secondary" @click="showEditModal = true">
+          <Button v-if="canManage" variant="secondary" @click="showEditModal = true">
             Modifica
           </Button>
           <button @click="$emit('close')" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
@@ -128,7 +128,7 @@
           </div>
         </div>
 
-        <div class="pt-4">
+        <div v-if="canManage" class="pt-4">
           <Button variant="secondary" @click="confirmDelete" class="text-red-600">
             Elimina Progetto
           </Button>
@@ -202,8 +202,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useProjectsStore } from '@/stores/projects'
+import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { formatCurrency as _formatCurrency, formatDate as _formatDate } from '@/utils/dateFormatter'
 import Card from '@/components/common/Card.vue'
@@ -219,11 +220,18 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'updated', 'deleted'])
 const projectsStore = useProjectsStore()
+const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 
 const projectData = ref(props.project)
 const activeTab = ref('info')
 const showEditModal = ref(false)
+
+const canManage = computed(() => {
+  const p = projectData.value
+  if (p.user_id === authStore.user?.id) return true
+  return p.members?.some(m => m.id === authStore.user?.id && m.role === 'owner') || false
+})
 
 const tabs = [
   { value: 'info', label: 'Info' },
