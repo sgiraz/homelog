@@ -1,5 +1,31 @@
 <template>
   <BaseModal title="Nuova Spesa" @close="$emit('close')">
+    <!-- Quick Templates -->
+    <div v-if="expenseTemplates.length > 0" class="mb-4">
+      <div class="flex items-center justify-between mb-2">
+        <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Modelli rapidi</label>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button
+          v-for="tpl in expenseTemplates"
+          :key="tpl.id"
+          type="button"
+          @click="applyTemplate(tpl)"
+          :class="[
+            'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border',
+            appliedTemplateId === tpl.id
+              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
+              : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
+          ]"
+        >
+          <span v-if="tpl.icon">{{ tpl.icon }}</span>
+          <span v-else-if="tpl.category">{{ tpl.category.icon }}</span>
+          <span>{{ tpl.name }}</span>
+          <span v-if="tpl.amount" class="text-xs opacity-70">{{ formatCurrency(tpl.amount) }}</span>
+        </button>
+      </div>
+    </div>
+
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <Input
         v-model="form.amount"
@@ -188,6 +214,17 @@
         {{ error }}
       </div>
 
+      <!-- Save as template -->
+      <div v-if="form.category_id && form.description" class="border-t border-gray-200 dark:border-gray-700 pt-3">
+        <button
+          type="button"
+          @click="saveAsTemplate"
+          class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+        >
+          + Salva come modello rapido
+        </button>
+      </div>
+
       <div class="flex gap-3 pt-2">
         <Button type="button" variant="secondary" @click="$emit('close')" class="flex-1">
           Annulla
@@ -206,7 +243,7 @@ import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
-import apiClient, { categoriesAPI, projectsAPI } from '@/api/client'
+import apiClient, { categoriesAPI, projectsAPI, expenseTemplatesAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -229,6 +266,8 @@ const error = ref(null)
 const userSettings = ref(null)
 const categories = ref([])
 const activeProjects = ref([])
+const expenseTemplates = ref([])
+const appliedTemplateId = ref(null)
 
 const householdUsers = ref([])
 const currentPropertyId = ref(null)
@@ -385,6 +424,43 @@ watch(() => form.value.project_id, (newProjectId) => {
   }
 })
 
+async function fetchExpenseTemplates() {
+  try {
+    const { data } = await expenseTemplatesAPI.list()
+    expenseTemplates.value = data || []
+  } catch (err) {
+    console.error('Error fetching expense templates:', err)
+  }
+}
+
+function applyTemplate(tpl) {
+  appliedTemplateId.value = tpl.id
+  if (tpl.amount) form.value.amount = tpl.amount
+  form.value.description = tpl.description || tpl.name
+  form.value.category_id = tpl.category_id
+  form.value.subcategory_id = tpl.subcategory_id || null
+  if (tpl.project_id && !props.projectId) form.value.project_id = tpl.project_id
+}
+
+async function saveAsTemplate() {
+  const cat = categories.value.find(c => c.id === form.value.category_id)
+  try {
+    const { data } = await expenseTemplatesAPI.create({
+      name: form.value.description,
+      icon: cat?.icon || '',
+      amount: parseFloat(form.value.amount) || 0,
+      description: form.value.description,
+      category_id: form.value.category_id,
+      subcategory_id: form.value.subcategory_id || undefined,
+      project_id: form.value.project_id || undefined,
+    })
+    expenseTemplates.value.push(data)
+    window.$toast?.success('Modello salvato!')
+  } catch (err) {
+    window.$toast?.error('Errore nel salvataggio del modello')
+  }
+}
+
 async function handleSubmit() {
   loading.value = true
   error.value = null
@@ -418,6 +494,7 @@ async function handleSubmit() {
 
 onMounted(async () => {
   fetchCategories()
+  fetchExpenseTemplates()
   await fetchCurrentProperty()
   await fetchHouseholdUsers()
   await fetchUserSettings()
