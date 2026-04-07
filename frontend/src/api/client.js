@@ -177,6 +177,13 @@ export const templatesAPI = {
   deleteBillTemplate: (id) => apiClient.delete(`/templates/bills/${id}`),
 }
 
+export const expenseTemplatesAPI = {
+  list: () => apiClient.get('/expense-templates'),
+  create: (data) => apiClient.post('/expense-templates', data),
+  update: (id, data) => apiClient.put(`/expense-templates/${id}`, data),
+  delete: (id) => apiClient.delete(`/expense-templates/${id}`),
+}
+
 export const projectsAPI = {
   list: (params) => apiClient.get('/projects', { params }),
   create: (data) => apiClient.post('/projects', data),
