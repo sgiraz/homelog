@@ -34,6 +34,25 @@ export const useProjectsStore = defineStore('projects', () => {
     return fetchPromise
   }
 
+  async function fetchProject(id) {
+    loading.value = true
+    error.value = null
+    try {
+      const { data } = await projectsAPI.get(id)
+      // Update in local list if present
+      const index = projects.value.findIndex(p => p.id === id)
+      if (index !== -1) {
+        projects.value[index] = data
+      }
+      return data
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function createProject(project) {
     saving.value = true
     error.value = null
@@ -95,6 +114,7 @@ export const useProjectsStore = defineStore('projects', () => {
     saving,
     error,
     fetchProjects,
+    fetchProject,
     createProject,
     updateProject,
     deleteProject
