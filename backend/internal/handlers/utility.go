@@ -1143,6 +1143,8 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 		return
 	}
 
+	wasAlreadyPaid := bill.IsPaid
+
 	// Update all fields
 	bill.BillNumber = input.BillNumber
 	bill.UserReadingID = input.UserReadingID
@@ -1168,6 +1170,24 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	if err := h.db.Save(&bill).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update bill"})
 		return
+	}
+
+	// Auto-create expense when a bill is marked as paid for the first time
+	if bill.IsPaid && !wasAlreadyPaid {
+		if err := h.autoCreateExpenseFromBill(c, userID, &bill); err != nil {
+			log.Printf("⚠️  Failed to auto-create expense for bill %d: %v", bill.ID, err)
+		}
+	}
+
+	// Auto-delete linked expense when a bill is marked as unpaid
+	if wasAlreadyPaid && !bill.IsPaid {
+		bid := bill.ID
+		var linkedExpense models.Expense
+		if err := h.db.Where("bill_id = ?", bid).First(&linkedExpense).Error; err == nil {
+			h.db.Where("expense_id = ?", linkedExpense.ID).Delete(&models.ExpenseSplit{})
+			h.db.Delete(&linkedExpense)
+			log.Printf("🗑️  Auto-deleted expense ID=%d linked to bill ID=%d (bill marked unpaid)", linkedExpense.ID, bid)
+		}
 	}
 
 	// Handle communication text: update/create/delete
