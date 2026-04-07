@@ -130,11 +130,15 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	}
 
 	if from := c.Query("from"); from != "" {
-		query = query.Where("date >= ?", from)
+		if t, err := time.Parse("2006-01-02", from); err == nil {
+			query = query.Where("date >= ?", t)
+		}
 	}
 
 	if to := c.Query("to"); to != "" {
-		query = query.Where("date <= ?", to)
+		if t, err := time.Parse("2006-01-02", to); err == nil {
+			query = query.Where("date < ?", t.AddDate(0, 0, 1))
+		}
 	}
 
 	if search := c.Query("search"); search != "" {
@@ -168,10 +172,14 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 		countQuery = countQuery.Where("property_id = ?", propertyID)
 	}
 	if from := c.Query("from"); from != "" {
-		countQuery = countQuery.Where("date >= ?", from)
+		if t, err := time.Parse("2006-01-02", from); err == nil {
+			countQuery = countQuery.Where("date >= ?", t)
+		}
 	}
 	if to := c.Query("to"); to != "" {
-		countQuery = countQuery.Where("date <= ?", to)
+		if t, err := time.Parse("2006-01-02", to); err == nil {
+			countQuery = countQuery.Where("date < ?", t.AddDate(0, 0, 1))
+		}
 	}
 	if search := c.Query("search"); search != "" {
 		countQuery = countQuery.Where("description LIKE ?", "%"+search+"%")
