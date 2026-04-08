@@ -408,7 +408,7 @@ async function fetchReadingBillMap() {
       }
     }
     readingBillMap.value = map
-  } catch (err) {
+  } catch {
     // Non-critical, ignore
   }
 }

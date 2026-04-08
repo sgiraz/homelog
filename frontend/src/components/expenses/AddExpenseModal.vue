@@ -359,11 +359,11 @@ async function fetchUserSettings() {
             form.value.split_with_member_ids = filtered
           }
         }
-      } catch (e) {
+      } catch {
         console.log('No default split members configured')
       }
     }
-  } catch (err) {
+  } catch {
     console.log('Using default settings')
   }
 }
@@ -455,7 +455,7 @@ async function saveAsTemplate() {
     })
     expenseTemplates.value.push(data)
     window.$toast?.success('Modello salvato!')
-  } catch (err) {
+  } catch {
     window.$toast?.error('Errore nel salvataggio del modello')
   }
 }

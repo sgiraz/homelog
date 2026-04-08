@@ -898,11 +898,23 @@ func (h *UtilityHandler) autoCreateExpenseFromBill(c *gin.Context, userID uint, 
 		return fmt.Errorf("could not load utility: %w", err)
 	}
 
-	// Find current user's member for the utility's property
-	var member models.HouseholdMember
-	if err := h.db.Where("property_id = ? AND user_id = ?", utility.PropertyID, userID).
-		First(&member).Error; err != nil {
-		return fmt.Errorf("user has no member profile for property %d: %w", utility.PropertyID, err)
+	// Determine the payer: use utility's configured PaidByMemberID if set, otherwise the logged-in user
+	var payerMember models.HouseholdMember
+	payerUserID := userID // default: logged-in user owns the expense
+	if utility.PaidByMemberID != nil {
+		// Use the configured default payer for this service
+		if err := h.db.Preload("User").First(&payerMember, *utility.PaidByMemberID).Error; err != nil {
+			return fmt.Errorf("could not load configured payer member %d: %w", *utility.PaidByMemberID, err)
+		}
+		if payerMember.UserID != nil {
+			payerUserID = *payerMember.UserID
+		}
+	} else {
+		// Fallback: find the logged-in user's member for this property
+		if err := h.db.Where("property_id = ? AND user_id = ?", utility.PropertyID, userID).
+			First(&payerMember).Error; err != nil {
+			return fmt.Errorf("user has no member profile for property %d: %w", utility.PropertyID, err)
+		}
 	}
 
 	// Find the "Casa" category
@@ -944,34 +956,52 @@ func (h *UtilityHandler) autoCreateExpenseFromBill(c *gin.Context, userID uint, 
 		subcatID = &id
 	}
 
-	// Check household split mode
-	var householdSettings models.HouseholdSettings
-	splitMode := false
-	if err := h.db.Where("property_id = ?", utility.PropertyID).First(&householdSettings).Error; err == nil {
-		splitMode = householdSettings.SplitMode
-	}
-
-	// Determine split members from the payer's user settings (default_split_with_member_ids)
+	// Determine split behavior: per-service override takes priority over global settings
 	var splitMemberIDs []uint
 	isSplit := false
-	if splitMode {
-		var userSettings models.UserSettings
-		if err := h.db.Where("user_id = ?", userID).First(&userSettings).Error; err == nil {
-			if userSettings.DefaultSplitWithMemberIDs != "" {
-				if jsonErr := json.Unmarshal([]byte(userSettings.DefaultSplitWithMemberIDs), &splitMemberIDs); jsonErr != nil {
-					splitMemberIDs = nil
-				}
+
+	switch utility.SplitOverride {
+	case "no_split":
+		// Explicitly disabled for this service — no split regardless of global settings
+		isSplit = false
+
+	case "custom":
+		// Per-service custom split members
+		if utility.SplitMemberIDs != "" {
+			if jsonErr := json.Unmarshal([]byte(utility.SplitMemberIDs), &splitMemberIDs); jsonErr != nil {
+				splitMemberIDs = nil
 			}
 		}
 		if len(splitMemberIDs) > 0 {
 			isSplit = true
+		}
+
+	default:
+		// "" = use global household split mode + payer's default split members
+		var householdSettings models.HouseholdSettings
+		splitMode := false
+		if err := h.db.Where("property_id = ?", utility.PropertyID).First(&householdSettings).Error; err == nil {
+			splitMode = householdSettings.SplitMode
+		}
+		if splitMode {
+			var userSettings models.UserSettings
+			if err := h.db.Where("user_id = ?", payerUserID).First(&userSettings).Error; err == nil {
+				if userSettings.DefaultSplitWithMemberIDs != "" {
+					if jsonErr := json.Unmarshal([]byte(userSettings.DefaultSplitWithMemberIDs), &splitMemberIDs); jsonErr != nil {
+						splitMemberIDs = nil
+					}
+				}
+			}
+			if len(splitMemberIDs) > 0 {
+				isSplit = true
+			}
 		}
 	}
 
 	billID := bill.ID
 	propID := utility.PropertyID
 	expense := models.Expense{
-		UserID:         userID,
+		UserID:         payerUserID,
 		PropertyID:     &propID,
 		CategoryID:     casaCategory.ID,
 		SubcategoryID:  subcatID,
@@ -979,7 +1009,7 @@ func (h *UtilityHandler) autoCreateExpenseFromBill(c *gin.Context, userID uint, 
 		Amount:         bill.AmountTotal,
 		Date:           expenseDate,
 		Description:    description,
-		PaidByMemberID: member.ID,
+		PaidByMemberID: payerMember.ID,
 		IsSplit:        isSplit,
 	}
 
@@ -991,9 +1021,9 @@ func (h *UtilityHandler) autoCreateExpenseFromBill(c *gin.Context, userID uint, 
 	if isSplit {
 		// Build full member list: payer + split-with members (dedup)
 		allMemberIDs := make([]uint, 0, len(splitMemberIDs)+1)
-		allMemberIDs = append(allMemberIDs, member.ID)
+		allMemberIDs = append(allMemberIDs, payerMember.ID)
 		for _, mid := range splitMemberIDs {
-			if mid != member.ID {
+			if mid != payerMember.ID {
 				allMemberIDs = append(allMemberIDs, mid)
 			}
 		}

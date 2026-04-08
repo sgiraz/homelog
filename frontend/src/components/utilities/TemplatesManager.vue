@@ -128,7 +128,7 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import TemplateWizard from './TemplateWizard.vue'
 
-const emit = defineEmits(['close'])
+defineEmits(['close'])
 
 const loading = ref(true)
 const templates = ref([])

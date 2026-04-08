@@ -245,6 +245,51 @@
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Chi paga di default le bollette/fatture di questo servizio</p>
       </div>
 
+      <!-- Split Override -->
+      <div v-if="members.length > 1" class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1">
+            Divisione spese
+          </label>
+          <select
+            v-model="form.split_override"
+            class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Usa impostazione globale</option>
+            <option value="no_split">Mai dividere</option>
+            <option value="custom">Dividi con membri specifici</option>
+          </select>
+          <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            {{ splitOverrideHint }}
+          </p>
+        </div>
+
+        <!-- Custom split member selection -->
+        <div v-if="form.split_override === 'custom'" class="space-y-2">
+          <label class="block text-sm text-gray-600 dark:text-gray-400">
+            Dividi con
+          </label>
+          <div
+            v-for="member in members"
+            :key="'split-' + member.id"
+            class="flex items-center gap-3"
+          >
+            <input
+              type="checkbox"
+              :id="'split-member-' + member.id"
+              :value="member.id"
+              v-model="splitMemberIds"
+              class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            />
+            <label :for="'split-member-' + member.id" class="text-sm text-gray-900 dark:text-white cursor-pointer">
+              {{ member.name }}{{ member.role ? ` (${member.role})` : '' }}
+            </label>
+          </div>
+        </div>
+      </div>
+
       <!-- Default Bill Template -->
       <div v-if="billTemplates.length > 0">
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -327,6 +372,7 @@ const loading = ref(false)
 const error = ref(null)
 const members = ref([])
 const billTemplates = ref([])
+const splitMemberIds = ref([])
 
 const meteredTypes = [
   { value: 'electricity', label: 'Luce', icon: '\u26A1', iconClass: 'text-yellow-500', metered: true },
@@ -419,6 +465,24 @@ const form = ref({
   threshold_per_day: props.utility.threshold_per_day || null,
   default_category_id: props.utility.default_category_id || null,
   default_bill_template_id: props.utility.default_bill_template_id || null,
+  split_override: props.utility.split_override || '',
+})
+
+// Initialize split member IDs from utility
+if (props.utility.split_member_ids) {
+  try {
+    splitMemberIds.value = JSON.parse(props.utility.split_member_ids)
+  } catch {
+    splitMemberIds.value = []
+  }
+}
+
+const splitOverrideHint = computed(() => {
+  switch (form.value.split_override) {
+    case 'no_split': return 'Le spese di questo servizio non verranno mai divise'
+    case 'custom': return 'Le spese verranno divise con i membri selezionati sotto'
+    default: return 'Segue le impostazioni di divisione della famiglia'
+  }
 })
 
 async function fetchMembers() {
@@ -473,6 +537,8 @@ async function handleSubmit() {
       threshold_per_day: form.value.threshold_per_day ? parseFloat(form.value.threshold_per_day) : 0,
       default_category_id: form.value.default_category_id || undefined,
       default_bill_template_id: form.value.default_bill_template_id || undefined,
+      split_override: form.value.split_override,
+      split_member_ids: form.value.split_override === 'custom' ? JSON.stringify(splitMemberIds.value) : '',
     }
 
     const { data } = await utilitiesAPI.update(props.utility.id, updateData)
