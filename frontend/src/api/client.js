@@ -244,3 +244,7 @@ export const pdfAPI = {
   // Cleanup temporary template images
   cleanupImages: (timestamp) => apiClient.delete(`/pdf/cleanup/${timestamp}`),
 }
+
+export const versionAPI = {
+  check: () => apiClient.get('/version'),
+}
