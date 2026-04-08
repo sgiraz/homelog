@@ -250,10 +250,10 @@
               id="comparison-threshold"
               v-model.number="form.comparison_threshold"
               type="number"
-              min="1"
+              min="0.01"
               max="50"
-              step="1"
-              inputmode="numeric"
+              step="0.01"
+              inputmode="decimal"
               class="w-16 px-2 py-1 text-sm text-center border border-gray-300 dark:border-gray-600 rounded
                      bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                      focus:outline-none focus:ring-1 focus:ring-blue-500"
