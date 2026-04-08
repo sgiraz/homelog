@@ -375,7 +375,7 @@ async function handleSaveTemplate() {
       window.$toast?.success('Modello creato!')
     }
     cancelTemplateForm()
-  } catch (err) {
+  } catch {
     window.$toast?.error(editingTemplateId.value ? 'Errore nell\'aggiornamento' : 'Errore nella creazione del modello')
   }
 }
@@ -385,7 +385,7 @@ async function deleteTemplate(tpl) {
     await expenseTemplatesAPI.delete(tpl.id)
     templates.value = templates.value.filter(t => t.id !== tpl.id)
     window.$toast?.success('Modello eliminato')
-  } catch (err) {
+  } catch {
     window.$toast?.error('Errore nell\'eliminazione')
   }
 }
@@ -409,7 +409,7 @@ async function loadUserSettings() {
     notificationRetentionDays.value = data.notification_retention_days ?? 90
     // Sync theme composable with server value
     setTheme(preferences.value.theme)
-  } catch (err) {
+  } catch {
     console.log('Using default user settings')
   }
 }

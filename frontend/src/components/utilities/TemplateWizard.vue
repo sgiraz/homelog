@@ -429,7 +429,6 @@ import Card from '@/components/common/Card.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 import PDFTextractView from './PDFTextractView.vue'
-import { tokenizePDFText, getTokenColorClass } from '@/utils/tokenizer'
 import { generatePatternForField, regeneratePatternWithContext, getNeighborWordsForToken, testPattern } from '@/utils/patternGenerator'
 
 const props = defineProps({

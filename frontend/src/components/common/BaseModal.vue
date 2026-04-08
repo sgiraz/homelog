@@ -54,7 +54,7 @@
 <script setup>
 import { onMounted, onUnmounted } from 'vue'
 
-const props = defineProps({
+defineProps({
   show: { type: Boolean, default: true },
   title: { type: String, default: '' },
   size: { type: String, default: 'md' }

@@ -16,6 +16,10 @@ export const useSettingsStore = defineStore('settings', () => {
   const notificationRetentionDays = ref(90)
   const loaded = ref(false)
 
+  // Household settings (shared across all members of the property)
+  const splitMode = ref(false)
+  const householdPropertyId = ref(null)
+
   // Getters - provides { date_format, language } object for formatDate/formatPeriod
   const dateSettings = computed(() => ({
     date_format: dateFormat.value,
@@ -48,7 +52,7 @@ export const useSettingsStore = defineStore('settings', () => {
       if (data.default_split_with_member_ids) {
         try {
           defaultSplitWithMemberIds.value = JSON.parse(data.default_split_with_member_ids)
-        } catch (e) {
+        } catch {
           defaultSplitWithMemberIds.value = []
         }
       }
@@ -56,7 +60,7 @@ export const useSettingsStore = defineStore('settings', () => {
       if (data.default_templates) {
         try {
           defaultTemplates.value = JSON.parse(data.default_templates)
-        } catch (e) {
+        } catch {
           defaultTemplates.value = {}
         }
       }
@@ -66,6 +70,36 @@ export const useSettingsStore = defineStore('settings', () => {
       console.error('Error loading settings:', err)
       // Keep defaults
       loaded.value = true
+    }
+  }
+
+  async function loadHouseholdSettings() {
+    try {
+      // Find the current property
+      const { data: properties } = await apiClient.get('/properties')
+      if (!properties || properties.length === 0) return
+
+      const currentProp = properties.find(p => p.is_current) || properties[0]
+      householdPropertyId.value = currentProp.id
+
+      const { data } = await apiClient.get(`/properties/${currentProp.id}/settings`)
+      splitMode.value = data.split_mode || false
+    } catch (err) {
+      console.error('Error loading household settings:', err)
+      splitMode.value = false
+      householdPropertyId.value = null
+    }
+  }
+
+  async function updateHouseholdSettings(updates) {
+    if (!householdPropertyId.value) return
+
+    try {
+      if (updates.split_mode !== undefined) splitMode.value = updates.split_mode
+      await apiClient.put(`/properties/${householdPropertyId.value}/settings`, updates)
+    } catch (err) {
+      console.error('Error updating household settings:', err)
+      throw err
     }
   }
 
@@ -109,6 +143,8 @@ export const useSettingsStore = defineStore('settings', () => {
     billReminders.value = true
     notificationRetentionDays.value = 90
     loaded.value = false
+    splitMode.value = false
+    householdPropertyId.value = null
   }
 
   return {
@@ -123,11 +159,15 @@ export const useSettingsStore = defineStore('settings', () => {
     billReminders,
     notificationRetentionDays,
     loaded,
+    splitMode,
+    householdPropertyId,
     // Getters
     dateSettings,
     formatSettings,
     // Actions
     loadSettings,
+    loadHouseholdSettings,
+    updateHouseholdSettings,
     updateSettings,
     $reset
   }

@@ -196,7 +196,7 @@ async function removeAvatar() {
     const { data } = await avatarAPI.delete()
     authStore.updateUser(data.user)
     window.$toast?.success('Foto profilo rimossa')
-  } catch (err) {
+  } catch {
     window.$toast?.error('Errore durante la rimozione')
   }
 }

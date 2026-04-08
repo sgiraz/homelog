@@ -52,9 +52,9 @@
       <!-- Stats Cards -->
       <div class="grid grid-cols-2 gap-4">
         <Card class="p-4 sm:p-6 text-center">
-          <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Pagamenti effettuati</div>
-          <div class="text-2xl font-bold text-gray-900 dark:text-white">
-            {{ balanceStore.settlements.length }}
+          <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Spese da saldare</div>
+          <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">
+            {{ balanceStore.unsettledSplits.length }}
           </div>
         </Card>
         <Card class="p-4 sm:p-6 text-center">
@@ -64,6 +64,63 @@
           </div>
         </Card>
       </div>
+
+      <!-- Spese da saldare -->
+      <Card v-if="balanceStore.unsettledSplits.length > 0" class="p-4 sm:p-6">
+        <button
+          @click="unsettledOpen = !unsettledOpen"
+          :aria-expanded="unsettledOpen"
+          aria-controls="unsettled-splits-list"
+          class="w-full flex items-center justify-between text-left"
+        >
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            Spese da saldare
+            <span class="text-sm font-normal px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
+              {{ balanceStore.unsettledSplits.length }}
+            </span>
+          </h3>
+          <svg
+            :class="['w-5 h-5 text-gray-400 transition-transform', unsettledOpen ? 'rotate-180' : '']"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        <Transition name="filter-expand">
+          <div v-if="unsettledOpen" id="unsettled-splits-list" class="mt-4 space-y-3">
+            <!-- Totale da saldare -->
+            <div class="text-sm text-gray-600 dark:text-gray-400 flex justify-between border-b border-gray-100 dark:border-gray-700 pb-2">
+              <span>Totale da saldare</span>
+              <span class="font-semibold text-amber-600 dark:text-amber-400">{{ formatCurrency(totalUnsettled) }}</span>
+            </div>
+
+            <div
+              v-for="split in balanceStore.unsettledSplits"
+              :key="split.expense_id"
+              class="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                  <div class="font-medium text-gray-900 dark:text-white truncate">
+                    {{ split.description || 'Senza descrizione' }}
+                  </div>
+                  <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-2">
+                    <span>{{ formatDate(split.date) }}</span>
+                    <span class="text-xs">Pagato da {{ split.paid_by_name }}</span>
+                  </div>
+                </div>
+                <div class="text-lg font-bold shrink-0" :class="split.paid_by_id === balanceStore.currentMemberId
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-red-600 dark:text-red-400'
+                ">
+                  {{ split.paid_by_id === balanceStore.currentMemberId ? '+' : '-' }}{{ formatCurrency(split.amount) }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Card>
 
       <!-- Storico Pagamenti -->
       <Card class="p-4 sm:p-6">
@@ -141,6 +198,7 @@ const settingsStore = useSettingsStore()
 
 const showSettlementModal = ref(false)
 const currentPropertyId = ref(null)
+const unsettledOpen = ref(false)
 
 const balanceMessage = computed(() => {
   if (balanceStore.balance > 0) return `${balanceStore.otherMemberName || 'Partner'} ti deve`
@@ -150,6 +208,10 @@ const balanceMessage = computed(() => {
 
 const totalSettled = computed(() => {
   return balanceStore.settlements.reduce((sum, s) => sum + s.amount, 0)
+})
+
+const totalUnsettled = computed(() => {
+  return balanceStore.unsettledSplits.reduce((sum, s) => sum + s.amount, 0)
 })
 
 function formatCurrency(value) {
@@ -200,3 +262,17 @@ onMounted(() => {
   fetchCurrentProperty()
 })
 </script>
+
+<style scoped>
+.filter-expand-enter-active,
+.filter-expand-leave-active {
+  transition: opacity 0.2s ease, max-height 0.25s ease;
+  overflow: hidden;
+  max-height: 2000px;
+}
+.filter-expand-enter-from,
+.filter-expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+</style>
