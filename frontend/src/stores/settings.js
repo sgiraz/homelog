@@ -87,6 +87,7 @@ export const useSettingsStore = defineStore('settings', () => {
     } catch (err) {
       console.error('Error loading household settings:', err)
       splitMode.value = false
+      householdPropertyId.value = null
     }
   }
 

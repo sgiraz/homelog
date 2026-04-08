@@ -95,7 +95,7 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		BillingUnit         string     `json:"billing_unit" binding:"omitempty,oneof=day week month year"`               // default "month"
 		PaidByMemberID      *uint      `json:"paid_by_member_id"`
 		DefaultCategoryID   *uint      `json:"default_category_id"`
-		SplitOverride       string     `json:"split_override"`
+		SplitOverride       string     `json:"split_override" binding:"omitempty,oneof=no_split custom"`
 		SplitMemberIDs      string     `json:"split_member_ids"`
 		CustomerPortal      string     `json:"customer_portal"`
 		Notes               string     `json:"notes"`
@@ -118,6 +118,39 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 	if memberCount == 0 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Not a member of this property"})
 		return
+	}
+
+	// Validate paid_by_member_id belongs to this property
+	if input.PaidByMemberID != nil {
+		var payerCount int64
+		h.db.Model(&models.HouseholdMember{}).
+			Where("id = ? AND property_id = ?", *input.PaidByMemberID, input.PropertyID).
+			Count(&payerCount)
+		if payerCount == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Payer member does not belong to this property"})
+			return
+		}
+	}
+
+	// Validate split_member_ids: must be valid JSON array of member IDs belonging to this property
+	if input.SplitOverride == "custom" && input.SplitMemberIDs != "" {
+		var memberIDs []uint
+		if err := json.Unmarshal([]byte(input.SplitMemberIDs), &memberIDs); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "split_member_ids must be a valid JSON array of member IDs"})
+			return
+		}
+		if len(memberIDs) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "split_member_ids cannot be empty when split_override is custom"})
+			return
+		}
+		var validCount int64
+		h.db.Model(&models.HouseholdMember{}).
+			Where("id IN ? AND property_id = ?", memberIDs, input.PropertyID).
+			Count(&validCount)
+		if validCount != int64(len(memberIDs)) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Some split member IDs do not belong to this property"})
+			return
+		}
 	}
 
 	// Determine if service is metered based on type (unless explicitly set)
@@ -318,6 +351,54 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Validate split_override values
+	if input.SplitOverride != nil {
+		switch *input.SplitOverride {
+		case "", "no_split", "custom":
+			// valid
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "split_override must be '', 'no_split', or 'custom'"})
+			return
+		}
+	}
+
+	// Validate paid_by_member_id belongs to this property
+	if input.PaidByMemberID != nil {
+		var payerCount int64
+		h.db.Model(&models.HouseholdMember{}).
+			Where("id = ? AND property_id = ?", *input.PaidByMemberID, utility.PropertyID).
+			Count(&payerCount)
+		if payerCount == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Payer member does not belong to this property"})
+			return
+		}
+	}
+
+	// Validate split_member_ids when split_override is custom
+	effectiveSplitOverride := utility.SplitOverride
+	if input.SplitOverride != nil {
+		effectiveSplitOverride = *input.SplitOverride
+	}
+	if effectiveSplitOverride == "custom" && input.SplitMemberIDs != nil && *input.SplitMemberIDs != "" {
+		var memberIDs []uint
+		if err := json.Unmarshal([]byte(*input.SplitMemberIDs), &memberIDs); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "split_member_ids must be a valid JSON array of member IDs"})
+			return
+		}
+		if len(memberIDs) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "split_member_ids cannot be empty when split_override is custom"})
+			return
+		}
+		var validCount int64
+		h.db.Model(&models.HouseholdMember{}).
+			Where("id IN ? AND property_id = ?", memberIDs, utility.PropertyID).
+			Count(&validCount)
+		if validCount != int64(len(memberIDs)) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Some split member IDs do not belong to this property"})
+			return
+		}
 	}
 
 	// Update fields
@@ -913,9 +994,11 @@ func (h *UtilityHandler) autoCreateExpenseFromBill(_ *gin.Context, userID uint, 
 	var payerMember models.HouseholdMember
 	payerUserID := userID // default: logged-in user owns the expense
 	if utility.PaidByMemberID != nil {
-		// Use the configured default payer for this service
-		if err := h.db.Preload("User").First(&payerMember, *utility.PaidByMemberID).Error; err != nil {
-			return fmt.Errorf("could not load configured payer member %d: %w", *utility.PaidByMemberID, err)
+		// Use the configured default payer for this service (constrained to same property)
+		if err := h.db.Preload("User").
+			Where("id = ? AND property_id = ?", *utility.PaidByMemberID, utility.PropertyID).
+			First(&payerMember).Error; err != nil {
+			return fmt.Errorf("configured payer member %d not found in property %d: %w", *utility.PaidByMemberID, utility.PropertyID, err)
 		}
 		if payerMember.UserID != nil {
 			payerUserID = *payerMember.UserID

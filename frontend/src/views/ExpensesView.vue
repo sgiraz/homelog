@@ -132,10 +132,12 @@
               <option value="date_asc">Data ↑</option>
               <option value="amount_desc">Importo ↓</option>
               <option value="amount_asc">Importo ↑</option>
-              <option value="desc_asc">Descrizione A-Z</option>
+              <option value="description_asc">Descrizione A-Z</option>
             </select>
             <button
+              type="button"
               @click="toggleUnsettledOnly"
+              :aria-pressed="filters.unsettledOnly"
               :class="[
                 'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
                 filters.unsettledOnly
@@ -234,7 +236,7 @@
               <option value="date_asc">Data ↑</option>
               <option value="amount_desc">Importo ↓</option>
               <option value="amount_asc">Importo ↑</option>
-              <option value="desc_asc">Descrizione A-Z</option>
+              <option value="description_asc">Descrizione A-Z</option>
             </select>
           </div>
 

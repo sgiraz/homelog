@@ -69,6 +69,8 @@
       <Card v-if="balanceStore.unsettledSplits.length > 0" class="p-4 sm:p-6">
         <button
           @click="unsettledOpen = !unsettledOpen"
+          :aria-expanded="unsettledOpen"
+          aria-controls="unsettled-splits-list"
           class="w-full flex items-center justify-between text-left"
         >
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
@@ -86,7 +88,7 @@
         </button>
 
         <Transition name="filter-expand">
-          <div v-if="unsettledOpen" class="mt-4 space-y-3">
+          <div v-if="unsettledOpen" id="unsettled-splits-list" class="mt-4 space-y-3">
             <!-- Totale da saldare -->
             <div class="text-sm text-gray-600 dark:text-gray-400 flex justify-between border-b border-gray-100 dark:border-gray-700 pb-2">
               <span>Totale da saldare</span>

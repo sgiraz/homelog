@@ -159,7 +159,7 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	// Filter: only unsettled split expenses
 	unsettledOnly := c.Query("unsettled_only") == "true"
 	if unsettledOnly {
-		query = query.Where("is_split = ? AND id IN (SELECT expense_id FROM expense_splits WHERE is_settled = ?)", true, false)
+		query = query.Where("is_split = ? AND EXISTS (SELECT 1 FROM expense_splits WHERE expense_splits.expense_id = expenses.id AND expense_splits.is_settled = ?)", true, false)
 	}
 
 	// Pagination
