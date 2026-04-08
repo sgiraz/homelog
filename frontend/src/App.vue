@@ -44,11 +44,13 @@ const cachedViews = ['DashboardView', 'ExpensesView', 'UtilitiesView', 'Projects
 
 if (authStore.isAuthenticated) {
   settingsStore.loadSettings()
+  settingsStore.loadHouseholdSettings()
 }
 
 watch(() => authStore.isAuthenticated, (isAuth) => {
   if (isAuth) {
     settingsStore.loadSettings()
+    settingsStore.loadHouseholdSettings()
   } else {
     settingsStore.$reset()
   }

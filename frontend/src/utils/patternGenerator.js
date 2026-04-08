@@ -622,7 +622,7 @@ export function regeneratePatternWithContext(token, fieldKey, allTokens, rawText
         }
       }
     }
-  } catch (e) {
+  } catch {
     fullPattern = valuePattern
   }
 

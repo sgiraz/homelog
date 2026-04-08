@@ -162,6 +162,7 @@ defineOptions({ name: 'FamilyTab' })
 
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
 import { adminAPI } from '@/api/client'
 import apiClient from '@/api/client'
@@ -169,13 +170,17 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 
 const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 
 const isAdmin = computed(() => authStore.user?.role === 'admin')
 const currentUserId = computed(() => authStore.user?.id)
 
-const splitMode = ref(false)
-const currentPropertyId = ref(null)
+const splitMode = computed({
+  get: () => settingsStore.splitMode,
+  set: (val) => { settingsStore.splitMode = val }
+})
+const currentPropertyId = computed(() => settingsStore.householdPropertyId)
 const householdMembers = ref([])
 const defaultSplitMemberIds = ref([])
 const currentUserMemberId = ref(null)
@@ -192,13 +197,8 @@ function getInitials(name) {
 
 async function fetchCurrentProperty() {
   try {
-    const { data } = await apiClient.get('/properties')
-    if (data && data.length > 0) {
-      const currentProp = data.find(p => p.is_current) || data[0]
-      currentPropertyId.value = currentProp.id
-      await loadHouseholdSettings()
-      await fetchHouseholdMembers()
-    }
+    await settingsStore.loadHouseholdSettings()
+    await fetchHouseholdMembers()
   } catch (err) {
     console.error('Error fetching properties:', err)
   }
@@ -216,21 +216,9 @@ async function fetchHouseholdMembers() {
     if (myMember) {
       currentUserMemberId.value = myMember.id
     }
-  } catch (err) {
+  } catch {
     console.log('Using empty members list')
     householdMembers.value = []
-  }
-}
-
-async function loadHouseholdSettings() {
-  if (!currentPropertyId.value) return
-
-  try {
-    const { data } = await apiClient.get(`/properties/${currentPropertyId.value}/settings`)
-    splitMode.value = data.split_mode || false
-  } catch (err) {
-    console.log('Using default household settings')
-    splitMode.value = false
   }
 }
 
@@ -240,25 +228,23 @@ async function loadUserSettings() {
     if (data.default_split_with_member_ids) {
       try {
         defaultSplitMemberIds.value = JSON.parse(data.default_split_with_member_ids)
-      } catch (e) {
+      } catch {
         defaultSplitMemberIds.value = []
       }
     }
-  } catch (err) {
+  } catch {
     console.log('Using default split settings')
   }
 }
 
 async function updateSplitMode() {
-  if (!currentPropertyId.value) return
-
   try {
-    await apiClient.put(`/properties/${currentPropertyId.value}/settings`, {
+    await settingsStore.updateHouseholdSettings({
       split_mode: splitMode.value
     })
   } catch (err) {
     console.error('Error updating split mode:', err)
-    splitMode.value = !splitMode.value
+    settingsStore.splitMode = !settingsStore.splitMode
   }
 }
 

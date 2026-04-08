@@ -158,6 +158,10 @@ type Utility struct {
 	DefaultCategoryID *uint `gorm:"index" json:"default_category_id,omitempty"`         // Category for auto-created expenses
 	PaidByMemberID    *uint `gorm:"index" json:"paid_by_member_id,omitempty"`           // Default payer for auto-created expenses
 
+	// Per-service split override
+	SplitOverride  string `gorm:"not null;default:''" json:"split_override"`   // "": use global default, "no_split": never split, "custom": use split_member_ids
+	SplitMemberIDs string `json:"split_member_ids,omitempty"`                   // JSON array of member IDs e.g. "[2,3]" (used when split_override="custom")
+
 	// Template
 	DefaultBillTemplateID *uint `gorm:"index" json:"default_bill_template_id,omitempty"` // Default bill extraction template
 

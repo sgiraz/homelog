@@ -415,7 +415,7 @@
 <script setup>
 defineOptions({ name: 'DashboardView' })
 
-import { ref, computed, onMounted, Transition } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -520,13 +520,6 @@ const trendChartTitle = computed(() => {
     default: return 'Trend Mensile'
   }
 })
-
-function abbreviateTrendLabel(label) {
-  // "Mar 2025" → "Mar" (show year only on first item or when year changes)
-  const parts = label.split(' ')
-  if (parts.length === 2) return parts[0] // Return just the month abbreviation
-  return label
-}
 
 function abbreviateTrendLabels(items) {
   let lastYear = null

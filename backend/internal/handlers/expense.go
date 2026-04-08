@@ -156,6 +156,12 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 		query = query.Where("description LIKE ?", "%"+search+"%")
 	}
 
+	// Filter: only unsettled split expenses
+	unsettledOnly := c.Query("unsettled_only") == "true"
+	if unsettledOnly {
+		query = query.Where("is_split = ? AND EXISTS (SELECT 1 FROM expense_splits WHERE expense_splits.expense_id = expenses.id AND expense_splits.is_settled = ?)", true, false)
+	}
+
 	// Pagination
 	limit := 50
 	offset := 0
@@ -193,6 +199,9 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	}
 	if search := c.Query("search"); search != "" {
 		countQuery = countQuery.Where("description LIKE ?", "%"+search+"%")
+	}
+	if unsettledOnly {
+		countQuery = countQuery.Where("is_split = ? AND id IN (SELECT expense_id FROM expense_splits WHERE is_settled = ?)", true, false)
 	}
 	countQuery.Count(&total)
 
