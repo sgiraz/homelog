@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# Stage 1: Build frontend
-FROM node:20-alpine AS frontend-builder
+# Stage 1: Build frontend (native platform, output is static files)
+FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend-builder
 ARG APP_VERSION=dev
 WORKDIR /build
 COPY frontend/package*.json ./
@@ -10,7 +10,9 @@ COPY frontend/ .
 RUN APP_VERSION=${APP_VERSION} npm run build
 
 # Stage 2: Build backend with embedded frontend
-FROM golang:1.25-alpine AS backend-builder
+# Use BUILDPLATFORM so Go compiles natively (no QEMU emulation)
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS backend-builder
+ARG TARGETOS TARGETARCH
 RUN apk add --no-cache git
 WORKDIR /build
 COPY backend/go.mod backend/go.sum ./
@@ -18,10 +20,11 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY backend/ .
 # Copy frontend dist into the go:embed path
 COPY --from=frontend-builder /build/dist ./cmd/api/static/
-# Pure-Go build (glebarez/sqlite, no CGO needed)
+# Cross-compile for target platform (no CGO needed)
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -ldflags="-s -w -X main.appVersion=${APP_VERSION}" -o homelog ./cmd/api/
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -ldflags="-s -w -X main.appVersion=${APP_VERSION}" -o homelog ./cmd/api/
 
 # Stage 3: Minimal runtime
 FROM alpine:3.19
