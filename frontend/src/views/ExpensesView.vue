@@ -134,6 +134,20 @@
               <option value="amount_asc">Importo ↑</option>
               <option value="desc_asc">Descrizione A-Z</option>
             </select>
+            <button
+              @click="toggleUnsettledOnly"
+              :class="[
+                'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
+                filters.unsettledOnly
+                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              ]"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Da saldare
+            </button>
           </div>
         </Transition>
       </div>
@@ -223,6 +237,21 @@
               <option value="desc_asc">Descrizione A-Z</option>
             </select>
           </div>
+
+          <button
+            @click="toggleUnsettledOnly"
+            :class="[
+              'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
+              filters.unsettledOnly
+                ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+            ]"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Da saldare
+          </button>
 
           <Button v-if="hasActiveFilters" @click="resetFilters" variant="secondary" size="sm" class="text-sm">
             Reset
@@ -421,7 +450,8 @@ const filters = ref({
   categoryId: '',
   projectId: '',
   from: '',
-  to: ''
+  to: '',
+  unsettledOnly: false
 })
 
 const sortOption = ref('date_desc')
@@ -434,7 +464,7 @@ watch(sortOption, () => onFiltersChanged())
 
 const hasActiveFilters = computed(() =>
   filters.value.search || filters.value.categoryId || filters.value.projectId ||
-  filters.value.from || filters.value.to
+  filters.value.from || filters.value.to || filters.value.unsettledOnly
 )
 
 const activeFiltersCount = computed(() => {
@@ -444,6 +474,7 @@ const activeFiltersCount = computed(() => {
   if (filters.value.projectId) count++
   if (filters.value.from) count++
   if (filters.value.to) count++
+  if (filters.value.unsettledOnly) count++
   return count
 })
 
@@ -464,7 +495,13 @@ function buildParams() {
   if (filters.value.projectId) params.project_id = filters.value.projectId
   if (filters.value.from) params.from = filters.value.from
   if (filters.value.to) params.to = filters.value.to
+  if (filters.value.unsettledOnly) params.unsettled_only = 'true'
   return params
+}
+
+function toggleUnsettledOnly() {
+  filters.value.unsettledOnly = !filters.value.unsettledOnly
+  onFiltersChanged()
 }
 
 function onFiltersChanged() {
@@ -478,7 +515,7 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  filters.value = { search: '', categoryId: '', projectId: '', from: '', to: '' }
+  filters.value = { search: '', categoryId: '', projectId: '', from: '', to: '', unsettledOnly: false }
   const params = { sort: sortOption.value }
   currentFilters.value = params
   expensesStore.fetchExpenses(params, { page: 1 })
