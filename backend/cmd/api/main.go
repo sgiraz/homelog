@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/gin-contrib/gzip"
@@ -14,7 +17,18 @@ import (
 	"github.com/sgiraz/homelog/internal/middleware"
 )
 
+// appVersion is set at build time via -ldflags "-X main.appVersion=..."
+var appVersion = "dev"
+
 var startTime = time.Now()
+
+// Cached GitHub release check
+var (
+	cachedLatest    string
+	cachedLatestURL string
+	cachedAt        time.Time
+	cacheMu         sync.Mutex
+)
 
 func main() {
 	// Load environment variables
@@ -74,7 +88,7 @@ func main() {
 		c.JSON(200, gin.H{
 			"status":  "healthy",
 			"service": "homelog-api",
-			"version": "1.0.0",
+			"version": appVersion,
 			"uptime":  time.Since(startTime).String(),
 		})
 	})
@@ -82,6 +96,24 @@ func main() {
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
+		// Version check (public, no auth required)
+		v1.GET("/version", func(c *gin.Context) {
+			latest, latestURL := getLatestRelease()
+			updateAvailable := false
+			if latest != "" && latest != appVersion && appVersion != "dev" {
+				updateAvailable = true
+			}
+			resp := gin.H{
+				"current":          appVersion,
+				"update_available": updateAvailable,
+			}
+			if latest != "" {
+				resp["latest"] = latest
+				resp["latest_url"] = latestURL
+			}
+			c.JSON(200, resp)
+		})
+
 		// Public routes
 		auth := v1.Group("/auth")
 		{
@@ -298,8 +330,43 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("🏠 HomeLog API starting on port %s...", port)
+	log.Printf("🏠 HomeLog API v%s starting on port %s...", appVersion, port)
 	if err := router.Run(":" + port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
+}
+
+// getLatestRelease fetches the latest release tag from GitHub, cached for 1 hour.
+func getLatestRelease() (tag string, url string) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+
+	if cachedLatest != "" && time.Since(cachedAt) < time.Hour {
+		return cachedLatest, cachedLatestURL
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get("https://api.github.com/repos/sgiraz/homelog/releases/latest")
+	if err != nil {
+		log.Printf("⚠️  Failed to check GitHub releases: %v", err)
+		return cachedLatest, cachedLatestURL
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return cachedLatest, cachedLatestURL
+	}
+
+	var release struct {
+		TagName string `json:"tag_name"`
+		HTMLURL string `json:"html_url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return cachedLatest, cachedLatestURL
+	}
+
+	cachedLatest = release.TagName
+	cachedLatestURL = release.HTMLURL
+	cachedAt = time.Now()
+	return cachedLatest, cachedLatestURL
 }

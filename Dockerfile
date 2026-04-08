@@ -21,7 +21,7 @@ COPY --from=frontend-builder /build/dist ./cmd/api/static/
 # Pure-Go build (glebarez/sqlite, no CGO needed)
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -ldflags="-s -w" -o homelog ./cmd/api/
+    CGO_ENABLED=0 go build -ldflags="-s -w -X main.appVersion=${APP_VERSION}" -o homelog ./cmd/api/
 
 # Stage 3: Minimal runtime
 FROM alpine:3.19

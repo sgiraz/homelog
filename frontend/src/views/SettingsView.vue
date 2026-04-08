@@ -101,11 +101,6 @@
     <!-- Tab: Dati -->
     <DataTab v-show="activeTab === 'dati'" />
 
-    <!-- Version -->
-    <div class="text-center text-xs text-gray-400 dark:text-gray-500 pt-4">
-      HomeLog {{ appVersion }}
-    </div>
-
     <!-- Avatar Crop Modal -->
     <AvatarCropModal
       v-if="showCropModal"
@@ -133,8 +128,6 @@ import DataTab from '@/components/settings/DataTab.vue'
 
 const authStore = useAuthStore()
 const { confirm } = useConfirm()
-
-const appVersion = __APP_VERSION__
 
 // Tabs
 const activeTab = ref('famiglia')

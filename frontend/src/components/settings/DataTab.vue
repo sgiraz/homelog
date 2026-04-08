@@ -1,5 +1,58 @@
 <template>
   <div class="space-y-4">
+    <!-- Versione & Aggiornamenti -->
+    <Card class="p-6">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Versione</h2>
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <div class="text-sm text-gray-600 dark:text-gray-400">Versione corrente</div>
+          <div class="text-lg font-semibold text-gray-900 dark:text-white font-mono">{{ currentVersion }}</div>
+        </div>
+        <Button @click="checkForUpdates" :disabled="checking" variant="secondary" size="sm">
+          <svg v-if="checking" class="w-4 h-4 mr-1.5 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+          {{ checking ? 'Controllo...' : 'Controlla aggiornamenti' }}
+        </Button>
+      </div>
+
+      <!-- Update result -->
+      <div v-if="updateResult" class="mt-4">
+        <div v-if="updateResult.update_available" class="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+          <svg class="w-5 h-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
+          </svg>
+          <div>
+            <div class="text-sm font-medium text-green-800 dark:text-green-200">
+              Nuova versione disponibile: <span class="font-mono">{{ updateResult.latest }}</span>
+            </div>
+            <a
+              :href="updateResult.latest_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-sm text-green-700 dark:text-green-300 underline hover:no-underline mt-1 inline-block"
+            >
+              Vedi le novità
+            </a>
+            <div class="text-xs text-green-600 dark:text-green-400 mt-2">
+              Per aggiornare: <code class="bg-green-100 dark:bg-green-800/50 px-1.5 py-0.5 rounded">docker compose pull &amp;&amp; docker compose up -d</code>
+            </div>
+          </div>
+        </div>
+        <div v-else class="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <span class="text-sm text-gray-600 dark:text-gray-400">Sei aggiornato alla versione più recente.</span>
+        </div>
+      </div>
+
+      <div v-if="checkError" class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-sm text-red-700 dark:text-red-300">
+        Impossibile verificare gli aggiornamenti. Riprova più tardi.
+      </div>
+    </Card>
+
     <Card class="p-6">
       <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Backup &amp; Dati</h2>
 
@@ -76,9 +129,28 @@
 defineOptions({ name: 'DataTab' })
 
 import { ref } from 'vue'
-import { exportAPI } from '@/api/client'
+import { exportAPI, versionAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
+
+const currentVersion = __APP_VERSION__
+const checking = ref(false)
+const updateResult = ref(null)
+const checkError = ref(false)
+
+async function checkForUpdates() {
+  checking.value = true
+  checkError.value = false
+  updateResult.value = null
+  try {
+    const { data } = await versionAPI.check()
+    updateResult.value = data
+  } catch {
+    checkError.value = true
+  } finally {
+    checking.value = false
+  }
+}
 
 const exportLoading = ref(null)
 const importLoading = ref(false)
