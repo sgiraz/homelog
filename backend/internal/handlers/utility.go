@@ -95,6 +95,8 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		BillingUnit         string     `json:"billing_unit" binding:"omitempty,oneof=day week month year"`               // default "month"
 		PaidByMemberID      *uint      `json:"paid_by_member_id"`
 		DefaultCategoryID   *uint      `json:"default_category_id"`
+		SplitOverride       string     `json:"split_override"`
+		SplitMemberIDs      string     `json:"split_member_ids"`
 		CustomerPortal      string     `json:"customer_portal"`
 		Notes               string     `json:"notes"`
 		AllowsSelfReading   *bool      `json:"allows_self_reading"`  // nil = true (default)
@@ -192,6 +194,8 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		BillingUnit:         billingUnit,
 		PaidByMemberID:      input.PaidByMemberID,
 		DefaultCategoryID:   input.DefaultCategoryID,
+		SplitOverride:       input.SplitOverride,
+		SplitMemberIDs:      input.SplitMemberIDs,
 		CustomerPortal:      input.CustomerPortal,
 		Notes:               input.Notes,
 		AllowsSelfReading:   &allowsSelfReading,
@@ -307,6 +311,8 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 		PaidByMemberID        *uint      `json:"paid_by_member_id"`
 		DefaultCategoryID     *uint      `json:"default_category_id"`
 		DefaultBillTemplateID *uint      `json:"default_bill_template_id"`
+		SplitOverride         *string    `json:"split_override"`
+		SplitMemberIDs        *string    `json:"split_member_ids"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -387,6 +393,12 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	utility.PaidByMemberID = input.PaidByMemberID
 	utility.DefaultCategoryID = input.DefaultCategoryID
 	utility.DefaultBillTemplateID = input.DefaultBillTemplateID
+	if input.SplitOverride != nil {
+		utility.SplitOverride = *input.SplitOverride
+	}
+	if input.SplitMemberIDs != nil {
+		utility.SplitMemberIDs = *input.SplitMemberIDs
+	}
 
 	if err := h.db.Save(&utility).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update utility"})
@@ -825,7 +837,6 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 	// Auto-create expense when a bill is marked as paid for the first time
 	if bill.IsPaid && !wasAlreadyPaid {
 		if err := h.autoCreateExpenseFromBill(c, userID, &bill); err != nil {
-			// Log but don't fail the request — bill payment already saved
 			log.Printf("⚠️  Failed to auto-create expense for bill %d: %v", bill.ID, err)
 		}
 	}
@@ -891,7 +902,7 @@ func (h *UtilityHandler) detectPriceChange(utility *models.Utility, newBill *mod
 	log.Printf("💰 Price change detected for utility %d: %.2f → %.2f", utility.ID, prevBill.AmountTotal, newBill.AmountTotal)
 }
 
-func (h *UtilityHandler) autoCreateExpenseFromBill(c *gin.Context, userID uint, bill *models.Bill) error {
+func (h *UtilityHandler) autoCreateExpenseFromBill(_ *gin.Context, userID uint, bill *models.Bill) error {
 	// Load utility
 	var utility models.Utility
 	if err := h.db.First(&utility, bill.UtilityID).Error; err != nil {
@@ -1001,7 +1012,7 @@ func (h *UtilityHandler) autoCreateExpenseFromBill(c *gin.Context, userID uint, 
 	billID := bill.ID
 	propID := utility.PropertyID
 	expense := models.Expense{
-		UserID:         payerUserID,
+		UserID:         userID, // logged-in user for visibility; PaidByMemberID tracks the actual payer
 		PropertyID:     &propID,
 		CategoryID:     casaCategory.ID,
 		SubcategoryID:  subcatID,
