@@ -2,11 +2,12 @@
 
 # Stage 1: Build frontend
 FROM node:20-alpine AS frontend-builder
+ARG APP_VERSION=dev
 WORKDIR /build
 COPY frontend/package*.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci
 COPY frontend/ .
-RUN npm run build
+RUN APP_VERSION=${APP_VERSION} npm run build
 
 # Stage 2: Build backend with embedded frontend
 FROM golang:1.25-alpine AS backend-builder
