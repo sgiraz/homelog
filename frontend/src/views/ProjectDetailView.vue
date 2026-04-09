@@ -188,9 +188,47 @@
       </div>
 
       <!-- Tab: Expenses -->
-      <div v-if="activeTab === 'expenses'">
-        <!-- Add Expense Button -->
-        <div class="flex justify-end mb-4">
+      <div v-if="activeTab === 'expenses'" class="space-y-4">
+        <!-- Stats + Category Chart (unified card) -->
+        <Card v-if="project.expenses?.length > 0" class="p-4 space-y-4">
+          <div class="grid grid-cols-4 gap-3 text-center">
+            <div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Spesa media</div>
+              <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                {{ formatCurrency(stats.expense_count > 0 ? stats.total_spent / stats.expense_count : 0) }}
+              </div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Budget/giorno</div>
+              <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                {{ formatCurrency(dailyBudget) }}
+              </div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Giorni rimasti</div>
+              <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                {{ daysRemaining >= 0 ? daysRemaining : 0 }}
+              </div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Nr. spese</div>
+              <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                {{ stats.expense_count }}
+              </div>
+            </div>
+          </div>
+          <template v-if="categoryBreakdown.length > 1">
+            <div class="border-t border-gray-200 dark:border-gray-700"></div>
+            <div>
+              <h4 class="font-medium text-gray-900 dark:text-white mb-3">Spese per Categoria</h4>
+              <PieChart :chartData="categoryChartData" />
+            </div>
+          </template>
+        </Card>
+
+        <!-- Expense List Header -->
+        <div class="flex items-center justify-between">
+          <h4 class="font-medium text-gray-900 dark:text-white">Lista Spese</h4>
           <Button size="sm" @click="showAddExpense = true">
             <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -224,38 +262,7 @@
         <div v-else class="text-center py-8">
           <div class="text-4xl mb-3">📋</div>
           <p class="text-gray-600 dark:text-gray-400 mb-4">Nessuna spesa associata</p>
-          <Button size="sm" @click="showAddExpense = true">
-            Aggiungi la prima spesa
-          </Button>
         </div>
-      </div>
-
-      <!-- Tab: Stats -->
-      <div v-if="activeTab === 'stats'">
-        <Card class="p-4">
-          <div class="text-sm text-gray-700 dark:text-gray-300 space-y-3">
-            <div class="flex justify-between">
-              <span>Numero spese</span>
-              <span class="font-medium">{{ stats.expense_count }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span>Spesa media</span>
-              <span class="font-medium">
-                {{ formatCurrency(stats.expense_count > 0 ? stats.total_spent / stats.expense_count : 0) }}
-              </span>
-            </div>
-            <div class="flex justify-between">
-              <span>Budget giornaliero previsto</span>
-              <span class="font-medium">
-                {{ formatCurrency(dailyBudget) }}/giorno
-              </span>
-            </div>
-            <div class="flex justify-between">
-              <span>Giorni rimanenti</span>
-              <span class="font-medium">{{ daysRemaining >= 0 ? daysRemaining : 0 }}</span>
-            </div>
-          </div>
-        </Card>
       </div>
     </template>
 
@@ -291,6 +298,7 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditProjectModal from '@/components/projects/EditProjectModal.vue'
+import PieChart from '@/components/charts/PieChart.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -317,8 +325,7 @@ const canManage = computed(() => {
 
 const tabs = computed(() => [
   { value: 'expenses', label: `Spese (${stats.value.expense_count})`, icon: '💰' },
-  { value: 'info', label: 'Info', icon: 'ℹ️' },
-  { value: 'stats', label: 'Statistiche', icon: '📊' }
+  { value: 'info', label: 'Info', icon: 'ℹ️' }
 ])
 
 const sortedExpenses = computed(() => {
@@ -339,6 +346,39 @@ const daysRemaining = computed(() => {
   const end = new Date(project.value.end_date)
   const now = new Date()
   return Math.ceil((end - now) / (1000 * 60 * 60 * 24))
+})
+
+const categoryBreakdown = computed(() => {
+  if (!project.value?.expenses?.length) return []
+  const map = {}
+  for (const exp of project.value.expenses) {
+    const catId = exp.category_id || 0
+    if (!map[catId]) {
+      map[catId] = {
+        category_id: catId,
+        category_name: exp.category?.name || 'Senza categoria',
+        category_icon: exp.category?.icon || '📦',
+        category_color: exp.category?.color || '#6B7280',
+        total: 0,
+        count: 0
+      }
+    }
+    map[catId].total += exp.amount
+    map[catId].count++
+  }
+  return Object.values(map).sort((a, b) => b.total - a.total)
+})
+
+const categoryChartData = computed(() => {
+  const items = categoryBreakdown.value
+  return {
+    labels: items.map(i => i.category_name),
+    datasets: [{
+      data: items.map(i => i.total),
+      backgroundColor: items.map(i => i.category_color),
+      borderWidth: 0
+    }]
+  }
 })
 
 function formatCurrency(value) {
