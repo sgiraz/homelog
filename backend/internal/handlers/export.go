@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -21,6 +22,21 @@ func NewExportHandler(db *gorm.DB) *ExportHandler {
 	return &ExportHandler{db: db}
 }
 
+// writeCSV writes a UTF-8 BOM CSV file to the response with the given headers and rows.
+func writeCSV(c *gin.Context, filename string, headers []string, rows [][]string) {
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	// Write UTF-8 BOM for Excel compatibility
+	c.Writer.Write([]byte{0xEF, 0xBB, 0xBF})
+	w := csv.NewWriter(c.Writer)
+	w.Write(headers)
+	for _, row := range rows {
+		w.Write(row)
+	}
+	w.Flush()
+}
+
 type ExportData struct {
 	ExportedAt        time.Time                  `json:"exported_at"`
 	Version           string                     `json:"version"`
@@ -39,12 +55,34 @@ type ExportData struct {
 	HouseholdSettings []models.HouseholdSettings `json:"household_settings"`
 }
 
-// ExportAll exports all user data as a JSON download.
+// ExportAll exports all user data as a JSON download, or expenses as CSV when format=csv.
 // GET /api/v1/export/all
 func (h *ExportHandler) ExportAll(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	// CSV format: export expenses (most useful single-sheet summary)
+	if c.Query("format") == "csv" {
+		var expenses []models.Expense
+		h.db.Where("user_id = ?", userID).
+			Preload("Category").
+			Preload("Splits").
+			Preload("PaidBy").
+			Order("date DESC").
+			Find(&expenses)
+
+		timestamp := time.Now().Format("2006-01-02_15-04-05")
+		filename := fmt.Sprintf("homelog_backup_%s.csv", timestamp)
+		headers := []string{"Date", "Description", "Amount", "Category", "Project", "Paid By", "Split", "Notes"}
+		rows := make([][]string, 0, len(expenses))
+		for _, e := range expenses {
+			rows = append(rows, expenseToCSVRow(e))
+		}
+		log.Printf("✅ Full CSV export (expenses) done: %d rows for user %d", len(rows), userID)
+		writeCSV(c, filename, headers, rows)
 		return
 	}
 
@@ -124,6 +162,26 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 	c.JSON(http.StatusOK, data)
 }
 
+// expenseToCSVRow converts an Expense to a slice of strings for CSV output.
+func expenseToCSVRow(e models.Expense) []string {
+	date := e.Date.Format("2006-01-02")
+	amount := fmt.Sprintf("%.2f", e.Amount)
+	category := e.Category.Name
+	project := ""
+	if e.ProjectID != nil {
+		project = fmt.Sprintf("%d", *e.ProjectID)
+	}
+	paidBy := ""
+	if e.PaidBy != nil {
+		paidBy = e.PaidBy.Name
+	}
+	split := ""
+	if len(e.Splits) > 0 {
+		split = fmt.Sprintf("%d split(s)", len(e.Splits))
+	}
+	return []string{date, e.Description, amount, category, project, paidBy, split, ""}
+}
+
 // ExportExpenses exports only the user's expenses.
 // GET /api/v1/export/expenses
 func (h *ExportHandler) ExportExpenses(c *gin.Context) {
@@ -137,11 +195,24 @@ func (h *ExportHandler) ExportExpenses(c *gin.Context) {
 	h.db.Where("user_id = ?", userID).
 		Preload("Category").
 		Preload("Splits").
-		Preload("PaidByMember").
+		Preload("PaidBy").
 		Order("date DESC").
 		Find(&expenses)
 
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
+
+	if c.Query("format") == "csv" {
+		filename := fmt.Sprintf("homelog_expenses_%s.csv", timestamp)
+		headers := []string{"Date", "Description", "Amount", "Category", "Project", "Paid By", "Split", "Notes"}
+		rows := make([][]string, 0, len(expenses))
+		for _, e := range expenses {
+			rows = append(rows, expenseToCSVRow(e))
+		}
+		log.Printf("✅ Exported %d expenses (CSV) for user %d", len(expenses), userID)
+		writeCSV(c, filename, headers, rows)
+		return
+	}
+
 	filename := fmt.Sprintf("homelog_expenses_%s.json", timestamp)
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "application/json")
@@ -173,6 +244,45 @@ func (h *ExportHandler) ExportUtilities(c *gin.Context) {
 		Find(&utilities)
 
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
+
+	if c.Query("format") == "csv" {
+		filename := fmt.Sprintf("homelog_utilities_%s.csv", timestamp)
+		headers := []string{"Provider", "Type", "Bill Number", "Amount", "Period Start", "Period End", "Is Paid"}
+		rows := [][]string{}
+		for _, u := range utilities {
+			for _, b := range u.Bills {
+				periodStart := ""
+				if !b.PeriodStart.IsZero() {
+					periodStart = b.PeriodStart.Format("2006-01-02")
+				}
+				periodEnd := ""
+				if !b.PeriodEnd.IsZero() {
+					periodEnd = b.PeriodEnd.Format("2006-01-02")
+				}
+				isPaid := "false"
+				if b.IsPaid {
+					isPaid = "true"
+				}
+				rows = append(rows, []string{
+					u.Provider,
+					u.Type,
+					b.BillNumber,
+					fmt.Sprintf("%.2f", b.AmountTotal),
+					periodStart,
+					periodEnd,
+					isPaid,
+				})
+			}
+			// If the utility has no bills, still emit one row with utility info
+			if len(u.Bills) == 0 {
+				rows = append(rows, []string{u.Provider, u.Type, "", "", "", "", ""})
+			}
+		}
+		log.Printf("✅ Exported %d utilities (CSV, %d bill rows) for user %d", len(utilities), len(rows), userID)
+		writeCSV(c, filename, headers, rows)
+		return
+	}
+
 	filename := fmt.Sprintf("homelog_utilities_%s.json", timestamp)
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "application/json")
@@ -201,6 +311,28 @@ func (h *ExportHandler) ExportProjects(c *gin.Context) {
 	h.db.Where("user_id = ?", userID).Find(&projects)
 
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
+
+	if c.Query("format") == "csv" {
+		// Preload expenses for spent calculation
+		h.db.Where("user_id = ?", userID).Preload("Expenses").Find(&projects)
+
+		filename := fmt.Sprintf("homelog_projects_%s.csv", timestamp)
+		headers := []string{"Name", "Description", "Budget", "Spent", "Status", "Created At"}
+		rows := make([][]string, 0, len(projects))
+		for _, p := range projects {
+			budget := fmt.Sprintf("%.2f", p.Budget)
+			var spent float64
+			for _, e := range p.Expenses {
+				spent += e.Amount
+			}
+			createdAt := p.CreatedAt.Format("2006-01-02")
+			rows = append(rows, []string{p.Name, p.Description, budget, fmt.Sprintf("%.2f", spent), p.Status, createdAt})
+		}
+		log.Printf("✅ Exported %d projects (CSV) for user %d", len(projects), userID)
+		writeCSV(c, filename, headers, rows)
+		return
+	}
+
 	filename := fmt.Sprintf("homelog_projects_%s.json", timestamp)
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "application/json")

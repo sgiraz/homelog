@@ -26,29 +26,33 @@ func NewExpenseHandler(db *gorm.DB) *ExpenseHandler {
 
 // CreateExpenseRequest represents the request body for creating an expense
 type CreateExpenseRequest struct {
-	Amount             float64 `json:"amount" binding:"required,gt=0"`
-	Description        string  `json:"description"`
-	CategoryID         uint    `json:"category_id" binding:"required"`
-	PropertyID         *uint   `json:"property_id"`
-	SubcategoryID      *uint   `json:"subcategory_id"`
-	ProjectID          *uint   `json:"project_id"`
-	Date               string  `json:"date" binding:"required"` // Format: YYYY-MM-DD
-	AttachmentURL      string  `json:"attachment_url"`
-	PaidByMemberID     uint    `json:"paid_by_member_id"`
-	IsSplit            bool    `json:"is_split"`
-	SplitWithMemberIDs []uint  `json:"split_with_member_ids"`
+	Amount             float64  `json:"amount" binding:"required,gt=0"`
+	OriginalAmount     *float64 `json:"original_amount"`
+	OriginalCurrency   string   `json:"original_currency"`
+	Description        string   `json:"description"`
+	CategoryID         uint     `json:"category_id" binding:"required"`
+	PropertyID         *uint    `json:"property_id"`
+	SubcategoryID      *uint    `json:"subcategory_id"`
+	ProjectID          *uint    `json:"project_id"`
+	Date               string   `json:"date" binding:"required"` // Format: YYYY-MM-DD
+	AttachmentURL      string   `json:"attachment_url"`
+	PaidByMemberID     uint     `json:"paid_by_member_id"`
+	IsSplit            bool     `json:"is_split"`
+	SplitWithMemberIDs []uint   `json:"split_with_member_ids"`
 }
 
 // UpdateExpenseRequest represents the request body for updating an expense
 type UpdateExpenseRequest struct {
-	Amount        *float64 `json:"amount"`
-	Description   *string  `json:"description"`
-	CategoryID    *uint    `json:"category_id"`
-	PropertyID    *uint    `json:"property_id"`
-	SubcategoryID *uint    `json:"subcategory_id"`
-	ProjectID     *uint    `json:"project_id"`
-	Date          *string  `json:"date"`
-	AttachmentURL *string  `json:"attachment_url"`
+	Amount           *float64 `json:"amount"`
+	OriginalAmount   *float64 `json:"original_amount"`
+	OriginalCurrency *string  `json:"original_currency"`
+	Description      *string  `json:"description"`
+	CategoryID       *uint    `json:"category_id"`
+	PropertyID       *uint    `json:"property_id"`
+	SubcategoryID    *uint    `json:"subcategory_id"`
+	ProjectID        *uint    `json:"project_id"`
+	Date             *string  `json:"date"`
+	AttachmentURL    *string  `json:"attachment_url"`
 }
 
 // MonthlyStats represents monthly expense statistics
@@ -320,17 +324,19 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 	tx := h.db.Begin()
 
 	expense := models.Expense{
-		UserID:         userID,
-		Amount:         req.Amount,
-		Description:    req.Description,
-		CategoryID:     req.CategoryID,
-		PropertyID:     req.PropertyID,
-		SubcategoryID:  req.SubcategoryID,
-		ProjectID:      req.ProjectID,
-		Date:           date,
-		AttachmentURL:  req.AttachmentURL,
-		PaidByMemberID: paidByMemberID,
-		IsSplit:        req.IsSplit,
+		UserID:           userID,
+		Amount:           req.Amount,
+		OriginalAmount:   req.OriginalAmount,
+		OriginalCurrency: req.OriginalCurrency,
+		Description:      req.Description,
+		CategoryID:       req.CategoryID,
+		PropertyID:       req.PropertyID,
+		SubcategoryID:    req.SubcategoryID,
+		ProjectID:        req.ProjectID,
+		Date:             date,
+		AttachmentURL:    req.AttachmentURL,
+		PaidByMemberID:   paidByMemberID,
+		IsSplit:          req.IsSplit,
 	}
 
 	if err := tx.Create(&expense).Error; err != nil {
@@ -515,6 +521,12 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 				return
 			}
 			updates["amount"] = *req.Amount
+		}
+		if req.OriginalAmount != nil {
+			updates["original_amount"] = *req.OriginalAmount
+		}
+		if req.OriginalCurrency != nil {
+			updates["original_currency"] = *req.OriginalCurrency
 		}
 
 		if req.PropertyID != nil {

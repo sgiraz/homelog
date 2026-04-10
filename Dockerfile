@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Stage 1: Build frontend (native platform, output is static files)
-FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend-builder
 ARG APP_VERSION=dev
 WORKDIR /build
 COPY frontend/package*.json ./

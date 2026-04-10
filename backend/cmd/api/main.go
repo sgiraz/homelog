@@ -129,6 +129,10 @@ func main() {
 		protected := v1.Group("")
 		protected.Use(middleware.AuthRequired())
 		{
+			// Exchange rates
+			exchangeHandler := handlers.NewExchangeHandler()
+			protected.GET("/exchange-rate", exchangeHandler.GetRate)
+
 			// Properties
 			properties := protected.Group("/properties")
 			{
@@ -260,6 +264,9 @@ func main() {
 				settings.PUT("/password", handlers.NewAuthHandler(db).ChangePassword)
 				settings.POST("/avatar", settingsHandler.UploadAvatar)
 				settings.DELETE("/avatar", settingsHandler.DeleteAvatar)
+				settings.GET("/account/delete-check", settingsHandler.DeleteAccountCheck)
+				settings.POST("/account/promote-admin", settingsHandler.PromoteAdmin)
+				settings.DELETE("/account", settingsHandler.DeleteAccount)
 			}
 
 			// Balance (per property) - nested under properties
@@ -283,6 +290,13 @@ func main() {
 				members.PUT("/:id", middleware.AdminRequired(), memberHandler.Update)
 				members.DELETE("/:id", middleware.AdminRequired(), memberHandler.Delete)
 			}
+
+			// Join Requests
+			joinRequestHandler := handlers.NewJoinRequestHandler(db)
+			protected.POST("/join-requests", joinRequestHandler.Create)
+			protected.GET("/join-requests", joinRequestHandler.List)
+			protected.PATCH("/join-requests/:id", joinRequestHandler.Resolve)
+			protected.GET("/properties/joinable", joinRequestHandler.ListJoinable)
 
 			// Settlements
 			settlements := protected.Group("/settlements")

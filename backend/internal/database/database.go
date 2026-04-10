@@ -90,6 +90,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.BillTemplate{},
 		&models.ContractTemplate{},
 		&models.ExpenseTemplate{},
+		&models.PropertyJoinRequest{},
 	)
 
 	if err != nil {
@@ -105,6 +106,24 @@ func AutoMigrate(db *gorm.DB) error {
 	// Default billing frequency for existing utilities
 	db.Exec(`UPDATE utilities SET billing_interval = 1 WHERE billing_interval IS NULL OR billing_interval = 0`)
 	db.Exec(`UPDATE utilities SET billing_unit = 'month' WHERE billing_unit IS NULL OR billing_unit = ''`)
+
+	// Data migration: ensure property owners have admin role on their HouseholdMember
+	// This backfills existing databases where HouseholdMember.Role was not set to "admin"
+	db.Exec(`UPDATE household_members SET role = 'admin'
+		WHERE user_id IS NOT NULL AND role != 'admin'
+		AND EXISTS (
+			SELECT 1 FROM properties WHERE properties.id = household_members.property_id
+			AND properties.user_id = household_members.user_id
+		)`)
+	// Ensure non-owner members have at least 'member' role
+	db.Exec(`UPDATE household_members SET role = 'member' WHERE (role IS NULL OR role = '') AND user_id IS NOT NULL`)
+
+	// Data migration: mark onboarding as completed for existing users who already have a property
+	db.Exec(`UPDATE user_settings SET onboarding_completed = 1
+		WHERE onboarding_completed = 0
+		AND user_id IN (
+			SELECT DISTINCT user_id FROM household_members WHERE user_id IS NOT NULL
+		)`)
 
 	// Backfill price changes from existing bills of fixed-cost services (one-time)
 	var pcCount int64

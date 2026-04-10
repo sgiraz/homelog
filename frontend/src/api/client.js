@@ -83,6 +83,16 @@ export const authAPI = {
     apiClient.put('/settings/password', { current_password: currentPassword, new_password: newPassword }),
 }
 
+export const accountAPI = {
+  deleteCheck: () => apiClient.get('/settings/account/delete-check'),
+  promoteAdmin: (propertyId, memberId) => apiClient.post('/settings/account/promote-admin', { property_id: propertyId, member_id: memberId }),
+  deleteAccount: (password) => apiClient.delete('/settings/account', { data: { password } }),
+}
+
+export const exchangeAPI = {
+  getRate: (from, to, amount) => apiClient.get('/exchange-rate', { params: { from, to, amount } }),
+}
+
 export const expensesAPI = {
   list: (params) => apiClient.get('/expenses', { params }),
   create: (data) => apiClient.post('/expenses', data),
@@ -98,6 +108,18 @@ export const categoriesAPI = {
   delete: (id) => apiClient.delete(`/categories/${id}`),
   createSubcategory: (catId, data) => apiClient.post(`/categories/${catId}/subcategories`, data),
   deleteSubcategory: (catId, subId) => apiClient.delete(`/categories/${catId}/subcategories/${subId}`),
+}
+
+export const propertiesAPI = {
+  list: () => apiClient.get('/properties'),
+  create: (data) => apiClient.post('/properties', data),
+  update: (id, data) => apiClient.put(`/properties/${id}`, data),
+  delete: (id) => apiClient.delete(`/properties/${id}`),
+}
+
+export const settingsAPI = {
+  get: () => apiClient.get('/settings'),
+  update: (data) => apiClient.put('/settings', data),
 }
 
 export const balanceAPI = {
@@ -197,6 +219,10 @@ export const exportAPI = {
   exportExpenses: () => apiClient.get('/export/expenses', { responseType: 'blob' }),
   exportUtilities: () => apiClient.get('/export/utilities', { responseType: 'blob' }),
   exportProjects: () => apiClient.get('/export/projects', { responseType: 'blob' }),
+  exportAllCSV: () => apiClient.get('/export/all?format=csv', { responseType: 'blob' }),
+  exportExpensesCSV: () => apiClient.get('/export/expenses?format=csv', { responseType: 'blob' }),
+  exportUtilitiesCSV: () => apiClient.get('/export/utilities?format=csv', { responseType: 'blob' }),
+  exportProjectsCSV: () => apiClient.get('/export/projects?format=csv', { responseType: 'blob' }),
   importData: (data) => apiClient.post('/import', data),
 }
 
@@ -247,4 +273,11 @@ export const pdfAPI = {
 
 export const versionAPI = {
   check: () => apiClient.get('/version'),
+}
+
+export const joinRequestAPI = {
+  list: () => apiClient.get('/join-requests'),
+  create: (propertyId) => apiClient.post('/join-requests', { property_id: propertyId }),
+  resolve: (id, status) => apiClient.patch(`/join-requests/${id}`, { status }),
+  joinableProperties: () => apiClient.get('/properties/joinable'),
 }

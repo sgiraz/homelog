@@ -36,297 +36,53 @@
     </div>
 
     <div v-else class="space-y-6">
-      <!-- Cumulative Summary Alert (only for overcharges) -->
-      <div
-        v-if="consumptionSummary?.has_cumulative_alert"
-        :class="[
-          'p-4 rounded-lg border-2',
-          consumptionSummary.cumulative_alert_level === 'alert'
-            ? 'border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/20'
-            : 'border-yellow-300 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900/20'
-        ]"
-      >
-        <div class="flex items-start gap-3">
-          <svg class="w-6 h-6 flex-shrink-0" :class="consumptionSummary.cumulative_alert_level === 'alert' ? 'text-red-500' : 'text-yellow-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <div>
-            <h4 :class="['font-semibold', consumptionSummary.cumulative_alert_level === 'alert' ? 'text-red-700 dark:text-red-300' : 'text-yellow-700 dark:text-yellow-300']">
-              {{ consumptionSummary.cumulative_alert_level === 'alert' ? 'Sovrafatturazione Rilevata!' : 'Attenzione: Differenza Accumulata' }}
-            </h4>
-            <p :class="['text-sm mt-1', consumptionSummary.cumulative_alert_level === 'alert' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400']">
-              {{ consumptionSummary.cumulative_message }}
-            </p>
-          </div>
-        </div>
-      </div>
+      <ConsumptionSummary
+        :consumptionSummary="consumptionSummary"
+        :utilityType="utilityType"
+        :fmtNum="fmtNum"
+        :fmtDiff="fmtDiff"
+        :formatDate="formatDate"
+        :getDiffClass="getDiffClass"
+        :getUnit="getUnit"
+      />
 
-      <!-- Informational message (provider charged less - not a problem) -->
-      <div
-        v-else-if="consumptionSummary?.cumulative_message && !consumptionSummary?.has_cumulative_alert"
-        class="p-3 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20"
-      >
-        <div class="flex items-start gap-2">
-          <svg class="w-5 h-5 flex-shrink-0 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p class="text-sm text-blue-700 dark:text-blue-300">
-            {{ consumptionSummary.cumulative_message }}
-          </p>
-        </div>
-      </div>
+      <ConsumptionPeriodsTable
+        :consumptionAnalysis="consumptionPeriods"
+        :utilityType="utilityType"
+        :consumptionSummary="consumptionSummary"
+        :fmtNum="fmtNum"
+        :fmtDiff="fmtDiff"
+        :formatDate="formatDate"
+        :formatPeriodCompact="formatPeriodCompact"
+        :getDiffClass="getDiffClass"
+        :getUnit="getUnit"
+      />
 
-      <!-- Consumption Summary Card -->
-      <div v-if="consumptionSummary && (consumptionSummary.total_user > 0 || consumptionSummary.total_provider > 0)" class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Riepilogo Consumi Cumulativi</h4>
-
-        <div v-if="utilityType === 'electricity'" class="space-y-3">
-          <div class="grid grid-cols-4 gap-2 sm:gap-3 text-sm">
-            <div></div>
-            <div class="text-center font-medium text-red-600 dark:text-red-400">F1</div>
-            <div class="text-center font-medium text-yellow-600 dark:text-yellow-400">F2</div>
-            <div class="text-center font-medium text-green-600 dark:text-green-400">F3</div>
-
-            <div class="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Autoletture</div>
-            <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_user_f1) }}</div>
-            <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_user_f2) }}</div>
-            <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_user_f3) }}</div>
-
-            <div class="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Fornitore</div>
-            <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_provider_f1) }}</div>
-            <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_provider_f2) }}</div>
-            <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_provider_f3) }}</div>
-
-            <div class="text-gray-600 dark:text-gray-400 font-medium text-xs sm:text-sm">Differenza</div>
-            <div :class="['text-center font-medium text-xs sm:text-sm', getDiffClass(consumptionSummary.cumulative_difference_f1)]">
-              {{ fmtDiff(consumptionSummary.cumulative_difference_f1) }}
-            </div>
-            <div :class="['text-center font-medium text-xs sm:text-sm', getDiffClass(consumptionSummary.cumulative_difference_f2)]">
-              {{ fmtDiff(consumptionSummary.cumulative_difference_f2) }}
-            </div>
-            <div :class="['text-center font-medium text-xs sm:text-sm', getDiffClass(consumptionSummary.cumulative_difference_f3)]">
-              {{ fmtDiff(consumptionSummary.cumulative_difference_f3) }}
-            </div>
-          </div>
-
-          <!-- Total summary for electricity — responsive grid instead of flex -->
-          <div :class="[
-            'p-3 rounded grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm',
-            consumptionSummary.cumulative_difference > 1 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-white dark:bg-gray-700'
-          ]">
-            <div class="text-gray-600 dark:text-gray-400 text-xs sm:text-sm sm:text-center">Totale:</div>
-            <div class="text-gray-900 dark:text-white text-xs sm:text-sm sm:text-center">Autoletture: <strong>{{ fmtNum(consumptionSummary.total_user) }}</strong> kWh</div>
-            <div class="text-gray-900 dark:text-white text-xs sm:text-sm sm:text-center">Fornitore: <strong>{{ fmtNum(consumptionSummary.total_provider) }}</strong> kWh</div>
-            <div :class="['font-semibold text-xs sm:text-sm sm:text-center', getDiffClass(consumptionSummary.cumulative_difference)]">
-              {{ consumptionSummary.cumulative_difference > 0 ? 'Sovrafatt.' : 'Diff.' }} {{ fmtDiff(consumptionSummary.cumulative_difference) }} kWh
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="grid grid-cols-3 gap-3 text-sm">
-          <div class="text-center p-3 bg-white dark:bg-gray-700 rounded">
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Autoletture</p>
-            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ fmtNum(consumptionSummary.total_user) }} {{ getUnit() }}</p>
-          </div>
-          <div class="text-center p-3 bg-white dark:bg-gray-700 rounded">
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Fatturati</p>
-            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ fmtNum(consumptionSummary.total_provider) }} {{ getUnit() }}</p>
-          </div>
-          <div :class="[
-            'text-center p-3 rounded',
-            consumptionSummary.cumulative_difference > 1 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-white dark:bg-gray-700'
-          ]">
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
-              {{ consumptionSummary.cumulative_difference > 0 ? 'Sovrafatt.' : 'Differenza' }}
-            </p>
-            <p :class="['text-lg font-semibold', getDiffClass(consumptionSummary.cumulative_difference)]">
-              {{ fmtDiff(consumptionSummary.cumulative_difference) }} {{ getUnit() }}
-            </p>
-          </div>
-        </div>
-
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
-          Periodo: {{ formatDate(consumptionSummary.first_period) }} – {{ formatDate(consumptionSummary.last_period) }}
-        </p>
-      </div>
-
-      <!-- Consumption Periods Table -->
-      <div v-if="consumptionPeriods && consumptionPeriods.length > 0" class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Dettaglio Consumi per Periodo</h4>
-
-        <div class="overflow-x-auto -mx-2">
-          <table class="w-full text-xs sm:text-sm min-w-0">
-            <thead>
-              <tr class="border-b border-gray-300 dark:border-gray-600">
-                <th class="text-left py-2 px-1.5 text-gray-600 dark:text-gray-400">Periodo</th>
-                <th class="text-right py-2 px-1.5 text-gray-600 dark:text-gray-400">
-                  <span class="hidden sm:inline">Consumo </span>Effettivo
-                </th>
-                <th class="text-right py-2 px-1.5 text-gray-600 dark:text-gray-400">
-                  <span class="hidden sm:inline">Consumo </span>Fatturato
-                </th>
-                <th class="text-right py-2 px-1.5 text-gray-600 dark:text-gray-400 w-16 sm:w-auto">Diff.</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(period, idx) in consumptionPeriods"
-                :key="idx"
-                class="border-b border-gray-200 dark:border-gray-700"
-              >
-                <td class="py-2 px-1.5 text-gray-900 dark:text-white whitespace-nowrap">
-                  {{ formatPeriodCompact(period.period_start, period.period_end) }}
-                </td>
-                <td class="py-2 px-1.5 text-right text-gray-900 dark:text-white whitespace-nowrap tabular-nums">
-                  {{ period.user_consumption != null ? fmtNum(period.user_consumption) : '-' }}
-                </td>
-                <td class="py-2 px-1.5 text-right text-gray-900 dark:text-white whitespace-nowrap tabular-nums">
-                  {{ period.provider_consumption != null ? fmtNum(period.provider_consumption) : '-' }}
-                </td>
-                <td :class="['py-2 px-1.5 text-right font-medium whitespace-nowrap tabular-nums', getDiffClass(period.difference)]">
-                  {{ period.difference != null ? fmtDiff(period.difference) : '-' }}
-                </td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr class="border-t-2 border-gray-400 dark:border-gray-500 font-semibold">
-                <td class="py-2 px-1.5 text-gray-900 dark:text-white">TOTALE</td>
-                <td class="py-2 px-1.5 text-right text-gray-900 dark:text-white whitespace-nowrap tabular-nums">
-                  {{ fmtNum(consumptionSummary?.total_user || 0) }} <span class="text-gray-400 font-normal">{{ getUnit() }}</span>
-                </td>
-                <td class="py-2 px-1.5 text-right text-gray-900 dark:text-white whitespace-nowrap tabular-nums">
-                  {{ fmtNum(consumptionSummary?.total_provider || 0) }} <span class="text-gray-400 font-normal">{{ getUnit() }}</span>
-                </td>
-                <td :class="['py-2 px-1.5 text-right whitespace-nowrap tabular-nums', getDiffClass(consumptionSummary?.cumulative_difference)]">
-                  {{ fmtDiff(consumptionSummary?.cumulative_difference || 0) }}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-
-      <!-- Individual Comparisons (Accordion) -->
-      <div class="space-y-3">
-        <h4 class="font-semibold text-gray-900 dark:text-white">Confronto per Bolletta</h4>
-        <div
-          v-for="comparison in comparisons"
-          :key="comparison.bill_id"
-          :class="[
-            'rounded-lg border-2 overflow-hidden transition-all',
-            getStatusClasses(comparison.status)
-          ]"
-        >
-          <!-- Compact header — always visible, tappable -->
-          <button
-            @click="toggleCard(comparison.bill_id)"
-            class="w-full flex items-center justify-between p-3 sm:p-4 text-left"
-          >
-            <div class="flex items-center gap-3 min-w-0 flex-1">
-              <div :class="['flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0', getStatusBadgeClasses(comparison.status)]">
-                <component :is="getStatusIcon(comparison.status)" class="w-3.5 h-3.5" />
-                <span>{{ getStatusLabel(comparison.status) }}</span>
-              </div>
-              <div class="min-w-0">
-                <span class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ comparison.bill_number || '#' + comparison.bill_id }}
-                </span>
-                <span class="text-xs text-gray-400 dark:text-gray-500 ml-1.5">
-                  {{ formatDate(comparison.period_end) }}
-                </span>
-              </div>
-            </div>
-            <!-- Chevron -->
-            <svg
-              :class="['w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ml-2', expandedCards.has(comparison.bill_id) ? 'rotate-180' : '']"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          <!-- Expandable detail -->
-          <div v-show="expandedCards.has(comparison.bill_id)" class="px-3 sm:px-4 pb-3 sm:pb-4 space-y-3">
-            <!-- Days difference and effective threshold info -->
-            <div v-if="comparison.days_difference > 0" class="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-3 py-2 rounded">
-              <span class="font-medium">{{ comparison.days_difference }} giorni</span> di differenza tra le letture.
-              Soglia effettiva: <span class="font-medium">{{ fmtNum(comparison.effective_threshold) }} {{ getUnit() }}</span>
-            </div>
-
-            <!-- Alert message if any -->
-            <div v-if="comparison.alert_message && comparison.status !== 'ok'" class="text-sm">
-              <span :class="comparison.status === 'alert' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'">
-                {{ comparison.alert_message }}
-              </span>
-            </div>
-
-            <!-- Electricity comparison (F1/F2/F3) -->
-            <div v-if="utilityType === 'electricity'" class="grid grid-cols-3 gap-2 sm:gap-3">
-              <ReadingBandComparison
-                v-for="band in ['F1', 'F2', 'F3']"
-                :key="band"
-                :band="band"
-                :providerValue="comparison['provider_' + band.toLowerCase()]"
-                :userValue="comparison['user_' + band.toLowerCase()]"
-                :difference="comparison['difference_' + band.toLowerCase()]"
-                :threshold="comparison.effective_threshold"
-                unit="kWh"
-              />
-            </div>
-
-            <!-- Gas/Water comparison (single value) -->
-            <div v-else class="grid grid-cols-2 gap-3">
-              <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Fornitore</p>
-                <p class="text-base font-semibold text-gray-900 dark:text-white">
-                  {{ comparison.provider_reading != null ? fmtNum(comparison.provider_reading) : '-' }}
-                  <span class="text-xs font-normal text-gray-500">{{ getUnit() }}</span>
-                </p>
-              </div>
-              <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Autolettura</p>
-                <p class="text-base font-semibold text-gray-900 dark:text-white">
-                  {{ comparison.user_reading != null ? fmtNum(comparison.user_reading) : '-' }}
-                  <span class="text-xs font-normal text-gray-500">{{ getUnit() }}</span>
-                </p>
-              </div>
-              <div v-if="comparison.difference != null" class="col-span-2 text-center">
-                <span :class="[
-                  'text-sm font-medium',
-                  comparison.status === 'alert' ? 'text-red-600' :
-                  comparison.status === 'warning' ? 'text-yellow-600' : 'text-green-600'
-                ]">
-                  Differenza: {{ fmtDiff(comparison.difference) }} {{ getUnit() }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Reading type indicator -->
-            <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-              <span :class="[
-                'px-2 py-0.5 rounded',
-                comparison.reading_type === 'actual' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-              ]">
-                {{ comparison.reading_type === 'actual' ? 'Lettura Effettiva' : 'Lettura Stimata' }}
-              </span>
-              <span v-if="comparison.provider_reading_date">
-                del {{ formatDate(comparison.provider_reading_date) }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ComparisonAccordion
+        :comparisons="comparisons"
+        :expandedCards="expandedCards"
+        :utilityType="utilityType"
+        :fmtNum="fmtNum"
+        :fmtDiff="fmtDiff"
+        :formatDate="formatDate"
+        :getUnit="getUnit"
+        @toggle-card="toggleCard"
+      />
     </div>
   </Card>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, h } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { utilitiesAPI } from '@/api/client'
 import { useSettingsStore } from '@/stores/settings'
 import { formatDate as _formatDate, formatPeriodCompact as _formatPeriodCompact, formatNumber as _fmtNum, formatDiff as _fmtDiff } from '@/utils/dateFormatter'
 import Card from '@/components/common/Card.vue'
+import ConsumptionSummary from './ConsumptionSummary.vue'
+import ConsumptionPeriodsTable from './ConsumptionPeriodsTable.vue'
+import ComparisonAccordion from './ComparisonAccordion.vue'
+
+defineOptions({ name: 'ReadingComparisonCard' })
 
 const settingsStore = useSettingsStore()
 
@@ -429,118 +185,10 @@ function getUnit() {
   }
 }
 
-function getStatusClasses(status) {
-  switch (status) {
-    case 'alert':
-      return 'border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/20'
-    case 'warning':
-      return 'border-yellow-300 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900/20'
-    case 'no_data':
-      return 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
-    default:
-      return 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20'
-  }
-}
-
-function getStatusBadgeClasses(status) {
-  switch (status) {
-    case 'alert':
-      return 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
-    case 'warning':
-      return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300'
-    case 'no_data':
-      return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-    default:
-      return 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-  }
-}
-
-function getStatusLabel(status) {
-  switch (status) {
-    case 'alert': return 'Anomalia'
-    case 'warning': return 'Attenzione'
-    case 'no_data': return 'No dati'
-    default: return 'OK'
-  }
-}
-
-function getStatusIcon(status) {
-  const icons = {
-    alert: {
-      render() {
-        return h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
-          h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' })
-        ])
-      }
-    },
-    warning: {
-      render() {
-        return h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
-          h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' })
-        ])
-      }
-    },
-    no_data: {
-      render() {
-        return h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
-          h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' })
-        ])
-      }
-    },
-    ok: {
-      render() {
-        return h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
-          h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' })
-        ])
-      }
-    }
-  }
-  return icons[status] || icons.ok
-}
-
 onMounted(() => {
   loadComparisons()
 })
 
 // Expose refresh method
 defineExpose({ loadComparisons })
-</script>
-
-<!-- Sub-component for electricity band comparison -->
-<script>
-const ReadingBandComparison = {
-  props: ['band', 'providerValue', 'userValue', 'difference', 'unit', 'threshold'],
-  setup(props) {
-    const formatNum = (v) => v != null ? v.toLocaleString(undefined, { maximumFractionDigits: 3 }) : '-'
-
-    const getBandColor = () => {
-      switch (props.band) {
-        case 'F1': return 'text-red-600 dark:text-red-400'
-        case 'F2': return 'text-yellow-600 dark:text-yellow-400'
-        case 'F3': return 'text-green-600 dark:text-green-400'
-        default: return 'text-gray-600'
-      }
-    }
-
-    const getDiffColor = () => {
-      if (props.difference == null) return 'text-gray-500'
-      const abs = Math.abs(props.difference)
-      const threshold = props.threshold || 2
-      if (abs > threshold * 2) return 'text-red-600'
-      if (abs > threshold) return 'text-yellow-600'
-      return 'text-green-600'
-    }
-
-    return () => h('div', { class: 'text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg' }, [
-      h('p', { class: ['text-xs font-medium mb-1', getBandColor()] }, props.band),
-      h('div', { class: 'text-xs text-gray-500 dark:text-gray-400' }, [
-        h('p', {}, ['Fornitore: ', h('span', { class: 'font-medium text-gray-700 dark:text-gray-300' }, formatNum(props.providerValue))]),
-        h('p', {}, ['Tu: ', h('span', { class: 'font-medium text-gray-700 dark:text-gray-300' }, formatNum(props.userValue))]),
-        props.difference != null && h('p', { class: getDiffColor() },
-          (props.difference > 0 ? '+' : '') + formatNum(props.difference) + ' ' + props.unit
-        )
-      ])
-    ])
-  }
-}
 </script>

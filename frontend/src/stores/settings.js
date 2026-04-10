@@ -15,6 +15,9 @@ export const useSettingsStore = defineStore('settings', () => {
   const billReminders = ref(true)
   const notificationRetentionDays = ref(90)
   const loaded = ref(false)
+  const onboardingCompleted = ref(false)
+  const hasProperty = ref(false)
+  const pendingJoinRequest = ref(null)
 
   // Household settings (shared across all members of the property)
   const splitMode = ref(false)
@@ -45,6 +48,9 @@ export const useSettingsStore = defineStore('settings', () => {
       emailNotifications.value = data.email_notifications ?? true
       billReminders.value = data.bill_reminders ?? true
       notificationRetentionDays.value = data.notification_retention_days ?? 90
+      onboardingCompleted.value = data.onboarding_completed ?? false
+      hasProperty.value = data.has_property ?? false
+      pendingJoinRequest.value = data.pending_join_request ?? null
 
       // Apply theme from server settings
       setTheme(theme.value)
@@ -143,6 +149,9 @@ export const useSettingsStore = defineStore('settings', () => {
     billReminders.value = true
     notificationRetentionDays.value = 90
     loaded.value = false
+    onboardingCompleted.value = false
+    hasProperty.value = false
+    pendingJoinRequest.value = null
     splitMode.value = false
     householdPropertyId.value = null
   }
@@ -159,6 +168,9 @@ export const useSettingsStore = defineStore('settings', () => {
     billReminders,
     notificationRetentionDays,
     loaded,
+    onboardingCompleted,
+    hasProperty,
+    pendingJoinRequest,
     splitMode,
     householdPropertyId,
     // Getters

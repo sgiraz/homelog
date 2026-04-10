@@ -187,19 +187,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		}
 		log.Printf("✅ Default categories seeded")
 	} else {
-		// Non-first user: join the existing property
-		// Find the first property in the system (created by admin)
-		var existingProperty models.Property
-		if err := tx.First(&existingProperty).Error; err != nil {
-			tx.Rollback()
-			log.Printf("ERROR finding existing property: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "No property found to join"})
-			return
-		}
-
-		log.Printf("New user joining property: ID=%d, Name=%s", existingProperty.ID, existingProperty.Name)
-
-		// Create user settings
+		// Non-first user: create only user settings.
+		// NO auto-join to any property — the onboarding wizard will guide the user
+		// to either create a new property or request to join an existing one.
 		userSettings := models.UserSettings{
 			UserID:                    user.ID,
 			Language:                  "it",
@@ -218,29 +208,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 			return
 		}
 
-		log.Printf("User settings created for user ID=%d", user.ID)
-
-		// Create HouseholdMember for the new user (linked to their User account)
-		newMember := models.HouseholdMember{
-			PropertyID: existingProperty.ID,
-			UserID:     &user.ID,
-			Name:       user.Name,
-			Role:       "member",
-			IsVirtual:  false,
-		}
-
-		if err := tx.Create(&newMember).Error; err != nil {
-			tx.Rollback()
-			log.Printf("ERROR creating household member: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create household member"})
-			return
-		}
-
-		log.Printf("Household member created: ID=%d, Name=%s, UserID=%d, PropertyID=%d",
-			newMember.ID, newMember.Name, user.ID, existingProperty.ID)
-
-		// Update property residents count
-		tx.Model(&existingProperty).Update("residents", gorm.Expr("residents + 1"))
+		log.Printf("✅ User settings created for user ID=%d (no property yet — onboarding pending)", user.ID)
 	}
 
 	// Commit transaction
