@@ -185,6 +185,19 @@
     <Card class="p-6">
       <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Notifiche</h2>
       <div class="space-y-4">
+        <div class="space-y-3 mb-2">
+          <p class="text-sm text-gray-600 dark:text-gray-400">Scegli quali notifiche ricevere.</p>
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-sm text-gray-700 dark:text-gray-300">Richieste di accesso</span>
+            <input type="checkbox" v-model="notifyJoinRequests" @change="updateNotificationPrefs"
+                   class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+          </label>
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-sm text-gray-700 dark:text-gray-300">Spese condivise</span>
+            <input type="checkbox" v-model="notifySharedExpenses" @change="updateNotificationPrefs"
+                   class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+          </label>
+        </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Conserva notifiche per (giorni)
@@ -396,6 +409,8 @@ const preferences = ref({
 })
 
 const notificationRetentionDays = ref(90)
+const notifyJoinRequests = ref(true)
+const notifySharedExpenses = ref(true)
 
 // Expense templates
 const templates = ref([])
@@ -508,6 +523,8 @@ async function loadUserSettings() {
       date_format: data.date_format || 'DD/MM/YYYY'
     }
     notificationRetentionDays.value = data.notification_retention_days ?? 90
+    notifyJoinRequests.value = data.notify_join_requests ?? true
+    notifySharedExpenses.value = data.notify_shared_expenses ?? true
     // Sync theme composable with server value
     setTheme(preferences.value.theme)
   } catch {
@@ -521,6 +538,19 @@ async function updateRetentionDays() {
     settingsStore.notificationRetentionDays = notificationRetentionDays.value
   } catch (err) {
     console.error('Error updating retention days:', err)
+  }
+}
+
+async function updateNotificationPrefs() {
+  try {
+    await apiClient.put('/settings', {
+      notify_join_requests: notifyJoinRequests.value,
+      notify_shared_expenses: notifySharedExpenses.value,
+    })
+    settingsStore.notifyJoinRequests = notifyJoinRequests.value
+    settingsStore.notifySharedExpenses = notifySharedExpenses.value
+  } catch (err) {
+    console.error('Error updating notification preferences:', err)
   }
 }
 

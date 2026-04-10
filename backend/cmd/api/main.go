@@ -175,6 +175,18 @@ func main() {
 			protected.GET("/communications/unread-count", utilHandler.GetUnreadCount)
 			protected.DELETE("/communications/read", utilHandler.DeleteReadCommunications)
 
+			// Generic notifications (join requests, shared expenses, etc.)
+			notifHandler := handlers.NewNotificationHandler(db)
+			notifGroup := protected.Group("/notifications")
+			{
+				notifGroup.GET("", notifHandler.List)
+				notifGroup.GET("/unread-count", notifHandler.GetUnreadCount)
+				notifGroup.PATCH("/:id/read", notifHandler.MarkRead)
+				notifGroup.POST("/read-all", notifHandler.MarkAllRead)
+				notifGroup.DELETE("/:id", notifHandler.Delete)
+				notifGroup.DELETE("/read", notifHandler.DeleteAllRead)
+			}
+
 			// Utilities
 			utilities := protected.Group("/utilities")
 			{

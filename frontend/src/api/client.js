@@ -191,6 +191,15 @@ export const communicationsAPI = {
   deleteAllRead: () => apiClient.delete('/communications/read'),
 }
 
+export const notificationsAPI = {
+  getAll: (params) => apiClient.get('/notifications', { params }),
+  getUnreadCount: () => apiClient.get('/notifications/unread-count'),
+  markRead: (id) => apiClient.patch(`/notifications/${id}/read`),
+  markAllRead: () => apiClient.post('/notifications/read-all'),
+  delete: (id) => apiClient.delete(`/notifications/${id}`),
+  deleteAllRead: () => apiClient.delete('/notifications/read'),
+}
+
 export const templatesAPI = {
   // Bill templates
   listBillTemplates: () => apiClient.get('/templates/bills'),

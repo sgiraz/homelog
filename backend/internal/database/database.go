@@ -91,6 +91,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.ContractTemplate{},
 		&models.ExpenseTemplate{},
 		&models.PropertyJoinRequest{},
+		&models.Notification{},
 	)
 
 	if err != nil {

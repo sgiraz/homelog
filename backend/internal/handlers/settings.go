@@ -53,6 +53,8 @@ type UserSettingsResponse struct {
 	EmailNotifications        bool                    `json:"email_notifications"`
 	BillReminders             bool                    `json:"bill_reminders"`
 	NotificationRetentionDays int                     `json:"notification_retention_days"`
+	NotifyJoinRequests        bool                    `json:"notify_join_requests"`
+	NotifySharedExpenses      bool                    `json:"notify_shared_expenses"`
 	OnboardingCompleted       bool                    `json:"onboarding_completed"`
 	HasProperty               bool                    `json:"has_property"`
 	IsPropertyAdmin           bool                    `json:"is_property_admin"`
@@ -76,6 +78,8 @@ type UpdateUserSettingsRequest struct {
 	EmailNotifications        *bool   `json:"email_notifications,omitempty"`
 	BillReminders             *bool   `json:"bill_reminders,omitempty"`
 	NotificationRetentionDays *int    `json:"notification_retention_days,omitempty"`
+	NotifyJoinRequests        *bool   `json:"notify_join_requests,omitempty"`
+	NotifySharedExpenses      *bool   `json:"notify_shared_expenses,omitempty"`
 	OnboardingCompleted       *bool   `json:"onboarding_completed,omitempty"`
 }
 
@@ -126,6 +130,8 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 				EmailNotifications:        true,
 				BillReminders:             true,
 				NotificationRetentionDays: 90,
+				NotifyJoinRequests:        true,
+				NotifySharedExpenses:      true,
 				OnboardingCompleted:       false,
 				HasProperty:               hasProperty,
 				IsPropertyAdmin:           isPropertyAdmin,
@@ -157,6 +163,8 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 		EmailNotifications:        settings.EmailNotifications,
 		BillReminders:             settings.BillDueAlertDays > 0,
 		NotificationRetentionDays: retentionDays,
+		NotifyJoinRequests:        settings.NotifyJoinRequests,
+		NotifySharedExpenses:      settings.NotifySharedExpenses,
 		OnboardingCompleted:       settings.OnboardingCompleted,
 		HasProperty:               hasProperty,
 		IsPropertyAdmin:           isPropertyAdmin,
@@ -231,6 +239,12 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 	if req.NotificationRetentionDays != nil {
 		settings.NotificationRetentionDays = *req.NotificationRetentionDays
 	}
+	if req.NotifyJoinRequests != nil {
+		settings.NotifyJoinRequests = *req.NotifyJoinRequests
+	}
+	if req.NotifySharedExpenses != nil {
+		settings.NotifySharedExpenses = *req.NotifySharedExpenses
+	}
 	if req.OnboardingCompleted != nil {
 		settings.OnboardingCompleted = *req.OnboardingCompleted
 	}
@@ -268,6 +282,8 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 		EmailNotifications:        settings.EmailNotifications,
 		BillReminders:             settings.BillDueAlertDays > 0,
 		NotificationRetentionDays: updateRetentionDays,
+		NotifyJoinRequests:        settings.NotifyJoinRequests,
+		NotifySharedExpenses:      settings.NotifySharedExpenses,
 		OnboardingCompleted:       settings.OnboardingCompleted,
 	})
 }

@@ -102,19 +102,19 @@
                 <template v-else>
                   <button
                     v-for="notif in notifications"
-                    :key="notif.id"
+                    :key="`${notif._source}-${notif.id}`"
                     @click="openNotification(notif)"
                     class="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-50 dark:border-gray-700/50 last:border-0"
                     :class="{ 'bg-blue-50/50 dark:bg-blue-900/10': !notif.is_read }"
                   >
                     <div class="flex items-start gap-3">
-                      <div :class="['p-1.5 rounded-lg flex-shrink-0 mt-0.5', getUtilityBgClass(notif.utility?.type)]">
-                        <span class="text-sm">{{ getUtilityIcon(notif.utility?.type) }}</span>
+                      <div :class="['p-1.5 rounded-lg flex-shrink-0 mt-0.5', getNotifBgClass(notif)]">
+                        <span class="text-sm">{{ getNotifIcon(notif) }}</span>
                       </div>
                       <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                           <span class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {{ notif.utility?.provider || 'Servizio' }}
+                            {{ getNotifLabel(notif) }}
                           </span>
                           <span
                             v-if="!notif.is_read"
@@ -300,7 +300,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useDarkMode } from '@/composables/useDarkMode'
-import { communicationsAPI, utilitiesAPI } from '@/api/client'
+import { communicationsAPI, notificationsAPI, utilitiesAPI } from '@/api/client'
 
 const router = useRouter()
 const route = useRoute()
@@ -365,6 +365,29 @@ function getUtilityBgClass(type) {
   return classes[type] || 'bg-gray-100 dark:bg-gray-700'
 }
 
+function getNotifIcon(notif) {
+  if (notif._source === 'notification') {
+    if (notif.type === 'join_request') return '\uD83D\uDC64'
+    if (notif.type === 'expense_shared') return '\uD83D\uDCB3'
+    return '\uD83D\uDD14'
+  }
+  return getUtilityIcon(notif.utility?.type)
+}
+
+function getNotifBgClass(notif) {
+  if (notif._source === 'notification') {
+    if (notif.type === 'join_request') return 'bg-violet-100 dark:bg-violet-900/30'
+    if (notif.type === 'expense_shared') return 'bg-emerald-100 dark:bg-emerald-900/30'
+    return 'bg-gray-100 dark:bg-gray-700'
+  }
+  return getUtilityBgClass(notif.utility?.type)
+}
+
+function getNotifLabel(notif) {
+  if (notif._source === 'notification') return notif.title || 'Notifica'
+  return notif.utility?.provider || 'Servizio'
+}
+
 function formatTimeAgo(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
@@ -379,8 +402,11 @@ function formatTimeAgo(dateStr) {
 
 async function fetchUnreadCount() {
   try {
-    const { data } = await communicationsAPI.getUnreadCount()
-    unreadCount.value = data.count || 0
+    const [commRes, notifRes] = await Promise.all([
+      communicationsAPI.getUnreadCount(),
+      notificationsAPI.getUnreadCount(),
+    ])
+    unreadCount.value = (commRes.data.count || 0) + (notifRes.data.count || 0)
   } catch {
     // Silent fail
   }
@@ -389,8 +415,15 @@ async function fetchUnreadCount() {
 async function fetchNotifications() {
   loadingNotifications.value = true
   try {
-    const { data } = await communicationsAPI.getAll({ limit: 20 })
-    notifications.value = data || []
+    const [commRes, notifRes] = await Promise.all([
+      communicationsAPI.getAll({ limit: 10 }),
+      notificationsAPI.getAll({ limit: 10 }),
+    ])
+    const comms = (commRes.data || []).map(c => ({ ...c, _source: 'communication' }))
+    const notifs = (notifRes.data || []).map(n => ({ ...n, _source: 'notification' }))
+    notifications.value = [...comms, ...notifs]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 20)
   } catch {
     notifications.value = []
   } finally {
@@ -418,29 +451,41 @@ function closeDropdowns() {
 
 function openNotification(notif) {
   // Mark as read
-  if (!notif.is_read && notif.utility) {
-    utilitiesAPI.markCommunicationRead(notif.utility.id, notif.id)
+  if (!notif.is_read) {
+    if (notif._source === 'notification') {
+      notificationsAPI.markRead(notif.id)
+    } else if (notif.utility) {
+      utilitiesAPI.markCommunicationRead(notif.utility.id, notif.id)
+    }
     notif.is_read = true
     unreadCount.value = Math.max(0, unreadCount.value - 1)
   }
-  // Navigate to utility detail
-  if (notif.utility_id) {
+  // Navigate based on type
+  if (notif._source === 'notification') {
+    if (notif.type === 'join_request') {
+      router.push('/settings?tab=family')
+    } else if (notif.type === 'expense_shared') {
+      router.push('/expenses')
+    }
+  } else if (notif.utility_id) {
     router.push(`/utilities/${notif.utility_id}`)
   }
   closeDropdowns()
 }
 
 async function markAllRead() {
+  const promises = []
   for (const notif of notifications.value) {
-    if (!notif.is_read && notif.utility) {
-      try {
-        await utilitiesAPI.markCommunicationRead(notif.utility.id, notif.id)
-        notif.is_read = true
-      } catch {
-        // Continue with others
+    if (!notif.is_read) {
+      if (notif._source === 'notification') {
+        promises.push(notificationsAPI.markRead(notif.id))
+      } else if (notif.utility) {
+        promises.push(utilitiesAPI.markCommunicationRead(notif.utility.id, notif.id))
       }
+      notif.is_read = true
     }
   }
+  await Promise.allSettled(promises)
   unreadCount.value = 0
 }
 

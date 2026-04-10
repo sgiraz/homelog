@@ -86,7 +86,7 @@
       <TransitionGroup name="list">
         <div
           v-for="notif in filteredNotifications"
-          :key="notif.id"
+          :key="`${notif._source}-${notif.id}`"
           class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700
                  hover:shadow-md transition-all cursor-pointer"
           :class="{ 'border-l-4 border-l-blue-500': !notif.is_read }"
@@ -94,15 +94,15 @@
         >
           <div class="flex items-start gap-3 p-4">
             <!-- Icon -->
-            <div :class="['p-2 rounded-lg flex-shrink-0', getUtilityBgClass(notif.utility?.type)]">
-              <span class="text-base">{{ getUtilityIcon(notif.utility?.type) }}</span>
+            <div :class="['p-2 rounded-lg flex-shrink-0', getNotifBgClass(notif)]">
+              <span class="text-base">{{ getNotifIcon(notif) }}</span>
             </div>
 
             <!-- Content -->
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-0.5">
                 <span class="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                  {{ notif.title || notif.utility?.provider || 'Comunicazione' }}
+                  {{ notif.title || notif.utility?.provider || 'Notifica' }}
                 </span>
                 <span
                   v-if="notif.is_important"
@@ -119,8 +119,11 @@
                 {{ notif.content }}
               </p>
               <div class="flex items-center gap-3 mt-2">
-                <span class="text-xs text-gray-400">
-                  {{ notif.utility?.provider }}
+                <span v-if="notif.utility?.provider" class="text-xs text-gray-400">
+                  {{ notif.utility.provider }}
+                </span>
+                <span v-else-if="notif.property?.name" class="text-xs text-gray-400">
+                  {{ notif.property.name }}
                 </span>
                 <span class="text-xs text-gray-400">
                   {{ formatTimeAgo(notif.created_at) }}
@@ -159,7 +162,7 @@ defineOptions({ name: 'NotificationsView' })
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores/settings'
-import { communicationsAPI, utilitiesAPI } from '@/api/client'
+import { communicationsAPI, notificationsAPI, utilitiesAPI } from '@/api/client'
 import { useConfirm } from '@/composables/useConfirm'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 
@@ -175,7 +178,9 @@ const typeLabels = {
   price_change: 'Variazione prezzo',
   contract_modification: 'Modifica contratto',
   info: 'Informazione',
-  privacy: 'Privacy'
+  privacy: 'Privacy',
+  join_request: 'Richiesta accesso',
+  expense_shared: 'Spesa condivisa'
 }
 
 const filteredNotifications = computed(() => {
@@ -213,6 +218,24 @@ function getUtilityBgClass(type) {
   return classes[type] || 'bg-gray-100 dark:bg-gray-700'
 }
 
+function getNotifIcon(notif) {
+  if (notif._source === 'notification') {
+    if (notif.type === 'join_request') return '\uD83D\uDC64'
+    if (notif.type === 'expense_shared') return '\uD83D\uDCB3'
+    return '\uD83D\uDD14'
+  }
+  return getUtilityIcon(notif.utility?.type)
+}
+
+function getNotifBgClass(notif) {
+  if (notif._source === 'notification') {
+    if (notif.type === 'join_request') return 'bg-violet-100 dark:bg-violet-900/30'
+    if (notif.type === 'expense_shared') return 'bg-emerald-100 dark:bg-emerald-900/30'
+    return 'bg-gray-100 dark:bg-gray-700'
+  }
+  return getUtilityBgClass(notif.utility?.type)
+}
+
 function formatTimeAgo(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
@@ -228,8 +251,14 @@ function formatTimeAgo(dateStr) {
 async function fetchNotifications() {
   loading.value = true
   try {
-    const { data } = await communicationsAPI.getAll({ limit: 100 })
-    notifications.value = data || []
+    const [commRes, notifRes] = await Promise.all([
+      communicationsAPI.getAll({ limit: 100 }),
+      notificationsAPI.getAll({ limit: 100 }),
+    ])
+    const comms = (commRes.data || []).map(c => ({ ...c, _source: 'communication' }))
+    const notifs = (notifRes.data || []).map(n => ({ ...n, _source: 'notification' }))
+    notifications.value = [...comms, ...notifs]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   } catch {
     notifications.value = []
   } finally {
@@ -238,26 +267,36 @@ async function fetchNotifications() {
 }
 
 function openNotification(notif) {
-  if (!notif.is_read && notif.utility_id) {
-    utilitiesAPI.markCommunicationRead(notif.utility_id, notif.id)
+  if (!notif.is_read) {
+    if (notif._source === 'notification') {
+      notificationsAPI.markRead(notif.id)
+    } else if (notif.utility_id) {
+      utilitiesAPI.markCommunicationRead(notif.utility_id, notif.id)
+    }
     notif.is_read = true
   }
-  if (notif.utility_id) {
+  if (notif._source === 'notification') {
+    if (notif.type === 'join_request') router.push('/settings?tab=family')
+    else if (notif.type === 'expense_shared') router.push('/expenses')
+  } else if (notif.utility_id) {
     router.push(`/utilities/${notif.utility_id}`)
   }
 }
 
 async function markAllRead() {
+  const promises = []
+  // Mark all generic notifications as read in one call
+  if (notifications.value.some(n => !n.is_read && n._source === 'notification')) {
+    promises.push(notificationsAPI.markAllRead())
+  }
+  // Mark communications individually (no bulk endpoint)
   for (const notif of notifications.value) {
-    if (!notif.is_read && notif.utility_id) {
-      try {
-        await utilitiesAPI.markCommunicationRead(notif.utility_id, notif.id)
-        notif.is_read = true
-      } catch {
-        // Continue
-      }
+    if (!notif.is_read && notif._source === 'communication' && notif.utility_id) {
+      promises.push(utilitiesAPI.markCommunicationRead(notif.utility_id, notif.id))
     }
   }
+  await Promise.allSettled(promises)
+  notifications.value.forEach(n => { n.is_read = true })
 }
 
 async function handleDelete(notif) {
@@ -267,10 +306,14 @@ async function handleDelete(notif) {
     confirmText: 'Elimina',
     variant: 'danger'
   })
-  if (!ok || !notif.utility_id) return
+  if (!ok) return
   try {
-    await utilitiesAPI.deleteCommunication(notif.utility_id, notif.id)
-    notifications.value = notifications.value.filter(n => n.id !== notif.id)
+    if (notif._source === 'notification') {
+      await notificationsAPI.delete(notif.id)
+    } else if (notif.utility_id) {
+      await utilitiesAPI.deleteCommunication(notif.utility_id, notif.id)
+    }
+    notifications.value = notifications.value.filter(n => !(n.id === notif.id && n._source === notif._source))
   } catch (err) {
     console.error('Error deleting notification:', err)
   }
@@ -286,7 +329,10 @@ async function handleDeleteAllRead() {
   })
   if (!ok) return
   try {
-    await communicationsAPI.deleteAllRead()
+    await Promise.allSettled([
+      communicationsAPI.deleteAllRead(),
+      notificationsAPI.deleteAllRead(),
+    ])
     notifications.value = notifications.value.filter(n => !n.is_read)
   } catch (err) {
     console.error('Error deleting read notifications:', err)

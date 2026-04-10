@@ -407,6 +407,26 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 
 	log.Printf("✅ EXPENSE TRANSACTION COMMITTED")
 
+	// Notify members involved in the split (except the creator)
+	if req.IsSplit && len(req.SplitWithMemberIDs) > 0 {
+		var payer models.HouseholdMember
+		h.db.First(&payer, paidByMemberID)
+		splitAmount := req.Amount / float64(len(req.SplitWithMemberIDs)+1)
+
+		for _, memberID := range req.SplitWithMemberIDs {
+			var member models.HouseholdMember
+			h.db.First(&member, memberID)
+			if member.UserID == nil || *member.UserID == userID {
+				continue
+			}
+			relID := expense.ID
+			createNotification(h.db, *member.UserID, "expense_shared",
+				fmt.Sprintf("Nuova spesa condivisa: %s", req.Description),
+				fmt.Sprintf("%s ha inserito una spesa. La tua quota: %.2f.", payer.Name, splitAmount),
+				&relID, expense.PropertyID)
+		}
+	}
+
 	// Reload with relations
 	h.db.Preload("Category").
 		Preload("Property").

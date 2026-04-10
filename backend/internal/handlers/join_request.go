@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -100,6 +101,24 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 	h.db.Preload("User").Preload("Property").First(&joinReq, joinReq.ID)
 
 	log.Printf("✅ Join request created: ID=%d, UserID=%d, PropertyID=%d", joinReq.ID, userID, req.PropertyID)
+
+	// Notify property admins
+	var adminUserIDs []uint
+	h.db.Model(&models.HouseholdMember{}).
+		Where("property_id = ? AND role = 'admin' AND user_id IS NOT NULL", req.PropertyID).
+		Pluck("user_id", &adminUserIDs)
+
+	for _, adminUID := range adminUserIDs {
+		if adminUID == userID {
+			continue
+		}
+		relID := joinReq.ID
+		propID := req.PropertyID
+		createNotification(h.db, adminUID, "join_request",
+			fmt.Sprintf("%s vuole unirsi a %s", joinReq.User.Name, property.Name),
+			fmt.Sprintf("%s ha richiesto di unirsi alla proprietà %s.", joinReq.User.Name, property.Name),
+			&relID, &propID)
+	}
 
 	c.JSON(http.StatusCreated, joinReq)
 }
