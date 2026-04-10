@@ -22,6 +22,7 @@ type CreateExpenseTemplateRequest struct {
 	Name          string  `json:"name" binding:"required"`
 	Icon          string  `json:"icon"`
 	Amount        float64 `json:"amount"`
+	Currency      string  `json:"currency"`
 	Description   string  `json:"description"`
 	CategoryID    uint    `json:"category_id" binding:"required"`
 	SubcategoryID *uint   `json:"subcategory_id"`
@@ -62,6 +63,7 @@ func (h *ExpenseTemplateHandler) Create(c *gin.Context) {
 		Name:          req.Name,
 		Icon:          req.Icon,
 		Amount:        req.Amount,
+		Currency:      req.Currency,
 		Description:   req.Description,
 		CategoryID:    req.CategoryID,
 		SubcategoryID: req.SubcategoryID,
@@ -101,6 +103,7 @@ func (h *ExpenseTemplateHandler) Update(c *gin.Context) {
 	template.Name = req.Name
 	template.Icon = req.Icon
 	template.Amount = req.Amount
+	template.Currency = req.Currency
 	template.Description = req.Description
 	template.CategoryID = req.CategoryID
 	template.SubcategoryID = req.SubcategoryID

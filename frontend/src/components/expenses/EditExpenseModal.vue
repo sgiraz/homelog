@@ -11,17 +11,25 @@
         </p>
       </div>
 
-      <Input
-        v-model="form.amount"
-        label="Importo *"
-        type="number"
-        step="0.01"
-        min="0.01"
-        placeholder="0.00"
-        inputmode="decimal"
-        :required="!isSettled"
-        :disabled="isSettled"
-      />
+      <div>
+        <Input
+          v-model="form.amount"
+          label="Importo *"
+          type="number"
+          step="0.01"
+          min="0.01"
+          placeholder="0.00"
+          inputmode="decimal"
+          :required="!isSettled"
+          :disabled="isSettled"
+        />
+        <p v-if="expense.original_currency" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Importo originale: {{ formatOriginal(expense.original_amount, expense.original_currency) }}
+          <span v-if="expense.original_amount && expense.amount">
+            (tasso: {{ (expense.amount / expense.original_amount).toFixed(6) }})
+          </span>
+        </p>
+      </div>
 
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -143,6 +151,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
+import { useSettingsStore } from '@/stores/settings'
+import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import { categoriesAPI, projectsAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
@@ -157,6 +167,11 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'updated'])
 const expensesStore = useExpensesStore()
+const settingsStore = useSettingsStore()
+
+function formatOriginal(value, currency) {
+  return _formatCurrency(value, { ...settingsStore.formatSettings, currency })
+}
 
 const loading = ref(false)
 const error = ref(null)

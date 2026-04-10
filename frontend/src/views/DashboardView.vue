@@ -14,386 +14,79 @@
       </Button>
     </div>
 
+    <!-- Pending Join Request / No Property Banner -->
+    <Card v-if="!settingsStore.hasProperty" className="p-6">
+      <div v-if="settingsStore.pendingJoinRequest" class="text-center space-y-3">
+        <div class="text-4xl">⏳</div>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Richiesta in attesa</h2>
+        <p class="text-gray-600 dark:text-gray-400">
+          La tua richiesta di accesso a <strong>{{ settingsStore.pendingJoinRequest.property_name }}</strong>
+          è in attesa di approvazione da parte di un amministratore.
+        </p>
+      </div>
+      <div v-else class="text-center space-y-3">
+        <div class="text-4xl">🏠</div>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Nessuna proprietà</h2>
+        <p class="text-gray-600 dark:text-gray-400">Crea una proprietà o unisciti a una esistente per iniziare.</p>
+        <Button @click="$router.push('/onboarding')">Configura</Button>
+      </div>
+    </Card>
+
+    <!-- Main content (only when user has a property) -->
+    <template v-if="settingsStore.hasProperty">
+
     <!-- KPI Cards -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-      <Card class="p-3 sm:p-6">
-        <div class="flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Spese Mese</div>
-            <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
-              {{ formatCurrency(totalMonth) }}
-            </div>
-          </div>
-          <div class="w-9 h-9 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center shrink-0">
-            <svg class="w-4 h-4 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        </div>
-      </Card>
-
-      <Card class="p-3 sm:p-6">
-        <div class="flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Nel Periodo</div>
-            <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
-              {{ stats?.count ?? expensesStore.total }}
-            </div>
-          </div>
-          <div class="w-9 h-9 sm:w-12 sm:h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center shrink-0">
-            <svg class="w-4 h-4 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </div>
-        </div>
-      </Card>
-
-      <Card class="p-3 sm:p-6">
-        <div class="flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Media Giorn.</div>
-            <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
-              {{ formatCurrency(dailyAverage) }}
-            </div>
-          </div>
-          <div class="w-9 h-9 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center shrink-0">
-            <svg class="w-4 h-4 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
-          </div>
-        </div>
-      </Card>
-
-      <Card class="p-3 sm:p-6">
-        <div class="flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Spese Anno</div>
-            <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
-              {{ formatCurrency(totalYear) }}
-            </div>
-          </div>
-          <div class="w-9 h-9 sm:w-12 sm:h-12 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center shrink-0">
-            <svg class="w-4 h-4 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        </div>
-      </Card>
-    </div>
+    <KpiCards
+      :monthTotal="totalMonth"
+      :periodCount="stats?.count ?? expensesStore.total"
+      :dailyAverage="dailyAverage"
+      :yearTotal="totalYear"
+      :formatCurrency="formatCurrency"
+    />
 
     <!-- Grafici -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card class="p-6">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ categoryChartTitle }}</h3>
-        <PieChart
-          v-if="hasCategoryData"
-          :chartData="categoryChartData"
-          :currency="settingsStore.currency"
-          :isSubcategory="!!stats?.is_subcategory"
-          @slice-click="onPieSliceClick"
-        />
-        <div v-else class="h-64 flex items-center justify-center text-gray-500">
-          Nessun dato disponibile
-        </div>
-      </Card>
-
-      <Card class="p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ trendChartTitle }}</h3>
-          <div class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
-            <button
-              @click="trendChartType = 'line'"
-              :class="[
-                'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
-                trendChartType === 'line'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              ]"
-              title="Grafico a linee"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </button>
-            <button
-              @click="trendChartType = 'bar'"
-              :class="[
-                'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
-                trendChartType === 'bar'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              ]"
-              title="Grafico a barre"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <template v-if="hasTrendData">
-          <LineChart v-if="trendChartType === 'line'" :chartData="trendLineChartData" :currency="settingsStore.currency" />
-          <BarChart v-else :chartData="trendBarChartData" :currency="settingsStore.currency" />
-        </template>
-        <div v-else class="h-64 flex items-center justify-center text-gray-500">
-          Nessun dato disponibile
-        </div>
-      </Card>
-    </div>
+    <DashboardCharts
+      :categoryChartTitle="categoryChartTitle"
+      :hasCategoryData="hasCategoryData"
+      :categoryChartData="categoryChartData"
+      :currency="settingsStore.currency"
+      :isSubcategory="!!stats?.is_subcategory"
+      :trendChartTitle="trendChartTitle"
+      :hasTrendData="hasTrendData"
+      :trendBarChartData="trendBarChartData"
+      :trendLineChartData="trendLineChartData"
+      :trendChartType="trendChartType"
+      @update:trendChartType="trendChartType = $event"
+      @slice-click="onPieSliceClick"
+    />
 
     <!-- Filtri -->
-    <Card class="p-4">
-      <!-- Mobile: filtri collassabili -->
-      <div class="sm:hidden">
-        <div class="flex items-center justify-between">
-          <button
-            @click="filtersOpen = !filtersOpen"
-            class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
-            </svg>
-            Filtri
-            <span
-              v-if="activeFiltersCount > 0"
-              class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full"
-            >
-              {{ activeFiltersCount }}
-            </span>
-          </button>
-          <Button v-if="hasActiveFilters" @click="resetFilters" variant="secondary" size="sm">
-            Reset
-          </Button>
-        </div>
-        <Transition name="filter-expand">
-          <div v-if="filtersOpen" class="mt-3 space-y-3 border-t border-gray-100 dark:border-gray-700 pt-3">
-            <div class="grid grid-cols-2 gap-2">
-              <select
-                v-model="filters.categoryId"
-                @change="applyFilters"
-                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
-                       focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Tutte categorie</option>
-                <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ cat.name }}</option>
-              </select>
-              <select
-                v-model="filters.projectId"
-                @change="applyFilters"
-                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
-                       focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Tutti progetti</option>
-                <option v-for="proj in projects" :key="proj.id" :value="proj.id">{{ proj.icon }} {{ proj.name }}</option>
-              </select>
-              <input
-                v-model="filters.from"
-                @change="applyFilters"
-                type="date"
-                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
-                       focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                v-model="filters.to"
-                @change="applyFilters"
-                type="date"
-                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
-                       focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-        </Transition>
-      </div>
-
-      <!-- Desktop: filtri sempre visibili -->
-      <div class="hidden sm:flex flex-wrap items-center gap-4">
-        <div class="flex items-center gap-2">
-          <label class="text-sm text-gray-600 dark:text-gray-400">Categoria:</label>
-          <select
-            v-model="filters.categoryId"
-            @change="applyFilters"
-            class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
-                   focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Tutte</option>
-            <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-              {{ cat.icon }} {{ cat.name }}
-            </option>
-          </select>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <label class="text-sm text-gray-600 dark:text-gray-400">Progetto:</label>
-          <select
-            v-model="filters.projectId"
-            @change="applyFilters"
-            class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
-                   focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Tutti</option>
-            <option v-for="proj in projects" :key="proj.id" :value="proj.id">
-              {{ proj.icon }} {{ proj.name }}
-            </option>
-          </select>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <label class="text-sm text-gray-600 dark:text-gray-400">Da:</label>
-          <input
-            v-model="filters.from"
-            @change="applyFilters"
-            type="date"
-            class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
-          />
-        </div>
-
-        <div class="flex items-center gap-2">
-          <label class="text-sm text-gray-600 dark:text-gray-400">A:</label>
-          <input
-            v-model="filters.to"
-            @change="applyFilters"
-            type="date"
-            class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
-          />
-        </div>
-
-        <Button @click="resetFilters" variant="secondary" class="text-sm">
-          Reset Filtri
-        </Button>
-      </div>
-    </Card>
+    <DashboardFilters
+      :filters="filters"
+      :categories="categories"
+      :projects="projects"
+      :filtersOpen="filtersOpen"
+      :hasActiveFilters="hasActiveFilters"
+      :activeFiltersCount="activeFiltersCount"
+      @update:filters="filters = $event"
+      @update:filtersOpen="filtersOpen = $event"
+      @apply="applyFilters"
+      @reset="resetFilters"
+    />
 
     <!-- Lista Spese Recenti -->
-    <Card class="p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Spese Recenti</h2>
-        <router-link
-          v-if="expensesStore.expenses.length > 3"
-          to="/expenses"
-          class="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm"
-        >
-          Vedi tutte
-        </router-link>
-      </div>
+    <RecentExpensesList
+      :expenses="expensesStore.expenses"
+      :loading="expensesStore.loading"
+      :formatCurrency="formatCurrency"
+      :formatDate="formatDate"
+      :currentUserId="authStore.user?.id"
+      @add="showAddExpense = true"
+      @edit="editExpense"
+      @delete="deleteExpenseConfirm"
+    />
 
-      <div v-if="expensesStore.loading" class="text-center py-8 text-gray-600 dark:text-gray-400">
-        <svg class="animate-spin h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-        </svg>
-        Caricamento...
-      </div>
-
-      <div v-else-if="expensesStore.expenses.length === 0" class="text-center py-8">
-        <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-        </svg>
-        <p class="text-gray-600 dark:text-gray-400">Nessuna spesa registrata</p>
-        <Button @click="showAddExpense = true" class="mt-4">
-          Aggiungi la tua prima spesa
-        </Button>
-      </div>
-
-      <div v-else class="space-y-3">
-        <div
-          v-for="expense in expensesStore.expenses.slice(0, 3)"
-          :key="expense.id"
-          class="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg
-                 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
-        >
-          <div class="flex items-start justify-between gap-2">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-medium text-gray-900 dark:text-white line-clamp-2">
-                  {{ expense.description || 'Senza descrizione' }}
-                </span>
-                <!-- Badge Split -->
-                <span
-                  v-if="expense.is_split"
-                  class="px-2 py-0.5 text-xs rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300"
-                >
-                  Split
-                </span>
-                <!-- Badge Saldato/Da saldare -->
-                <span
-                  v-if="expense.is_split"
-                  :class="[
-                    'px-2 py-0.5 text-xs rounded-full',
-                    isExpenseSettled(expense)
-                      ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
-                      : 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700'
-                  ]"
-                >
-                  {{ isExpenseSettled(expense) ? 'Saldato' : 'Da saldare' }}
-                </span>
-              </div>
-              <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex flex-wrap items-center gap-2">
-                <span>{{ formatDate(expense.date) }}</span>
-                <span
-                  v-if="expense.category"
-                  class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs"
-                >
-                  {{ expense.category.name }}
-                </span>
-                <span v-if="expense.is_split && expense.paid_by" class="text-xs flex items-center gap-1 max-w-full overflow-hidden">
-                  <span class="hidden sm:inline">Pagato da</span>
-                  <span class="truncate">{{ expense.paid_by.name }}</span>
-                  <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                  <span class="truncate">{{ getSplitPartners(expense) }}</span>
-                </span>
-              </div>
-            </div>
-            <div class="text-right shrink-0">
-              <div class="text-xl font-bold text-blue-600 dark:text-blue-400">
-                {{ formatCurrency(expense.amount) }}
-              </div>
-              <!-- Mostra quota se split -->
-              <div v-if="expense.is_split && expense.splits?.length" class="text-xs text-gray-500 dark:text-gray-400">
-                ({{ formatCurrency(expense.splits[0]?.amount || 0) }} a testa)
-              </div>
-              <!-- Bill-linked indicator -->
-              <div v-if="expense.bill_id" class="text-xs text-orange-600 dark:text-orange-400 mt-1 text-right">
-                Da bolletta
-              </div>
-              <!-- Actions: only visible to the creator, not for bill-linked or fully-settled expenses -->
-              <div
-                v-if="isOwner(expense) && !expense.bill_id && !(expense.is_split && isExpenseSettled(expense))"
-                class="flex gap-1 justify-end mt-1 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
-              >
-                <button
-                  @click="editExpense(expense)"
-                  class="p-1.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-                  aria-label="Modifica spesa"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-                <button
-                  @click="deleteExpenseConfirm(expense.id)"
-                  class="p-1.5 text-red-600 hover:text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                  aria-label="Elimina spesa"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Card>
+    </template>
 
     <!-- Modal Aggiungi Spesa -->
     <AddExpenseModal
@@ -422,13 +115,14 @@ import { useSettingsStore } from '@/stores/settings'
 import { categoriesAPI, projectsAPI, expensesAPI } from '@/api/client'
 import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import { useConfirm } from '@/composables/useConfirm'
-import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
-import BarChart from '@/components/charts/BarChart.vue'
-import LineChart from '@/components/charts/LineChart.vue'
-import PieChart from '@/components/charts/PieChart.vue'
+import Card from '@/components/common/Card.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditExpenseModal from '@/components/expenses/EditExpenseModal.vue'
+import KpiCards from '@/components/dashboard/KpiCards.vue'
+import DashboardCharts from '@/components/dashboard/DashboardCharts.vue'
+import DashboardFilters from '@/components/dashboard/DashboardFilters.vue'
+import RecentExpensesList from '@/components/dashboard/RecentExpensesList.vue'
 
 const expensesStore = useExpensesStore()
 const authStore = useAuthStore()
@@ -625,23 +319,6 @@ async function resetFilters() {
     filters.value.to = stats.value.period.end
   }
   expensesStore.fetchExpenses(buildStatsParams())
-}
-
-function isOwner(expense) {
-  return expense.user_id === authStore.user?.id
-}
-
-function isExpenseSettled(expense) {
-  if (!expense.is_split || !expense.splits || expense.splits.length === 0) return true
-  return expense.splits.every(s => s.is_settled)
-}
-
-function getSplitPartners(expense) {
-  if (!expense.is_split || !expense.splits) return ''
-  const partners = expense.splits
-    .filter(s => s.member_id !== expense.paid_by_member_id && s.member)
-    .map(s => s.member.name)
-  return partners.join(', ')
 }
 
 function editExpense(expense) {

@@ -60,9 +60,35 @@
         <!-- Export -->
         <div>
           <h3 class="font-medium text-gray-900 dark:text-white mb-1">Esporta Dati</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Scarica i tuoi dati in formato JSON per backup o migrazione.
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            Scarica i tuoi dati per backup o migrazione.
           </p>
+
+          <!-- Format toggle -->
+          <div class="flex items-center gap-1 mb-4 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
+            <button
+              @click="exportFormat = 'json'"
+              :class="[
+                'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
+                exportFormat === 'json'
+                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              ]"
+            >
+              JSON
+            </button>
+            <button
+              @click="exportFormat = 'csv'"
+              :class="[
+                'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
+                exportFormat === 'csv'
+                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              ]"
+            >
+              CSV
+            </button>
+          </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Button @click="doExport('all')" :disabled="exportLoading" class="w-full">
@@ -72,7 +98,7 @@
               {{ exportLoading === 'expenses' ? 'Esportazione...' : 'Esporta Spese' }}
             </Button>
             <Button @click="doExport('utilities')" :disabled="exportLoading" variant="secondary" class="w-full">
-              {{ exportLoading === 'utilities' ? 'Esportazione...' : 'Esporta Utenze' }}
+              {{ exportLoading === 'utilities' ? 'Esportazione...' : 'Esporta Servizi' }}
             </Button>
             <Button @click="doExport('projects')" :disabled="exportLoading" variant="secondary" class="w-full">
               {{ exportLoading === 'projects' ? 'Esportazione...' : 'Esporta Progetti' }}
@@ -153,6 +179,7 @@ async function checkForUpdates() {
 }
 
 const exportLoading = ref(null)
+const exportFormat = ref('json')
 const importLoading = ref(false)
 const isDragging = ref(false)
 const selectedFile = ref(null)
@@ -161,21 +188,23 @@ const fileInput = ref(null)
 async function doExport(type) {
   exportLoading.value = type
   try {
+    const isCSV = exportFormat.value === 'csv'
     const apiMap = {
-      all: exportAPI.exportAll,
-      expenses: exportAPI.exportExpenses,
-      utilities: exportAPI.exportUtilities,
-      projects: exportAPI.exportProjects,
+      all: isCSV ? exportAPI.exportAllCSV : exportAPI.exportAll,
+      expenses: isCSV ? exportAPI.exportExpensesCSV : exportAPI.exportExpenses,
+      utilities: isCSV ? exportAPI.exportUtilitiesCSV : exportAPI.exportUtilities,
+      projects: isCSV ? exportAPI.exportProjectsCSV : exportAPI.exportProjects,
     }
     const nameMap = {
-      all: 'backup_completo',
+      all: isCSV ? 'spese' : 'backup_completo',
       expenses: 'spese',
       utilities: 'utenze',
       projects: 'progetti',
     }
+    const ext = isCSV ? 'csv' : 'json'
     const res = await apiMap[type]()
     const timestamp = new Date().toISOString().slice(0, 10)
-    triggerDownload(res.data, `homelog_${nameMap[type]}_${timestamp}.json`)
+    triggerDownload(res.data, `homelog_${nameMap[type]}_${timestamp}.${ext}`)
     window.$toast?.success('File scaricato con successo!')
   } catch (err) {
     window.$toast?.error('Errore esportazione: ' + (err.response?.data?.error || err.message))

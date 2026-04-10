@@ -100,10 +100,12 @@ type Expense struct {
 	ProjectID     *uint `gorm:"index" json:"project_id,omitempty"`
 	BillID        *uint `gorm:"index" json:"bill_id,omitempty"` // auto-created from bill payment
 
-	Amount        float64   `gorm:"not null" json:"amount"`
-	Date          time.Time `gorm:"not null;index" json:"date"`
-	Description   string    `json:"description"`
-	AttachmentURL string    `json:"attachment_url,omitempty"`
+	Amount           float64   `gorm:"not null" json:"amount"`
+	OriginalAmount   *float64  `json:"original_amount,omitempty"`   // amount in original currency (nil if same as user currency)
+	OriginalCurrency string    `json:"original_currency,omitempty"` // ISO code (e.g. "JPY"), empty if same as user currency
+	Date             time.Time `gorm:"not null;index" json:"date"`
+	Description      string    `json:"description"`
+	AttachmentURL    string    `json:"attachment_url,omitempty"`
 
 	// Split fields
 	PaidByMemberID uint `gorm:"not null;index;default:0" json:"paid_by_member_id"` // HouseholdMember ID
@@ -214,6 +216,26 @@ type ServiceCommunication struct {
 
 	// Relations
 	Utility Utility `gorm:"foreignKey:UtilityID" json:"utility,omitempty"`
+}
+
+// Notification represents a generic in-app notification (join requests, shared expenses, etc.)
+type Notification struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	UserID     uint   `gorm:"not null;index" json:"user_id"`      // recipient
+	Type       string `gorm:"not null;index" json:"type"`         // join_request, expense_shared
+	Title      string `gorm:"not null" json:"title"`
+	Content    string `gorm:"type:text" json:"content"`
+	IsRead     bool   `gorm:"not null;default:false" json:"is_read"`
+	RelatedID  *uint  `json:"related_id,omitempty"`               // ID of the related entity
+	PropertyID *uint  `gorm:"index" json:"property_id,omitempty"`
+
+	// Relations
+	User     User      `gorm:"foreignKey:UserID" json:"-"`
+	Property *Property `gorm:"foreignKey:PropertyID" json:"property,omitempty"`
 }
 
 // MeterReading represents a USER's manual meter reading (autolettura)
@@ -391,8 +413,34 @@ type UserSettings struct {
 	// Retention
 	NotificationRetentionDays int `gorm:"not null;default:90" json:"notification_retention_days"`
 
+	// Notification granularity preferences
+	NotifyJoinRequests   bool `gorm:"not null;default:false" json:"notify_join_requests"`
+	NotifySharedExpenses bool `gorm:"not null;default:false" json:"notify_shared_expenses"`
+
 	// Thresholds
 	AnomalyThreshold float64 `gorm:"not null;default:5.0" json:"anomaly_threshold"` // Percentage
+
+	// Onboarding
+	OnboardingCompleted bool `gorm:"not null;default:false" json:"onboarding_completed"`
+}
+
+// PropertyJoinRequest represents a user's request to join an existing property.
+// Status: pending → approved/rejected by a property admin.
+type PropertyJoinRequest struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	UserID     uint   `gorm:"not null;index" json:"user_id"`
+	PropertyID uint   `gorm:"not null;index" json:"property_id"`
+	Status     string `gorm:"not null;default:'pending'" json:"status"` // pending, approved, rejected
+	ResolvedBy *uint  `json:"resolved_by,omitempty"`
+	ResolvedAt *time.Time `json:"resolved_at,omitempty"`
+
+	// Relations
+	User     User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Property Property `gorm:"foreignKey:PropertyID" json:"property,omitempty"`
 }
 
 // HouseholdSettings represents split settings for a property
@@ -482,6 +530,7 @@ type ExpenseTemplate struct {
 	CategoryID    uint    `gorm:"not null;index" json:"category_id"`
 	SubcategoryID *uint   `gorm:"index" json:"subcategory_id,omitempty"`
 	ProjectID     *uint   `gorm:"index" json:"project_id,omitempty"`
+	Currency      string  `json:"currency,omitempty"`             // template currency, empty = user preference currency
 	SortOrder     int     `gorm:"not null;default:0" json:"sort_order"`
 
 	// Relations

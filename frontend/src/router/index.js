@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useSettingsStore } from '../stores/settings'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -59,21 +60,48 @@ const router = createRouter({
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/onboarding',
+      name: 'onboarding',
+      component: () => import('../views/OnboardingView.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })
 
-// Navigation guard for authentication
-router.beforeEach((to, from, next) => {
+// Navigation guard for authentication and onboarding
+router.beforeEach(async (to, from, next) => {
   const token = localStorage.getItem('token')
-  
+
   if (to.meta.requiresAuth && !token) {
     next('/login')
-  } else if (to.path === '/login' && token) {
-    next('/')
-  } else {
-    next()
+    return
   }
+
+  if (to.path === '/login' && token) {
+    next('/')
+    return
+  }
+
+  // Onboarding check: only for authenticated routes, not for /onboarding itself
+  if (token && to.path !== '/onboarding' && to.meta.requiresAuth) {
+    const settingsStore = useSettingsStore()
+    // Load settings if not yet loaded (e.g. first navigation after login)
+    if (!settingsStore.loaded) {
+      try {
+        await settingsStore.loadSettings()
+      } catch {
+        // If settings fail to load, don't block navigation
+      }
+    }
+    if (settingsStore.loaded && !settingsStore.onboardingCompleted) {
+      next('/onboarding')
+      return
+    }
+  }
+
+  next()
 })
 
 export default router

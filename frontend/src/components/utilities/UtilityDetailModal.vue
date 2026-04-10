@@ -320,7 +320,7 @@
       <!-- Footer Actions -->
       <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
         <button
-          v-if="authStore.isAdmin"
+          v-if="settingsStore.isPropertyAdmin"
           @click="confirmDeleteUtility"
           class="text-red-600 dark:text-red-400 text-sm hover:text-red-700"
         >
@@ -355,7 +355,6 @@
 
 <script setup>
 import { ref, reactive, watch, computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { utilitiesAPI } from '@/api/client'
@@ -375,7 +374,6 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'updated'])
 
-const authStore = useAuthStore()
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 

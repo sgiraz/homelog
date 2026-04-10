@@ -129,15 +129,19 @@ func main() {
 		protected := v1.Group("")
 		protected.Use(middleware.AuthRequired())
 		{
+			// Exchange rates
+			exchangeHandler := handlers.NewExchangeHandler()
+			protected.GET("/exchange-rate", exchangeHandler.GetRate)
+
 			// Properties
 			properties := protected.Group("/properties")
 			{
 				propHandler := handlers.NewPropertyHandler(db)
 				properties.GET("", propHandler.List)
-				properties.POST("", middleware.AdminRequired(), propHandler.Create)
+				properties.POST("", propHandler.Create)
 				properties.GET("/:id", propHandler.Get)
-				properties.PUT("/:id", middleware.AdminRequired(), propHandler.Update)
-				properties.DELETE("/:id", middleware.AdminRequired(), propHandler.Delete)
+				properties.PUT("/:id", propHandler.Update)
+				properties.DELETE("/:id", propHandler.Delete)
 			}
 
 			// Categories
@@ -171,16 +175,28 @@ func main() {
 			protected.GET("/communications/unread-count", utilHandler.GetUnreadCount)
 			protected.DELETE("/communications/read", utilHandler.DeleteReadCommunications)
 
+			// Generic notifications (join requests, shared expenses, etc.)
+			notifHandler := handlers.NewNotificationHandler(db)
+			notifGroup := protected.Group("/notifications")
+			{
+				notifGroup.GET("", notifHandler.List)
+				notifGroup.GET("/unread-count", notifHandler.GetUnreadCount)
+				notifGroup.PATCH("/:id/read", notifHandler.MarkRead)
+				notifGroup.POST("/read-all", notifHandler.MarkAllRead)
+				notifGroup.DELETE("/:id", notifHandler.Delete)
+				notifGroup.DELETE("/read", notifHandler.DeleteAllRead)
+			}
+
 			// Utilities
 			utilities := protected.Group("/utilities")
 			{
 				pdfHandler := handlers.NewPDFHandler(db)
 
 				utilities.GET("", utilHandler.List)
-				utilities.POST("", middleware.AdminRequired(), utilHandler.Create)
+				utilities.POST("", utilHandler.Create)
 				utilities.GET("/:id", utilHandler.Get)
-				utilities.PUT("/:id", middleware.AdminRequired(), utilHandler.Update)
-				utilities.DELETE("/:id", middleware.AdminRequired(), utilHandler.Delete)
+				utilities.PUT("/:id", utilHandler.Update)
+				utilities.DELETE("/:id", utilHandler.Delete)
 
 				// Meter readings
 				utilities.POST("/:id/readings", utilHandler.AddReading)
@@ -208,7 +224,7 @@ func main() {
 				utilities.DELETE("/:id/communications/:commId", utilHandler.DeleteCommunication)
 
 				// Contract upload (for creating new utilities)
-				utilities.POST("/contract/upload", middleware.AdminRequired(), pdfHandler.UploadContractPDF)
+				utilities.POST("/contract/upload", pdfHandler.UploadContractPDF)
 			}
 
 			// Bill extraction templates
@@ -260,6 +276,9 @@ func main() {
 				settings.PUT("/password", handlers.NewAuthHandler(db).ChangePassword)
 				settings.POST("/avatar", settingsHandler.UploadAvatar)
 				settings.DELETE("/avatar", settingsHandler.DeleteAvatar)
+				settings.GET("/account/delete-check", settingsHandler.DeleteAccountCheck)
+				settings.POST("/account/promote-admin", settingsHandler.PromoteAdmin)
+				settings.DELETE("/account", settingsHandler.DeleteAccount)
 			}
 
 			// Balance (per property) - nested under properties
@@ -269,20 +288,27 @@ func main() {
 
 			// Household settings (per property) - nested under properties
 			properties.GET("/:id/settings", settingsHandler.GetHouseholdSettings)
-			properties.PUT("/:id/settings", middleware.AdminRequired(), settingsHandler.UpdateHouseholdSettings)
+			properties.PUT("/:id/settings", settingsHandler.UpdateHouseholdSettings)
 
 			// Household members (per property) - nested under properties
 			memberHandler := handlers.NewMemberHandler(db)
 			properties.GET("/:id/members", memberHandler.List)
-			properties.POST("/:id/members", middleware.AdminRequired(), memberHandler.Create)
+			properties.POST("/:id/members", memberHandler.Create)
 
 			// Individual member operations
 			members := protected.Group("/members")
 			{
 				members.GET("/:id", memberHandler.Get)
-				members.PUT("/:id", middleware.AdminRequired(), memberHandler.Update)
-				members.DELETE("/:id", middleware.AdminRequired(), memberHandler.Delete)
+				members.PUT("/:id", memberHandler.Update)
+				members.DELETE("/:id", memberHandler.Delete)
 			}
+
+			// Join Requests
+			joinRequestHandler := handlers.NewJoinRequestHandler(db)
+			protected.POST("/join-requests", joinRequestHandler.Create)
+			protected.GET("/join-requests", joinRequestHandler.List)
+			protected.PATCH("/join-requests/:id", joinRequestHandler.Resolve)
+			protected.GET("/properties/joinable", joinRequestHandler.ListJoinable)
 
 			// Settlements
 			settlements := protected.Group("/settlements")

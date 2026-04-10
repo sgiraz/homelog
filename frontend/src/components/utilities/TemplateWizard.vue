@@ -58,323 +58,56 @@
       </div>
 
       <!-- Step 1: Upload PDF & Basic Info -->
-      <div v-if="step === 1" class="space-y-4">
-        <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">
-          Carica un PDF di esempio del fornitore per creare le regole di estrazione.
-        </p>
-
-        <!-- Basic Info -->
-        <Input
-          v-model="template.name"
-          label="Nome Template *"
-          placeholder="Es: Fornitore Luce Bimestrale"
-          required
-        />
-
-        <Input
-          v-model="template.provider"
-          label="Fornitore *"
-          placeholder="Nome del fornitore"
-          required
-        />
-
-        <div>
-          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-            Tipo Utenza *
-          </label>
-          <select
-            v-model="template.utility_type"
-            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                   focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="electricity">Luce</option>
-            <option value="gas">Gas</option>
-            <option value="water">Acqua</option>
-            <option value="waste">Rifiuti</option>
-            <option value="internet">Internet</option>
-            <option value="insurance">Assicurazione</option>
-            <option value="affitto">Affitto</option>
-            <option value="mutuo">Mutuo</option>
-          </select>
-        </div>
-
-        <!-- PDF Upload -->
-        <div
-          :class="[
-            'border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer',
-            isDraggingFile
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500',
-            extracting ? 'opacity-50 pointer-events-none' : ''
-          ]"
-          @dragover.prevent="isDraggingFile = true"
-          @dragleave.prevent="isDraggingFile = false"
-          @drop.prevent="handleFileDrop"
-          @click="triggerFileInput"
-        >
-          <input
-            ref="fileInput"
-            type="file"
-            accept=".pdf"
-            class="hidden"
-            @change="handleFileSelect"
-          />
-
-          <div v-if="extracting" class="flex flex-col items-center gap-2">
-            <svg class="w-8 h-8 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span class="text-sm text-gray-600 dark:text-gray-400">Analisi PDF in corso...</span>
-          </div>
-
-          <div v-else-if="uploadedFile" class="flex flex-col items-center gap-2">
-            <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ uploadedFile.name }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              {{ pdfAnalysis?.page_count || 0 }} pagine estratte - Clicca per cambiare file
-            </p>
-          </div>
-
-          <div v-else class="flex flex-col items-center gap-2">
-            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Trascina qui un PDF di esempio
-            </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">oppure clicca per selezionare</p>
-          </div>
-        </div>
-
-        <div v-if="extractError" class="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
-          {{ extractError }}
-        </div>
-      </div>
+      <WizardStepInfo
+        v-if="step === 1"
+        :template="template"
+        :pdf-file="uploadedFile"
+        :pdf-analysis="pdfAnalysis"
+        :extracting="extracting"
+        :extract-error="extractError"
+        @update:template="template = $event"
+        @trigger-file-input="triggerFileInput"
+        @file-dropped="handleFileDrop"
+      />
 
       <!-- Step 2: Drag & Drop Field Mapping with PDF Textract View -->
-      <div v-if="step === 2" class="space-y-4">
-        <p class="text-gray-600 dark:text-gray-400 text-sm">
-          Trascina i valori dal PDF ai campi corrispondenti sulla destra.
-        </p>
-
-        <div class="flex gap-4" style="height: 500px;">
-          <!-- Left Panel: PDF Textract View -->
-          <div class="flex-1 flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            <PDFTextractView
-              :pages="pdfAnalysis?.pages || []"
-              :loading="extracting"
-              :mapped-word-ids="mappedTokenIds"
-              @drag-start="handleDragStart"
-              @drag-end="handleDragEnd"
-            />
-          </div>
-
-          <!-- Right Panel: Drop Zones for Fields -->
-          <div class="w-72 flex flex-col">
-            <h4 class="font-medium text-gray-900 dark:text-white text-sm mb-2">Campi da Mappare</h4>
-            <div class="flex-1 space-y-2 overflow-y-auto pr-1">
-              <div
-                v-for="field in extractionFields"
-                :key="field.key"
-                :class="[
-                  'border rounded-lg p-3 transition-all',
-                  dragOverField === field.key
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : mappings[field.key]
-                      ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/10'
-                      : 'border-gray-200 dark:border-gray-700'
-                ]"
-                @dragover.prevent="dragOverField = field.key"
-                @dragleave.prevent="dragOverField = null"
-                @drop.prevent="handleFieldDrop($event, field.key)"
-              >
-                <div class="flex items-center justify-between mb-1">
-                  <span class="text-sm font-medium text-gray-900 dark:text-white">
-                    {{ field.label }}
-                    <span v-if="field.required" class="text-red-500">*</span>
-                  </span>
-                  <button
-                    v-if="mappings[field.key]"
-                    @click="clearMapping(field.key)"
-                    class="text-gray-400 hover:text-red-500 transition-colors"
-                    title="Rimuovi mappatura"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                <!-- Drop zone content -->
-                <div v-if="mappings[field.key]" class="space-y-1">
-                  <div class="flex items-center gap-2">
-                    <span class="px-2 py-1 rounded text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                      {{ mappings[field.key].token.text }}
-                    </span>
-                    <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <!-- Anchor/strategy feedback -->
-                  <div v-if="mappings[field.key].globalSearch" class="text-[10px] text-blue-500 dark:text-blue-400 truncate" title="Ricerca globale nel documento">
-                    Ricerca globale
-                  </div>
-                  <div v-else-if="mappings[field.key].anchorText" class="text-[10px] text-gray-400 dark:text-gray-500 truncate" :title="'Ancora: &quot;' + mappings[field.key].anchorText + '&quot; → ' + getDirectionLabel(mappings[field.key].anchorDirection)">
-                    {{ mappings[field.key].anchorText }} → {{ getDirectionLabel(mappings[field.key].anchorDirection) }}
-                  </div>
-
-                  <!-- Context Editor (collapsible) -->
-                  <div v-if="mappings[field.key].allNeighbors" class="mt-1">
-                    <button @click="toggleContextEditor(field.key)"
-                            class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1">
-                      <svg class="w-3 h-3 transition-transform" :class="contextEditorOpen === field.key ? 'rotate-90' : ''"
-                           fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                      Contesto {{ getContextSummary(field.key) }}
-                    </button>
-
-                    <div v-if="contextEditorOpen === field.key" class="mt-1.5 space-y-1.5 text-xs">
-                      <div v-for="dir in ['left', 'above', 'right']" :key="dir">
-                        <div v-if="getNeighborWords(field.key, dir).length > 0"
-                             class="flex flex-wrap items-center gap-1">
-                          <span class="text-gray-400 dark:text-gray-500 w-8 text-[10px] flex-shrink-0">{{ directionLabels[dir] }}</span>
-                          <button v-for="word in getNeighborWords(field.key, dir)" :key="word.id"
-                                  @click="toggleContextWord(field.key, word, dir)"
-                                  :class="[
-                                    'px-1.5 py-0.5 rounded border text-[11px] transition-all cursor-pointer',
-                                    isContextWordSelected(field.key, word.id)
-                                      ? 'bg-blue-100 border-blue-400 text-blue-700 dark:bg-blue-900/40 dark:border-blue-500 dark:text-blue-300'
-                                      : 'bg-gray-50 border-gray-300 text-gray-500 hover:border-blue-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:border-blue-500'
-                                  ]">
-                            {{ word.text }}
-                          </button>
-                        </div>
-                      </div>
-
-                      <!-- Pattern preview -->
-                      <div class="mt-1 p-1.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[10px] text-gray-600 dark:text-gray-400 break-all">
-                        {{ mappings[field.key].pattern }}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div
-                  v-else
-                  class="text-gray-400 dark:text-gray-500 text-sm py-2 text-center border-2 border-dashed border-gray-200 dark:border-gray-600 rounded"
-                >
-                  {{ field.multiLine ? 'Trascina una parola dalla sezione comunicazioni...' : 'Trascina qui...' }}
-                </div>
-                <div v-if="field.multiLine && mappings[field.key]" class="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
-                  Estrazione multi-riga: il testo sotto l'ancora verrà catturato automaticamente
-                </div>
-              </div>
-            </div>
-
-            <!-- Test Pattern Button -->
-            <div class="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
-              <Button
-                @click="testAllPatterns"
-                :disabled="testing || Object.keys(mappings).length === 0"
-                variant="secondary"
-                size="sm"
-                class="w-full"
-              >
-                {{ testing ? 'Test in corso...' : 'Testa Pattern' }}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Test Results -->
-        <div v-if="hasTestedPatterns && Object.keys(testResults).length > 0"
-             class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
-          <h5 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Risultati Test</h5>
-          <div v-for="(result, fieldKey) in testResults" :key="fieldKey" class="flex flex-col gap-1 text-sm py-1 border-b border-gray-200 dark:border-gray-700 last:border-0">
-            <div class="flex items-center gap-2">
-              <svg v-if="result.success" class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              <svg v-else class="w-4 h-4 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span class="text-gray-600 dark:text-gray-400">{{ getFieldLabel(fieldKey) }}:</span>
-              <span :class="result.success ? 'text-green-600 dark:text-green-400 font-medium' : 'text-orange-600 dark:text-orange-400'">
-                {{ result.success ? result.value : result.error }}
-              </span>
-            </div>
-            <!-- Show position context if available -->
-            <div v-if="result.hasPosition" class="text-xs text-gray-400 dark:text-gray-500 ml-6">
-              Pag. {{ result.page + 1 }}, pos: ({{ Math.round(result.x) }}, {{ Math.round(result.y) }})
-              <span v-if="result.contextLeft"> | ← "{{ result.contextLeft }}"</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <WizardStepMapping
+        v-if="step === 2"
+        :pdf-analysis="pdfAnalysis"
+        :extracting="extracting"
+        :mapped-token-ids="mappedTokenIds"
+        :extraction-fields="extractionFields"
+        :drag-over-field="dragOverField"
+        :mappings="mappings"
+        :testing="testing"
+        :has-tested-patterns="hasTestedPatterns"
+        :test-results="testResults"
+        :context-editor-open="contextEditorOpen"
+        :get-direction-label="getDirectionLabel"
+        :get-context-summary="getContextSummary"
+        :get-neighbor-words="getNeighborWords"
+        :is-context-word-selected="isContextWordSelected"
+        :get-field-label="getFieldLabel"
+        :direction-labels="directionLabels"
+        @drag-start="handleDragStart"
+        @drag-end="handleDragEnd"
+        @field-drop="handleFieldDrop($event.event, $event.fieldKey)"
+        @clear-mapping="clearMapping"
+        @toggle-context-editor="toggleContextEditor"
+        @toggle-context-word="toggleContextWord($event.fieldKey, $event.word, $event.direction)"
+        @test-patterns="testAllPatterns"
+        @update:drag-over-field="dragOverField = $event"
+      />
 
       <!-- Step 3: Review & Save -->
-      <div v-if="step === 3" class="space-y-4">
-        <div class="text-center py-4">
-          <svg class="w-16 h-16 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <h4 class="text-lg font-bold text-gray-900 dark:text-white mt-4">Template Pronto</h4>
-          <p class="text-gray-600 dark:text-gray-400 mt-2">
-            Il template per <strong>{{ template.provider }}</strong> è pronto per essere salvato.
-          </p>
-        </div>
-
-        <!-- Summary -->
-        <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2">
-          <div class="flex justify-between">
-            <span class="text-gray-600 dark:text-gray-400">Nome:</span>
-            <span class="font-medium text-gray-900 dark:text-white">{{ template.name }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-gray-600 dark:text-gray-400">Fornitore:</span>
-            <span class="font-medium text-gray-900 dark:text-white">{{ template.provider }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-gray-600 dark:text-gray-400">Tipo:</span>
-            <span class="font-medium text-gray-900 dark:text-white">{{ getUtilityTypeName(template.utility_type) }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-gray-600 dark:text-gray-400">Campi mappati:</span>
-            <span class="font-medium text-gray-900 dark:text-white">{{ Object.keys(mappings).length }}</span>
-          </div>
-        </div>
-
-        <!-- Mapped Fields Summary -->
-        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <h5 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Regole di Estrazione</h5>
-          <div class="space-y-2">
-            <div
-              v-for="(mapping, fieldKey) in mappings"
-              :key="fieldKey"
-              class="flex items-center justify-between py-1 border-b border-gray-100 dark:border-gray-700 last:border-0"
-            >
-              <span class="text-sm text-gray-600 dark:text-gray-400">{{ getFieldLabel(fieldKey) }}</span>
-              <span class="text-sm font-mono text-gray-900 dark:text-white">{{ mapping.token.text }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-3 pt-2">
-          <input
-            type="checkbox"
-            id="is-default"
-            v-model="template.is_default"
-            class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-          />
-          <label for="is-default" class="text-sm text-gray-900 dark:text-white cursor-pointer">
-            Usa come template predefinito per {{ template.provider }}
-          </label>
-        </div>
-      </div>
+      <WizardStepReview
+        v-if="step === 3"
+        :template="template"
+        :mappings="mappings"
+        :extraction-fields="extractionFields"
+        :get-field-label="getFieldLabel"
+        @update:template="template = $event"
+      />
 
       <!-- Error -->
       <div v-if="error" class="mt-4 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
@@ -426,10 +159,11 @@
 import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
 import { templatesAPI, pdfAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
-import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
-import PDFTextractView from './PDFTextractView.vue'
 import { generatePatternForField, regeneratePatternWithContext, getNeighborWordsForToken, testPattern } from '@/utils/patternGenerator'
+import WizardStepInfo from './WizardStepInfo.vue'
+import WizardStepMapping from './WizardStepMapping.vue'
+import WizardStepReview from './WizardStepReview.vue'
 
 const props = defineProps({
   existingTemplate: {

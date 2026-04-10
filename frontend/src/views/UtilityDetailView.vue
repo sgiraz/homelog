@@ -34,7 +34,7 @@
           </svg>
         </a>
         <button
-          v-if="authStore.isAdmin"
+          v-if="settingsStore.isPropertyAdmin"
           @click="showEditModal = true"
           class="p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
           title="Modifica servizio"
@@ -44,7 +44,7 @@
           </svg>
         </button>
         <button
-          v-if="authStore.isAdmin"
+          v-if="settingsStore.isPropertyAdmin"
           @click="confirmDeleteUtility"
           class="p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 dark:hover:text-red-400"
           title="Elimina servizio"
@@ -157,7 +157,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
@@ -172,7 +171,6 @@ defineOptions({ name: 'UtilityDetailView' })
 
 const route = useRoute()
 const router = useRouter()
-const authStore = useAuthStore()
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()

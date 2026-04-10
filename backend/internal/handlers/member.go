@@ -90,7 +90,7 @@ func (h *MemberHandler) List(c *gin.Context) {
 
 // Create - POST /api/v1/properties/:id/members
 func (h *MemberHandler) Create(c *gin.Context) {
-	_, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -101,6 +101,10 @@ func (h *MemberHandler) Create(c *gin.Context) {
 	propertyID, err := strconv.ParseUint(propertyIDStr, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property ID"})
+		return
+	}
+
+	if !requirePropertyAdmin(c, h.db, userID, uint(propertyID)) {
 		return
 	}
 
@@ -175,7 +179,7 @@ func (h *MemberHandler) Get(c *gin.Context) {
 
 // Update - PUT /api/v1/members/:id
 func (h *MemberHandler) Update(c *gin.Context) {
-	_, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -205,6 +209,10 @@ func (h *MemberHandler) Update(c *gin.Context) {
 		return
 	}
 
+	if !requirePropertyAdmin(c, h.db, userID, member.PropertyID) {
+		return
+	}
+
 	// Update fields
 	if req.Name != "" {
 		member.Name = req.Name
@@ -230,7 +238,7 @@ func (h *MemberHandler) Update(c *gin.Context) {
 
 // Delete - DELETE /api/v1/members/:id
 func (h *MemberHandler) Delete(c *gin.Context) {
-	_, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -251,6 +259,10 @@ func (h *MemberHandler) Delete(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch member"})
+		return
+	}
+
+	if !requirePropertyAdmin(c, h.db, userID, member.PropertyID) {
 		return
 	}
 

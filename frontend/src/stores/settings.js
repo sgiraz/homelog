@@ -14,7 +14,13 @@ export const useSettingsStore = defineStore('settings', () => {
   const emailNotifications = ref(true)
   const billReminders = ref(true)
   const notificationRetentionDays = ref(90)
+  const notifyJoinRequests = ref(true)
+  const notifySharedExpenses = ref(true)
   const loaded = ref(false)
+  const onboardingCompleted = ref(false)
+  const hasProperty = ref(false)
+  const isPropertyAdmin = ref(false)
+  const pendingJoinRequest = ref(null)
 
   // Household settings (shared across all members of the property)
   const splitMode = ref(false)
@@ -45,6 +51,12 @@ export const useSettingsStore = defineStore('settings', () => {
       emailNotifications.value = data.email_notifications ?? true
       billReminders.value = data.bill_reminders ?? true
       notificationRetentionDays.value = data.notification_retention_days ?? 90
+      notifyJoinRequests.value = data.notify_join_requests ?? true
+      notifySharedExpenses.value = data.notify_shared_expenses ?? true
+      onboardingCompleted.value = data.onboarding_completed ?? false
+      hasProperty.value = data.has_property ?? false
+      isPropertyAdmin.value = data.is_property_admin ?? false
+      pendingJoinRequest.value = data.pending_join_request ?? null
 
       // Apply theme from server settings
       setTheme(theme.value)
@@ -142,7 +154,13 @@ export const useSettingsStore = defineStore('settings', () => {
     emailNotifications.value = true
     billReminders.value = true
     notificationRetentionDays.value = 90
+    notifyJoinRequests.value = true
+    notifySharedExpenses.value = true
     loaded.value = false
+    onboardingCompleted.value = false
+    hasProperty.value = false
+    isPropertyAdmin.value = false
+    pendingJoinRequest.value = null
     splitMode.value = false
     householdPropertyId.value = null
   }
@@ -158,7 +176,13 @@ export const useSettingsStore = defineStore('settings', () => {
     emailNotifications,
     billReminders,
     notificationRetentionDays,
+    notifyJoinRequests,
+    notifySharedExpenses,
     loaded,
+    onboardingCompleted,
+    hasProperty,
+    isPropertyAdmin,
+    pendingJoinRequest,
     splitMode,
     householdPropertyId,
     // Getters

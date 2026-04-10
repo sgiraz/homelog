@@ -52,7 +52,7 @@
           <div class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ authStore.user?.email }}</div>
           <div class="flex items-center gap-3 mt-1.5">
             <span class="text-xs text-gray-400 dark:text-gray-500">
-              {{ authStore.user?.role === 'admin' ? 'Amministratore' : 'Utente' }}
+              {{ settingsStore.isPropertyAdmin ? 'Amministratore' : 'Utente' }}
             </span>
             <button
               v-if="authStore.avatarUrl"
@@ -116,6 +116,7 @@ defineOptions({ name: 'SettingsView' })
 
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
 import { avatarAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
@@ -127,6 +128,7 @@ import CategoriesTab from '@/components/settings/CategoriesTab.vue'
 import DataTab from '@/components/settings/DataTab.vue'
 
 const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 
 // Tabs

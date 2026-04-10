@@ -109,14 +109,8 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Verify user is a member of the property
-	var memberCount int64
-	h.db.Model(&models.HouseholdMember{}).
-		Where("property_id = ? AND user_id = ?", input.PropertyID, userID).
-		Count(&memberCount)
-
-	if memberCount == 0 {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not a member of this property"})
+	// Verify user is an admin of the property
+	if !requirePropertyAdmin(c, h.db, userID, input.PropertyID) {
 		return
 	}
 
@@ -307,20 +301,17 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Get property IDs where user is a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
-
 	var utility models.Utility
-	if err := h.db.Where("id = ? AND property_id IN ?", id, memberPropertyIDs).
-		First(&utility).Error; err != nil {
+	if err := h.db.First(&utility, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch utility"})
 		}
+		return
+	}
+
+	if !requirePropertyAdmin(c, h.db, userID, utility.PropertyID) {
 		return
 	}
 
@@ -515,22 +506,22 @@ func (h *UtilityHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Get property IDs where user is a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
-
-	result := h.db.Where("id = ? AND property_id IN ?", id, memberPropertyIDs).
-		Delete(&models.Utility{})
-
-	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete utility"})
+	var utility models.Utility
+	if err := h.db.First(&utility, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch utility"})
+		}
 		return
 	}
 
-	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+	if !requirePropertyAdmin(c, h.db, userID, utility.PropertyID) {
+		return
+	}
+
+	if err := h.db.Delete(&utility).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete utility"})
 		return
 	}
 

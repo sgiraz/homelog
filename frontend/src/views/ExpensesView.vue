@@ -339,6 +339,9 @@
               <div class="text-xl font-bold text-blue-600 dark:text-blue-400">
                 {{ formatCurrency(expense.amount) }}
               </div>
+              <div v-if="expense.original_currency" class="text-xs text-gray-400 dark:text-gray-500">
+                ({{ formatOriginalCurrency(expense.original_amount, expense.original_currency) }})
+              </div>
               <div v-if="expense.is_split && expense.splits?.length" class="text-xs text-gray-500 dark:text-gray-400">
                 ({{ formatCurrency(expense.splits[0]?.amount || 0) }} a testa)
               </div>
@@ -544,6 +547,10 @@ function setupIntersectionObserver() {
 
 function formatCurrency(value) {
   return _formatCurrency(value, settingsStore.formatSettings)
+}
+
+function formatOriginalCurrency(value, currency) {
+  return _formatCurrency(value, { ...settingsStore.formatSettings, currency })
 }
 
 function formatDate(dateStr) {

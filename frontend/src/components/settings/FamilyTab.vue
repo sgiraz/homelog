@@ -1,5 +1,35 @@
 <template>
   <div class="space-y-4">
+    <!-- Pending Join Requests (admin only) -->
+    <Card v-if="isAdmin && pendingRequests.length > 0" class="p-6">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Richieste di Accesso</h2>
+      <div class="space-y-3">
+        <div
+          v-for="req in pendingRequests"
+          :key="req.id"
+          class="flex items-center justify-between gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg"
+        >
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/40 flex items-center justify-center text-sm font-medium text-yellow-700 dark:text-yellow-300 flex-shrink-0">
+              {{ getInitials(req.user?.name || '?') }}
+            </div>
+            <div class="min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white truncate">{{ req.user?.name }}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">{{ req.user?.email }}</div>
+            </div>
+          </div>
+          <div class="flex gap-2 flex-shrink-0">
+            <Button size="sm" @click="resolveRequest(req.id, 'approved')" :disabled="resolvingRequest === req.id">
+              Approva
+            </Button>
+            <Button size="sm" variant="secondary" @click="resolveRequest(req.id, 'rejected')" :disabled="resolvingRequest === req.id">
+              Rifiuta
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Card>
+
     <Card class="p-6">
       <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Impostazioni Famiglia</h2>
 
@@ -164,7 +194,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
-import { adminAPI } from '@/api/client'
+import { adminAPI, joinRequestAPI } from '@/api/client'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -173,7 +203,7 @@ const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 
-const isAdmin = computed(() => authStore.user?.role === 'admin')
+const isAdmin = computed(() => settingsStore.isPropertyAdmin)
 const currentUserId = computed(() => authStore.user?.id)
 
 const splitMode = computed({
@@ -185,6 +215,8 @@ const householdMembers = ref([])
 const defaultSplitMemberIds = ref([])
 const currentUserMemberId = ref(null)
 const newMemberName = ref('')
+const pendingRequests = ref([])
+const resolvingRequest = ref(null)
 
 function getInitials(name) {
   return name
@@ -346,8 +378,33 @@ async function toggleAdminRole(member) {
   }
 }
 
+async function fetchPendingRequests() {
+  if (!isAdmin.value) return
+  try {
+    const { data } = await joinRequestAPI.list()
+    pendingRequests.value = (data || []).filter(r => r.status === 'pending')
+  } catch {
+    pendingRequests.value = []
+  }
+}
+
+async function resolveRequest(requestId, status) {
+  resolvingRequest.value = requestId
+  try {
+    await joinRequestAPI.resolve(requestId, status)
+    window.$toast?.success(status === 'approved' ? 'Richiesta approvata!' : 'Richiesta rifiutata')
+    await fetchPendingRequests()
+    await fetchHouseholdMembers()
+  } catch (err) {
+    window.$toast?.error(err.response?.data?.error || 'Errore durante la risoluzione della richiesta')
+  } finally {
+    resolvingRequest.value = null
+  }
+}
+
 onMounted(() => {
   fetchCurrentProperty()
   loadUserSettings()
+  fetchPendingRequests()
 })
 </script>

@@ -24,16 +24,67 @@
         </select>
       </div>
 
-      <Input
-        v-model="form.amount"
-        label="Importo *"
-        type="number"
-        step="0.01"
-        min="0.01"
-        placeholder="0.00"
-        inputmode="decimal"
-        required
-      />
+      <!-- Amount + Currency -->
+      <div>
+        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Importo *</label>
+        <div class="flex gap-2">
+          <div class="flex-1">
+            <Input
+              v-model="form.amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              placeholder="0.00"
+              inputmode="decimal"
+              required
+            />
+          </div>
+          <select
+            v-model="selectedCurrency"
+            class="w-24 px-2 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option v-for="c in allCurrencies" :key="c.code" :value="c.code">
+              {{ c.code }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Conversion preview -->
+        <div v-if="isForeignCurrency && form.amount" class="mt-1.5">
+          <div v-if="rateLoading" class="text-xs text-gray-400">
+            Conversione in corso...
+          </div>
+          <div v-else-if="convertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
+            {{ formatOriginal(form.amount, selectedCurrency) }} ≈ {{ formatCurrency(convertedAmount) }}
+            <span class="text-gray-400">(tasso: {{ exchangeRate?.toFixed(6) }})</span>
+          </div>
+          <div v-else-if="rateError" class="space-y-1">
+            <p class="text-xs text-amber-600 dark:text-amber-400">
+              Tasso non disponibile. Inserisci manualmente:
+            </p>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500">1 {{ selectedCurrency }} =</span>
+              <input
+                v-model.number="manualRate"
+                type="number"
+                step="any"
+                min="0"
+                placeholder="0.00"
+                inputmode="decimal"
+                class="w-28 px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                       focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <span class="text-xs text-gray-500">{{ settingsStore.currency }}</span>
+            </div>
+            <div v-if="manualConvertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
+              {{ formatOriginal(form.amount, selectedCurrency) }} ≈ {{ formatCurrency(manualConvertedAmount) }}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -235,12 +286,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
-import apiClient, { categoriesAPI, projectsAPI, expenseTemplatesAPI } from '@/api/client'
+import apiClient, { categoriesAPI, projectsAPI, expenseTemplatesAPI, exchangeAPI } from '@/api/client'
+import { currencies as allCurrencies } from '@/utils/currencies'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -268,6 +320,34 @@ const selectedTemplateId = ref(null)
 
 const householdUsers = ref([])
 const currentPropertyId = ref(null)
+
+// Currency conversion
+const selectedCurrency = ref(settingsStore.currency || 'EUR')
+const exchangeRate = ref(null)
+const convertedAmount = ref(null)
+const rateLoading = ref(false)
+const rateError = ref(false)
+const manualRate = ref(null)
+let fetchRateTimer = null
+
+onUnmounted(() => {
+  clearTimeout(fetchRateTimer)
+})
+
+const isForeignCurrency = computed(() => selectedCurrency.value !== settingsStore.currency)
+
+const manualConvertedAmount = computed(() => {
+  if (!manualRate.value || !form.value.amount) return null
+  return parseFloat(form.value.amount) * manualRate.value
+})
+
+// The final converted amount (auto or manual)
+const finalConvertedAmount = computed(() => {
+  if (!isForeignCurrency.value) return null
+  if (convertedAmount.value != null) return convertedAmount.value
+  if (manualConvertedAmount.value != null) return manualConvertedAmount.value
+  return null
+})
 
 const form = ref({
   amount: null,
@@ -312,6 +392,45 @@ const splitAmount = computed(() => {
 function formatCurrency(value) {
   return _formatCurrency(value, settingsStore.formatSettings)
 }
+
+function formatOriginal(value, currency) {
+  return _formatCurrency(value, { ...settingsStore.formatSettings, currency })
+}
+
+async function fetchExchangeRate() {
+  const amount = parseFloat(form.value.amount)
+  if (!isForeignCurrency.value || !amount || amount <= 0) {
+    exchangeRate.value = null
+    convertedAmount.value = null
+    return
+  }
+  rateLoading.value = true
+  rateError.value = false
+  try {
+    const { data } = await exchangeAPI.getRate(selectedCurrency.value, settingsStore.currency, amount)
+    exchangeRate.value = data.rate
+    convertedAmount.value = data.result
+  } catch {
+    rateError.value = true
+    exchangeRate.value = null
+    convertedAmount.value = null
+  } finally {
+    rateLoading.value = false
+  }
+}
+
+// Debounced watcher for currency/amount changes
+watch([selectedCurrency, () => form.value.amount], () => {
+  clearTimeout(fetchRateTimer)
+  if (!isForeignCurrency.value) {
+    exchangeRate.value = null
+    convertedAmount.value = null
+    manualRate.value = null
+    rateError.value = false
+    return
+  }
+  fetchRateTimer = setTimeout(fetchExchangeRate, 500)
+})
 
 async function fetchCategories() {
   try {
@@ -439,6 +558,8 @@ function onTemplateSelect() {
   form.value.category_id = tpl.category_id
   form.value.subcategory_id = tpl.subcategory_id || null
   if (tpl.project_id && !props.projectId) form.value.project_id = tpl.project_id
+  // Apply template currency
+  selectedCurrency.value = tpl.currency || settingsStore.currency
 }
 
 async function saveAsTemplate() {
@@ -448,6 +569,7 @@ async function saveAsTemplate() {
       name: form.value.description,
       icon: cat?.icon || '',
       amount: parseFloat(form.value.amount) || 0,
+      currency: isForeignCurrency.value ? selectedCurrency.value : '',
       description: form.value.description,
       category_id: form.value.category_id,
       subcategory_id: form.value.subcategory_id || undefined,
@@ -465,8 +587,19 @@ async function handleSubmit() {
   error.value = null
 
   try {
+    const isForeign = isForeignCurrency.value
+    const converted = finalConvertedAmount.value
+
+    if (isForeign && converted == null) {
+      error.value = 'Conversione valuta non disponibile. Inserisci il tasso manualmente.'
+      loading.value = false
+      return
+    }
+
     const expenseData = {
-      amount: parseFloat(form.value.amount),
+      amount: isForeign ? converted : parseFloat(form.value.amount),
+      original_amount: isForeign ? parseFloat(form.value.amount) : undefined,
+      original_currency: isForeign ? selectedCurrency.value : undefined,
       description: form.value.description,
       category_id: form.value.category_id,
       subcategory_id: form.value.subcategory_id || undefined,
