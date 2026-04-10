@@ -372,6 +372,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { propertiesAPI, settingsAPI, joinRequestAPI } from '@/api/client'
+import { currencies as allCurrencies } from '@/utils/currencies'
 import { useSettingsStore } from '@/stores/settings'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -415,12 +416,7 @@ const steps = computed(() => [
   { id: 4, label: 'Scopri' }
 ])
 
-const currencies = [
-  { value: 'EUR', symbol: '€' },
-  { value: 'USD', symbol: '$' },
-  { value: 'GBP', symbol: '£' },
-  { value: 'CHF', symbol: 'Fr' }
-]
+const currencies = allCurrencies.map(c => ({ value: c.code, symbol: c.symbol }))
 
 const languages = [
   { value: 'it', label: '🇮🇹 Italiano' },

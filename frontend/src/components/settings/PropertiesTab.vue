@@ -86,12 +86,9 @@
 defineOptions({ name: 'PropertiesTab' })
 
 import { ref, onMounted } from 'vue'
-import { useSettingsStore } from '@/stores/settings'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
-
-const settingsStore = useSettingsStore()
 
 const allProperties = ref([])
 const showAddPropertyForm = ref(false)

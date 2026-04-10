@@ -286,7 +286,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -329,6 +329,10 @@ const rateLoading = ref(false)
 const rateError = ref(false)
 const manualRate = ref(null)
 let fetchRateTimer = null
+
+onUnmounted(() => {
+  clearTimeout(fetchRateTimer)
+})
 
 const isForeignCurrency = computed(() => selectedCurrency.value !== settingsStore.currency)
 

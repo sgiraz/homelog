@@ -196,7 +196,7 @@ async function doExport(type) {
       projects: isCSV ? exportAPI.exportProjectsCSV : exportAPI.exportProjects,
     }
     const nameMap = {
-      all: 'backup_completo',
+      all: isCSV ? 'spese' : 'backup_completo',
       expenses: 'spese',
       utilities: 'utenze',
       projects: 'progetti',

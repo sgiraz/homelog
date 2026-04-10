@@ -328,7 +328,7 @@ func (h *SettingsHandler) GetHouseholdSettings(c *gin.Context) {
 
 // UpdateHouseholdSettings - PUT /api/v1/properties/:id/settings
 func (h *SettingsHandler) UpdateHouseholdSettings(c *gin.Context) {
-	_, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -342,6 +342,10 @@ func (h *SettingsHandler) UpdateHouseholdSettings(c *gin.Context) {
 		return
 	}
 
+	if !requirePropertyAdmin(c, h.db, userID, uint(propertyID)) {
+		return
+	}
+
 	// Parse request body
 	var req UpdateHouseholdSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -349,7 +353,7 @@ func (h *SettingsHandler) UpdateHouseholdSettings(c *gin.Context) {
 		return
 	}
 
-	// Find or create household settings (no ownership check - any authenticated user can update)
+	// Find or create household settings
 	var settings models.HouseholdSettings
 	err = h.db.Where("property_id = ?", propertyID).First(&settings).Error
 	if err != nil {

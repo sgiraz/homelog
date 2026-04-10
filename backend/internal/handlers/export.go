@@ -64,7 +64,7 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 		return
 	}
 
-	// CSV format: export expenses (most useful single-sheet summary)
+	// CSV format: export expenses as CSV (single-sheet summary)
 	if c.Query("format") == "csv" {
 		var expenses []models.Expense
 		h.db.Where("user_id = ?", userID).
@@ -75,13 +75,13 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 			Find(&expenses)
 
 		timestamp := time.Now().Format("2006-01-02_15-04-05")
-		filename := fmt.Sprintf("homelog_backup_%s.csv", timestamp)
+		filename := fmt.Sprintf("homelog_spese_%s.csv", timestamp)
 		headers := []string{"Date", "Description", "Amount", "Category", "Project", "Paid By", "Split", "Notes"}
 		rows := make([][]string, 0, len(expenses))
 		for _, e := range expenses {
 			rows = append(rows, expenseToCSVRow(e))
 		}
-		log.Printf("✅ Full CSV export (expenses) done: %d rows for user %d", len(rows), userID)
+		log.Printf("✅ CSV export (expenses) done: %d rows for user %d", len(rows), userID)
 		writeCSV(c, filename, headers, rows)
 		return
 	}
