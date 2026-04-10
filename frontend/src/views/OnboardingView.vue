@@ -511,7 +511,7 @@ function handleStep1() {
 async function handleStep2Create() {
   stepError.value = null
   if (!property.value.name.trim()) {
-    currentStep.value++
+    stepError.value = 'Inserisci il nome della proprietà.'
     return
   }
 

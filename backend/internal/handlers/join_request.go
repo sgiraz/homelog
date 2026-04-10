@@ -204,44 +204,69 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 
 	now := time.Now()
 
+	tx := h.db.Begin()
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+		return
+	}
+
 	if req.Status == "approved" {
-		// Fetch the requesting user's name for the household member record
-		var requestingUser models.User
-		if err := h.db.First(&requestingUser, joinReq.UserID).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch requesting user"})
-			return
-		}
+		// Check if user is already a member (e.g., added manually while request was pending)
+		var existingCount int64
+		tx.Model(&models.HouseholdMember{}).
+			Where("user_id = ? AND property_id = ?", joinReq.UserID, joinReq.PropertyID).
+			Count(&existingCount)
 
-		// Create HouseholdMember for the requesting user
-		member := models.HouseholdMember{
-			PropertyID: joinReq.PropertyID,
-			UserID:     &joinReq.UserID,
-			Name:       requestingUser.Name,
-			Role:       "member",
-			IsVirtual:  false,
-		}
-		if err := h.db.Create(&member).Error; err != nil {
-			log.Printf("❌ Failed to create household member on join request approval: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add member to property"})
-			return
-		}
+		if existingCount == 0 {
+			// Fetch the requesting user's name for the household member record
+			var requestingUser models.User
+			if err := tx.First(&requestingUser, joinReq.UserID).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch requesting user"})
+				return
+			}
 
-		// Increment property residents count
-		h.db.Model(&models.Property{}).Where("id = ?", joinReq.PropertyID).
-			UpdateColumn("residents", gorm.Expr("residents + ?", 1))
+			// Create HouseholdMember for the requesting user
+			member := models.HouseholdMember{
+				PropertyID: joinReq.PropertyID,
+				UserID:     &joinReq.UserID,
+				Name:       requestingUser.Name,
+				Role:       "member",
+				IsVirtual:  false,
+			}
+			if err := tx.Create(&member).Error; err != nil {
+				tx.Rollback()
+				log.Printf("❌ Failed to create household member on join request approval: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add member to property"})
+				return
+			}
 
-		log.Printf("✅ Join request approved: UserID=%d joined PropertyID=%d as MemberID=%d",
-			joinReq.UserID, joinReq.PropertyID, member.ID)
+			// Increment property residents count
+			tx.Model(&models.Property{}).Where("id = ?", joinReq.PropertyID).
+				UpdateColumn("residents", gorm.Expr("residents + ?", 1))
+
+			log.Printf("✅ Join request approved: UserID=%d joined PropertyID=%d as MemberID=%d",
+				joinReq.UserID, joinReq.PropertyID, member.ID)
+		} else {
+			log.Printf("ℹ️ Join request approved but UserID=%d is already a member of PropertyID=%d",
+				joinReq.UserID, joinReq.PropertyID)
+		}
 	}
 
 	// Update request status
 	resolvedByID := userID
-	if err := h.db.Model(&joinReq).Updates(map[string]interface{}{
+	if err := tx.Model(&joinReq).Updates(map[string]interface{}{
 		"status":      req.Status,
 		"resolved_by": resolvedByID,
 		"resolved_at": now,
 	}).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update join request"})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete operation"})
 		return
 	}
 

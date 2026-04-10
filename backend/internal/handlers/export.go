@@ -69,6 +69,7 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 		var expenses []models.Expense
 		h.db.Where("user_id = ?", userID).
 			Preload("Category").
+			Preload("Project").
 			Preload("Splits").
 			Preload("PaidBy").
 			Order("date DESC").
@@ -168,8 +169,8 @@ func expenseToCSVRow(e models.Expense) []string {
 	amount := fmt.Sprintf("%.2f", e.Amount)
 	category := e.Category.Name
 	project := ""
-	if e.ProjectID != nil {
-		project = fmt.Sprintf("%d", *e.ProjectID)
+	if e.Project != nil {
+		project = e.Project.Name
 	}
 	paidBy := ""
 	if e.PaidBy != nil {
@@ -194,6 +195,7 @@ func (h *ExportHandler) ExportExpenses(c *gin.Context) {
 	var expenses []models.Expense
 	h.db.Where("user_id = ?", userID).
 		Preload("Category").
+		Preload("Project").
 		Preload("Splits").
 		Preload("PaidBy").
 		Order("date DESC").
