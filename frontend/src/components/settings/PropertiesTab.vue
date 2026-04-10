@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <Card v-if="isAdmin" class="p-6">
+    <Card class="p-6">
       <div class="flex items-center justify-between mb-4">
         <div>
           <h2 class="text-xl font-bold text-gray-900 dark:text-white">Gestione Abitazioni</h2>
@@ -79,24 +79,19 @@
       </div>
     </Card>
 
-    <Card v-if="!isAdmin" class="p-6">
-      <p class="text-gray-600 dark:text-gray-400">Solo gli amministratori possono gestire le abitazioni.</p>
-    </Card>
   </div>
 </template>
 
 <script setup>
 defineOptions({ name: 'PropertiesTab' })
 
-import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+import { ref, onMounted } from 'vue'
+import { useSettingsStore } from '@/stores/settings'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 
-const authStore = useAuthStore()
-
-const isAdmin = computed(() => authStore.user?.role === 'admin')
+const settingsStore = useSettingsStore()
 
 const allProperties = ref([])
 const showAddPropertyForm = ref(false)

@@ -253,16 +253,16 @@
 defineOptions({ name: 'CategoriesTab' })
 
 import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
 import { categoriesAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 
-const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 
-const isAdmin = computed(() => authStore.user?.role === 'admin')
+const isAdmin = computed(() => settingsStore.isPropertyAdmin)
 
 const categories = ref([])
 const categoriesLoading = ref(false)

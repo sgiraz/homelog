@@ -119,6 +119,20 @@ func (h *PropertyHandler) Create(c *gin.Context) {
 	}
 	h.db.Create(&householdSettings)
 
+	// Create HouseholdMember for the creator (admin of the property)
+	var user models.User
+	if err := h.db.First(&user, userID).Error; err == nil {
+		member := models.HouseholdMember{
+			PropertyID: property.ID,
+			UserID:     &userID,
+			Name:       user.Name,
+			Role:       "admin",
+			IsVirtual:  false,
+		}
+		h.db.Create(&member)
+		log.Printf("✅ Household member created: ID=%d, Name=%s, PropertyID=%d", member.ID, member.Name, property.ID)
+	}
+
 	log.Printf("✅ Property created: ID=%d, Name=%s, UserID=%d", property.ID, property.Name, userID)
 
 	c.JSON(http.StatusCreated, property)

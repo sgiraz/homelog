@@ -17,6 +17,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const loaded = ref(false)
   const onboardingCompleted = ref(false)
   const hasProperty = ref(false)
+  const isPropertyAdmin = ref(false)
   const pendingJoinRequest = ref(null)
 
   // Household settings (shared across all members of the property)
@@ -50,6 +51,7 @@ export const useSettingsStore = defineStore('settings', () => {
       notificationRetentionDays.value = data.notification_retention_days ?? 90
       onboardingCompleted.value = data.onboarding_completed ?? false
       hasProperty.value = data.has_property ?? false
+      isPropertyAdmin.value = data.is_property_admin ?? false
       pendingJoinRequest.value = data.pending_join_request ?? null
 
       // Apply theme from server settings
@@ -151,6 +153,7 @@ export const useSettingsStore = defineStore('settings', () => {
     loaded.value = false
     onboardingCompleted.value = false
     hasProperty.value = false
+    isPropertyAdmin.value = false
     pendingJoinRequest.value = null
     splitMode.value = false
     householdPropertyId.value = null
@@ -170,6 +173,7 @@ export const useSettingsStore = defineStore('settings', () => {
     loaded,
     onboardingCompleted,
     hasProperty,
+    isPropertyAdmin,
     pendingJoinRequest,
     splitMode,
     householdPropertyId,

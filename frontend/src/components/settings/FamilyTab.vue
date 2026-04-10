@@ -203,7 +203,7 @@ const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 
-const isAdmin = computed(() => authStore.user?.role === 'admin')
+const isAdmin = computed(() => settingsStore.isPropertyAdmin)
 const currentUserId = computed(() => authStore.user?.id)
 
 const splitMode = computed({

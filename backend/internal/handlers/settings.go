@@ -55,6 +55,7 @@ type UserSettingsResponse struct {
 	NotificationRetentionDays int                     `json:"notification_retention_days"`
 	OnboardingCompleted       bool                    `json:"onboarding_completed"`
 	HasProperty               bool                    `json:"has_property"`
+	IsPropertyAdmin           bool                    `json:"is_property_admin"`
 	PendingJoinRequest        *PendingJoinRequestInfo `json:"pending_join_request,omitempty"`
 }
 
@@ -78,11 +79,15 @@ type UpdateUserSettingsRequest struct {
 	OnboardingCompleted       *bool   `json:"onboarding_completed,omitempty"`
 }
 
-// getPropertyStatus returns whether the user has a property membership and any pending join request info.
-func (h *SettingsHandler) getPropertyStatus(userID uint) (hasProperty bool, pendingReq *PendingJoinRequestInfo) {
+// getPropertyStatus returns whether the user has a property membership, is a property admin, and any pending join request info.
+func (h *SettingsHandler) getPropertyStatus(userID uint) (hasProperty bool, isPropertyAdmin bool, pendingReq *PendingJoinRequestInfo) {
 	var memberCount int64
 	h.db.Model(&models.HouseholdMember{}).Where("user_id = ?", userID).Count(&memberCount)
 	hasProperty = memberCount > 0
+
+	var adminCount int64
+	h.db.Model(&models.HouseholdMember{}).Where("user_id = ? AND role = 'admin'", userID).Count(&adminCount)
+	isPropertyAdmin = adminCount > 0
 
 	var joinReq models.PropertyJoinRequest
 	if err := h.db.Where("user_id = ? AND status = 'pending'", userID).
@@ -103,7 +108,7 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 		return
 	}
 
-	hasProperty, pendingReq := h.getPropertyStatus(userID)
+	hasProperty, isPropertyAdmin, pendingReq := h.getPropertyStatus(userID)
 
 	// Find or create user settings
 	var settings models.UserSettings
@@ -123,6 +128,7 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 				NotificationRetentionDays: 90,
 				OnboardingCompleted:       false,
 				HasProperty:               hasProperty,
+				IsPropertyAdmin:           isPropertyAdmin,
 				PendingJoinRequest:        pendingReq,
 			})
 			return
@@ -153,6 +159,7 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 		NotificationRetentionDays: retentionDays,
 		OnboardingCompleted:       settings.OnboardingCompleted,
 		HasProperty:               hasProperty,
+		IsPropertyAdmin:           isPropertyAdmin,
 		PendingJoinRequest:        pendingReq,
 	})
 }
@@ -868,10 +875,22 @@ func (h *SettingsHandler) cascadeDeleteProperty(tx *gorm.DB, propertyID uint) er
 		tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.Utility{})
 	}
 
+	// Delete expenses associated with this property (and their splits)
+	var propertyExpenseIDs []uint
+	tx.Model(&models.Expense{}).Where("property_id = ?", propertyID).Pluck("id", &propertyExpenseIDs)
+	if len(propertyExpenseIDs) > 0 {
+		tx.Unscoped().Where("expense_id IN ?", propertyExpenseIDs).Delete(&models.ExpenseSplit{})
+		tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.Expense{})
+	}
+
 	// Settlements
 	tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.Settlement{})
 	// HouseholdSettings
 	tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.HouseholdSettings{})
+	// Join requests
+	tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.PropertyJoinRequest{})
+	// Household members (remaining)
+	tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.HouseholdMember{})
 	// Property
 	if err := tx.Unscoped().Delete(&models.Property{}, propertyID).Error; err != nil {
 		return err

@@ -586,7 +586,8 @@ async function completeOnboarding() {
   saving.value = true
   try {
     await settingsAPI.update({ onboarding_completed: true })
-    settingsStore.onboardingCompleted = true
+    // Reload settings to pick up hasProperty and other server-side state
+    await settingsStore.loadSettings()
     router.push('/')
   } catch (err) {
     stepError.value = err.response?.data?.error || 'Errore nel completamento dell\'onboarding.'

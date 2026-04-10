@@ -7,7 +7,6 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token'))
 
   const isAuthenticated = computed(() => !!token.value)
-  const isAdmin = computed(() => user.value?.role === 'admin')
 
   const avatarUrl = computed(() => {
     if (user.value?.avatar_path) {
@@ -55,5 +54,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.clear()
   }
 
-  return { user, token, isAuthenticated, isAdmin, avatarUrl, login, register, updateUser, logout }
+  return { user, token, isAuthenticated, avatarUrl, login, register, updateUser, logout }
 })
