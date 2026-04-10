@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -100,7 +101,7 @@ func main() {
 		v1.GET("/version", func(c *gin.Context) {
 			latest, latestURL := getLatestRelease()
 			updateAvailable := false
-			if latest != "" && latest != appVersion && appVersion != "dev" {
+			if latest != "" && appVersion != "dev" && !sameVersionTag(latest, appVersion) {
 				updateAvailable = true
 			}
 			resp := gin.H{
@@ -360,6 +361,23 @@ func main() {
 	if err := router.Run(":" + port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
+}
+
+func normalizeVersionTag(v string) string {
+	v = strings.TrimSpace(v)
+	v = strings.TrimPrefix(v, "refs/tags/")
+	v = strings.TrimPrefix(v, "v")
+	v = strings.TrimPrefix(v, "V")
+	return v
+}
+
+func sameVersionTag(a, b string) bool {
+	na := normalizeVersionTag(a)
+	nb := normalizeVersionTag(b)
+	if na == "" || nb == "" {
+		return false
+	}
+	return na == nb
 }
 
 // getLatestRelease fetches the latest release tag from GitHub, cached for 1 hour.
