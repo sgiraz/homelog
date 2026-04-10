@@ -251,21 +251,16 @@
             <!-- Currency -->
             <div>
               <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">Valuta</label>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <button
-                  v-for="c in currencies"
-                  :key="c.value"
-                  @click="preferences.currency = c.value"
-                  :class="[
-                    'px-3 py-2 rounded-lg text-sm font-medium border transition-colors',
-                    preferences.currency === c.value
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  ]"
-                >
-                  {{ c.symbol }} {{ c.value }}
-                </button>
-              </div>
+              <select
+                v-model="preferences.currency"
+                class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option v-for="c in currencies" :key="c.value" :value="c.value">
+                  {{ c.symbol }} {{ c.value }} — {{ c.name }}
+                </option>
+              </select>
             </div>
 
             <!-- Language -->
@@ -416,7 +411,7 @@ const steps = computed(() => [
   { id: 4, label: 'Scopri' }
 ])
 
-const currencies = allCurrencies.map(c => ({ value: c.code, symbol: c.symbol }))
+const currencies = allCurrencies.map(c => ({ value: c.code, symbol: c.symbol, name: c.name }))
 
 const languages = [
   { value: 'it', label: '🇮🇹 Italiano' },

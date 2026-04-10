@@ -98,7 +98,7 @@
               {{ exportLoading === 'expenses' ? 'Esportazione...' : 'Esporta Spese' }}
             </Button>
             <Button @click="doExport('utilities')" :disabled="exportLoading" variant="secondary" class="w-full">
-              {{ exportLoading === 'utilities' ? 'Esportazione...' : 'Esporta Utenze' }}
+              {{ exportLoading === 'utilities' ? 'Esportazione...' : 'Esporta Servizi' }}
             </Button>
             <Button @click="doExport('projects')" :disabled="exportLoading" variant="secondary" class="w-full">
               {{ exportLoading === 'projects' ? 'Esportazione...' : 'Esporta Progetti' }}
