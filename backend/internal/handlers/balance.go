@@ -35,12 +35,12 @@ type BalanceResponse struct {
 
 // UnsettledSplitDetail represents a single unsettled expense split
 type UnsettledSplitDetail struct {
-	ExpenseID    uint    `json:"expense_id"`
-	Description  string  `json:"description"`
-	Amount       float64 `json:"amount"`
-	PaidByName   string  `json:"paid_by_name"`
-	PaidByID     uint    `json:"paid_by_id"`
-	Date         string  `json:"date"`
+	ExpenseID   uint    `json:"expense_id"`
+	Description string  `json:"description"`
+	Amount      float64 `json:"amount"`
+	PaidByName  string  `json:"paid_by_name"`
+	PaidByID    uint    `json:"paid_by_id"`
+	Date        string  `json:"date"`
 }
 
 // SettlementDetail represents a settlement record
@@ -272,6 +272,7 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 		Joins("JOIN expenses ON expenses.id = expense_splits.expense_id").
 		Where("expense_splits.is_settled = ?", false).
 		Where("expenses.property_id = ?", propertyID).
+		Where("expenses.deleted_at IS NULL").
 		Where("(expenses.paid_by_member_id = ? AND expense_splits.member_id = ?) OR (expenses.paid_by_member_id = ? AND expense_splits.member_id = ?)",
 			currentMember.ID, otherMemberID, otherMemberID, currentMember.ID).
 		Order("expenses.date DESC").
@@ -373,6 +374,7 @@ func CalculateBalance(currentMemberID, otherMemberID, propertyID uint, db *gorm.
 		Joins("JOIN expenses ON expenses.id = expense_splits.expense_id").
 		Where("expense_splits.is_settled = ?", false).
 		Where("expenses.property_id = ?", propertyID).
+		Where("expenses.deleted_at IS NULL").
 		Find(&splits).Error
 	if err != nil {
 		log.Printf("CalculateBalance - Error fetching splits: %v", err)
