@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -101,7 +102,7 @@ func main() {
 		v1.GET("/version", func(c *gin.Context) {
 			latest, latestURL := getLatestRelease()
 			updateAvailable := false
-			if latest != "" && appVersion != "dev" && !sameVersionTag(latest, appVersion) {
+			if latest != "" && appVersion != "dev" && isVersionNewer(latest, appVersion) {
 				updateAvailable = true
 			}
 			resp := gin.H{
@@ -371,13 +372,39 @@ func normalizeVersionTag(v string) string {
 	return v
 }
 
-func sameVersionTag(a, b string) bool {
-	na := normalizeVersionTag(a)
-	nb := normalizeVersionTag(b)
-	if na == "" || nb == "" {
+func parseCalVer(v string) ([4]int, bool) {
+	var out [4]int
+	parts := strings.Split(normalizeVersionTag(v), ".")
+	if len(parts) != 3 && len(parts) != 4 {
+		return out, false
+	}
+	for i, p := range parts {
+		if p == "" {
+			return out, false
+		}
+		n, err := strconv.Atoi(p)
+		if err != nil {
+			return out, false
+		}
+		out[i] = n
+	}
+	return out, true
+}
+
+// isVersionNewer returns true only when latest is strictly newer than current.
+func isVersionNewer(latest, current string) bool {
+	l, lok := parseCalVer(latest)
+	c, cok := parseCalVer(current)
+	if !lok || !cok {
+		// Unsupported format: don't report a newer version to avoid false positives.
 		return false
 	}
-	return na == nb
+	for i := range l {
+		if l[i] != c[i] {
+			return l[i] > c[i]
+		}
+	}
+	return false
 }
 
 // getLatestRelease fetches the latest release tag from GitHub, cached for 1 hour.
