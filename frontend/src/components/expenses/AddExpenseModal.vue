@@ -245,7 +245,13 @@
             <div class="text-sm space-y-1">
               <div class="font-medium text-gray-900 dark:text-white mb-2">Riepilogo divisione:</div>
               <div class="text-gray-600 dark:text-gray-400">
-                Totale: <span class="font-medium">{{ formatCurrency(form.amount) }}</span>
+                Totale: <span class="font-medium">
+                  <template v-if="isForeignCurrency">{{ formatOriginal(form.amount, selectedCurrency) }}</template>
+                  <template v-else>{{ formatCurrency(form.amount) }}</template>
+                </span>
+                <span v-if="isForeignCurrency && finalConvertedAmount != null" class="text-xs text-green-600 dark:text-green-400 ml-1">
+                  ≈ {{ formatCurrency(finalConvertedAmount) }}
+                </span>
               </div>
               <div class="text-gray-600 dark:text-gray-400">
                 Diviso tra {{ totalPeople }} persone
@@ -386,7 +392,10 @@ const totalPeople = computed(() => {
 
 const splitAmount = computed(() => {
   if (!form.value.amount || totalPeople.value === 0) return 0
-  return parseFloat(form.value.amount) / totalPeople.value
+  const base = isForeignCurrency.value && finalConvertedAmount.value != null
+    ? finalConvertedAmount.value
+    : parseFloat(form.value.amount)
+  return base / totalPeople.value
 })
 
 function formatCurrency(value) {
