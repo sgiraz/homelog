@@ -220,16 +220,24 @@
             </div>
 
             <!-- Water single reading -->
-            <div v-else-if="utility.type === 'water'">
-              <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Lettura Contatore (mc)</label>
-              <input v-model="form.provider_reading" type="number" step="0.001" placeholder="0"
-                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            <div v-else-if="utility.type === 'water'" class="space-y-3">
+              <div>
+                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Lettura Contatore (mc)</label>
+                <input v-model="form.provider_reading" type="number" step="0.001" placeholder="0"
+                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              </div>
+              <div v-if="previousBillHasEstimate && !previousBill?.estimated_reading">
+                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Consumi Precedenti Stimati (mc)</label>
+                <input v-model="form.previous_estimated_consumption" type="number" step="0.001" placeholder="0"
+                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">La bolletta precedente contiene una stima di {{ formatNumber(previousBill.estimated_consumption) }} mc</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Estimated consumption toggle (gas only) -->
-        <div v-if="isMetered && utility.type === 'gas'" class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+        <!-- Estimated consumption toggle (gas + water) -->
+        <div v-if="isMetered && (utility.type === 'gas' || utility.type === 'water')" class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" v-model="form.has_estimated"
               class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
@@ -246,7 +254,7 @@
               <input v-model="form.estimated_reading" type="number" step="0.001" placeholder="0"
                 class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500" />
               <p v-if="calculatedEstimatedConsumption != null" class="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                Consumo stimato: {{ formatNumber(calculatedEstimatedConsumption) }} Smc
+                Consumo stimato: {{ formatNumber(calculatedEstimatedConsumption) }} {{ utility.type === 'gas' ? 'Smc' : 'mc' }}
               </p>
             </div>
           </div>

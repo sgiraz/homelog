@@ -240,7 +240,10 @@ const gasExtraFields = [
 ]
 
 const waterExtraFields = [
-  { key: 'provider_reading', label: 'Lettura Contatore (mc)', required: false }
+  { key: 'provider_reading', label: 'Lettura Contatore (mc)', required: false },
+  { key: 'estimated_date', label: 'Data Stima', required: false },
+  { key: 'estimated_reading', label: 'Lettura Stimata (mc)', required: false },
+  { key: 'previous_estimated_consumption', label: 'Consumi Precedenti Stimati (mc)', required: false }
 ]
 
 const isMeteredTemplateType = computed(() => {

@@ -48,6 +48,14 @@ export function useConsumptionCalculation(form, utility, isEditing, editingBill)
   // Calculate estimated consumption from estimated_reading and provider_reading
   const calculatedEstimatedConsumption = computed(() => {
     if (!form.value.has_estimated) return null
+    if (utility.value?.type === 'water') {
+      const estReading = parseFloat(form.value.estimated_reading)
+      const provReading = parseFloat(form.value.provider_reading)
+      if (isNaN(estReading) || isNaN(provReading)) return null
+      const diff = estReading - provReading
+      if (diff < 0) return null
+      return Math.round(diff * 1000000) / 1000000
+    }
     const estReading = parseFloat(form.value.estimated_reading)
     const provReading = parseFloat(form.value.provider_reading)
     const C = parseFloat(form.value.conversion_coefficient)
@@ -109,7 +117,18 @@ export function useConsumptionCalculation(form, utility, isEditing, editingBill)
         form.value.consumption_total = Math.round(consumption * 1000) / 1000
       }
     } else {
-      form.value.consumption_total = Math.round(diff * 1000) / 1000
+      let consumption = diff
+      const prevBill = previousBill.value
+      if (previousBillHasEstimate.value && prevBill?.estimated_reading == null) {
+        const prevEstimated = parseFloat(form.value.previous_estimated_consumption)
+        if (!isNaN(prevEstimated) && prevEstimated > 0) {
+          consumption -= prevEstimated
+        }
+      }
+      if (calculatedEstimatedConsumption.value != null) {
+        consumption += calculatedEstimatedConsumption.value
+      }
+      form.value.consumption_total = Math.round(consumption * 1000) / 1000
     }
   }
 
