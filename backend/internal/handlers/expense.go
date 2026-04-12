@@ -133,27 +133,27 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 		query = query.Where("project_id = ?", projectID)
 	}
 
-	// Parse date filters once — reused for both query and countQuery
-	var parsedFrom, parsedTo *time.Time
+	// Parse date filters once — reused for both query and countQuery.
+	// Compare against the date-only part via SQLite's date() function so the
+	// comparison is independent of the time component and timezone offset
+	// that GORM/glebarez may serialize into the stored RFC3339 value.
+	var fromDate, toDate string
 	if from := c.Query("from"); from != "" {
-		t, err := time.Parse("2006-01-02", from)
-		if err != nil {
+		if _, err := time.Parse("2006-01-02", from); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid 'from' date format. Use YYYY-MM-DD"})
 			return
 		}
-		parsedFrom = &t
-		query = query.Where("date >= ?", t)
+		fromDate = from
+		query = query.Where("date(date) >= ?", fromDate)
 	}
 
 	if to := c.Query("to"); to != "" {
-		t, err := time.Parse("2006-01-02", to)
-		if err != nil {
+		if _, err := time.Parse("2006-01-02", to); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid 'to' date format. Use YYYY-MM-DD"})
 			return
 		}
-		endOfDay := t.AddDate(0, 0, 1)
-		parsedTo = &endOfDay
-		query = query.Where("date < ?", endOfDay)
+		toDate = to
+		query = query.Where("date(date) <= ?", toDate)
 	}
 
 	if search := c.Query("search"); search != "" {
@@ -195,11 +195,11 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	if projectID := c.Query("project_id"); projectID != "" {
 		countQuery = countQuery.Where("project_id = ?", projectID)
 	}
-	if parsedFrom != nil {
-		countQuery = countQuery.Where("date >= ?", *parsedFrom)
+	if fromDate != "" {
+		countQuery = countQuery.Where("date(date) >= ?", fromDate)
 	}
-	if parsedTo != nil {
-		countQuery = countQuery.Where("date < ?", *parsedTo)
+	if toDate != "" {
+		countQuery = countQuery.Where("date(date) <= ?", toDate)
 	}
 	if search := c.Query("search"); search != "" {
 		countQuery = countQuery.Where("description LIKE ?", "%"+search+"%")

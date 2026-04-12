@@ -2161,8 +2161,13 @@ func (h *UtilityHandler) MarkCommunicationRead(c *gin.Context) {
 		return
 	}
 
+	if err := h.db.Model(&models.ServiceCommunication{}).
+		Where("id = ?", comm.ID).
+		Update("is_read", true).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to mark as read"})
+		return
+	}
 	comm.IsRead = true
-	h.db.Save(&comm)
 
 	c.JSON(http.StatusOK, comm)
 }
