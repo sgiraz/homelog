@@ -98,7 +98,8 @@ type Expense struct {
 	CategoryID    uint  `gorm:"not null;index" json:"category_id"`
 	SubcategoryID *uint `gorm:"index" json:"subcategory_id,omitempty"`
 	ProjectID     *uint `gorm:"index" json:"project_id,omitempty"`
-	BillID        *uint `gorm:"index" json:"bill_id,omitempty"` // auto-created from bill payment
+	BillID            *uint `gorm:"index" json:"bill_id,omitempty"`             // auto-created from bill payment
+	BillInstallmentID *uint `gorm:"index" json:"bill_installment_id,omitempty"` // specific installment when bill is installment-based
 
 	Amount           float64   `gorm:"not null" json:"amount"`
 	OriginalAmount   *float64  `json:"original_amount,omitempty"`   // amount in original currency (nil if same as user currency)
@@ -155,10 +156,17 @@ type Utility struct {
 	BillingUnit      string   `gorm:"not null;default:'month'" json:"billing_unit"`  // day, week, month, year
 
 	// Expense auto-creation
-	AutoCreateExpense bool  `gorm:"not null;default:false" json:"auto_create_expense"` // Create expense when bill due date arrives
-	AutoMarkPaid      bool  `gorm:"not null;default:false" json:"auto_mark_paid"`      // Mark auto-created expense as paid (domiciliazione)
-	DefaultCategoryID *uint `gorm:"index" json:"default_category_id,omitempty"`         // Category for auto-created expenses
-	PaidByMemberID    *uint `gorm:"index" json:"paid_by_member_id,omitempty"`           // Default payer for auto-created expenses
+	DefaultCategoryID *uint `gorm:"index" json:"default_category_id,omitempty"` // Category for auto-created expenses
+	PaidByMemberID    *uint `gorm:"index" json:"paid_by_member_id,omitempty"`   // Default payer for auto-created expenses
+
+	// Billing behavior
+	// IsDomiciled: the bill is paid via direct debit. Bills/installments are auto-marked paid
+	// on their due_date by a scheduled job, which also creates the corresponding expense.
+	// IsInstallmentBased: the provider splits the bill into multiple installments (rate) with
+	// independent due dates. When true, each installment can be marked paid individually,
+	// creating one expense per installment.
+	IsDomiciled        bool `gorm:"not null;default:false" json:"is_domiciled"`
+	IsInstallmentBased bool `gorm:"not null;default:false" json:"is_installment_based"`
 
 	// Per-service split override
 	SplitOverride  string `gorm:"not null;default:''" json:"split_override"`   // "": use global default, "no_split": never split, "custom": use split_member_ids
@@ -320,6 +328,9 @@ type Bill struct {
 	AmountVAT    *float64 `json:"amount_vat,omitempty"`
 
 	// Payment
+	// For non-installment bills IsPaid is the authoritative flag.
+	// For installment bills IsPaid reflects "all installments paid" and is kept in sync
+	// by the installment handlers; clients should still check Installments for per-rata state.
 	IsPaid   bool       `gorm:"not null;default:false" json:"is_paid"`
 	PaidDate *time.Time `json:"paid_date,omitempty"`
 
@@ -330,7 +341,28 @@ type Bill struct {
 	ParsedData string `gorm:"type:text" json:"parsed_data,omitempty"` // JSONB-like
 
 	// Relations
-	Utility Utility `json:"utility"`
+	Utility      Utility           `json:"utility"`
+	Installments []BillInstallment `gorm:"foreignKey:BillID" json:"installments,omitempty"`
+}
+
+// BillInstallment represents a single payment installment (rata) of a Bill.
+// Non-installment bills have exactly one installment created at insert time,
+// so the payment flow is uniform for both cases.
+type BillInstallment struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	BillID uint `gorm:"not null;index" json:"bill_id"`
+	Number int  `gorm:"not null;default:1" json:"number"` // 1-based index within the bill
+
+	DueDate time.Time `gorm:"not null;index" json:"due_date"`
+	Amount  float64   `gorm:"not null" json:"amount"`
+
+	IsPaid    bool       `gorm:"not null;default:false" json:"is_paid"`
+	PaidAt    *time.Time `json:"paid_at,omitempty"`
+	ExpenseID *uint      `gorm:"index" json:"expense_id,omitempty"` // auto-created expense when marked paid
 }
 
 // UtilityRate represents historical rates for a utility

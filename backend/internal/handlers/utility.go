@@ -1102,7 +1102,8 @@ func (h *UtilityHandler) autoCreateExpenseFromBill(_ *gin.Context, userID uint, 
 		return fmt.Errorf("could not create expense: %w", err)
 	}
 
-	// Create split records: payer + default split members, all is_settled=false
+	// Create split records: payer split is already settled (owes nothing to self),
+	// other members' splits are unsettled until a Settlement is recorded.
 	if isSplit {
 		// Build full member list: payer + split-with members (dedup)
 		allMemberIDs := make([]uint, 0, len(splitMemberIDs)+1)
@@ -1113,12 +1114,16 @@ func (h *UtilityHandler) autoCreateExpenseFromBill(_ *gin.Context, userID uint, 
 			}
 		}
 		splitAmount := bill.AmountTotal / float64(len(allMemberIDs))
+		now := time.Now()
 		for _, mid := range allMemberIDs {
 			split := models.ExpenseSplit{
 				ExpenseID: expense.ID,
 				MemberID:  mid,
 				Amount:    splitAmount,
-				IsSettled: false,
+				IsSettled: mid == payerMember.ID,
+			}
+			if split.IsSettled {
+				split.SettledAt = &now
 			}
 			h.db.Create(&split)
 		}

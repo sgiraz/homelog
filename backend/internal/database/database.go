@@ -79,6 +79,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.Utility{},
 		&models.MeterReading{},
 		&models.Bill{},
+		&models.BillInstallment{},
 		&models.UtilityRate{},
 		&models.PriceChange{},
 		&models.ServiceCommunication{},
@@ -124,6 +125,36 @@ func AutoMigrate(db *gorm.DB) error {
 		WHERE onboarding_completed = 0
 		AND user_id IN (
 			SELECT DISTINCT user_id FROM household_members WHERE user_id IS NOT NULL
+		)`)
+
+	// Data migration: backfill 1 installment per existing bill (one-time).
+	// After this migration, every Bill has at least one BillInstallment mirroring its
+	// due_date/amount/is_paid, so the payment flow can treat all bills uniformly.
+	var biCount int64
+	db.Model(&models.BillInstallment{}).Count(&biCount)
+	if biCount == 0 {
+		db.Exec(`INSERT INTO bill_installments
+			(created_at, updated_at, bill_id, number, due_date, amount, is_paid, paid_at, expense_id)
+			SELECT b.created_at, b.updated_at, b.id, 1, b.due_date, b.amount_total, b.is_paid, b.paid_date,
+			       (SELECT id FROM expenses WHERE expenses.bill_id = b.id AND expenses.deleted_at IS NULL LIMIT 1)
+			FROM bills b
+			WHERE b.deleted_at IS NULL`)
+	}
+
+	// Data migration: fix payer splits for bill-originated expenses.
+	// Earlier versions of autoCreateExpenseFromBill created the payer's own split with
+	// is_settled=false, which blocked the "fully settled" status after a Settlement run
+	// (the payer split is excluded from Salda queries by design).
+	db.Exec(`UPDATE expense_splits
+		SET is_settled = 1, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP)
+		WHERE is_settled = 0
+		AND expense_id IN (
+			SELECT id FROM expenses WHERE bill_id IS NOT NULL
+		)
+		AND member_id IN (
+			SELECT paid_by_member_id FROM expenses
+			WHERE expenses.id = expense_splits.expense_id
+			AND expenses.paid_by_member_id IS NOT NULL
 		)`)
 
 	// Backfill price changes from existing bills of fixed-cost services (one-time)
