@@ -290,6 +290,32 @@
         </div>
       </div>
 
+      <!-- Billing flags: domiciliation + installments -->
+      <div class="space-y-2">
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            v-model="form.is_domiciled"
+            class="mt-0.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+          />
+          <div>
+            <div class="text-sm text-gray-900 dark:text-white">Domiciliata</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">I pagamenti vengono marcati automaticamente come saldati alla scadenza</div>
+          </div>
+        </label>
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            v-model="form.is_installment_based"
+            class="mt-0.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+          />
+          <div>
+            <div class="text-sm text-gray-900 dark:text-white">Bollette rateizzate</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">La bolletta è suddivisa in più rate con scadenze separate</div>
+          </div>
+        </label>
+      </div>
+
       <!-- Default Bill Template -->
       <div v-if="billTemplates.length > 0">
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -466,6 +492,8 @@ const form = ref({
   default_category_id: props.utility.default_category_id || null,
   default_bill_template_id: props.utility.default_bill_template_id || null,
   split_override: props.utility.split_override || '',
+  is_domiciled: props.utility.is_domiciled || false,
+  is_installment_based: props.utility.is_installment_based || false,
 })
 
 // Initialize split member IDs from utility
@@ -539,6 +567,8 @@ async function handleSubmit() {
       default_bill_template_id: form.value.default_bill_template_id || undefined,
       split_override: form.value.split_override,
       split_member_ids: form.value.split_override === 'custom' ? JSON.stringify(splitMemberIds.value) : '',
+      is_domiciled: form.value.is_domiciled,
+      is_installment_based: form.value.is_installment_based,
     }
 
     const { data } = await utilitiesAPI.update(props.utility.id, updateData)

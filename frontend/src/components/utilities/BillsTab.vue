@@ -18,8 +18,8 @@
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">Tutte</option>
-          <option value="unpaid">Da pagare</option>
-          <option value="paid">Pagate</option>
+          <option value="unpaid">Qualcuna non pagata</option>
+          <option value="paid">Tutte pagate</option>
         </select>
       </div>
       <div class="flex gap-2">
@@ -71,6 +71,42 @@
         class="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl
                hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
       >
+        <div v-if="hasMultipleInstallments(bill)" class="mb-2 flex items-center justify-between">
+          <button
+            type="button"
+            class="text-xs text-purple-700 dark:text-purple-300 hover:underline flex items-center gap-1"
+            @click="toggleInstallments(bill.id)"
+          >
+            <svg class="w-3 h-3 transition-transform" :class="{ 'rotate-90': expandedBills.has(bill.id) }"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+            {{ paidInstallmentsCount(bill) }}/{{ bill.installments.length }} rate pagate
+          </button>
+        </div>
+        <template v-if="hasMultipleInstallments(bill) && expandedBills.has(bill.id)">
+          <div class="mb-3 space-y-1.5 pl-4 border-l-2 border-purple-300 dark:border-purple-700">
+            <div v-for="inst in bill.installments" :key="inst.id"
+              class="flex items-center justify-between py-1.5 text-sm">
+              <label class="flex items-center gap-2 flex-1 min-w-0"
+                :class="inst.is_locked ? 'cursor-not-allowed' : 'cursor-pointer'">
+                <input
+                  type="checkbox"
+                  :checked="inst.is_paid"
+                  :disabled="inst.is_locked"
+                  @change="toggleInstallmentPaid(bill, inst, $event.target.checked)"
+                  class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  :title="inst.is_locked ? lockedHint : ''"
+                />
+                <span class="text-gray-500 dark:text-gray-400 w-10">#{{ inst.number }}</span>
+                <span class="text-gray-900 dark:text-white font-medium">{{ formatCurrency(inst.amount) }}</span>
+                <span class="text-xs text-gray-400 dark:text-gray-500">scad. {{ formatDate(inst.due_date) }}</span>
+              </label>
+              <span v-if="inst.is_locked" class="text-xs text-amber-600 dark:text-amber-400" :title="lockedHint">🔒 saldata</span>
+              <span v-else-if="inst.is_paid" class="text-xs text-green-600 dark:text-green-400">✓ pagata</span>
+            </div>
+          </div>
+        </template>
         <div class="flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
@@ -100,8 +136,11 @@
 
           <!-- Actions -->
           <div class="flex items-center gap-1 flex-shrink-0">
+            <span v-if="bill.is_locked" class="px-2 py-0.5 text-xs rounded-full font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" :title="lockedHint">
+              🔒 Saldata
+            </span>
             <button
-              v-if="!bill.is_paid"
+              v-if="!bill.is_paid && !hasMultipleInstallments(bill) && !bill.is_locked"
               @click="markBillAsPaid(bill)"
               class="p-2.5 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
               title="Segna come pagata"
@@ -113,16 +152,17 @@
             <button
               @click="openEditBill(bill)"
               class="p-2.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-              title="Modifica"
+              :title="bill.is_locked ? 'Visualizza dettagli' : 'Modifica'"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </button>
             <button
+              :disabled="bill.is_locked"
               @click="confirmDeleteBill(bill)"
-              class="p-2.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-              title="Elimina"
+              class="p-2.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400"
+              :title="bill.is_locked ? lockedHint : 'Elimina'"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -140,12 +180,14 @@
       :bill="editingBill"
       @close="closeBillModal"
       @saved="onBillSaved"
+      @installment-updated="onInstallmentUpdated"
     />
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
+import { utilitiesAPI } from '@/api/client'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
@@ -175,6 +217,47 @@ const billDateTo = ref('')
 // Bill modal
 const showBillModal = ref(false)
 const editingBill = ref(null)
+
+// Installment expand state
+const expandedBills = ref(new Set())
+
+const lockedHint = 'Spesa già saldata da uno o più membri. Annulla i pagamenti dal Bilancio per modificare la bolletta.'
+
+function hasMultipleInstallments(bill) {
+  return Array.isArray(bill.installments) && bill.installments.length > 1
+}
+
+function paidInstallmentsCount(bill) {
+  return (bill.installments || []).filter(i => i.is_paid).length
+}
+
+function toggleInstallments(billId) {
+  const s = expandedBills.value
+  if (s.has(billId)) s.delete(billId)
+  else s.add(billId)
+  expandedBills.value = new Set(s)
+}
+
+async function toggleInstallmentPaid(bill, inst, newValue) {
+  try {
+    await utilitiesAPI.updateInstallment(props.utility.id, bill.id, inst.id, {
+      is_paid: newValue,
+      paid_at: newValue ? new Date().toISOString() : null
+    })
+    emit('bill-updated')
+  } catch (err) {
+    console.error('Error toggling installment:', err)
+    if (err?.response?.status === 409) {
+      await confirm({
+        title: 'Operazione bloccata',
+        message: err.response.data?.error || lockedHint,
+        confirmText: 'Ho capito',
+        variant: 'info'
+      })
+      emit('bill-updated')
+    }
+  }
+}
 
 // ── Computed ──
 
@@ -255,6 +338,12 @@ function onBillSaved() {
   emit('bill-saved')
 }
 
+// Fired when a single installment was toggled from inside the open modal.
+// Refresh list state (header "N/M pagate", bill.is_paid) WITHOUT closing the modal.
+function onInstallmentUpdated() {
+  emit('bill-updated')
+}
+
 async function markBillAsPaid(bill) {
   try {
     await utilitiesStore.updateBill(props.utility.id, bill.id, {
@@ -264,6 +353,15 @@ async function markBillAsPaid(bill) {
     emit('bill-updated')
   } catch (err) {
     console.error('Error marking bill as paid:', err)
+    if (err?.response?.status === 409) {
+      await confirm({
+        title: 'Operazione bloccata',
+        message: err.response.data?.error || lockedHint,
+        confirmText: 'Ho capito',
+        variant: 'info'
+      })
+      emit('bill-updated')
+    }
   }
 }
 
@@ -280,6 +378,15 @@ async function confirmDeleteBill(bill) {
     emit('bill-deleted')
   } catch (err) {
     console.error('Error deleting bill:', err)
+    if (err?.response?.status === 409) {
+      await confirm({
+        title: 'Operazione bloccata',
+        message: err.response.data?.error || lockedHint,
+        confirmText: 'Ho capito',
+        variant: 'info'
+      })
+      emit('bill-updated')
+    }
   }
 }
 </script>

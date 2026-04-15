@@ -331,6 +331,32 @@
         </div>
       </div>
 
+      <!-- Billing flags: domiciliation + installments -->
+      <div class="space-y-2">
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            v-model="form.is_domiciled"
+            class="mt-0.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+          />
+          <div>
+            <div class="text-sm text-gray-900 dark:text-white">Domiciliata</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">I pagamenti vengono marcati automaticamente come saldati alla scadenza</div>
+          </div>
+        </label>
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            v-model="form.is_installment_based"
+            class="mt-0.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+          />
+          <div>
+            <div class="text-sm text-gray-900 dark:text-white">Bollette rateizzate</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">La bolletta è suddivisa in più rate con scadenze separate</div>
+          </div>
+        </label>
+      </div>
+
       <!-- Notes -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -461,7 +487,9 @@ const form = ref({
   notes: '',
   property_id: null,
   allows_self_reading: true,
-  comparison_threshold: 5
+  comparison_threshold: 5,
+  is_domiciled: false,
+  is_installment_based: false
 })
 
 const splitOverrideHint = computed(() => {

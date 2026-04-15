@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -58,6 +59,9 @@ func (h *UtilityHandler) List(c *gin.Context) {
 		Preload("Bills", func(db *gorm.DB) *gorm.DB {
 			return db.Order("period_end DESC").Limit(3)
 		}).
+		Preload("Bills.Installments", func(db *gorm.DB) *gorm.DB {
+			return db.Order("number ASC")
+		}).
 		Preload("Readings", func(db *gorm.DB) *gorm.DB {
 			return db.Order("reading_date DESC").Limit(3)
 		}).
@@ -67,6 +71,9 @@ func (h *UtilityHandler) List(c *gin.Context) {
 		return
 	}
 
+	for i := range utilities {
+		h.populateBillLockState(utilities[i].Bills)
+	}
 	c.JSON(http.StatusOK, utilities)
 }
 
@@ -102,6 +109,8 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		AllowsSelfReading   *bool      `json:"allows_self_reading"`  // nil = true (default)
 		ComparisonThreshold *float64   `json:"comparison_threshold"` // nil = 2.0 (default) - soglia base stesso giorno
 		ThresholdPerDay     *float64   `json:"threshold_per_day"`    // nil = 1.0 (default) - tolleranza per giorno
+		IsDomiciled         bool       `json:"is_domiciled"`
+		IsInstallmentBased  bool       `json:"is_installment_based"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -228,6 +237,8 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		AllowsSelfReading:   &allowsSelfReading,
 		ComparisonThreshold: comparisonThreshold,
 		ThresholdPerDay:     thresholdPerDay,
+		IsDomiciled:         input.IsDomiciled,
+		IsInstallmentBased:  input.IsInstallmentBased,
 	}
 
 	if err := h.db.Create(&utility).Error; err != nil {
@@ -269,6 +280,9 @@ func (h *UtilityHandler) Get(c *gin.Context) {
 		Preload("Bills", func(db *gorm.DB) *gorm.DB {
 			return db.Order("period_end DESC")
 		}).
+		Preload("Bills.Installments", func(db *gorm.DB) *gorm.DB {
+			return db.Order("number ASC")
+		}).
 		Preload("Readings", func(db *gorm.DB) *gorm.DB {
 			return db.Order("reading_date DESC")
 		}).
@@ -284,6 +298,7 @@ func (h *UtilityHandler) Get(c *gin.Context) {
 		return
 	}
 
+	h.populateBillLockState(utility.Bills)
 	c.JSON(http.StatusOK, utility)
 }
 
@@ -337,6 +352,8 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 		DefaultBillTemplateID *uint      `json:"default_bill_template_id"`
 		SplitOverride         *string    `json:"split_override"`
 		SplitMemberIDs        *string    `json:"split_member_ids"`
+		IsDomiciled           *bool      `json:"is_domiciled"`
+		IsInstallmentBased    *bool      `json:"is_installment_based"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -471,6 +488,12 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	if input.SplitMemberIDs != nil {
 		utility.SplitMemberIDs = *input.SplitMemberIDs
 	}
+	if input.IsDomiciled != nil {
+		utility.IsDomiciled = *input.IsDomiciled
+	}
+	if input.IsInstallmentBased != nil {
+		utility.IsInstallmentBased = *input.IsInstallmentBased
+	}
 
 	if err := h.db.Save(&utility).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update utility"})
@@ -483,6 +506,9 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 		Preload("DefaultBillTemplate").
 		Preload("Bills", func(db *gorm.DB) *gorm.DB {
 			return db.Order("period_end DESC").Limit(3)
+		}).
+		Preload("Bills.Installments", func(db *gorm.DB) *gorm.DB {
+			return db.Order("number ASC")
 		}).
 		Preload("Readings", func(db *gorm.DB) *gorm.DB {
 			return db.Order("reading_date DESC").Limit(3)
@@ -722,11 +748,34 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		PDFURL              string     `json:"pdf_url"`
 		// Communication (optional note from bill/invoice)
 		CommunicationText string `json:"communication_text"`
+		// Installments: optional — when the utility is installment-based, the client
+		// provides the breakdown. When empty, one implicit installment is created.
+		Installments []struct {
+			Number  int       `json:"number"`
+			DueDate time.Time `json:"due_date"`
+			Amount  float64   `json:"amount"`
+			IsPaid  bool      `json:"is_paid"`
+			PaidAt  *time.Time `json:"paid_at"`
+		} `json:"installments"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Validate installment breakdown when the service is installment-based.
+	if utility.IsInstallmentBased && len(input.Installments) > 1 {
+		var sum float64
+		for _, in := range input.Installments {
+			sum += in.Amount
+		}
+		if math.Abs(sum-input.AmountTotal) > 0.01 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Installment amounts do not sum to bill total"})
+			return
+		}
+		// Bill due_date = first installment due_date
+		input.DueDate = input.Installments[0].DueDate
 	}
 
 	bill := models.Bill{
@@ -793,14 +842,148 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		h.detectPriceChange(&utility, &bill)
 	}
 
-	// Auto-create expense if bill is already marked as paid on creation
-	if input.IsPaid {
-		if err := h.autoCreateExpenseFromBill(c, userID, &bill); err != nil {
-			log.Printf("⚠️  Failed to auto-create expense for bill %d: %v", bill.ID, err)
+	// Create installments. Non-installment services (or missing breakdown) get
+	// a single implicit installment carrying the full bill, so the payment flow
+	// is uniform.
+	var installments []models.BillInstallment
+	if utility.IsInstallmentBased && len(input.Installments) > 0 {
+		for _, in := range input.Installments {
+			installments = append(installments, models.BillInstallment{
+				BillID:  bill.ID,
+				Number:  in.Number,
+				DueDate: in.DueDate,
+				Amount:  in.Amount,
+				IsPaid:  in.IsPaid,
+				PaidAt:  in.PaidAt,
+			})
+		}
+	} else {
+		var paidAt *time.Time
+		if input.IsPaid {
+			if input.PaidDate != nil {
+				paidAt = input.PaidDate
+			} else {
+				now := time.Now()
+				paidAt = &now
+			}
+		}
+		installments = append(installments, models.BillInstallment{
+			BillID:  bill.ID,
+			Number:  1,
+			DueDate: bill.DueDate,
+			Amount:  bill.AmountTotal,
+			IsPaid:  input.IsPaid,
+			PaidAt:  paidAt,
+		})
+	}
+	for i := range installments {
+		if err := h.db.Create(&installments[i]).Error; err != nil {
+			log.Printf("⚠️  Failed to create installment for bill %d: %v", bill.ID, err)
+			continue
+		}
+		if installments[i].IsPaid {
+			if err := h.autoCreateExpenseFromInstallment(userID, &installments[i]); err != nil {
+				log.Printf("⚠️  Failed to auto-create expense for bill %d inst %d: %v", bill.ID, installments[i].ID, err)
+			}
 		}
 	}
 
+	// Sync bill.IsPaid with installments aggregate state
+	h.syncBillPaidState(&bill)
+
 	c.JSON(http.StatusCreated, bill)
+}
+
+// syncBillPaidState recomputes bill.IsPaid / bill.PaidDate from its installments
+// and persists the change. For installment-based bills this is the source of truth.
+func (h *UtilityHandler) syncBillPaidState(bill *models.Bill) {
+	var installments []models.BillInstallment
+	if err := h.db.Where("bill_id = ?", bill.ID).Find(&installments).Error; err != nil || len(installments) == 0 {
+		return
+	}
+	allPaid := true
+	var maxPaidAt *time.Time
+	for _, in := range installments {
+		if !in.IsPaid {
+			allPaid = false
+		}
+		if in.PaidAt != nil && (maxPaidAt == nil || in.PaidAt.After(*maxPaidAt)) {
+			t := *in.PaidAt
+			maxPaidAt = &t
+		}
+	}
+	updates := map[string]interface{}{"is_paid": allPaid}
+	if allPaid {
+		updates["paid_date"] = maxPaidAt
+	} else {
+		updates["paid_date"] = nil
+	}
+	h.db.Model(bill).Updates(updates)
+	bill.IsPaid = allPaid
+	if allPaid {
+		bill.PaidDate = maxPaidAt
+	} else {
+		bill.PaidDate = nil
+	}
+}
+
+// isInstallmentLocked reports whether the installment's auto-expense has any
+// non-payer split that is already settled. A locked installment must not be
+// toggled paid→unpaid (would destroy settled splits) nor have its bill amount
+// edited (would silently change the household balance).
+//
+// Matches expenses linked via bill_installment_id; for legacy single-installment
+// bills (where the auto-expense was created before bill_installment_id existed)
+// also matches by bill_id when this is the only installment.
+func (h *UtilityHandler) isInstallmentLocked(instID uint) bool {
+	var inst models.BillInstallment
+	if err := h.db.First(&inst, instID).Error; err != nil {
+		return false
+	}
+	var siblings int64
+	h.db.Model(&models.BillInstallment{}).Where("bill_id = ?", inst.BillID).Count(&siblings)
+
+	q := h.db.Model(&models.ExpenseSplit{}).
+		Joins("JOIN expenses ON expenses.id = expense_splits.expense_id AND expenses.deleted_at IS NULL").
+		Where("expense_splits.is_settled = ?", true).
+		Where("expense_splits.member_id != expenses.paid_by_member_id")
+	if siblings <= 1 {
+		q = q.Where("expenses.bill_installment_id = ? OR (expenses.bill_installment_id IS NULL AND expenses.bill_id = ?)", instID, inst.BillID)
+	} else {
+		q = q.Where("expenses.bill_installment_id = ?", instID)
+	}
+	var count int64
+	q.Count(&count)
+	return count > 0
+}
+
+// isBillLocked reports whether any expense linked to the bill has a non-payer
+// settled split. Matches via bill_id directly so legacy expenses without a
+// bill_installment_id are still detected.
+func (h *UtilityHandler) isBillLocked(billID uint) bool {
+	var count int64
+	h.db.Model(&models.ExpenseSplit{}).
+		Joins("JOIN expenses ON expenses.id = expense_splits.expense_id AND expenses.deleted_at IS NULL").
+		Where("expenses.bill_id = ?", billID).
+		Where("expense_splits.is_settled = ?", true).
+		Where("expense_splits.member_id != expenses.paid_by_member_id").
+		Count(&count)
+	return count > 0
+}
+
+// populateBillLockState fills the IsLocked virtual field on each bill and its
+// preloaded installments. Caller must have preloaded Installments.
+func (h *UtilityHandler) populateBillLockState(bills []models.Bill) {
+	for i := range bills {
+		billLocked := false
+		for j := range bills[i].Installments {
+			if h.isInstallmentLocked(bills[i].Installments[j].ID) {
+				bills[i].Installments[j].IsLocked = true
+				billLocked = true
+			}
+		}
+		bills[i].IsLocked = billLocked
+	}
 }
 
 // GetBills returns all bills for a utility
@@ -833,12 +1016,14 @@ func (h *UtilityHandler) GetBills(c *gin.Context) {
 	var bills []models.Bill
 	if err := h.db.Where("utility_id = ?", utilityID).
 		Preload("UserReading").
+		Preload("Installments", func(db *gorm.DB) *gorm.DB { return db.Order("number ASC") }).
 		Order("period_end DESC").
 		Find(&bills).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bills"})
 		return
 	}
 
+	h.populateBillLockState(bills)
 	c.JSON(http.StatusOK, bills)
 }
 
@@ -892,39 +1077,67 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 		return
 	}
 
-	wasAlreadyPaid := bill.IsPaid
-
-	if input.IsPaid != nil {
-		bill.IsPaid = *input.IsPaid
-	}
-	if input.PaidDate != nil {
-		bill.PaidDate = input.PaidDate
-	}
-
-	if err := h.db.Save(&bill).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update bill"})
+	if input.IsPaid == nil {
+		c.JSON(http.StatusOK, bill)
 		return
 	}
 
-	// Auto-create expense when a bill is marked as paid for the first time
-	if bill.IsPaid && !wasAlreadyPaid {
-		if err := h.autoCreateExpenseFromBill(c, userID, &bill); err != nil {
+	// Load installments; this toggle endpoint only handles single-installment bills.
+	var installments []models.BillInstallment
+	h.db.Where("bill_id = ?", bill.ID).Order("number ASC").Find(&installments)
+	if len(installments) > 1 {
+		// Installment-based bills: ignore bulk toggle, state is derived from installments.
+		h.syncBillPaidState(&bill)
+		c.JSON(http.StatusOK, bill)
+		return
+	}
+	if len(installments) == 0 {
+		// Repair missing installment (legacy rows)
+		inst := models.BillInstallment{BillID: bill.ID, Number: 1, DueDate: bill.DueDate, Amount: bill.AmountTotal}
+		h.db.Create(&inst)
+		installments = []models.BillInstallment{inst}
+	}
+
+	inst := &installments[0]
+	wasPaid := inst.IsPaid
+	if *input.IsPaid && !wasPaid {
+		inst.IsPaid = true
+		if input.PaidDate != nil {
+			inst.PaidAt = input.PaidDate
+		} else {
+			now := time.Now()
+			inst.PaidAt = &now
+		}
+		h.db.Save(inst)
+		if err := h.autoCreateExpenseFromInstallment(userID, inst); err != nil {
 			log.Printf("⚠️  Failed to auto-create expense for bill %d: %v", bill.ID, err)
 		}
-	}
-
-	// Auto-delete linked expense when a bill is marked as unpaid
-	if wasAlreadyPaid && !bill.IsPaid {
-		bid := uint(billID)
-		var linkedExpense models.Expense
-		if err := h.db.Where("bill_id = ?", bid).First(&linkedExpense).Error; err == nil {
-			h.db.Where("expense_id = ?", linkedExpense.ID).Delete(&models.ExpenseSplit{})
-			h.db.Delete(&linkedExpense)
-			log.Printf("🗑️  Auto-deleted expense ID=%d linked to bill ID=%d (bill marked unpaid)", linkedExpense.ID, bid)
+	} else if !*input.IsPaid && wasPaid {
+		if h.isInstallmentLocked(inst.ID) {
+			c.JSON(http.StatusConflict, gin.H{"error": "La spesa collegata è già stata saldata da uno o più membri. Annulla i pagamenti dal Bilancio prima di modificare lo stato della bolletta."})
+			return
 		}
+		inst.IsPaid = false
+		inst.PaidAt = nil
+		h.deleteExpenseForInstallment(inst)
+		inst.ExpenseID = nil
+		h.db.Save(inst)
 	}
 
+	h.syncBillPaidState(&bill)
 	c.JSON(http.StatusOK, bill)
+}
+
+// deleteExpenseForInstallment removes the auto-created expense (and its splits)
+// linked to a given installment. Safe to call when no expense exists.
+func (h *UtilityHandler) deleteExpenseForInstallment(inst *models.BillInstallment) {
+	var linked models.Expense
+	if err := h.db.Where("bill_installment_id = ?", inst.ID).First(&linked).Error; err != nil {
+		return
+	}
+	h.db.Where("expense_id = ?", linked.ID).Delete(&models.ExpenseSplit{})
+	h.db.Delete(&linked)
+	log.Printf("🗑️  Auto-deleted expense ID=%d linked to installment ID=%d", linked.ID, inst.ID)
 }
 
 // autoCreateExpenseFromBill creates an expense automatically when a bill is marked as paid.
@@ -974,7 +1187,18 @@ func (h *UtilityHandler) detectPriceChange(utility *models.Utility, newBill *mod
 	log.Printf("💰 Price change detected for utility %d: %.2f → %.2f", utility.ID, prevBill.AmountTotal, newBill.AmountTotal)
 }
 
-func (h *UtilityHandler) autoCreateExpenseFromBill(_ *gin.Context, userID uint, bill *models.Bill) error {
+// autoCreateExpenseFromInstallment creates an expense automatically for a single installment.
+// Non-installment bills carry exactly one installment so the flow is uniform.
+func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *models.BillInstallment) error {
+	// Load bill
+	var bill models.Bill
+	if err := h.db.First(&bill, inst.BillID).Error; err != nil {
+		return fmt.Errorf("could not load bill: %w", err)
+	}
+	// Count installments (for "Rata N/M" description)
+	var installmentCount int64
+	h.db.Model(&models.BillInstallment{}).Where("bill_id = ?", bill.ID).Count(&installmentCount)
+
 	// Load utility
 	var utility models.Utility
 	if err := h.db.First(&utility, bill.UtilityID).Error; err != nil {
@@ -1027,11 +1251,14 @@ func (h *UtilityHandler) autoCreateExpenseFromBill(_ *gin.Context, userID uint, 
 	month := italianMonths[bill.PeriodEnd.Month()-1]
 	year := bill.PeriodEnd.Year()
 	description := fmt.Sprintf("Bolletta %s - %s %d", typeName, month, year)
+	if installmentCount > 1 {
+		description = fmt.Sprintf("%s (Rata %d/%d)", description, inst.Number, installmentCount)
+	}
 
-	// Payment date: use bill's paid_date or today
+	// Payment date: use installment's paid_at or today
 	expenseDate := time.Now()
-	if bill.PaidDate != nil {
-		expenseDate = *bill.PaidDate
+	if inst.PaidAt != nil {
+		expenseDate = *inst.PaidAt
 	}
 
 	// Subcategory ID (optional)
@@ -1085,17 +1312,19 @@ func (h *UtilityHandler) autoCreateExpenseFromBill(_ *gin.Context, userID uint, 
 
 	billID := bill.ID
 	propID := utility.PropertyID
+	instID := inst.ID
 	expense := models.Expense{
-		UserID:         userID, // logged-in user for visibility; PaidByMemberID tracks the actual payer
-		PropertyID:     &propID,
-		CategoryID:     casaCategory.ID,
-		SubcategoryID:  subcatID,
-		BillID:         &billID,
-		Amount:         bill.AmountTotal,
-		Date:           expenseDate,
-		Description:    description,
-		PaidByMemberID: payerMember.ID,
-		IsSplit:        isSplit,
+		UserID:            userID, // logged-in user for visibility; PaidByMemberID tracks the actual payer
+		PropertyID:        &propID,
+		CategoryID:        casaCategory.ID,
+		SubcategoryID:     subcatID,
+		BillID:            &billID,
+		BillInstallmentID: &instID,
+		Amount:            inst.Amount,
+		Date:              expenseDate,
+		Description:       description,
+		PaidByMemberID:    payerMember.ID,
+		IsSplit:           isSplit,
 	}
 
 	if err := h.db.Create(&expense).Error; err != nil {
@@ -1113,7 +1342,7 @@ func (h *UtilityHandler) autoCreateExpenseFromBill(_ *gin.Context, userID uint, 
 				allMemberIDs = append(allMemberIDs, mid)
 			}
 		}
-		splitAmount := bill.AmountTotal / float64(len(allMemberIDs))
+		splitAmount := inst.Amount / float64(len(allMemberIDs))
 		now := time.Now()
 		for _, mid := range allMemberIDs {
 			split := models.ExpenseSplit{
@@ -1127,11 +1356,88 @@ func (h *UtilityHandler) autoCreateExpenseFromBill(_ *gin.Context, userID uint, 
 			}
 			h.db.Create(&split)
 		}
-		log.Printf("✅ Auto-created expense ID=%d '%s' €%.2f for bill ID=%d (split among %d members)", expense.ID, description, expense.Amount, bill.ID, len(allMemberIDs))
+		log.Printf("✅ Auto-created expense ID=%d '%s' €%.2f for bill ID=%d inst ID=%d (split among %d members)", expense.ID, description, expense.Amount, bill.ID, inst.ID, len(allMemberIDs))
 	} else {
-		log.Printf("✅ Auto-created expense ID=%d '%s' €%.2f for bill ID=%d (no split)", expense.ID, description, expense.Amount, bill.ID)
+		log.Printf("✅ Auto-created expense ID=%d '%s' €%.2f for bill ID=%d inst ID=%d (no split)", expense.ID, description, expense.Amount, bill.ID, inst.ID)
 	}
+
+	// Back-link the expense on the installment
+	expenseID := expense.ID
+	inst.ExpenseID = &expenseID
+	h.db.Model(inst).Update("expense_id", expenseID)
 	return nil
+}
+
+// RunDomiciliationSweep finds unpaid installments of domiciled utilities whose
+// due_date has passed and auto-marks them paid, creating the linked expense.
+// Safe to call repeatedly — a second pass finds nothing to do.
+func (h *UtilityHandler) RunDomiciliationSweep() {
+	now := time.Now()
+	var installments []models.BillInstallment
+	// Join bills → utilities to find domiciled services with due installments
+	err := h.db.
+		Joins("JOIN bills ON bills.id = bill_installments.bill_id AND bills.deleted_at IS NULL").
+		Joins("JOIN utilities ON utilities.id = bills.utility_id AND utilities.deleted_at IS NULL").
+		Where("bill_installments.is_paid = ?", false).
+		Where("bill_installments.due_date <= ?", now).
+		Where("utilities.is_domiciled = ?", true).
+		Where("utilities.is_active = ?", true).
+		Find(&installments).Error
+	if err != nil {
+		log.Printf("⚠️  Domiciliation sweep query failed: %v", err)
+		return
+	}
+	if len(installments) == 0 {
+		return
+	}
+	log.Printf("🔁 Domiciliation sweep: %d installment(s) to auto-pay", len(installments))
+	for i := range installments {
+		inst := &installments[i]
+		// Pick a user to attribute the expense to: fall back to utility.paid_by_member's user
+		var bill models.Bill
+		if err := h.db.First(&bill, inst.BillID).Error; err != nil {
+			continue
+		}
+		var utility models.Utility
+		if err := h.db.First(&utility, bill.UtilityID).Error; err != nil {
+			continue
+		}
+		var userID uint
+		if utility.PaidByMemberID != nil {
+			var member models.HouseholdMember
+			if err := h.db.First(&member, *utility.PaidByMemberID).Error; err == nil && member.UserID != nil {
+				userID = *member.UserID
+			}
+		}
+		if userID == 0 {
+			// Fallback: any member of the property
+			var member models.HouseholdMember
+			if err := h.db.Where("property_id = ? AND user_id IS NOT NULL", utility.PropertyID).
+				First(&member).Error; err == nil && member.UserID != nil {
+				userID = *member.UserID
+			}
+		}
+		if userID == 0 {
+			log.Printf("⚠️  Domiciliation sweep: could not determine user for installment %d", inst.ID)
+			continue
+		}
+
+		inst.IsPaid = true
+		paidAt := inst.DueDate
+		if paidAt.After(now) {
+			paidAt = now
+		}
+		inst.PaidAt = &paidAt
+		h.db.Save(inst)
+		if err := h.autoCreateExpenseFromInstallment(userID, inst); err != nil {
+			log.Printf("⚠️  Domiciliation sweep: auto-create expense failed for installment %d: %v", inst.ID, err)
+			continue
+		}
+		// Refresh bill paid state
+		if err := h.db.First(&bill, inst.BillID).Error; err == nil {
+			h.syncBillPaidState(&bill)
+		}
+	}
 }
 
 // DeleteBill removes a bill
@@ -1174,23 +1480,118 @@ func (h *UtilityHandler) DeleteBill(c *gin.Context) {
 		return
 	}
 
+	if h.isBillLocked(bill.ID) {
+		c.JSON(http.StatusConflict, gin.H{"error": "La spesa collegata a questa bolletta è già stata saldata. Annulla i pagamenti dal Bilancio prima di eliminare la bolletta."})
+		return
+	}
+
 	if err := h.db.Delete(&bill).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete bill"})
 		return
 	}
 
-	// Delete auto-created expense linked to this bill (if any)
+	// Cascade delete: installments + linked expenses (across all installments) + splits
 	bid := uint(billID)
-	var linkedExpense models.Expense
-	if err := h.db.Where("bill_id = ?", bid).First(&linkedExpense).Error; err == nil {
-		// Delete splits first
-		h.db.Where("expense_id = ?", linkedExpense.ID).Delete(&models.ExpenseSplit{})
-		// Delete expense
-		h.db.Delete(&linkedExpense)
-		log.Printf("🗑️  Deleted auto-expense ID=%d linked to bill ID=%d", linkedExpense.ID, billID)
+	var linkedExpenses []models.Expense
+	h.db.Where("bill_id = ?", bid).Find(&linkedExpenses)
+	for _, e := range linkedExpenses {
+		h.db.Where("expense_id = ?", e.ID).Delete(&models.ExpenseSplit{})
+		h.db.Delete(&e)
+		log.Printf("🗑️  Deleted auto-expense ID=%d linked to bill ID=%d", e.ID, billID)
 	}
+	h.db.Where("bill_id = ?", bid).Delete(&models.BillInstallment{})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Bill deleted successfully"})
+}
+
+// UpdateBillInstallment marks a single installment as paid/unpaid.
+// On paid: creates an expense via autoCreateExpenseFromInstallment.
+// On unpaid: deletes the auto-created expense + splits.
+// After the change, bill.IsPaid / bill.PaidDate are recomputed from all installments.
+func (h *UtilityHandler) UpdateBillInstallment(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid bill ID"})
+		return
+	}
+	instID, err := strconv.ParseUint(c.Param("instId"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid installment ID"})
+		return
+	}
+
+	var memberPropertyIDs []uint
+	h.db.Model(&models.HouseholdMember{}).
+		Where("user_id = ?", userID).
+		Pluck("property_id", &memberPropertyIDs)
+
+	var bill models.Bill
+	if err := h.db.Preload("Utility").First(&bill, billID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Bill not found"})
+		return
+	}
+	found := false
+	for _, pid := range memberPropertyIDs {
+		if pid == bill.Utility.PropertyID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized"})
+		return
+	}
+
+	var inst models.BillInstallment
+	if err := h.db.Where("id = ? AND bill_id = ?", instID, billID).First(&inst).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Installment not found"})
+		return
+	}
+
+	var input struct {
+		IsPaid bool       `json:"is_paid"`
+		PaidAt *time.Time `json:"paid_at"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	wasPaid := inst.IsPaid
+	if input.IsPaid && !wasPaid {
+		inst.IsPaid = true
+		if input.PaidAt != nil {
+			inst.PaidAt = input.PaidAt
+		} else {
+			now := time.Now()
+			inst.PaidAt = &now
+		}
+		h.db.Save(&inst)
+		if err := h.autoCreateExpenseFromInstallment(userID, &inst); err != nil {
+			log.Printf("⚠️  Failed to auto-create expense for installment %d: %v", inst.ID, err)
+		}
+	} else if !input.IsPaid && wasPaid {
+		if h.isInstallmentLocked(inst.ID) {
+			c.JSON(http.StatusConflict, gin.H{"error": "La spesa collegata a questa rata è già stata saldata da uno o più membri. Annulla i pagamenti dal Bilancio prima di modificare lo stato della rata."})
+			return
+		}
+		inst.IsPaid = false
+		inst.PaidAt = nil
+		h.deleteExpenseForInstallment(&inst)
+		inst.ExpenseID = nil
+		h.db.Save(&inst)
+	}
+
+	h.syncBillPaidState(&bill)
+	// Return fresh bill with installments for the client
+	h.db.Preload("Installments").First(&bill, bill.ID)
+	c.JSON(http.StatusOK, bill)
 }
 
 // UpdateBillFull updates all fields of a bill
@@ -1263,9 +1664,25 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 		return
 	}
 
-	wasAlreadyPaid := bill.IsPaid
+	// Load installments to decide how to handle the is_paid toggle.
+	var installments []models.BillInstallment
+	h.db.Where("bill_id = ?", bill.ID).Order("number ASC").Find(&installments)
 
-	// Update all fields
+	// Per-field lock: a locked bill can still be edited (metadata, dates,
+	// readings, communication...) but the amount and the single-installment
+	// paid toggle would corrupt already-settled splits.
+	if h.isBillLocked(bill.ID) {
+		if input.AmountTotal != bill.AmountTotal {
+			c.JSON(http.StatusConflict, gin.H{"error": "Bolletta saldata: l'importo totale non può essere modificato. Annulla i pagamenti dal Bilancio per sbloccare il campo."})
+			return
+		}
+		if len(installments) <= 1 && input.IsPaid != bill.IsPaid {
+			c.JSON(http.StatusConflict, gin.H{"error": "Bolletta saldata: lo stato di pagamento non può essere modificato. Annulla i pagamenti dal Bilancio per sbloccarlo."})
+			return
+		}
+	}
+
+	// Update all fields (except is_paid/paid_date: those are derived from installments)
 	bill.BillNumber = input.BillNumber
 	bill.UserReadingID = input.UserReadingID
 	bill.IssueDate = input.IssueDate
@@ -1279,8 +1696,6 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	bill.EstimatedReading = input.EstimatedReading
 	bill.EstimatedConsumption = input.EstimatedConsumption
 	bill.ReadingType = input.ReadingType
-	bill.IsPaid = input.IsPaid
-	bill.PaidDate = input.PaidDate
 	bill.ProviderReadingDate = input.ProviderReadingDate
 	bill.ProviderReadingF1 = input.ProviderReadingF1
 	bill.ProviderReadingF2 = input.ProviderReadingF2
@@ -1292,23 +1707,43 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 		return
 	}
 
-	// Auto-create expense when a bill is marked as paid for the first time
-	if bill.IsPaid && !wasAlreadyPaid {
-		if err := h.autoCreateExpenseFromBill(c, userID, &bill); err != nil {
-			log.Printf("⚠️  Failed to auto-create expense for bill %d: %v", bill.ID, err)
+	// For single-installment bills, propagate the is_paid toggle to the installment.
+	// For installment-based bills (N>1), is_paid is derived from installments — ignore payload.
+	if len(installments) <= 1 {
+		if len(installments) == 0 {
+			inst := models.BillInstallment{BillID: bill.ID, Number: 1, DueDate: bill.DueDate, Amount: bill.AmountTotal}
+			h.db.Create(&inst)
+			installments = []models.BillInstallment{inst}
+		}
+		inst := &installments[0]
+		// Keep single installment amount/due_date in sync with bill edits
+		inst.Amount = bill.AmountTotal
+		inst.DueDate = bill.DueDate
+		wasPaid := inst.IsPaid
+		if input.IsPaid && !wasPaid {
+			inst.IsPaid = true
+			if input.PaidDate != nil {
+				inst.PaidAt = input.PaidDate
+			} else {
+				now := time.Now()
+				inst.PaidAt = &now
+			}
+			h.db.Save(inst)
+			if err := h.autoCreateExpenseFromInstallment(userID, inst); err != nil {
+				log.Printf("⚠️  Failed to auto-create expense for bill %d: %v", bill.ID, err)
+			}
+		} else if !input.IsPaid && wasPaid {
+			inst.IsPaid = false
+			inst.PaidAt = nil
+			h.deleteExpenseForInstallment(inst)
+			inst.ExpenseID = nil
+			h.db.Save(inst)
+		} else {
+			h.db.Save(inst)
 		}
 	}
 
-	// Auto-delete linked expense when a bill is marked as unpaid
-	if wasAlreadyPaid && !bill.IsPaid {
-		bid := bill.ID
-		var linkedExpense models.Expense
-		if err := h.db.Where("bill_id = ?", bid).First(&linkedExpense).Error; err == nil {
-			h.db.Where("expense_id = ?", linkedExpense.ID).Delete(&models.ExpenseSplit{})
-			h.db.Delete(&linkedExpense)
-			log.Printf("🗑️  Auto-deleted expense ID=%d linked to bill ID=%d (bill marked unpaid)", linkedExpense.ID, bid)
-		}
-	}
+	h.syncBillPaidState(&bill)
 
 	// Handle communication text: update/create/delete
 	var existingComm models.ServiceCommunication

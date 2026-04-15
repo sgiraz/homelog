@@ -157,6 +157,7 @@ export const utilitiesAPI = {
   updateBill: (utilityId, billId, data) => apiClient.put(`/utilities/${utilityId}/bills/${billId}`, data),
   updateBillFull: (utilityId, billId, data) => apiClient.put(`/utilities/${utilityId}/bills/${billId}/full`, data),
   deleteBill: (utilityId, billId) => apiClient.delete(`/utilities/${utilityId}/bills/${billId}`),
+  updateInstallment: (utilityId, billId, instId, data) => apiClient.patch(`/utilities/${utilityId}/bills/${billId}/installments/${instId}`, data),
   // PDF uploads
   uploadBillPDF: (utilityId, file, templateId = null) => {
     const formData = new FormData()

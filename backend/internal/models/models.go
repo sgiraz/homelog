@@ -343,6 +343,11 @@ type Bill struct {
 	// Relations
 	Utility      Utility           `json:"utility"`
 	Installments []BillInstallment `gorm:"foreignKey:BillID" json:"installments,omitempty"`
+
+	// Computed: true if any installment has settled splits on its auto-expense.
+	// A locked bill cannot be toggled paid/unpaid or deleted, since that would
+	// destroy settled splits and corrupt the household balance.
+	IsLocked bool `gorm:"-" json:"is_locked"`
 }
 
 // BillInstallment represents a single payment installment (rata) of a Bill.
@@ -363,6 +368,9 @@ type BillInstallment struct {
 	IsPaid    bool       `gorm:"not null;default:false" json:"is_paid"`
 	PaidAt    *time.Time `json:"paid_at,omitempty"`
 	ExpenseID *uint      `gorm:"index" json:"expense_id,omitempty"` // auto-created expense when marked paid
+
+	// Computed: true if the auto-expense has any non-payer settled splits.
+	IsLocked bool `gorm:"-" json:"is_locked"`
 }
 
 // UtilityRate represents historical rates for a utility

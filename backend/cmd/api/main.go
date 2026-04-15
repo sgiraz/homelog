@@ -173,6 +173,17 @@ func main() {
 
 			// Centralized communications (across all utilities)
 			utilHandler := handlers.NewUtilityHandler(db)
+
+			// Domiciliation sweep: auto-pay due installments for domiciled services.
+			// Runs once at startup, then every hour in the background.
+			go func() {
+				utilHandler.RunDomiciliationSweep()
+				ticker := time.NewTicker(1 * time.Hour)
+				defer ticker.Stop()
+				for range ticker.C {
+					utilHandler.RunDomiciliationSweep()
+				}
+			}()
 			protected.GET("/communications", utilHandler.GetAllCommunications)
 			protected.GET("/communications/unread-count", utilHandler.GetUnreadCount)
 			protected.DELETE("/communications/read", utilHandler.DeleteReadCommunications)
@@ -212,6 +223,7 @@ func main() {
 				utilities.PUT("/:id/bills/:billId", utilHandler.UpdateBill)
 				utilities.PUT("/:id/bills/:billId/full", utilHandler.UpdateBillFull)
 				utilities.DELETE("/:id/bills/:billId", utilHandler.DeleteBill)
+				utilities.PATCH("/:id/bills/:billId/installments/:instId", utilHandler.UpdateBillInstallment)
 
 				// PDF upload for bills
 				utilities.POST("/:id/bills/upload", pdfHandler.UploadBillPDF)

@@ -14,6 +14,16 @@
       />
 
       <form @submit.prevent="handleSubmit" class="space-y-4">
+        <div v-if="isLocked" class="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200">
+          <span>🔒</span>
+          <span>
+            Una o più rate di questa bolletta sono già state saldate dai membri.
+            Puoi consultare i dettagli e modificare i campi non finanziari, ma
+            l'importo totale e lo stato di pagamento delle rate saldate sono bloccati
+            per non compromettere il bilancio. Annulla i pagamenti dal Bilancio per sbloccarli.
+          </span>
+        </div>
+
         <!-- Importo Totale -->
         <Input
           v-model="form.amount_total"
@@ -22,6 +32,7 @@
           step="0.01"
           min="0"
           placeholder="0.00"
+          :disabled="isLocked"
         />
 
         <!-- Periodo -->
@@ -238,11 +249,33 @@
 
         <!-- Estimated consumption toggle (gas + water) -->
         <div v-if="isMetered && (utility.type === 'gas' || utility.type === 'water')" class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" v-model="form.has_estimated"
-              class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
-            <span class="text-sm text-gray-700 dark:text-gray-300">Contiene lettura stimata</span>
-          </label>
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" v-model="form.has_estimated"
+                class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
+              <span class="text-sm text-gray-700 dark:text-gray-300">Contiene lettura stimata</span>
+            </label>
+            <button type="button" @click="showEstimatedHelp = !showEstimatedHelp"
+              class="w-5 h-5 inline-flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+              :aria-expanded="showEstimatedHelp"
+              aria-label="Cosa significa">?</button>
+          </div>
+          <div v-if="showEstimatedHelp"
+            class="mt-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-100 space-y-1.5">
+            <p>
+              Spunta questa casella quando la bolletta riporta una <strong>lettura stimata</strong>
+              dal fornitore (non basata su un'autolettura reale o su una lettura del distributore).
+            </p>
+            <p>
+              In quel caso il consumo fatturato è una <em>previsione</em>: nella prossima bolletta
+              verrà conguagliato confrontandolo con la lettura effettiva. Marcare la stima permette
+              all'analisi consumi di distinguere i conguagli dalle reali variazioni di consumo
+              ed evitare allarmi falsi.
+            </p>
+            <p class="text-amber-700 dark:text-amber-300">
+              Inserisci la data e il valore stimato esattamente come riportati in bolletta.
+            </p>
+          </div>
           <div v-if="form.has_estimated" class="mt-3 space-y-3 pl-4 border-l-2 border-amber-300 dark:border-amber-600">
             <div>
               <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Data stima</label>
@@ -278,12 +311,64 @@
           </p>
         </div>
 
-        <!-- Stato Pagamento -->
-        <div class="flex items-center gap-3">
+        <!-- Rate (installments) — shown for installment-based services -->
+        <div v-if="isInstallmentBased" class="border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-purple-700 dark:text-purple-300">Rate</span>
+            <button v-if="!isEditing" type="button" @click="addInstallment" class="text-xs text-purple-700 dark:text-purple-300 hover:underline">
+              + Aggiungi rata
+            </button>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Totale bolletta = somma delle rate ({{ formatNumber(installmentsSum) }} / {{ formatNumber(form.amount_total) }})
+          </p>
+          <div v-for="(inst, idx) in form.installments" :key="inst.id || idx"
+            class="grid gap-2 items-end"
+            :class="isEditing ? 'grid-cols-[auto_1fr_1fr_auto]' : 'grid-cols-[auto_1fr_1fr_auto]'">
+            <div v-if="!isEditing" class="text-xs text-gray-500 dark:text-gray-400 pb-2 w-6 text-center">#{{ inst.number }}</div>
+            <div v-else class="pb-2 w-8 flex items-center justify-center">
+              <input
+                type="checkbox"
+                :checked="!!inst.is_paid"
+                :disabled="instUpdating === inst.id || !!inst.is_locked"
+                @change="toggleInstallmentPaidInline(inst, $event.target.checked)"
+                class="w-5 h-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                :title="inst.is_locked ? 'Rata saldata: annulla i pagamenti dal Bilancio per sbloccare' : (inst.is_paid ? 'Pagata' : 'Non pagata')"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ isEditing ? `#${inst.number} scadenza` : 'Scadenza' }}</label>
+              <input v-model="inst.due_date" type="date" :disabled="isEditing"
+                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-70" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Importo</label>
+              <input v-model="inst.amount" type="number" step="0.01" placeholder="0.00" :disabled="isEditing"
+                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-70" />
+            </div>
+            <button v-if="!isEditing" type="button" @click="removeInstallment(idx)"
+              class="text-red-600 dark:text-red-400 text-xs pb-2 px-1 hover:underline"
+              :disabled="form.installments.length <= 1">−</button>
+            <span v-else class="text-xs pb-2 px-1" :class="inst.is_paid ? 'text-green-600 dark:text-green-400' : 'text-gray-400'">
+              {{ inst.is_paid ? '✓' : '—' }}
+            </span>
+          </div>
+          <div v-if="!isEditing && installmentsAmountMismatch" class="text-xs text-red-600 dark:text-red-400">
+            La somma delle rate non corrisponde al totale della bolletta.
+          </div>
+          <p v-if="isEditing" class="text-xs text-gray-400 dark:text-gray-500">
+            Spunta le rate pagate — l'expense viene creata/eliminata automaticamente. Per modificare importi/scadenze elimina e reinserisci la bolletta.
+          </p>
+        </div>
+
+        <!-- Stato Pagamento — solo per bollette non rateizzate -->
+        <div v-if="!isInstallmentBased" class="flex items-center gap-3">
           <input type="checkbox" id="is-paid" v-model="form.is_paid"
-            class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
-          <label for="is-paid" class="text-sm text-gray-900 dark:text-white cursor-pointer">
-            Già pagata
+            :disabled="isLocked"
+            class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+          <label for="is-paid" class="text-sm cursor-pointer"
+            :class="isLocked ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'text-gray-900 dark:text-white'">
+            Già pagata{{ isLocked ? ' (bloccata: spesa già saldata)' : '' }}
           </label>
         </div>
 
@@ -320,12 +405,17 @@ const props = defineProps({
   bill: { type: Object, default: null }
 })
 
-const emit = defineEmits(['close', 'saved'])
+const emit = defineEmits(['close', 'saved', 'installment-updated'])
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 
-const isMetered = computed(() => ['electricity', 'gas', 'water', 'waste'].includes(props.utility?.type))
+// Rifiuti (waste) non ha lettura contatore né consumo: è una fattura con importo
+// e (opzionalmente) rate. Trattiamolo come non-metered lato UI bolletta.
+const isMetered = computed(() => ['electricity', 'gas', 'water'].includes(props.utility?.type))
 const isEditing = computed(() => !!props.bill)
+const isInstallmentBased = computed(() => !!props.utility?.is_installment_based)
+const isLocked = computed(() => !!props.bill?.is_locked)
+const showEstimatedHelp = ref(false)
 
 const saving = ref(false)
 const submitError = ref(null)
@@ -374,8 +464,55 @@ const form = ref({
   estimated_date: '',
   estimated_reading: null,
   previous_estimated_consumption: null,
-  communication_text: ''
+  communication_text: '',
+  installments: []
 })
+
+const installmentsSum = computed(() => {
+  return (form.value.installments || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0)
+})
+const installmentsAmountMismatch = computed(() => {
+  if (!isInstallmentBased.value || form.value.installments.length <= 1) return false
+  return Math.abs(installmentsSum.value - (parseFloat(form.value.amount_total) || 0)) > 0.01
+})
+
+function addInstallment() {
+  const nextNumber = form.value.installments.length + 1
+  form.value.installments.push({
+    number: nextNumber,
+    due_date: form.value.due_date || '',
+    amount: 0,
+    is_paid: false
+  })
+}
+
+function removeInstallment(idx) {
+  form.value.installments.splice(idx, 1)
+  form.value.installments.forEach((inst, i) => { inst.number = i + 1 })
+}
+
+// Edit-mode: toggle a single installment paid/unpaid via the backend PATCH endpoint.
+// Updates the local row so the checkbox stays consistent with server state.
+const instUpdating = ref(null)
+async function toggleInstallmentPaidInline(inst, newValue) {
+  if (!isEditing.value || !inst.id) return
+  instUpdating.value = inst.id
+  try {
+    await utilitiesAPI.updateInstallment(props.utility.id, props.bill.id, inst.id, {
+      is_paid: newValue,
+      paid_at: newValue ? new Date().toISOString() : null
+    })
+    inst.is_paid = newValue
+    // Tell parent the bill changed so the list refreshes `is_paid` / header
+    // without closing the modal.
+    emit('installment-updated')
+  } catch (err) {
+    console.error('Errore toggle rata:', err)
+    submitError.value = err.response?.data?.error || 'Errore durante l\'aggiornamento della rata'
+  } finally {
+    instUpdating.value = null
+  }
+}
 
 const hasProviderReadings = computed(() => {
   if (props.utility?.type === 'electricity') {
@@ -461,6 +598,10 @@ async function handleSubmit() {
     submitError.value = 'Il consumo è obbligatorio'
     return
   }
+  if (isInstallmentBased.value && !isEditing.value && installmentsAmountMismatch.value) {
+    submitError.value = 'La somma delle rate non corrisponde al totale della bolletta'
+    return
+  }
 
   saving.value = true
   submitError.value = null
@@ -508,6 +649,22 @@ async function handleSubmit() {
       communication_text: form.value.communication_text || ''
     }
 
+    // Installments (only when creating + service is installment-based)
+    if (isInstallmentBased.value && !isEditing.value && form.value.installments.length > 0) {
+      // If user has first installment due_date, align bill due_date to it (backend does the same)
+      const first = form.value.installments[0]
+      if (first.due_date) {
+        billData.due_date = new Date(first.due_date).toISOString()
+      }
+      billData.installments = form.value.installments.map(inst => ({
+        number: inst.number,
+        due_date: inst.due_date ? new Date(inst.due_date).toISOString() : new Date(form.value.due_date).toISOString(),
+        amount: parseFloat(inst.amount) || 0,
+        is_paid: !!inst.is_paid,
+        paid_at: null
+      }))
+    }
+
     if (isEditing.value) {
       await utilitiesStore.updateBillFull(props.utility.id, props.bill.id, billData)
     } else {
@@ -546,7 +703,15 @@ onMounted(async () => {
       estimated_date: formatDateForInput(props.bill.estimated_date),
       estimated_reading: props.bill.estimated_reading,
       previous_estimated_consumption: null,
-      communication_text: ''
+      communication_text: '',
+      installments: (props.bill.installments || []).map(inst => ({
+        id: inst.id,
+        number: inst.number,
+        due_date: formatDateForInput(inst.due_date),
+        amount: inst.amount,
+        is_paid: !!inst.is_paid,
+        is_locked: !!inst.is_locked
+      }))
     }
 
     // Load existing communication
@@ -561,6 +726,11 @@ onMounted(async () => {
       ? (props.bill.provider_reading_f1 || props.bill.provider_reading_f2 || props.bill.provider_reading_f3)
       : props.bill.provider_reading != null
     if (hasExisting) isEditingProviderReadings.value = false
+  }
+
+  // Seed first installment for installment-based new bills
+  if (!props.bill && isInstallmentBased.value && form.value.installments.length === 0) {
+    form.value.installments.push({ number: 1, due_date: form.value.due_date || '', amount: 0, is_paid: false })
   }
 
   await fetchReadings()
