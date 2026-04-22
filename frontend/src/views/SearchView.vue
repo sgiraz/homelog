@@ -200,15 +200,11 @@ function escapeHtml(s) {
   })[c])
 }
 
-// The backend returns snippet with [ ... ] delimiters around matches. Escape
-// first, then convert the markers to <mark>. Raw [ and ] from the source text
-// are never passed through because FTS5 picks them as match boundaries only
-// inside the selected snippet window.
 function renderSnippet(s) {
   const esc = escapeHtml(s)
   return esc
-    .replace(/\[/g, '<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-inherit rounded px-0.5">')
-    .replace(/\]/g, '</mark>')
+    .replace(/\x01/g, '<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-inherit rounded px-0.5">')
+    .replace(/\x02/g, '</mark>')
 }
 
 function goBack() {

@@ -23,9 +23,9 @@ func NewSearchHandler(db *gorm.DB) *SearchHandler {
 
 // SearchHit is one row in the response. entity_type + entity_id let the
 // frontend dispatch to the right destination; snippet is FTS5's highlighted
-// excerpt (delimited by [ and ]). ParentID is an entity-specific pointer —
-// currently only set for bills (→ owning utility) so the UI can deep-link to
-// the utility detail page instead of the utilities index.
+// excerpt (delimited by ASCII SOH/STX, rendered as <mark> by the frontend).
+// ParentID is currently only set for bills (→ owning utility) so the UI can
+// deep-link to the utility detail page instead of the utilities index.
 type SearchHit struct {
 	EntityType string `json:"entity_type"`
 	EntityID   uint   `json:"entity_id"`
@@ -94,16 +94,18 @@ func (h *SearchHandler) Query(c *gin.Context) {
 
 	var rows []row
 	// snippet(table, colIndex, open, close, ellipsis, tokens). Column 4 is body.
+	// Delimiters are ASCII control chars (SOH/STX) — cannot appear in user text,
+	// so frontend replacement is unambiguous.
 	err := h.db.Raw(`
 		SELECT entity_type AS entity_type,
 		       entity_id   AS entity_id,
 		       property_id AS property_id,
 		       title       AS title,
-		       snippet(search_index, 4, '[', ']', '…', 12) AS snippet
+		       snippet(search_index, 4, x'01', x'02', '…', 12) AS snippet
 		FROM search_index
 		WHERE search_index MATCH ?
 		  AND property_id IN ?
-		ORDER BY rank
+		ORDER BY bm25(search_index)
 		LIMIT 50
 	`, match, propertyIDs).Scan(&rows).Error
 

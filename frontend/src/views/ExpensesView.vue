@@ -685,12 +685,4 @@ onUnmounted(() => {
   opacity: 0;
   max-height: 0;
 }
-.search-flash {
-  animation: search-flash 2.2s ease-out;
-}
-@keyframes search-flash {
-  0%   { box-shadow: 0 0 0 3px rgba(59,130,246,.55); background-color: rgba(59,130,246,.12); }
-  70%  { box-shadow: 0 0 0 3px rgba(59,130,246,.25); background-color: rgba(59,130,246,.04); }
-  100% { box-shadow: 0 0 0 0 transparent; background-color: transparent; }
-}
 </style>

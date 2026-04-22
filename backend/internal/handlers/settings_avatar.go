@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -49,7 +48,8 @@ func (h *SettingsHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 	contentType := http.DetectContentType(buf[:n])
-	if !strings.HasPrefix(contentType, "image/") {
+	allowed := map[string]bool{"image/jpeg": true, "image/png": true, "image/webp": true}
+	if !allowed[contentType] {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "File must be an image (JPEG, PNG, or WebP)"})
 		return
 	}
