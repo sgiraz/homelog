@@ -226,7 +226,7 @@
 <script setup>
 defineOptions({ name: 'UtilitiesView' })
 
-import { ref, computed, onMounted, h } from 'vue'
+import { ref, computed, onMounted, onActivated, h } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
@@ -565,5 +565,24 @@ function onReadingSaved() {
 
 onMounted(() => {
   fetchProperties()
+})
+
+// keep-alive suppresses remount on return from Settings; re-fetch the
+// properties list so a newly created property appears in the selector
+onActivated(async () => {
+  try {
+    const { data } = await apiClient.get('/properties')
+    if (!data?.length) return
+    properties.value = data
+    // preserve current selection if it still exists
+    const stillValid = selectedPropertyId.value && data.some(p => p.id === selectedPropertyId.value)
+    if (!stillValid) {
+      const current = data.find(p => p.is_current) || data[0]
+      selectedPropertyId.value = current.id
+      utilitiesStore.fetchUtilities({ property_id: current.id })
+    }
+  } catch (err) {
+    console.error('Error fetching properties:', err)
+  }
 })
 </script>

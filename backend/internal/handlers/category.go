@@ -215,6 +215,14 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Block deletion if any expenses reference this category
+	var expenseCount int64
+	h.db.Model(&models.Expense{}).Where("category_id = ?", id).Count(&expenseCount)
+	if expenseCount > 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "Cannot delete category: it is used by existing expenses"})
+		return
+	}
+
 	// Delete subcategories first
 	h.db.Where("category_id = ?", id).Delete(&models.Subcategory{})
 
