@@ -200,11 +200,13 @@ function escapeHtml(s) {
   })[c])
 }
 
+const SNIPPET_OPEN = String.fromCharCode(1)
+const SNIPPET_CLOSE = String.fromCharCode(2)
+
 function renderSnippet(s) {
-  const esc = escapeHtml(s)
-  return esc
-    .replace(/\x01/g, '<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-inherit rounded px-0.5">')
-    .replace(/\x02/g, '</mark>')
+  return escapeHtml(s)
+    .split(SNIPPET_OPEN).join('<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-inherit rounded px-0.5">')
+    .split(SNIPPET_CLOSE).join('</mark>')
 }
 
 function goBack() {
