@@ -1,6 +1,6 @@
 module github.com/sgiraz/homelog
 
-go 1.25.0
+go 1.25
 
 require (
 	github.com/gin-contrib/gzip v1.2.6
