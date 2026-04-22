@@ -219,7 +219,7 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 	var expenseCount int64
 	h.db.Model(&models.Expense{}).Where("category_id = ?", id).Count(&expenseCount)
 	if expenseCount > 0 {
-		c.JSON(http.StatusConflict, gin.H{"error": "Cannot delete category: it is used by existing expenses"})
+		c.JSON(http.StatusConflict, gin.H{"error": "Impossibile eliminare la categoria: è utilizzata da spese esistenti"})
 		return
 	}
 
