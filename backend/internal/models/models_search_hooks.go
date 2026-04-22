@@ -17,13 +17,19 @@ import (
 //     both create and update.
 //   - AfterDelete must run on soft delete too (GORM fires it on both paths).
 
-// truncate clamps a title to a readable length for list display.
+// truncate clamps a title to n runes. Byte-slicing (s[:n]) would split
+// multi-byte UTF-8 runes; ranging over the string yields byte offsets of
+// rune boundaries, so s[:i] is always valid UTF-8.
 func truncate(s string, n int) string {
 	s = strings.TrimSpace(s)
-	if len(s) <= n {
-		return s
+	count := 0
+	for i := range s {
+		if count == n {
+			return s[:i]
+		}
+		count++
 	}
-	return s[:n]
+	return s
 }
 
 // ── Expense ──────────────────────────────────────────────────────────────
@@ -40,7 +46,7 @@ func (e *Expense) AfterSave(tx *gorm.DB) error {
 	}
 	title := truncate(e.Description, 120)
 	body := strings.TrimSpace(e.Description + " " + categoryName + " " + subcategoryName)
-	return search.Upsert(tx, search.TypeExpense, e.ID, propertyID, title, body)
+	return search.Upsert(tx, search.TypeExpense, e.ID, propertyID, e.UserID, title, body)
 }
 
 func (e *Expense) AfterDelete(tx *gorm.DB) error {
@@ -59,7 +65,7 @@ func (b *Bill) AfterSave(tx *gorm.DB) error {
 
 	title := truncate(strings.TrimSpace(provider+" "+b.BillNumber), 120)
 	body := strings.TrimSpace(b.BillNumber + " " + provider + " " + commContent)
-	return search.Upsert(tx, search.TypeBill, b.ID, propertyID, title, body)
+	return search.Upsert(tx, search.TypeBill, b.ID, propertyID, 0, title, body)
 }
 
 func (b *Bill) AfterDelete(tx *gorm.DB) error {
@@ -75,7 +81,7 @@ func (p *Project) AfterSave(tx *gorm.DB) error {
 	}
 	title := truncate(p.Name, 120)
 	body := strings.TrimSpace(p.Name + " " + p.Description)
-	return search.Upsert(tx, search.TypeProject, p.ID, propertyID, title, body)
+	return search.Upsert(tx, search.TypeProject, p.ID, propertyID, p.UserID, title, body)
 }
 
 func (p *Project) AfterDelete(tx *gorm.DB) error {
@@ -106,7 +112,7 @@ func (u *Utility) AfterSave(tx *gorm.DB) error {
 		u.Type + " " + typeIT + " " +
 			u.Provider + " " + u.Address + " " + u.CustomerCode + " " + u.Notes,
 	)
-	return search.Upsert(tx, search.TypeUtility, u.ID, u.PropertyID, title, body)
+	return search.Upsert(tx, search.TypeUtility, u.ID, u.PropertyID, 0, title, body)
 }
 
 func (u *Utility) AfterDelete(tx *gorm.DB) error {

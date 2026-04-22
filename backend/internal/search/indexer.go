@@ -21,13 +21,17 @@ const (
 // don't support ON CONFLICT, so we delete-then-insert inside the caller's
 // transaction — safe under GORM's AfterSave hook because tx is the same txn
 // as the triggering Save.
-func Upsert(tx *gorm.DB, etype EntityType, id, propertyID uint, title, body string) error {
+//
+// userID must be the owning user's ID for entities that can have property_id=0
+// (expenses, projects). For entities always scoped to a property (bills,
+// utilities), pass 0 — they are never matched by the property_id=0 branch.
+func Upsert(tx *gorm.DB, etype EntityType, id, propertyID, userID uint, title, body string) error {
 	if err := tx.Exec(`DELETE FROM search_index WHERE entity_type = ? AND entity_id = ?`, etype, id).Error; err != nil {
 		return err
 	}
 	return tx.Exec(
-		`INSERT INTO search_index (entity_type, entity_id, property_id, title, body) VALUES (?, ?, ?, ?, ?)`,
-		etype, id, propertyID, title, body,
+		`INSERT INTO search_index (entity_type, entity_id, property_id, user_id, title, body) VALUES (?, ?, ?, ?, ?, ?)`,
+		etype, id, propertyID, userID, title, body,
 	).Error
 }
 
