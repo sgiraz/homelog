@@ -33,7 +33,12 @@ export const useExpensesStore = defineStore('expenses', () => {
         const { data } = await expensesAPI.list(params)
         const fetched = data.expenses || []
         if (append) {
-          expenses.value = [...expenses.value, ...fetched]
+          // Dedup against any rows already present (e.g. an expense prepended
+          // via ensureExpense for a deep-link target) so the user doesn't see
+          // the same row twice when its natural page comes in.
+          const seen = new Set(expenses.value.map(e => e.id))
+          const deduped = fetched.filter(e => !seen.has(e.id))
+          expenses.value = [...expenses.value, ...deduped]
         } else {
           expenses.value = fetched
         }
@@ -59,6 +64,34 @@ export const useExpensesStore = defineStore('expenses', () => {
   async function fetchMore(filters = {}) {
     if (!hasMore.value || loading.value) return
     await fetchExpenses(filters, { page: page.value + 1, append: true })
+  }
+
+  // Fetch a single expense and insert it into the list if missing. Used by
+  // deep-links from global search to surface rows that live past the first
+  // page of the infinite paginator. No-ops if the id is already in the list.
+  // `comparator` keeps the inserted row in the same sort order the user sees
+  // — without it an old expense would land at the top, which is confusing.
+  async function ensureExpense(id, { comparator } = {}) {
+    if (!id) return null
+    const numericId = Number(id)
+    const existing = expenses.value.find(e => e.id === numericId)
+    if (existing) return existing
+    try {
+      const { data } = await expensesAPI.get(numericId)
+      if (data && !expenses.value.some(e => e.id === data.id)) {
+        if (typeof comparator === 'function') {
+          const list = [...expenses.value, data]
+          list.sort(comparator)
+          expenses.value = list
+        } else {
+          expenses.value = [data, ...expenses.value]
+        }
+      }
+      return data
+    } catch (err) {
+      error.value = err.response?.data?.error || err.message
+      return null
+    }
   }
 
   async function createExpense(expense) {
@@ -112,6 +145,6 @@ export const useExpensesStore = defineStore('expenses', () => {
 
   return {
     expenses, loading, saving, error, total, page, hasMore,
-    fetchExpenses, fetchMore, createExpense, updateExpense, deleteExpense
+    fetchExpenses, fetchMore, ensureExpense, createExpense, updateExpense, deleteExpense
   }
 })

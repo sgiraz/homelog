@@ -359,7 +359,7 @@ func (h *ExportHandler) ImportData(c *gin.Context) {
 		return
 	}
 
-	var payload map[string]interface{}
+	var payload map[string]any
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Formato JSON non valido"})
 		return
@@ -395,7 +395,7 @@ func (h *ExportHandler) ImportData(c *gin.Context) {
 
 	switch importType {
 	case "expenses":
-		if raw, ok := payload["expenses"].([]interface{}); ok {
+		if raw, ok := payload["expenses"].([]any); ok {
 			n, err := h.importExpenses(tx, userID, raw)
 			if err != nil {
 				tx.Rollback()
@@ -406,7 +406,7 @@ func (h *ExportHandler) ImportData(c *gin.Context) {
 		}
 
 	case "utilities":
-		if raw, ok := payload["utilities"].([]interface{}); ok {
+		if raw, ok := payload["utilities"].([]any); ok {
 			n, err := h.importUtilities(tx, userID, raw)
 			if err != nil {
 				tx.Rollback()
@@ -417,7 +417,7 @@ func (h *ExportHandler) ImportData(c *gin.Context) {
 		}
 
 	case "projects":
-		if raw, ok := payload["projects"].([]interface{}); ok {
+		if raw, ok := payload["projects"].([]any); ok {
 			n, err := h.importProjects(tx, userID, raw)
 			if err != nil {
 				tx.Rollback()
@@ -450,7 +450,7 @@ func (h *ExportHandler) ImportData(c *gin.Context) {
 
 // importExpenses inserts expense records for the given user.
 // BillID is always cleared to avoid dangling FK references.
-func (h *ExportHandler) importExpenses(tx *gorm.DB, userID uint, raw []interface{}) (int, error) {
+func (h *ExportHandler) importExpenses(tx *gorm.DB, userID uint, raw []any) (int, error) {
 	count := 0
 	for _, item := range raw {
 		b, _ := json.Marshal(item)
@@ -471,7 +471,7 @@ func (h *ExportHandler) importExpenses(tx *gorm.DB, userID uint, raw []interface
 }
 
 // importUtilities inserts utility records (without readings/bills).
-func (h *ExportHandler) importUtilities(tx *gorm.DB, userID uint, raw []interface{}) (int, error) {
+func (h *ExportHandler) importUtilities(tx *gorm.DB, userID uint, raw []any) (int, error) {
 	count := 0
 	for _, item := range raw {
 		b, _ := json.Marshal(item)
@@ -492,7 +492,7 @@ func (h *ExportHandler) importUtilities(tx *gorm.DB, userID uint, raw []interfac
 }
 
 // importProjects inserts project records.
-func (h *ExportHandler) importProjects(tx *gorm.DB, userID uint, raw []interface{}) (int, error) {
+func (h *ExportHandler) importProjects(tx *gorm.DB, userID uint, raw []any) (int, error) {
 	count := 0
 	for _, item := range raw {
 		b, _ := json.Marshal(item)
@@ -513,22 +513,22 @@ func (h *ExportHandler) importProjects(tx *gorm.DB, userID uint, raw []interface
 
 // importFull handles a complete backup (expenses + utilities + projects).
 // Importing is additive: no existing data is overwritten.
-func (h *ExportHandler) importFull(tx *gorm.DB, userID uint, payload map[string]interface{}, counts map[string]int) error {
-	if raw, ok := payload["expenses"].([]interface{}); ok {
+func (h *ExportHandler) importFull(tx *gorm.DB, userID uint, payload map[string]any, counts map[string]int) error {
+	if raw, ok := payload["expenses"].([]any); ok {
 		n, err := h.importExpenses(tx, userID, raw)
 		if err != nil {
 			return err
 		}
 		counts["expenses"] = n
 	}
-	if raw, ok := payload["utilities"].([]interface{}); ok {
+	if raw, ok := payload["utilities"].([]any); ok {
 		n, err := h.importUtilities(tx, userID, raw)
 		if err != nil {
 			return err
 		}
 		counts["utilities"] = n
 	}
-	if raw, ok := payload["projects"].([]interface{}); ok {
+	if raw, ok := payload["projects"].([]any); ok {
 		n, err := h.importProjects(tx, userID, raw)
 		if err != nil {
 			return err

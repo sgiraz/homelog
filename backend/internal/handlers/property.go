@@ -197,7 +197,7 @@ func (h *PropertyHandler) Update(c *gin.Context) {
 	}
 
 	// Build updates map
-	updates := make(map[string]interface{})
+	updates := make(map[string]any)
 
 	if req.Name != nil {
 		updates["name"] = *req.Name

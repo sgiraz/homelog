@@ -116,8 +116,10 @@
         <router-link
           v-for="utility in sortedUtilities"
           :key="utility.id"
+          :ref="(el) => registerRow(utility.id, el?.$el || el)"
           :to="`/utilities/${utility.id}`"
-          class="block"
+          class="block rounded-xl"
+          :class="{ 'search-flash': isHighlighted(utility.id) }"
         >
           <Card class="p-5 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-800 transition-all h-full">
             <!-- Header -->
@@ -225,8 +227,10 @@
 defineOptions({ name: 'UtilitiesView' })
 
 import { ref, computed, onMounted, h } from 'vue'
+import { useRoute } from 'vue-router'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
+import { useHighlight } from '@/composables/useHighlight'
 import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatNumber as _formatNumber } from '@/utils/dateFormatter'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
@@ -236,6 +240,7 @@ import AddReadingModal from '@/components/utilities/AddReadingModal.vue'
 import AddBillModal from '@/components/utilities/AddBillModal.vue'
 import TemplatesManager from '@/components/utilities/TemplatesManager.vue'
 
+const route = useRoute()
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 
@@ -327,6 +332,10 @@ const sortedUtilities = computed(() => {
   return [...utilitiesStore.utilities].sort((a, b) => {
     return (typeOrder[a.type] ?? 99) - (typeOrder[b.type] ?? 99)
   })
+})
+
+const { isHighlighted, registerRow } = useHighlight({
+  source: () => sortedUtilities.value,
 })
 
 // ── Utility Icons & Helpers ──
@@ -494,7 +503,13 @@ async function fetchProperties() {
     const { data } = await apiClient.get('/properties')
     if (data && data.length > 0) {
       properties.value = data
-      const current = data.find(p => p.is_current) || data[0]
+      // `?property=<id>` (from global search) overrides the "current" property
+      // so the searched utility is actually loaded into the list.
+      const requested = Number(route.query.property)
+      const fromQuery = Number.isFinite(requested)
+        ? data.find(p => p.id === requested)
+        : null
+      const current = fromQuery || data.find(p => p.is_current) || data[0]
       selectedPropertyId.value = current.id
       utilitiesStore.fetchUtilities({ property_id: current.id })
     }
@@ -552,3 +567,14 @@ onMounted(() => {
   fetchProperties()
 })
 </script>
+
+<style scoped>
+.search-flash {
+  animation: search-flash 2.2s ease-out;
+}
+@keyframes search-flash {
+  0%   { box-shadow: 0 0 0 3px rgba(59,130,246,.55); background-color: rgba(59,130,246,.12); }
+  70%  { box-shadow: 0 0 0 3px rgba(59,130,246,.25); background-color: rgba(59,130,246,.04); }
+  100% { box-shadow: 0 0 0 0 transparent; background-color: transparent; }
+}
+</style>

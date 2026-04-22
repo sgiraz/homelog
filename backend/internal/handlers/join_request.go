@@ -274,7 +274,7 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 
 	// Update request status
 	resolvedByID := userID
-	if err := tx.Model(&joinReq).Updates(map[string]interface{}{
+	if err := tx.Model(&joinReq).Updates(map[string]any{
 		"status":      req.Status,
 		"resolved_by": resolvedByID,
 		"resolved_at": now,

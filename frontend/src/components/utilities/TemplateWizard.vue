@@ -66,8 +66,7 @@
         :extracting="extracting"
         :extract-error="extractError"
         @update:template="template = $event"
-        @trigger-file-input="triggerFileInput"
-        @file-dropped="handleFileDrop"
+        @file-selected="processFile"
       />
 
       <!-- Step 2: Drag & Drop Field Mapping with PDF Textract View -->
@@ -179,8 +178,6 @@ const step = ref(1)
 const steps = ['Info & PDF', 'Mappa Campi', 'Salva']
 
 // File upload state
-const fileInput = ref(null)
-const isDraggingFile = ref(false)
 const extracting = ref(false)
 const extractError = ref(null)
 const uploadedFile = ref(null)
@@ -311,28 +308,8 @@ const canProceed = computed(() => {
   return true
 })
 
-// File handling
-function triggerFileInput() {
-  fileInput.value?.click()
-}
-
-function handleFileSelect(event) {
-  const file = event.target.files?.[0]
-  if (file) {
-    processFile(file)
-  }
-}
-
-function handleFileDrop(event) {
-  isDraggingFile.value = false
-  const file = event.dataTransfer?.files?.[0]
-  if (file && file.type === 'application/pdf') {
-    processFile(file)
-  } else {
-    extractError.value = 'Per favore carica un file PDF'
-  }
-}
-
+// File handling — the hidden input + drop zone live in WizardStepInfo,
+// which emits `file-selected` with the raw File instance.
 async function processFile(file) {
   if (file.type !== 'application/pdf') {
     extractError.value = 'Per favore carica un file PDF'
@@ -349,9 +326,12 @@ async function processFile(file) {
     pdfAnalysis.value = data
     rawText.value = data.raw_text || ''
 
-    // Extract timestamp from first page image URL for cleanup
-    if (data.pages?.length > 0) {
-      const match = data.pages[0].image_url.match(/template_page_(\d+)_/)
+    // The backend returns an opaque tag used to request cleanup later.
+    // Fall back to parsing the URL for backward compatibility during rollout.
+    if (data.tag) {
+      analysisTimestamp.value = data.tag
+    } else if (data.pages?.length > 0) {
+      const match = data.pages[0].image_url.match(/template_page_(\d+(?:_[a-f0-9]+)?)_/)
       if (match) {
         analysisTimestamp.value = match[1]
       }
@@ -582,20 +562,6 @@ function getFieldLabel(fieldKey) {
 function getDirectionLabel(direction) {
   const labels = { right: 'destra', below: 'sotto', right_or_below: 'destra/sotto' }
   return labels[direction] || direction
-}
-
-function getUtilityTypeName(type) {
-  const names = {
-    electricity: 'Luce',
-    gas: 'Gas',
-    water: 'Acqua',
-    waste: 'Rifiuti',
-    internet: 'Internet',
-    insurance: 'Assicurazione',
-    affitto: 'Affitto',
-    mutuo: 'Mutuo'
-  }
-  return names[type] || type
 }
 
 // Cleanup temporary images

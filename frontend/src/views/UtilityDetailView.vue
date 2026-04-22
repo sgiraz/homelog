@@ -177,7 +177,9 @@ const { confirm } = useConfirm()
 
 const loading = ref(true)
 const utility = ref(null)
-const activeTab = ref('bills')
+// Deep-link from global search lands here with `?tab=bills&highlight=<id>`;
+// the tab query wins over the default.
+const activeTab = ref(route.query.tab === 'readings' || route.query.tab === 'analysis' || route.query.tab === 'price_history' ? route.query.tab : 'bills')
 const showEditModal = ref(false)
 const analysisTab = ref(null)
 

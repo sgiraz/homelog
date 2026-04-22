@@ -176,76 +176,6 @@ export function classifyToken(text) {
 }
 
 /**
- * Tokenize a line of text into individual tokens
- * @param {string} line - A single line of text
- * @param {number} lineIndex - The line number (0-based)
- * @returns {Array} - Array of token objects
- */
-function tokenizeLine(line, lineIndex) {
-  const tokens = []
-
-  // Split by whitespace while preserving position information
-  // Match: numbers with Italian formatting, dates, words, punctuation
-  const regex = /(\d{1,3}(?:[.\s]\d{3})*,\d{2})|(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})|(IT\d{3}E\d+)|(\d+[,.]?\d*)|([A-Za-zÀ-ÿ]+)|([^\s])/g
-
-  let match
-  while ((match = regex.exec(line)) !== null) {
-    const text = match[0]
-    const type = classifyToken(text)
-
-    // Skip pure punctuation and null types
-    if (!type || type === TokenType.PUNCTUATION) continue
-
-    tokens.push({
-      id: `${lineIndex}-${match.index}`,
-      text: text,
-      type: type,
-      lineIndex: lineIndex,
-      lineText: line.trim(),
-      position: match.index
-    })
-  }
-
-  return tokens
-}
-
-/**
- * Main tokenizer function - converts PDF text to draggable tokens
- * @param {string} rawText - The raw text extracted from PDF
- * @returns {Object} - { tokens: Array, lines: Array }
- */
-export function tokenizePDFText(rawText) {
-  if (!rawText || typeof rawText !== 'string') {
-    return { tokens: [], lines: [] }
-  }
-
-  const lines = rawText.split(/\r?\n/)
-  const allTokens = []
-  const lineData = []
-
-  lines.forEach((line, lineIndex) => {
-    const trimmedLine = line.trim()
-    if (!trimmedLine) return // Skip empty lines
-
-    const lineTokens = tokenizeLine(line, lineIndex)
-
-    if (lineTokens.length > 0) {
-      lineData.push({
-        index: lineIndex,
-        text: trimmedLine,
-        tokens: lineTokens
-      })
-      allTokens.push(...lineTokens)
-    }
-  })
-
-  return {
-    tokens: allTokens,
-    lines: lineData
-  }
-}
-
-/**
  * Find context around a token (words before and after on the same line)
  * @param {Object} token - The token object
  * @param {Array} allTokens - All tokens from the document
@@ -265,31 +195,6 @@ export function getTokenContext(token, allTokens, contextSize = 3) {
   const after = lineTokens.slice(tokenIndex + 1, tokenIndex + 1 + contextSize)
 
   return { before, after }
-}
-
-/**
- * Get color class for token type (Tailwind CSS)
- * @param {string} type - TokenType value
- * @returns {string} - Tailwind CSS classes
- */
-export function getTokenColorClass(type) {
-  switch (type) {
-    case TokenType.CURRENCY:
-      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700'
-    case TokenType.NUMBER:
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-700'
-    case TokenType.DATE:
-      return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-300 dark:border-purple-700'
-    case TokenType.MONTH:
-      return 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300 border-violet-300 dark:border-violet-700'
-    case TokenType.SYMBOL:
-      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700'
-    case TokenType.POD:
-    case TokenType.PDR:
-      return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 border-orange-300 dark:border-orange-700'
-    default:
-      return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600'
-  }
 }
 
 /**

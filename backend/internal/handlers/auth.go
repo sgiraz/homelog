@@ -286,7 +286,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	// Parse refresh token
 	jwtSecret := os.Getenv("JWT_SECRET")
 
-	token, err := jwt.ParseWithClaims(req.RefreshToken, &middleware.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(req.RefreshToken, &middleware.JWTClaims{}, func(token *jwt.Token) (any, error) {
 		return []byte(jwtSecret), nil
 	})
 
@@ -409,8 +409,11 @@ type ForgotPasswordRequest struct {
 	Email string `json:"email" binding:"required,email"`
 }
 
-// ForgotPassword generates a reset token and returns it directly
-// (no email configured — token is shown in the response for self-hosted use)
+// ForgotPassword generates a reset token. The token is never returned in the
+// response body (previous behavior leaked it to anyone who knew the email).
+// Self-hosted admins without SMTP configured can read the token from server
+// logs. As a dev-only convenience, setting DEV_EXPOSE_RESET_TOKEN=true will
+// include the token in the JSON response — DO NOT enable in production.
 func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	var req ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -418,10 +421,13 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 		return
 	}
 
+	// Always respond with the same generic message to avoid user enumeration,
+	// whether the email exists or not.
+	genericResponse := gin.H{"message": "Se l'email esiste, riceverai le istruzioni."}
+
 	var user models.User
 	if err := h.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
-		// Return success even if email not found to avoid enumeration
-		c.JSON(http.StatusOK, gin.H{"message": "Se l'email esiste, riceverai le istruzioni."})
+		c.JSON(http.StatusOK, genericResponse)
 		return
 	}
 
@@ -434,7 +440,7 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	token := hex.EncodeToString(tokenBytes)
 	expires := time.Now().Add(1 * time.Hour)
 
-	if err := h.db.Model(&user).Updates(map[string]interface{}{
+	if err := h.db.Model(&user).Updates(map[string]any{
 		"password_reset_token":   token,
 		"password_reset_expires": expires,
 	}).Error; err != nil {
@@ -442,14 +448,21 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Password reset token generated for %s", user.Email)
+	// Emit the token to the server log so a self-hosted admin can relay it
+	// out-of-band when SMTP is not configured. The banner lines make it easy
+	// to grep. Once SMTP is wired up this log line should be removed.
+	log.Printf("========================================================================")
+	log.Printf("🔑 PASSWORD RESET TOKEN for %s (valid 1h)", user.Email)
+	log.Printf("   %s", token)
+	log.Printf("========================================================================")
 
-	// Since email is not configured, return the token directly
-	c.JSON(http.StatusOK, gin.H{
-		"message":     "Token generato. Poiché l'email non è configurata, usa il token qui sotto.",
-		"reset_token": token,
-		"expires_in":  "1 ora",
-	})
+	resp := gin.H{"message": genericResponse["message"]}
+	if os.Getenv("DEV_EXPOSE_RESET_TOKEN") == "true" {
+		resp["reset_token"] = token
+		resp["expires_in"] = "1 ora"
+		resp["warning"] = "DEV_EXPOSE_RESET_TOKEN is enabled — do not use in production"
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // ResetPasswordRequest represents the reset-password input
@@ -483,7 +496,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Model(&user).Updates(map[string]interface{}{
+	if err := h.db.Model(&user).Updates(map[string]any{
 		"password_hash":          string(hashed),
 		"password_reset_token":   "",
 		"password_reset_expires": nil,

@@ -89,7 +89,7 @@
           {{ error }}
         </div>
 
-        <!-- Token result box -->
+        <!-- Token result box (dev mode: server returns the token inline) -->
         <div v-if="resetToken" class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl space-y-3">
           <p class="text-sm font-medium text-amber-800 dark:text-amber-300">
             Token generato (valido 1 ora):
@@ -105,13 +105,24 @@
           </Button>
         </div>
 
+        <!-- Generic success (production: token is logged server-side, not returned) -->
+        <div v-else-if="forgotSubmitted" class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl space-y-3">
+          <p class="text-sm text-blue-800 dark:text-blue-300">
+            Se l'email è registrata, è stato generato un token di reset (valido 1 ora).
+            Chiedi all'amministratore di recuperare il token dai log del server, poi procedi al reset.
+          </p>
+          <Button class="w-full" @click="mode = 'reset'; error = null">
+            Ho il token, procedi al reset
+          </Button>
+        </div>
+
         <Button v-else class="w-full" :disabled="loading" @click="handleForgotPassword">
-          {{ loading ? 'Generazione...' : 'Genera token di reset' }}
+          {{ loading ? 'Invio...' : 'Genera token di reset' }}
         </Button>
 
         <button
           type="button"
-          @click="mode = 'login'; error = null; resetToken = null"
+          @click="mode = 'login'; error = null; resetToken = null; forgotSubmitted = false"
           class="w-full text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
         >
           ← Torna al login
@@ -203,6 +214,7 @@ const form = ref({ email: '', password: '', name: '' })
 
 const forgotEmail = ref('')
 const resetToken = ref(null)
+const forgotSubmitted = ref(false)
 
 const resetForm = ref({ token: '', newPassword: '', confirmPassword: '' })
 
@@ -231,11 +243,13 @@ async function handleForgotPassword() {
   loading.value = true
   error.value = null
   resetToken.value = null
+  forgotSubmitted.value = false
   try {
     const { data } = await authAPI.forgotPassword(forgotEmail.value)
+    forgotSubmitted.value = true
     if (data.reset_token) {
+      // Dev-mode backend returned the token inline
       resetToken.value = data.reset_token
-      // Pre-fill token in reset form for convenience
       resetForm.value.token = data.reset_token
     }
   } catch (err) {
@@ -271,6 +285,7 @@ async function handleResetPassword() {
       error.value = null
       success.value = null
       resetToken.value = null
+      forgotSubmitted.value = false
       resetForm.value = { token: '', newPassword: '', confirmPassword: '' }
     }, 2000)
   } catch (err) {

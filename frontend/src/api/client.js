@@ -95,6 +95,7 @@ export const exchangeAPI = {
 
 export const expensesAPI = {
   list: (params) => apiClient.get('/expenses', { params }),
+  get: (id) => apiClient.get(`/expenses/${id}`),
   create: (data) => apiClient.post('/expenses', data),
   update: (id, data) => apiClient.put(`/expenses/${id}`, data),
   delete: (id) => apiClient.delete(`/expenses/${id}`),
@@ -290,4 +291,8 @@ export const joinRequestAPI = {
   create: (propertyId) => apiClient.post('/join-requests', { property_id: propertyId }),
   resolve: (id, status) => apiClient.patch(`/join-requests/${id}`, { status }),
   joinableProperties: () => apiClient.get('/properties/joinable'),
+}
+
+export const searchAPI = {
+  query: (q, signal) => apiClient.get('/search', { params: { q }, signal }),
 }

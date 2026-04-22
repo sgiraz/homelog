@@ -160,7 +160,7 @@ func (h *CategoryHandler) Update(c *gin.Context) {
 		return
 	}
 
-	updates := map[string]interface{}{}
+	updates := map[string]any{}
 	if input.Name != nil {
 		updates["name"] = *input.Name
 	}

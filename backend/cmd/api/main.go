@@ -70,6 +70,11 @@ func main() {
 	// Initialize router
 	router := gin.Default()
 
+	// Cap multipart form memory. Requests larger than this spill to disk, and
+	// per-file limits still apply inside each handler. Keeps memory under the
+	// Raspberry Pi budget even when several PDFs arrive concurrently.
+	router.MaxMultipartMemory = 12 << 20 // 12 MiB
+
 	// Apply middleware
 	router.Use(middleware.CORS())
 	router.Use(middleware.RateLimiter())
@@ -116,8 +121,11 @@ func main() {
 			c.JSON(200, resp)
 		})
 
-		// Public routes
+		// Public routes — protected by a stricter per-IP rate limiter on top
+		// of the global one (10 req/min/IP) to slow credential stuffing,
+		// email enumeration and password-reset abuse.
 		auth := v1.Group("/auth")
+		auth.Use(middleware.AuthRateLimiter())
 		{
 			authHandler := handlers.NewAuthHandler(db)
 			auth.POST("/register", authHandler.Register)
@@ -350,6 +358,10 @@ func main() {
 			protected.GET("/export/utilities", exportHandler.ExportUtilities)
 			protected.GET("/export/projects", exportHandler.ExportProjects)
 			protected.POST("/import", exportHandler.ImportData)
+
+			// Global search (FTS5)
+			searchHandler := handlers.NewSearchHandler(db)
+			protected.GET("/search", searchHandler.Query)
 		}
 	}
 

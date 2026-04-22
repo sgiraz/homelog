@@ -357,6 +357,26 @@
         </label>
       </div>
 
+      <!-- Currency -->
+      <div>
+        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+          Valuta
+        </label>
+        <select
+          v-model="form.currency"
+          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option v-for="opt in currencyOptions" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Non potrà essere cambiata dopo la prima bolletta saldata.
+        </p>
+      </div>
+
       <!-- Notes -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -392,6 +412,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useUtilitiesStore } from '@/stores/utilities'
+import { useSettingsStore } from '@/stores/settings'
 import apiClient, { utilitiesAPI, membersAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
@@ -406,6 +427,27 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'created'])
 const utilitiesStore = useUtilitiesStore()
+const settingsStore = useSettingsStore()
+
+// Short curated list — covers realistic multi-currency households without
+// overwhelming the dropdown. Empty-string option means "use household currency".
+const currencyOptions = computed(() => {
+  const base = settingsStore.formatSettings.currency || 'EUR'
+  return [
+    { value: '', label: `Valuta globale (${base})` },
+    { value: 'EUR', label: 'EUR — Euro' },
+    { value: 'USD', label: 'USD — Dollaro USA' },
+    { value: 'GBP', label: 'GBP — Sterlina' },
+    { value: 'CHF', label: 'CHF — Franco svizzero' },
+    { value: 'JPY', label: 'JPY — Yen' },
+    { value: 'CAD', label: 'CAD — Dollaro canadese' },
+    { value: 'AUD', label: 'AUD — Dollaro australiano' },
+    { value: 'SEK', label: 'SEK — Corona svedese' },
+    { value: 'NOK', label: 'NOK — Corona norvegese' },
+    { value: 'DKK', label: 'DKK — Corona danese' },
+    { value: 'PLN', label: 'PLN — Złoty' },
+  ]
+})
 
 const loading = ref(false)
 const error = ref(null)
@@ -489,7 +531,8 @@ const form = ref({
   allows_self_reading: true,
   comparison_threshold: 5,
   is_domiciled: false,
-  is_installment_based: false
+  is_installment_based: false,
+  currency: ''
 })
 
 const splitOverrideHint = computed(() => {

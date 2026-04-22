@@ -68,8 +68,10 @@
       <div
         v-for="bill in filteredBills"
         :key="bill.id"
+        :ref="(el) => registerRow(bill.id, el)"
         class="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl
                hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+        :class="{ 'search-flash': isHighlighted(bill.id) }"
       >
         <div v-if="hasMultipleInstallments(bill)" class="mb-2 flex items-center justify-between">
           <button
@@ -112,6 +114,13 @@
             <div class="flex items-center gap-2 flex-wrap">
               <span class="font-semibold text-gray-900 dark:text-white">
                 {{ formatCurrency(bill.amount_total) }}
+              </span>
+              <span
+                v-if="bill.original_amount != null && bill.original_currency"
+                class="text-xs text-gray-500 dark:text-gray-400"
+                :title="'Importo originale fatturato'"
+              >
+                ({{ formatOriginal(bill.original_amount, bill.original_currency) }})
               </span>
               <span :class="[
                 'px-2 py-0.5 text-xs rounded-full font-medium',
@@ -191,6 +200,7 @@ import { utilitiesAPI } from '@/api/client'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
+import { useHighlight } from '@/composables/useHighlight'
 import { formatDate as _formatDate, formatPeriod as _formatPeriod, formatNumber as _formatNumber, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import Button from '@/components/common/Button.vue'
 import AddBillModal from '@/components/utilities/AddBillModal.vue'
@@ -292,10 +302,18 @@ const filteredBillsTotal = computed(() => {
   return filteredBills.value.reduce((sum, b) => sum + (b.amount_total || 0), 0)
 })
 
+const { isHighlighted, registerRow } = useHighlight({
+  source: () => filteredBills.value,
+})
+
 // ── Functions ──
 
 function formatCurrency(value) {
   return _formatCurrency(value, settingsStore.formatSettings)
+}
+
+function formatOriginal(value, currency) {
+  return _formatCurrency(value, { ...settingsStore.formatSettings, currency })
 }
 
 function formatConsumption(value) {
@@ -390,3 +408,14 @@ async function confirmDeleteBill(bill) {
   }
 }
 </script>
+
+<style scoped>
+.search-flash {
+  animation: search-flash 2.2s ease-out;
+}
+@keyframes search-flash {
+  0%   { box-shadow: 0 0 0 3px rgba(59,130,246,.55); background-color: rgba(59,130,246,.12); }
+  70%  { box-shadow: 0 0 0 3px rgba(59,130,246,.25); background-color: rgba(59,130,246,.04); }
+  100% { box-shadow: 0 0 0 0 transparent; background-color: transparent; }
+}
+</style>

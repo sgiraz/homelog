@@ -1,8 +1,22 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Keep the existing tailwind.config.js (theme extensions, darkMode: 'class',
+   content paths) via the v4 compat bridge. */
+@config "../../../tailwind.config.js";
+
+/* Tailwind v4 dropped the `darkMode: 'class'` legacy config in favour of a
+   CSS-declared variant. We keep `.dark` on the root element so every
+   `dark:` utility still resolves under the class-based toggle. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
+  /* Tailwind v4 changed the default border/divide color from `gray-200` to
+     `currentColor`. Preserve v3 behaviour so bare `border` / `divide-*`
+     classes keep rendering the same without auditing every callsite. */
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+
   html {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Arial, sans-serif;
     scroll-behavior: smooth;

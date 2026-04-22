@@ -36,3 +36,13 @@ func requirePropertyAdmin(c *gin.Context, db *gorm.DB, userID uint, propertyID u
 	}
 	return true
 }
+
+// requirePropertyMember returns 403 if the user is not a member (any role) of
+// the given property. Use this for read endpoints that any member can access.
+func requirePropertyMember(c *gin.Context, db *gorm.DB, userID uint, propertyID uint) bool {
+	if !isPropertyMember(db, userID, propertyID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Non sei membro di questa proprietà"})
+		return false
+	}
+	return true
+}

@@ -142,7 +142,7 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 	if len(splitIDs) > 0 {
 		result = tx.Model(&models.ExpenseSplit{}).
 			Where("id IN ?", splitIDs).
-			Updates(map[string]interface{}{
+			Updates(map[string]any{
 				"is_settled":    true,
 				"settled_at":    now,
 				"settlement_id": settlement.ID,
@@ -323,7 +323,7 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 	// Unsettle the expense splits linked to this settlement
 	if err := tx.Model(&models.ExpenseSplit{}).
 		Where("settlement_id = ?", settlement.ID).
-		Updates(map[string]interface{}{
+		Updates(map[string]any{
 			"is_settled":    false,
 			"settled_at":    nil,
 			"settlement_id": nil,
