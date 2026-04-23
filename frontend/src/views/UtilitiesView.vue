@@ -568,13 +568,25 @@ onMounted(() => {
 })
 
 // keep-alive suppresses remount on return from Settings; re-fetch the
-// properties list so a newly created property appears in the selector
+// properties list so a newly created property appears in the selector.
+// Also re-apply ?property= override on activation so a global-search
+// deep-link that arrives while the view is cached still switches property.
 onActivated(async () => {
   try {
     const { data } = await apiClient.get('/properties')
     if (!data?.length) return
     properties.value = data
-    // preserve current selection if it still exists
+
+    // ?property=<id> override takes priority (global-search deep-link).
+    const requested = Number(route.query.property)
+    const fromQuery = Number.isFinite(requested) ? data.find(p => p.id === requested) : null
+    if (fromQuery && fromQuery.id !== selectedPropertyId.value) {
+      selectedPropertyId.value = fromQuery.id
+      utilitiesStore.fetchUtilities({ property_id: fromQuery.id })
+      return
+    }
+
+    // No override: preserve current selection if it still exists.
     const stillValid = selectedPropertyId.value && data.some(p => p.id === selectedPropertyId.value)
     if (!stillValid) {
       const current = data.find(p => p.is_current) || data[0]

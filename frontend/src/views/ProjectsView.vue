@@ -171,7 +171,7 @@
 <script setup>
 defineOptions({ name: 'ProjectsView' })
 
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
@@ -304,5 +304,15 @@ function onProjectCreated() {
 onMounted(async () => {
   await fetchCurrentProperty()
   loadProjects()
+})
+
+// keep-alive suppresses remount; re-run property selection when a global-
+// search deep-link arrives with a ?property= that differs from the current one.
+onActivated(async () => {
+  const requested = Number(route.query.property)
+  if (Number.isFinite(requested) && requested !== currentPropertyId.value) {
+    await fetchCurrentProperty()
+    loadProjects()
+  }
 })
 </script>

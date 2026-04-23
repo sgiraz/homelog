@@ -139,7 +139,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { searchAPI } from '@/api/client'
 
@@ -300,6 +300,12 @@ function openHit(hit) {
 
 onMounted(() => {
   nextTick(() => inputEl.value?.focus())
+})
+
+onUnmounted(() => {
+  clearTimeout(debounceId)
+  activeController?.abort()
+  activeController = null
 })
 </script>
 
