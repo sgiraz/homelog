@@ -114,37 +114,45 @@ func backfillSearchIndex(db *gorm.DB) {
 		}
 	}
 
+	// backfillEntity runs AfterSave for every row of a given entity type and
+	// logs (but does not abort on) individual hook failures so a single bad
+	// row cannot silently leave an entity type unindexed.
+	backfillEntity := func(kind string, n int, hook func(i int) error) {
+		var failed int
+		for i := range n {
+			if err := hook(i); err != nil {
+				log.Printf("⚠️  search index backfill: %s[%d] hook error: %v", kind, i, err)
+				failed++
+			}
+		}
+		if failed > 0 {
+			log.Printf("⚠️  search index backfill: %s completed with %d/%d errors", kind, failed, n)
+		}
+	}
+
 	if !hasRows("expense") {
 		logOnce()
 		var rows []models.Expense
 		db.Find(&rows)
-		for i := range rows {
-			_ = rows[i].AfterSave(db)
-		}
+		backfillEntity("expense", len(rows), func(i int) error { return rows[i].AfterSave(db) })
 	}
 	if !hasRows("bill") {
 		logOnce()
 		var rows []models.Bill
 		db.Find(&rows)
-		for i := range rows {
-			_ = rows[i].AfterSave(db)
-		}
+		backfillEntity("bill", len(rows), func(i int) error { return rows[i].AfterSave(db) })
 	}
 	if !hasRows("project") {
 		logOnce()
 		var rows []models.Project
 		db.Find(&rows)
-		for i := range rows {
-			_ = rows[i].AfterSave(db)
-		}
+		backfillEntity("project", len(rows), func(i int) error { return rows[i].AfterSave(db) })
 	}
 	if !hasRows("utility") {
 		logOnce()
 		var rows []models.Utility
 		db.Find(&rows)
-		for i := range rows {
-			_ = rows[i].AfterSave(db)
-		}
+		backfillEntity("utility", len(rows), func(i int) error { return rows[i].AfterSave(db) })
 	}
 
 	if logged {
