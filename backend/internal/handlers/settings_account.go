@@ -277,9 +277,13 @@ func (h *SettingsHandler) DeleteAccount(c *gin.Context) {
 			}
 			// Leave the expense record as-is (user_id stays, PaidBy member is now virtual)
 		} else {
-			// Solo expense: delete splits and expense
+			// Solo expense: delete splits and expense.
+			// Explicit search_index removal is required because batch/ID-form
+			// deletes pass a zero-value struct to AfterDelete, so the hook
+			// calls search.Remove with ID=0 and leaves the entry behind.
 			tx.Unscoped().Where("expense_id = ?", expID).Delete(&models.ExpenseSplit{})
 			tx.Unscoped().Delete(&models.Expense{}, expID)
+			tx.Exec("DELETE FROM search_index WHERE entity_type = 'expense' AND entity_id = ?", expID)
 		}
 	}
 
@@ -294,8 +298,13 @@ func (h *SettingsHandler) DeleteAccount(c *gin.Context) {
 	// Delete project_members join table
 	tx.Exec("DELETE FROM project_members WHERE user_id = ?", userID)
 
-	// Delete owned projects
+	// Delete owned projects (collect IDs first for search_index cleanup).
+	var projectIDs []uint
+	tx.Model(&models.Project{}).Where("user_id = ?", userID).Pluck("id", &projectIDs)
 	tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Project{})
+	if len(projectIDs) > 0 {
+		tx.Exec("DELETE FROM search_index WHERE entity_type = 'project' AND entity_id IN ?", projectIDs)
+	}
 
 	// Delete custom categories and subcategories
 	var categoryIDs []uint
@@ -349,13 +358,20 @@ func (h *SettingsHandler) cascadeDeleteProperty(tx *gorm.DB, propertyID uint) er
 		tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.PriceChange{})
 		// ServiceCommunications
 		tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.ServiceCommunication{})
-		// Bills
+		// Bills — collect IDs before delete for search_index cleanup (batch deletes
+		// pass a zero-value struct to AfterDelete, so the hook removes entity_id=0).
+		var billIDs []uint
+		tx.Model(&models.Bill{}).Where("utility_id IN ?", utilityIDs).Pluck("id", &billIDs)
 		tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.Bill{})
+		if len(billIDs) > 0 {
+			tx.Exec("DELETE FROM search_index WHERE entity_type = 'bill' AND entity_id IN ?", billIDs)
+		}
 		// MeterReadings
 		tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.MeterReading{})
 		// UtilityRates
 		tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.UtilityRate{})
 		// Utilities
+		tx.Exec("DELETE FROM search_index WHERE entity_type = 'utility' AND entity_id IN ?", utilityIDs)
 		tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.Utility{})
 	}
 
@@ -364,6 +380,7 @@ func (h *SettingsHandler) cascadeDeleteProperty(tx *gorm.DB, propertyID uint) er
 	tx.Model(&models.Expense{}).Where("property_id = ?", propertyID).Pluck("id", &propertyExpenseIDs)
 	if len(propertyExpenseIDs) > 0 {
 		tx.Unscoped().Where("expense_id IN ?", propertyExpenseIDs).Delete(&models.ExpenseSplit{})
+		tx.Exec("DELETE FROM search_index WHERE entity_type = 'expense' AND entity_id IN ?", propertyExpenseIDs)
 		tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.Expense{})
 	}
 
