@@ -155,7 +155,7 @@ You have two options: build on the Pi directly (simple but slow), or cross-compi
 
 ### 5A. Build directly on the Pi (simple but slow)
 
-Building on Raspberry Pi 3B+ takes ~10 minutes the first time (CGO compilation).
+Building on Raspberry Pi 3B+ takes ~10–15 minutes the first time (Go compilation + frontend build).
 
 ```bash
 docker compose build
@@ -164,18 +164,18 @@ docker compose up -d
 
 Expected output (truncated):
 ```
-[+] Building 580s
- => [backend] FROM golang:1.25-alpine
- => [backend] go build -ldflags="-s -w" -o homelog-api ...
- => [frontend] FROM node:20-alpine
- => [frontend] npm run build ...
+[+] Building ...
+ => [frontend-builder] FROM node:24-alpine
+ => [frontend-builder] npm run build ...
+ => [backend-builder] FROM golang:1.25-alpine
+ => [backend-builder] go build -ldflags="-s -w" -o homelog ...
 ```
 
 ---
 
 ### 5B. Pre-build on your PC via DockerHub (recommended)
 
-This approach cross-compiles for ARM64 on your Windows/Mac/Linux machine and pushes images to DockerHub. The Pi only needs to pull and run — no compiler on the Pi needed.
+HomeLog ships as a **single container**: the Go binary embeds the compiled frontend via `go:embed`. Cross-compile it on your PC and push to DockerHub — the Pi only needs to pull and run, no compiler needed.
 
 #### On your development machine
 
@@ -190,107 +190,40 @@ docker login
 docker buildx create --name mybuilder --use
 docker buildx inspect --bootstrap
 
-# Build and push backend (ARM64 for Raspberry Pi)
+# Build and push for ARM64 (Raspberry Pi 3B+ with 64-bit OS)
 # Replace YOUR_DOCKERHUB_USERNAME with your DockerHub account
 docker buildx build \
   --platform linux/arm64 \
-  -t YOUR_DOCKERHUB_USERNAME/homelog-backend:latest \
+  -t YOUR_DOCKERHUB_USERNAME/homelog:latest \
   --push \
-  ./backend
-
-# Build and push frontend
-docker buildx build \
-  --platform linux/arm64 \
-  -t YOUR_DOCKERHUB_USERNAME/homelog-frontend:latest \
-  --push \
-  ./frontend
+  .
 ```
 
 #### On the Raspberry Pi
 
-Create a minimal `docker-compose.prod.yml` that uses the pre-built images instead of building:
+Edit `docker-compose.yml` to pull the pre-built image instead of building locally:
 
 ```bash
-cat > docker-compose.prod.yml << 'EOF'
-version: '3.8'
+# Replace the build: block with image: in docker-compose.yml
+# Change:
+#   build:
+#     context: .
+#     dockerfile: Dockerfile
+# To:
+#   image: YOUR_DOCKERHUB_USERNAME/homelog:latest
 
-services:
-  backend:
-    image: YOUR_DOCKERHUB_USERNAME/homelog-backend:latest
-    container_name: homelog-backend
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    environment:
-      - GIN_MODE=release
-      - PORT=8080
-      - DB_PATH=/app/data/homelog.db
-      - JWT_SECRET=${JWT_SECRET}
-      - TZ=Europe/Rome
-    volumes:
-      - ./data:/app/data
-      - ./data/uploads:/app/uploads
-    networks:
-      - homelog-network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  frontend:
-    image: YOUR_DOCKERHUB_USERNAME/homelog-frontend:latest
-    container_name: homelog-frontend
-    restart: unless-stopped
-    ports:
-      - "3000:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - homelog-network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.3'
-          memory: 128M
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-
-networks:
-  homelog-network:
-    driver: bridge
-EOF
-```
-
-Then pull and start:
-
-```bash
-# Pull the pre-built images from DockerHub
-docker compose -f docker-compose.prod.yml pull
-
-# Start services
-docker compose -f docker-compose.prod.yml up -d
+docker compose pull
+docker compose up -d
 ```
 
 #### Updating to a new version
 
-On your dev machine: rebuild and push with the same commands (or add a version tag like `:v1.1`).
+On your dev machine: rebuild and push with the same command (or add a version tag like `:v1.1`).
 On the Pi:
 
 ```bash
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
+docker compose pull
+docker compose up -d
 ```
 
 ---
@@ -298,12 +231,11 @@ docker compose -f docker-compose.prod.yml up -d
 ### Check Status
 
 ```bash
-# Check containers are running and healthy (wait ~40s for health checks to pass)
+# Check container is running and healthy (wait ~40s for health checks to pass)
 docker ps
 
 # Expected output:
-# homelog-backend    Up X minutes (healthy)
-# homelog-frontend   Up X minutes (healthy)
+# homelog    Up X minutes (healthy)
 ```
 
 ---
@@ -311,21 +243,17 @@ docker ps
 ## 6. Verify Deployment
 
 ```bash
-# Backend health check
+# Health check (Go binary serves API + embedded frontend on the same port)
 curl http://localhost:8080/health
 # Expected: {"service":"homelog-api","status":"healthy","uptime":"...","version":"1.0.0"}
 
-# Frontend health check
-curl http://localhost:3000/health
-# Expected: healthy
-
 # Open in browser
-# http://192.168.1.100:3000
+# http://192.168.1.100:8080
 ```
 
 ### First Login
 
-1. Navigate to `http://<pi-ip>:3000`
+1. Navigate to `http://<pi-ip>:8080`
 2. Click **Register** to create the first admin account
 3. Add your first property in Settings
 4. Start tracking expenses and utilities
@@ -369,7 +297,7 @@ curl http://localhost:8080/health
 
 ```bash
 # Copy database file from running container
-docker compose exec -T backend cp /app/data/homelog.db /app/data/backup-$(date +%Y%m%d).db
+docker compose exec -T homelog cp /app/data/homelog.db /app/data/backup-$(date +%Y%m%d).db
 
 # Or copy from host (data/ directory is a mounted volume)
 cp ~/homelog/data/homelog.db ~/homelog/data/backup-$(date +%Y%m%d).db
@@ -440,8 +368,7 @@ sudo ufw default allow outgoing
 sudo ufw allow 22
 
 # Allow HomeLog (restrict to LAN if preferred)
-sudo ufw allow 3000   # Frontend
-sudo ufw allow 8080   # Backend API
+sudo ufw allow 8080   # API + embedded frontend
 
 # Enable
 sudo ufw enable
@@ -450,9 +377,7 @@ sudo ufw status
 
 To restrict to LAN only (e.g., 192.168.1.0/24):
 ```bash
-sudo ufw allow from 192.168.1.0/24 to any port 3000
 sudo ufw allow from 192.168.1.0/24 to any port 8080
-sudo ufw delete allow 3000
 sudo ufw delete allow 8080
 ```
 
@@ -492,8 +417,7 @@ du -sh ~/homelog/data/
 Expected resource usage (Raspberry Pi 3B+):
 | Service  | CPU   | Memory |
 |----------|-------|--------|
-| backend  | <5%   | ~50MB  |
-| frontend | <1%   | ~20MB  |
+| homelog  | <5%   | ~80MB  |
 
 ### Logs
 
@@ -501,11 +425,8 @@ Expected resource usage (Raspberry Pi 3B+):
 # All services
 docker compose logs -f
 
-# Backend only
-docker compose logs -f backend
-
 # Last 100 lines
-docker compose logs --tail=100 backend
+docker compose logs --tail=100 homelog
 
 # Log files are stored in Docker's json-file driver
 # Max size: 10MB per file, 3 files (configured in docker-compose.yml)
@@ -548,8 +469,7 @@ free -h
 ### Container won't start
 
 ```bash
-docker compose logs backend
-docker compose logs frontend
+docker compose logs homelog
 ```
 
 ### Backend: database locked
@@ -567,19 +487,18 @@ docker compose up -d
 ```bash
 # Manual check
 curl -v http://localhost:8080/health
-curl -v http://localhost:3000/health
 
 # Container inspect
-docker inspect homelog-backend | grep -A 20 Health
+docker inspect homelog | grep -A 20 Health
 ```
 
 ### Port already in use
 
 ```bash
-# Find what's using port 8080 or 3000
-sudo ss -tlnp | grep -E '8080|3000'
+# Find what's using port 8080
+sudo ss -tlnp | grep 8080
 
-# Kill conflicting process or change ports in docker-compose.yml
+# Kill conflicting process or change the port in docker-compose.yml
 ```
 
 ### Out of disk space
