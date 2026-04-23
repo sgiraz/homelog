@@ -55,11 +55,15 @@ export function useHighlight({ source, getId = (x) => x.id } = {}) {
     }, 2300)
   }
 
-  // keep-alive (App.vue) suppresses remount on query changes; watch syncs highlightId across navigations
+  // keep-alive (App.vue) suppresses remount on query changes; watch syncs highlightId across navigations.
+  // Also resets handledId when the highlight clears or changes — this unblocks re-triggering for the
+  // same id if the user navigated away before the 2.3s cleanup timer fired (which returns early without
+  // resetting handledId, leaving it stuck and preventing a second deep-link to the same row).
   watch(
     () => parseTarget(route.query.highlight),
     (id) => {
       if (id !== highlightId.value) highlightId.value = id
+      if (id !== handledId) handledId = null
     },
   )
 

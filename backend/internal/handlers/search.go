@@ -38,8 +38,9 @@ type SearchHit struct {
 // Query handles GET /api/v1/search?q=...
 //
 // Scoping: we collect every property_id the user can read (owned + member) and
-// restrict the FTS5 lookup to those. An unscoped user (no properties) gets an
-// empty result instead of the global index.
+// restrict the FTS5 lookup to those. Users with no property memberships do not
+// search the global index, but may still match legacy unscoped records tied to
+// their user_id (rows where property_id = 0).
 //
 // Query shape: we sanitise the user input into a prefix MATCH (each token gets
 // a trailing *) so partial words work for live-search as the user types on
