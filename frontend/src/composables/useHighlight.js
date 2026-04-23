@@ -35,14 +35,23 @@ export function useHighlight({ source, getId = (x) => x.id } = {}) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
     if (clearTimer) clearTimeout(clearTimer)
+    // Snapshot the route now so the cleanup can't accidentally mutate a
+    // different page if the user navigates away before the timer fires
+    // (keep-alive components are deactivated, not unmounted, so onScopeDispose
+    // doesn't cancel the timer; the path guard below handles that case).
+    const triggerPath = route.path
+    const triggerQuery = { ...route.query }
+    const triggerHash = route.hash
     clearTimer = setTimeout(() => {
-      // a newer deep-link may have taken over; only clean up our own id
+      // A newer deep-link may have taken over — bail out.
       if (highlightId.value !== id) return
+      // User navigated away while the timer was pending — bail out.
+      if (route.path !== triggerPath) return
       highlightId.value = null
       handledId = null
-      const q = { ...route.query }
+      const q = { ...triggerQuery }
       delete q.highlight
-      router.replace({ path: route.path, query: q, hash: route.hash })
+      router.replace({ path: triggerPath, query: q, hash: triggerHash })
     }, 2300)
   }
 

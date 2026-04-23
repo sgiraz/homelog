@@ -134,7 +134,7 @@ const isEditing = ref(true)
 
 const hasReadings = computed(() => {
   if (props.utilityType === 'electricity') {
-    return f1.value || f2.value || f3.value
+    return f1.value != null || f2.value != null || f3.value != null
   }
   if (props.utilityType === 'gas') {
     return reading.value != null || conversionCoefficient.value != null

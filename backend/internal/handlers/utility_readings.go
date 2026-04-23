@@ -152,6 +152,12 @@ func (h *UtilityHandler) UpdateReading(c *gin.Context) {
 		return
 	}
 
+	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		return
+	}
+
 	readingID, err := strconv.ParseUint(c.Param("readingId"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid reading ID"})
@@ -167,6 +173,12 @@ func (h *UtilityHandler) UpdateReading(c *gin.Context) {
 	// Find the reading
 	var reading models.MeterReading
 	if err := h.db.First(&reading, readingID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Reading not found"})
+		return
+	}
+
+	// Enforce route contract: the reading must belong to the utility in the URL.
+	if reading.UtilityID != uint(utilityID) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Reading not found"})
 		return
 	}
@@ -224,6 +236,12 @@ func (h *UtilityHandler) DeleteReading(c *gin.Context) {
 		return
 	}
 
+	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		return
+	}
+
 	readingID, err := strconv.ParseUint(c.Param("readingId"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid reading ID"})
@@ -239,6 +257,12 @@ func (h *UtilityHandler) DeleteReading(c *gin.Context) {
 	// Find the reading
 	var reading models.MeterReading
 	if err := h.db.First(&reading, readingID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Reading not found"})
+		return
+	}
+
+	// Enforce route contract: the reading must belong to the utility in the URL.
+	if reading.UtilityID != uint(utilityID) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Reading not found"})
 		return
 	}
