@@ -155,7 +155,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
@@ -177,8 +177,19 @@ const { confirm } = useConfirm()
 
 const loading = ref(true)
 const utility = ref(null)
-const activeTab = ref('bills')
+// Deep-link from global search lands here with `?tab=bills&highlight=<id>`;
+// the tab query wins over the default.
+const validTabs = ['bills', 'readings', 'analysis', 'price_history']
+const activeTab = ref(validTabs.includes(route.query.tab) ? route.query.tab : 'bills')
 const showEditModal = ref(false)
+
+// When navigating to the same utility with a different ?tab query (e.g. from
+// global search deep-link while the view is already mounted), update activeTab.
+watch(() => route.query.tab, (tab) => {
+  if (tab && validTabs.includes(tab)) {
+    activeTab.value = tab
+  }
+})
 const analysisTab = ref(null)
 
 // ── Computed ──

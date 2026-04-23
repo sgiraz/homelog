@@ -284,8 +284,10 @@
         <div
           v-for="expense in expensesStore.expenses"
           :key="expense.id"
+          :ref="(el) => registerRow(expense.id, el)"
           class="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg
                  hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
+          :class="{ 'search-flash': isHighlighted(expense.id) }"
         >
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
@@ -422,6 +424,7 @@ import { useRoute } from 'vue-router'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
+import { useHighlight } from '@/composables/useHighlight'
 import { useConfirm } from '@/composables/useConfirm'
 import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import { categoriesAPI, projectsAPI } from '@/api/client'
@@ -436,6 +439,9 @@ const expensesStore = useExpensesStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
+const { isHighlighted, registerRow } = useHighlight({
+  source: () => expensesStore.expenses,
+})
 
 const expenseTabs = [
   { id: 'lista',    label: 'Lista',    icon: '📋' },
@@ -619,13 +625,48 @@ async function fetchFiltersData() {
   }
 }
 
+// Comparator matching the active sort so `ensureExpense` can insert a
+// deep-link target in the right row rather than prepending (which would
+// stick an old expense at the top of a date-desc list).
+function expenseComparator() {
+  switch (sortOption.value) {
+    case 'date_asc':        return (a, b) => new Date(a.date) - new Date(b.date)
+    case 'amount_desc':     return (a, b) => b.amount - a.amount
+    case 'amount_asc':      return (a, b) => a.amount - b.amount
+    case 'description_asc': return (a, b) => (a.description || '').localeCompare(b.description || '')
+    case 'date_desc':
+    default:                return (a, b) => new Date(b.date) - new Date(a.date)
+  }
+}
+
+// Surface a `?highlight=<id>` target: if it isn't in the already-loaded
+// list, pull the single row so useHighlight can scroll/flash it.
+async function applyHighlightTarget() {
+  const targetId = Number(route.query.highlight)
+  if (!Number.isFinite(targetId) || targetId <= 0) return
+  if (expensesStore.expenses.some(e => e.id === targetId)) return
+  await expensesStore.ensureExpense(targetId, { comparator: expenseComparator() })
+}
+
 onMounted(async () => {
   fetchFiltersData()
   const params = { sort: sortOption.value }
   currentFilters.value = params
   await expensesStore.fetchExpenses(params, { page: 1 })
+  await applyHighlightTarget()
   setupIntersectionObserver()
 })
+
+// ExpensesView is cached by <keep-alive> in App.vue, so a second click on a
+// global-search result (same route, new `highlight`) does NOT re-run
+// onMounted. Watch the query so deep-links keep working on re-entry.
+watch(
+  () => route.query.highlight,
+  (next, prev) => {
+    if (next === prev) return
+    applyHighlightTarget()
+  },
+)
 
 onUnmounted(() => {
   observer?.disconnect()

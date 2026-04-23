@@ -25,7 +25,53 @@
         </div>
 
         <!-- Importo Totale -->
+        <div v-if="isForeignCurrency">
+          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+            Importo Totale ({{ utility.currency }})
+          </label>
+          <Input
+            v-model="form.original_amount"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            :disabled="isLocked"
+          />
+          <div class="mt-1.5">
+            <div v-if="rateLoading" class="text-xs text-gray-400">
+              Conversione in corso...
+            </div>
+            <div v-else-if="form.original_amount && convertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
+              {{ formatOriginal(form.original_amount, utility.currency) }} ≈ {{ formatCurrency(convertedAmount) }}
+              <span class="text-gray-400">(tasso: {{ exchangeRate?.toFixed(6) }})</span>
+            </div>
+            <div v-else-if="rateError" class="space-y-1">
+              <p class="text-xs text-amber-600 dark:text-amber-400">
+                Tasso non disponibile. Inserisci manualmente:
+              </p>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-500">1 {{ utility.currency }} =</span>
+                <input
+                  v-model.number="manualRate"
+                  type="number"
+                  step="any"
+                  min="0"
+                  placeholder="0.00"
+                  inputmode="decimal"
+                  class="w-28 px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded
+                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                         focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <span class="text-xs text-gray-500">{{ settingsStore.currency }}</span>
+              </div>
+              <div v-if="form.original_amount && manualConvertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
+                {{ formatOriginal(form.original_amount, utility.currency) }} ≈ {{ formatCurrency(manualConvertedAmount) }}
+              </div>
+            </div>
+          </div>
+        </div>
         <Input
+          v-else
           v-model="form.amount_total"
           label="Importo Totale"
           type="number"
@@ -136,116 +182,18 @@
         </div>
 
         <!-- Provider Readings Section (metered only) -->
-        <div v-if="isMetered" class="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <span class="text-sm font-medium text-blue-700 dark:text-blue-300">
-                Letture Fornitore (per confronto)
-              </span>
-            </div>
-            <button
-              type="button"
-              @click="isEditingProviderReadings = !isEditingProviderReadings"
-              class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              {{ isEditingProviderReadings ? 'Nascondi' : 'Modifica' }}
-            </button>
-          </div>
-
-          <!-- Collapsed view when readings exist -->
-          <div v-show="hasProviderReadings && !isEditingProviderReadings">
-            <div v-if="utility.type === 'electricity'" class="grid grid-cols-3 gap-2 text-center">
-              <div class="bg-white dark:bg-gray-800 rounded p-2">
-                <p class="text-xs text-red-600 dark:text-red-400 font-medium">F1</p>
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ formatNumber(form.provider_reading_f1) }}</p>
-              </div>
-              <div class="bg-white dark:bg-gray-800 rounded p-2">
-                <p class="text-xs text-yellow-600 dark:text-yellow-400 font-medium">F2</p>
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ formatNumber(form.provider_reading_f2) }}</p>
-              </div>
-              <div class="bg-white dark:bg-gray-800 rounded p-2">
-                <p class="text-xs text-green-600 dark:text-green-400 font-medium">F3</p>
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ formatNumber(form.provider_reading_f3) }}</p>
-              </div>
-            </div>
-            <div v-else-if="utility.type === 'gas'" class="space-y-1">
-              <div class="text-center bg-white dark:bg-gray-800 rounded p-2">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Lettura</p>
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ formatNumber(form.provider_reading) }} mc</p>
-              </div>
-              <div v-if="form.conversion_coefficient" class="text-center bg-white dark:bg-gray-800 rounded p-2">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Coeff. C: {{ form.conversion_coefficient }}</p>
-              </div>
-            </div>
-            <div v-else class="text-center bg-white dark:bg-gray-800 rounded p-2">
-              <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ formatNumber(form.provider_reading) }} mc</p>
-            </div>
-          </div>
-
-          <!-- Expanded form for manual entry -->
-          <div v-show="isEditingProviderReadings" class="space-y-3">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              Inserisci le letture riportate in bolletta per confrontarle con le tue autoletture
-            </p>
-
-            <!-- Electricity readings (F1/F2/F3) -->
-            <div v-if="utility.type === 'electricity'" class="grid grid-cols-3 gap-2">
-              <div>
-                <label class="block text-xs text-red-600 dark:text-red-400 mb-1 font-medium">F1 (kWh)</label>
-                <input v-model="form.provider_reading_f1" type="number" step="0.001" placeholder="0"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label class="block text-xs text-yellow-600 dark:text-yellow-400 mb-1 font-medium">F2 (kWh)</label>
-                <input v-model="form.provider_reading_f2" type="number" step="0.001" placeholder="0"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label class="block text-xs text-green-600 dark:text-green-400 mb-1 font-medium">F3 (kWh)</label>
-                <input v-model="form.provider_reading_f3" type="number" step="0.001" placeholder="0"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              </div>
-            </div>
-
-            <!-- Gas: reading + conversion coefficient -->
-            <div v-else-if="utility.type === 'gas'" class="space-y-3">
-              <div>
-                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Lettura Contatore (mc)</label>
-                <input v-model="form.provider_reading" type="number" step="0.001" placeholder="0"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Coefficiente di Conversione (C)</label>
-                <input v-model="form.conversion_coefficient" type="number" step="0.00000001" min="0" placeholder="1.00000000"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              </div>
-              <div v-if="previousBillHasEstimate && !previousBill?.estimated_reading">
-                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Consumi Precedenti Stimati (Smc)</label>
-                <input v-model="form.previous_estimated_consumption" type="number" step="0.000001" placeholder="0"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">La bolletta precedente contiene una stima di {{ formatNumber(previousBill.estimated_consumption) }} Smc</p>
-              </div>
-            </div>
-
-            <!-- Water single reading -->
-            <div v-else-if="utility.type === 'water'" class="space-y-3">
-              <div>
-                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Lettura Contatore (mc)</label>
-                <input v-model="form.provider_reading" type="number" step="0.001" placeholder="0"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              </div>
-              <div v-if="previousBillHasEstimate && !previousBill?.estimated_reading">
-                <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Consumi Precedenti Stimati (mc)</label>
-                <input v-model="form.previous_estimated_consumption" type="number" step="0.001" placeholder="0"
-                  class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">La bolletta precedente contiene una stima di {{ formatNumber(previousBill.estimated_consumption) }} mc</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ProviderReadingsSection
+          v-if="isMetered"
+          v-model:f1="form.provider_reading_f1"
+          v-model:f2="form.provider_reading_f2"
+          v-model:f3="form.provider_reading_f3"
+          v-model:reading="form.provider_reading"
+          v-model:conversion-coefficient="form.conversion_coefficient"
+          v-model:previous-estimated-consumption="form.previous_estimated_consumption"
+          :utility-type="utility.type"
+          :previous-bill="previousBill"
+          :previous-bill-has-estimate="previousBillHasEstimate"
+        />
 
         <!-- Estimated consumption toggle (gas + water) -->
         <div v-if="isMetered && (utility.type === 'gas' || utility.type === 'water')" class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
@@ -312,54 +260,17 @@
         </div>
 
         <!-- Rate (installments) — shown for installment-based services -->
-        <div v-if="isInstallmentBased" class="border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-medium text-purple-700 dark:text-purple-300">Rate</span>
-            <button v-if="!isEditing" type="button" @click="addInstallment" class="text-xs text-purple-700 dark:text-purple-300 hover:underline">
-              + Aggiungi rata
-            </button>
-          </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            Totale bolletta = somma delle rate ({{ formatNumber(installmentsSum) }} / {{ formatNumber(form.amount_total) }})
-          </p>
-          <div v-for="(inst, idx) in form.installments" :key="inst.id || idx"
-            class="grid gap-2 items-end"
-            :class="isEditing ? 'grid-cols-[auto_1fr_1fr_auto]' : 'grid-cols-[auto_1fr_1fr_auto]'">
-            <div v-if="!isEditing" class="text-xs text-gray-500 dark:text-gray-400 pb-2 w-6 text-center">#{{ inst.number }}</div>
-            <div v-else class="pb-2 w-8 flex items-center justify-center">
-              <input
-                type="checkbox"
-                :checked="!!inst.is_paid"
-                :disabled="instUpdating === inst.id || !!inst.is_locked"
-                @change="toggleInstallmentPaidInline(inst, $event.target.checked)"
-                class="w-5 h-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                :title="inst.is_locked ? 'Rata saldata: annulla i pagamenti dal Bilancio per sbloccare' : (inst.is_paid ? 'Pagata' : 'Non pagata')"
-              />
-            </div>
-            <div>
-              <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ isEditing ? `#${inst.number} scadenza` : 'Scadenza' }}</label>
-              <input v-model="inst.due_date" type="date" :disabled="isEditing"
-                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-70" />
-            </div>
-            <div>
-              <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Importo</label>
-              <input v-model="inst.amount" type="number" step="0.01" placeholder="0.00" :disabled="isEditing"
-                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-70" />
-            </div>
-            <button v-if="!isEditing" type="button" @click="removeInstallment(idx)"
-              class="text-red-600 dark:text-red-400 text-xs pb-2 px-1 hover:underline"
-              :disabled="form.installments.length <= 1">−</button>
-            <span v-else class="text-xs pb-2 px-1" :class="inst.is_paid ? 'text-green-600 dark:text-green-400' : 'text-gray-400'">
-              {{ inst.is_paid ? '✓' : '—' }}
-            </span>
-          </div>
-          <div v-if="!isEditing && installmentsAmountMismatch" class="text-xs text-red-600 dark:text-red-400">
-            La somma delle rate non corrisponde al totale della bolletta.
-          </div>
-          <p v-if="isEditing" class="text-xs text-gray-400 dark:text-gray-500">
-            Spunta le rate pagate — l'expense viene creata/eliminata automaticamente. Per modificare importi/scadenze elimina e reinserisci la bolletta.
-          </p>
-        </div>
+        <InstallmentsSection
+          v-if="isInstallmentBased"
+          v-model="form.installments"
+          :utility-id="utility.id"
+          :bill-id="bill?.id"
+          :is-editing="isEditing"
+          :amount-total="form.amount_total"
+          :default-due-date="form.due_date"
+          @installment-updated="emit('installment-updated')"
+          @error="submitError = $event"
+        />
 
         <!-- Stato Pagamento — solo per bollette non rateizzate -->
         <div v-if="!isInstallmentBased" class="flex items-center gap-3">
@@ -389,16 +300,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
-import { formatDate as _formatDate, formatNumber as _formatNumber } from '@/utils/dateFormatter'
-import { utilitiesAPI } from '@/api/client'
+import { formatDate as _formatDate, formatNumber as _formatNumber, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
+import { utilitiesAPI, exchangeAPI } from '@/api/client'
 import { useConsumptionCalculation } from '@/composables/useConsumptionCalculation'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 import PDFUploadZone from '@/components/utilities/PDFUploadZone.vue'
+import ProviderReadingsSection from '@/components/utilities/ProviderReadingsSection.vue'
+import InstallmentsSection from '@/components/utilities/InstallmentsSection.vue'
 
 const props = defineProps({
   utility: { type: Object, required: true },
@@ -440,11 +353,72 @@ const sortedReadings = computed(() => {
   return [...availableReadings.value].sort((a, b) => new Date(b.reading_date) - new Date(a.reading_date))
 })
 
-// Provider readings edit state
-const isEditingProviderReadings = ref(true)
+// ── Currency / FX ──
+// Utility.currency is the provider's billing currency. When empty, or matching
+// the user's household currency, the bill is stored as-is. When different, we
+// store the converted user-currency amount in amount_total and preserve the
+// provider's figure in original_amount/original_currency.
+const isForeignCurrency = computed(() => {
+  const u = props.utility?.currency
+  if (!u) return false
+  return u !== settingsStore.currency
+})
+
+const exchangeRate = ref(null)
+const convertedAmount = ref(null)
+const rateLoading = ref(false)
+const rateError = ref(false)
+const manualRate = ref(null)
+let fetchRateTimer = null
+
+onUnmounted(() => {
+  clearTimeout(fetchRateTimer)
+})
+
+const manualConvertedAmount = computed(() => {
+  if (!manualRate.value || !form.value.original_amount) return null
+  return parseFloat(form.value.original_amount) * manualRate.value
+})
+
+const finalConvertedAmount = computed(() => {
+  if (!isForeignCurrency.value) return null
+  if (convertedAmount.value != null) return convertedAmount.value
+  if (manualConvertedAmount.value != null) return manualConvertedAmount.value
+  return null
+})
+
+function formatCurrency(value) {
+  return _formatCurrency(value, settingsStore.formatSettings)
+}
+function formatOriginal(value, currency) {
+  return _formatCurrency(value, { ...settingsStore.formatSettings, currency })
+}
+
+async function fetchExchangeRate() {
+  const amount = parseFloat(form.value.original_amount)
+  if (!isForeignCurrency.value || !amount || amount <= 0) {
+    exchangeRate.value = null
+    convertedAmount.value = null
+    return
+  }
+  rateLoading.value = true
+  rateError.value = false
+  try {
+    const { data } = await exchangeAPI.getRate(props.utility.currency, settingsStore.currency, amount)
+    exchangeRate.value = data.rate
+    convertedAmount.value = data.result
+  } catch {
+    rateError.value = true
+    exchangeRate.value = null
+    convertedAmount.value = null
+  } finally {
+    rateLoading.value = false
+  }
+}
 
 const form = ref({
   amount_total: null,
+  original_amount: null,
   period_start: '',
   period_end: '',
   due_date: '',
@@ -468,60 +442,24 @@ const form = ref({
   installments: []
 })
 
-const installmentsSum = computed(() => {
-  return (form.value.installments || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0)
+// Debounced FX lookup when original amount changes (only in foreign mode).
+watch(() => form.value.original_amount, () => {
+  if (!isForeignCurrency.value) return
+  clearTimeout(fetchRateTimer)
+  fetchRateTimer = setTimeout(fetchExchangeRate, 500)
 })
+
+// Mirror final converted amount into amount_total so downstream validation
+// (installment sum vs total) and payload building keep working unchanged.
+watch(finalConvertedAmount, (val) => {
+  if (!isForeignCurrency.value) return
+  form.value.amount_total = val
+})
+
 const installmentsAmountMismatch = computed(() => {
   if (!isInstallmentBased.value || form.value.installments.length <= 1) return false
-  return Math.abs(installmentsSum.value - (parseFloat(form.value.amount_total) || 0)) > 0.01
-})
-
-function addInstallment() {
-  const nextNumber = form.value.installments.length + 1
-  form.value.installments.push({
-    number: nextNumber,
-    due_date: form.value.due_date || '',
-    amount: 0,
-    is_paid: false
-  })
-}
-
-function removeInstallment(idx) {
-  form.value.installments.splice(idx, 1)
-  form.value.installments.forEach((inst, i) => { inst.number = i + 1 })
-}
-
-// Edit-mode: toggle a single installment paid/unpaid via the backend PATCH endpoint.
-// Updates the local row so the checkbox stays consistent with server state.
-const instUpdating = ref(null)
-async function toggleInstallmentPaidInline(inst, newValue) {
-  if (!isEditing.value || !inst.id) return
-  instUpdating.value = inst.id
-  try {
-    await utilitiesAPI.updateInstallment(props.utility.id, props.bill.id, inst.id, {
-      is_paid: newValue,
-      paid_at: newValue ? new Date().toISOString() : null
-    })
-    inst.is_paid = newValue
-    // Tell parent the bill changed so the list refreshes `is_paid` / header
-    // without closing the modal.
-    emit('installment-updated')
-  } catch (err) {
-    console.error('Errore toggle rata:', err)
-    submitError.value = err.response?.data?.error || 'Errore durante l\'aggiornamento della rata'
-  } finally {
-    instUpdating.value = null
-  }
-}
-
-const hasProviderReadings = computed(() => {
-  if (props.utility?.type === 'electricity') {
-    return form.value.provider_reading_f1 || form.value.provider_reading_f2 || form.value.provider_reading_f3
-  }
-  if (props.utility?.type === 'gas') {
-    return form.value.provider_reading != null || form.value.conversion_coefficient != null
-  }
-  return form.value.provider_reading != null
+  const sum = (form.value.installments || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0)
+  return Math.abs(sum - (parseFloat(form.value.amount_total) || 0)) > 0.01
 })
 
 // Consumption calculation composable
@@ -602,6 +540,16 @@ async function handleSubmit() {
     submitError.value = 'La somma delle rate non corrisponde al totale della bolletta'
     return
   }
+  if (isForeignCurrency.value) {
+    if (!form.value.original_amount) {
+      submitError.value = `Inserisci l'importo in ${props.utility.currency}`
+      return
+    }
+    if (finalConvertedAmount.value == null) {
+      submitError.value = 'Tasso di cambio mancante: inserisci manualmente un tasso per convertire l\'importo'
+      return
+    }
+  }
 
   saving.value = true
   submitError.value = null
@@ -623,6 +571,10 @@ async function handleSubmit() {
 
     const billData = {
       amount_total: parseFloat(form.value.amount_total) || 0,
+      // Original-currency snapshot: only sent when the utility bills in a
+      // currency other than the user's household currency.
+      original_amount: isForeignCurrency.value ? parseFloat(form.value.original_amount) : undefined,
+      original_currency: isForeignCurrency.value ? props.utility.currency : undefined,
       period_start: new Date(form.value.period_start).toISOString(),
       period_end: new Date(form.value.period_end).toISOString(),
       due_date: new Date(form.value.due_date).toISOString(),
@@ -684,6 +636,7 @@ onMounted(async () => {
   if (props.bill) {
     form.value = {
       amount_total: props.bill.amount_total,
+      original_amount: props.bill.original_amount ?? null,
       period_start: formatDateForInput(props.bill.period_start),
       period_end: formatDateForInput(props.bill.period_end),
       due_date: formatDateForInput(props.bill.due_date),
@@ -720,12 +673,6 @@ onMounted(async () => {
       const billComm = comms.find(c => c.bill_id === props.bill.id)
       if (billComm) form.value.communication_text = billComm.content || ''
     } catch { /* non-critical */ }
-
-    // Collapse provider readings if they exist
-    const hasExisting = props.utility?.type === 'electricity'
-      ? (props.bill.provider_reading_f1 || props.bill.provider_reading_f2 || props.bill.provider_reading_f3)
-      : props.bill.provider_reading != null
-    if (hasExisting) isEditingProviderReadings.value = false
   }
 
   // Seed first installment for installment-based new bills

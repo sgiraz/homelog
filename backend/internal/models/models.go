@@ -179,6 +179,18 @@ type Utility struct {
 	CustomerPortal string `json:"customer_portal,omitempty"`
 	Notes          string `json:"notes,omitempty"`
 
+	// Currency
+	// Currency is the ISO code the provider bills in (e.g. "EUR", "CHF"). Empty
+	// means "use the user's household currency"; no conversion is applied at
+	// bill time. Once a bill exists under this utility that has generated a
+	// settled split (see Bill.IsLocked), Currency is frozen: changing it would
+	// require rewriting historical balances, which we refuse to do silently.
+	Currency string `gorm:"not null;default:''" json:"currency"`
+
+	// Computed: true if any bill under this utility has a settled non-payer
+	// split. When true the client must disable the currency field.
+	IsCurrencyLocked bool `gorm:"-" json:"is_currency_locked"`
+
 	// Relations
 	Property            Property               `json:"property"`
 	DefaultCategory     *Category              `gorm:"foreignKey:DefaultCategoryID" json:"default_category,omitempty"`
@@ -326,6 +338,12 @@ type Bill struct {
 	AmountFixed  *float64 `json:"amount_fixed,omitempty"`
 	AmountTaxes  *float64 `json:"amount_taxes,omitempty"`
 	AmountVAT    *float64 `json:"amount_vat,omitempty"`
+
+	// Original currency snapshot (set when the utility bills in a non-default
+	// currency). AmountTotal is always stored in the user's household currency;
+	// these fields preserve the audit trail of what the provider actually billed.
+	OriginalAmount   *float64 `json:"original_amount,omitempty"`
+	OriginalCurrency string   `json:"original_currency,omitempty"`
 
 	// Payment
 	// For non-installment bills IsPaid is the authoritative flag.

@@ -55,7 +55,9 @@
       <Card
         v-for="project in filteredProjects"
         :key="project.id"
+        :ref="(el) => registerRow(project.id, el?.$el || el)"
         class="p-6 cursor-pointer hover:shadow-lg transition-shadow"
+        :class="{ 'search-flash': isHighlighted(project.id) }"
         @click="viewProject(project)"
       >
         <!-- Header -->
@@ -169,11 +171,12 @@
 <script setup>
 defineOptions({ name: 'ProjectsView' })
 
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
+import { useHighlight } from '@/composables/useHighlight'
 import { formatCurrency as _formatCurrency, formatDate as _formatDate } from '@/utils/dateFormatter'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
@@ -181,6 +184,7 @@ import Button from '@/components/common/Button.vue'
 import AddProjectModal from '@/components/projects/AddProjectModal.vue'
 
 const router = useRouter()
+const route = useRoute()
 const projectsStore = useProjectsStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
@@ -216,6 +220,23 @@ const filteredProjects = computed(() => {
   }
   return all.filter(p => p.status === selectedStatus.value)
 })
+
+// Search-highlight wiring: if `?highlight=<id>` refers to a project hidden by
+// the current status filter, relax the filter to "all" so the row is visible.
+const { isHighlighted, registerRow, highlightId } = useHighlight({
+  source: () => filteredProjects.value,
+})
+watch(
+  () => [highlightId.value, projectsStore.projects.length],
+  () => {
+    if (highlightId.value == null) return
+    const visible = filteredProjects.value.some(p => p.id === highlightId.value)
+    if (!visible && projectsStore.projects.some(p => p.id === highlightId.value)) {
+      selectedStatus.value = ''
+    }
+  },
+  { immediate: true },
+)
 
 function formatCurrency(value) {
   return _formatCurrency(value, settingsStore.formatSettings)
@@ -255,7 +276,13 @@ async function fetchCurrentProperty() {
   try {
     const { data } = await apiClient.get('/properties')
     if (data && data.length > 0) {
-      const currentProp = data.find(p => p.is_current) || data[0]
+      // `?property=<id>` (from global search) overrides the "current" property
+      // so a project living under a non-current property is still loaded.
+      const requested = Number(route.query.property)
+      const fromQuery = Number.isFinite(requested)
+        ? data.find(p => p.id === requested)
+        : null
+      const currentProp = fromQuery || data.find(p => p.is_current) || data[0]
       currentPropertyId.value = currentProp.id
     }
   } catch (err) {
@@ -277,5 +304,15 @@ function onProjectCreated() {
 onMounted(async () => {
   await fetchCurrentProperty()
   loadProjects()
+})
+
+// keep-alive suppresses remount; re-run property selection when a global-
+// search deep-link arrives with a ?property= that differs from the current one.
+onActivated(async () => {
+  const requested = Number(route.query.property)
+  if (Number.isFinite(requested) && requested !== currentPropertyId.value) {
+    await fetchCurrentProperty()
+    loadProjects()
+  }
 })
 </script>

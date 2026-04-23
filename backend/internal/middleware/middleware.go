@@ -4,25 +4,55 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// CORS middleware
+// CORS middleware restricts cross-origin requests to an explicit allow-list
+// derived from the CORS_ALLOWED_ORIGINS env var (comma-separated). If the var
+// is unset, localhost dev origins are allowed by default. Same-origin requests
+// (no Origin header) are passed through untouched. Using "*" is rejected here
+// because Access-Control-Allow-Credentials=true requires a specific origin.
 func CORS() gin.HandlerFunc {
+	raw := os.Getenv("CORS_ALLOWED_ORIGINS")
+	var allowed []string
+	if raw == "" {
+		allowed = []string{
+			"http://localhost:5173",
+			"http://127.0.0.1:5173",
+			"http://localhost:8080",
+			"http://127.0.0.1:8080",
+		}
+	} else {
+		for _, o := range strings.Split(raw, ",") {
+			if o = strings.TrimSpace(o); o != "" {
+				allowed = append(allowed, o)
+			}
+		}
+	}
+	allowedSet := make(map[string]struct{}, len(allowed))
+	for _, o := range allowed {
+		allowedSet[o] = struct{}{}
+	}
+
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-		if origin == "" {
-			origin = "*"
+		if origin != "" {
+			if _, ok := allowedSet[origin]; ok {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+				c.Writer.Header().Set("Vary", "Origin")
+				c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+				c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+				c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+				c.Writer.Header().Set("Access-Control-Max-Age", "86400")
+			}
+			// If the origin is not in the allow-list, no CORS headers are emitted
+			// and the browser will block the response. Same-origin (no Origin
+			// header) requests — e.g. the embedded frontend in prod — still work.
 		}
-
-		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
@@ -103,39 +133,36 @@ func AdminRequired() gin.HandlerFunc {
 	}
 }
 
-// RateLimiter implements simple rate limiting
-func RateLimiter() gin.HandlerFunc {
-	// Simple in-memory rate limiter (for production use Redis)
-	type client struct {
-		count      int
-		lastAccess time.Time
-	}
+// rateClient tracks request count inside a time window for a single key.
+type rateClient struct {
+	count      int
+	lastAccess time.Time
+}
 
-	clients := make(map[string]*client)
-	limit := 100 // requests per minute
-	window := time.Minute
+// newRateLimiter returns a Gin middleware enforcing `limit` requests per
+// `window` per remote IP. The shared map is protected by a mutex so the
+// limiter is safe under the concurrent request handling Gin performs.
+func newRateLimiter(limit int, window time.Duration) gin.HandlerFunc {
+	var mu sync.Mutex
+	clients := make(map[string]*rateClient)
 
 	return func(c *gin.Context) {
 		ip := c.ClientIP()
-
 		now := time.Now()
-		if cl, exists := clients[ip]; exists {
-			if now.Sub(cl.lastAccess) > window {
-				cl.count = 1
-				cl.lastAccess = now
-			} else {
-				cl.count++
-				if cl.count > limit {
-					c.JSON(http.StatusTooManyRequests, gin.H{"error": "Rate limit exceeded"})
-					c.Abort()
-					return
-				}
-			}
-		} else {
-			clients[ip] = &client{count: 1, lastAccess: now}
-		}
 
-		// Cleanup old entries periodically
+		mu.Lock()
+		cl, exists := clients[ip]
+		if !exists {
+			clients[ip] = &rateClient{count: 1, lastAccess: now}
+		} else if now.Sub(cl.lastAccess) > window {
+			cl.count = 1
+			cl.lastAccess = now
+		} else {
+			cl.count++
+		}
+		exceeded := exists && cl.count > limit && now.Sub(cl.lastAccess) <= window
+
+		// Opportunistic cleanup while we still hold the lock.
 		if len(clients) > 10000 {
 			for k, v := range clients {
 				if now.Sub(v.lastAccess) > window*10 {
@@ -143,9 +170,27 @@ func RateLimiter() gin.HandlerFunc {
 				}
 			}
 		}
+		mu.Unlock()
+
+		if exceeded {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Rate limit exceeded"})
+			c.Abort()
+			return
+		}
 
 		c.Next()
 	}
+}
+
+// RateLimiter is the global limiter applied to every request (100 req/min/IP).
+func RateLimiter() gin.HandlerFunc {
+	return newRateLimiter(100, time.Minute)
+}
+
+// AuthRateLimiter is a stricter limiter for /auth/* endpoints to slow down
+// credential stuffing, email enumeration and password-reset abuse (10 req/min/IP).
+func AuthRateLimiter() gin.HandlerFunc {
+	return newRateLimiter(10, time.Minute)
 }
 
 // Logger middleware logs requests

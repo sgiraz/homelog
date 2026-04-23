@@ -164,6 +164,13 @@ func AutoMigrate(db *gorm.DB) error {
 		backfillPriceChanges(db)
 	}
 
+	// Global search: FTS5 virtual table + one-time backfill from existing rows.
+	// GORM hooks (see models) keep it in sync on subsequent writes.
+	if err := initSearchIndex(db); err != nil {
+		return fmt.Errorf("failed to init search index: %w", err)
+	}
+	backfillSearchIndex(db)
+
 	log.Println("✅ Database migrations completed")
 	return nil
 }

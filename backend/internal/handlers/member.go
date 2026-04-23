@@ -47,7 +47,7 @@ type UpdateMemberRequest struct {
 
 // List - GET /api/v1/properties/:id/members
 func (h *MemberHandler) List(c *gin.Context) {
-	_, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -58,6 +58,10 @@ func (h *MemberHandler) List(c *gin.Context) {
 	propertyID, err := strconv.ParseUint(propertyIDStr, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property ID"})
+		return
+	}
+
+	if !requirePropertyMember(c, h.db, userID, uint(propertyID)) {
 		return
 	}
 
@@ -143,7 +147,7 @@ func (h *MemberHandler) Create(c *gin.Context) {
 
 // Get - GET /api/v1/members/:id
 func (h *MemberHandler) Get(c *gin.Context) {
-	_, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -164,6 +168,10 @@ func (h *MemberHandler) Get(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch member"})
+		return
+	}
+
+	if !requirePropertyMember(c, h.db, userID, member.PropertyID) {
 		return
 	}
 

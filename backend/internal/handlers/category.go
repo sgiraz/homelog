@@ -160,7 +160,7 @@ func (h *CategoryHandler) Update(c *gin.Context) {
 		return
 	}
 
-	updates := map[string]interface{}{}
+	updates := map[string]any{}
 	if input.Name != nil {
 		updates["name"] = *input.Name
 	}
@@ -212,6 +212,14 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 	}
 	if !cat.IsDefault && (cat.UserID == nil || *cat.UserID != userID) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "You can only delete your own categories"})
+		return
+	}
+
+	// Block deletion if any expenses reference this category
+	var expenseCount int64
+	h.db.Model(&models.Expense{}).Where("category_id = ?", id).Count(&expenseCount)
+	if expenseCount > 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "Impossibile eliminare la categoria: è utilizzata da spese esistenti"})
 		return
 	}
 

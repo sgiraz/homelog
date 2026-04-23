@@ -116,8 +116,10 @@
         <router-link
           v-for="utility in sortedUtilities"
           :key="utility.id"
+          :ref="(el) => registerRow(utility.id, el?.$el || el)"
           :to="`/utilities/${utility.id}`"
-          class="block"
+          class="block rounded-xl"
+          :class="{ 'search-flash': isHighlighted(utility.id) }"
         >
           <Card class="p-5 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-800 transition-all h-full">
             <!-- Header -->
@@ -224,9 +226,11 @@
 <script setup>
 defineOptions({ name: 'UtilitiesView' })
 
-import { ref, computed, onMounted, h } from 'vue'
+import { ref, computed, onMounted, onActivated, h } from 'vue'
+import { useRoute } from 'vue-router'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
+import { useHighlight } from '@/composables/useHighlight'
 import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatNumber as _formatNumber } from '@/utils/dateFormatter'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
@@ -236,6 +240,7 @@ import AddReadingModal from '@/components/utilities/AddReadingModal.vue'
 import AddBillModal from '@/components/utilities/AddBillModal.vue'
 import TemplatesManager from '@/components/utilities/TemplatesManager.vue'
 
+const route = useRoute()
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 
@@ -327,6 +332,10 @@ const sortedUtilities = computed(() => {
   return [...utilitiesStore.utilities].sort((a, b) => {
     return (typeOrder[a.type] ?? 99) - (typeOrder[b.type] ?? 99)
   })
+})
+
+const { isHighlighted, registerRow } = useHighlight({
+  source: () => sortedUtilities.value,
 })
 
 // ── Utility Icons & Helpers ──
@@ -494,7 +503,13 @@ async function fetchProperties() {
     const { data } = await apiClient.get('/properties')
     if (data && data.length > 0) {
       properties.value = data
-      const current = data.find(p => p.is_current) || data[0]
+      // `?property=<id>` (from global search) overrides the "current" property
+      // so the searched utility is actually loaded into the list.
+      const requested = Number(route.query.property)
+      const fromQuery = Number.isFinite(requested)
+        ? data.find(p => p.id === requested)
+        : null
+      const current = fromQuery || data.find(p => p.is_current) || data[0]
       selectedPropertyId.value = current.id
       utilitiesStore.fetchUtilities({ property_id: current.id })
     }
@@ -550,5 +565,36 @@ function onReadingSaved() {
 
 onMounted(() => {
   fetchProperties()
+})
+
+// keep-alive suppresses remount on return from Settings; re-fetch the
+// properties list so a newly created property appears in the selector.
+// Also re-apply ?property= override on activation so a global-search
+// deep-link that arrives while the view is cached still switches property.
+onActivated(async () => {
+  try {
+    const { data } = await apiClient.get('/properties')
+    if (!data?.length) return
+    properties.value = data
+
+    // ?property=<id> override takes priority (global-search deep-link).
+    const requested = Number(route.query.property)
+    const fromQuery = Number.isFinite(requested) ? data.find(p => p.id === requested) : null
+    if (fromQuery && fromQuery.id !== selectedPropertyId.value) {
+      selectedPropertyId.value = fromQuery.id
+      utilitiesStore.fetchUtilities({ property_id: fromQuery.id })
+      return
+    }
+
+    // No override: preserve current selection if it still exists.
+    const stillValid = selectedPropertyId.value && data.some(p => p.id === selectedPropertyId.value)
+    if (!stillValid) {
+      const current = data.find(p => p.is_current) || data[0]
+      selectedPropertyId.value = current.id
+      utilitiesStore.fetchUtilities({ property_id: current.id })
+    }
+  } catch (err) {
+    console.error('Error fetching properties:', err)
+  }
 })
 </script>

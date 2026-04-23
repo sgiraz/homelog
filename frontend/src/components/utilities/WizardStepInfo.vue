@@ -43,8 +43,19 @@
       </select>
     </div>
 
+    <!-- Hidden native file input — iOS shows the Files app picker with .pdf filter -->
+    <input
+      ref="fileInput"
+      type="file"
+      accept="application/pdf,.pdf"
+      class="hidden"
+      @change="handleFileChange"
+    />
+
     <!-- PDF Upload -->
     <div
+      role="button"
+      tabindex="0"
       :class="[
         'border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer',
         isDraggingFile
@@ -55,7 +66,9 @@
       @dragover.prevent="isDraggingFile = true"
       @dragleave.prevent="isDraggingFile = false"
       @drop.prevent="handleFileDrop"
-      @click="emit('trigger-file-input')"
+      @click="openPicker"
+      @keydown.enter.prevent="openPicker"
+      @keydown.space.prevent="openPicker"
     >
       <div v-if="extracting" class="flex flex-col items-center gap-2">
         <svg class="w-8 h-8 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -121,12 +134,25 @@ defineProps({
   }
 })
 
-const emit = defineEmits(['update:template', 'trigger-file-input', 'file-dropped'])
+const emit = defineEmits(['update:template', 'file-selected'])
 
 const isDraggingFile = ref(false)
+const fileInput = ref(null)
+
+function openPicker() {
+  // Reset the input so picking the same file twice still fires `change`.
+  if (fileInput.value) fileInput.value.value = ''
+  fileInput.value?.click()
+}
+
+function handleFileChange(event) {
+  const file = event.target.files?.[0]
+  if (file) emit('file-selected', file)
+}
 
 function handleFileDrop(event) {
   isDraggingFile.value = false
-  emit('file-dropped', event)
+  const file = event.dataTransfer?.files?.[0]
+  if (file) emit('file-selected', file)
 }
 </script>

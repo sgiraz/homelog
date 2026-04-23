@@ -316,6 +316,31 @@
         </label>
       </div>
 
+      <!-- Currency -->
+      <div>
+        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+          Valuta
+        </label>
+        <select
+          v-model="form.currency"
+          :disabled="isCurrencyLocked"
+          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
+                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                 focus:outline-none focus:ring-2 focus:ring-blue-500
+                 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <option v-for="opt in currencyOptions" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+        <p v-if="isCurrencyLocked" class="text-xs text-amber-600 dark:text-amber-400 mt-1">
+          Bloccata: esistono bollette già saldate per questo servizio.
+        </p>
+        <p v-else class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Non potrà essere cambiata dopo la prima bolletta saldata.
+        </p>
+      </div>
+
       <!-- Default Bill Template -->
       <div v-if="billTemplates.length > 0">
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -380,6 +405,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useSettingsStore } from '@/stores/settings'
 import { utilitiesAPI, membersAPI, templatesAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
@@ -393,6 +419,27 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'updated'])
+const settingsStore = useSettingsStore()
+
+const isCurrencyLocked = computed(() => !!props.utility.is_currency_locked)
+
+const currencyOptions = computed(() => {
+  const base = settingsStore.formatSettings.currency || 'EUR'
+  return [
+    { value: '', label: `Valuta globale (${base})` },
+    { value: 'EUR', label: 'EUR — Euro' },
+    { value: 'USD', label: 'USD — Dollaro USA' },
+    { value: 'GBP', label: 'GBP — Sterlina' },
+    { value: 'CHF', label: 'CHF — Franco svizzero' },
+    { value: 'JPY', label: 'JPY — Yen' },
+    { value: 'CAD', label: 'CAD — Dollaro canadese' },
+    { value: 'AUD', label: 'AUD — Dollaro australiano' },
+    { value: 'SEK', label: 'SEK — Corona svedese' },
+    { value: 'NOK', label: 'NOK — Corona norvegese' },
+    { value: 'DKK', label: 'DKK — Corona danese' },
+    { value: 'PLN', label: 'PLN — Złoty' },
+  ]
+})
 
 const loading = ref(false)
 const error = ref(null)
@@ -494,6 +541,7 @@ const form = ref({
   split_override: props.utility.split_override || '',
   is_domiciled: props.utility.is_domiciled || false,
   is_installment_based: props.utility.is_installment_based || false,
+  currency: props.utility.currency || '',
 })
 
 // Initialize split member IDs from utility
@@ -569,6 +617,9 @@ async function handleSubmit() {
       split_member_ids: form.value.split_override === 'custom' ? JSON.stringify(splitMemberIds.value) : '',
       is_domiciled: form.value.is_domiciled,
       is_installment_based: form.value.is_installment_based,
+      // Only send currency when unlocked — server rejects changes post-lock,
+      // and omitting the field leaves the existing value untouched.
+      ...(isCurrencyLocked.value ? {} : { currency: form.value.currency }),
     }
 
     const { data } = await utilitiesAPI.update(props.utility.id, updateData)

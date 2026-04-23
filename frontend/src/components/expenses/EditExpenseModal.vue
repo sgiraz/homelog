@@ -20,9 +20,12 @@
           min="0.01"
           placeholder="0.00"
           inputmode="decimal"
-          :required="!isSettled"
-          :disabled="isSettled"
+          :required="!amountLocked"
+          :disabled="amountLocked"
         />
+        <p v-if="amountLocked && !isSettled" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
+          Importo bloccato: alcune quote sono già state saldate. Annulla i pagamenti dal Bilancio per modificarlo.
+        </p>
         <p v-if="expense.original_currency" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
           Importo originale: {{ formatOriginal(expense.original_amount, expense.original_currency) }}
           <span v-if="expense.original_amount && expense.amount">
@@ -126,9 +129,9 @@
       </div>
 
       <!-- Note about split -->
-      <div v-if="expense.is_split" class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+      <div v-if="expense.is_split && !isSettled" class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
         <p class="text-sm text-yellow-800 dark:text-yellow-200">
-          Le impostazioni di divisione non possono essere modificate. Per cambiare la divisione, elimina e ricrea la spesa.
+          Le persone coinvolte nella divisione non possono essere modificate. Se cambi l'importo, le quote verranno ricalcolate equamente. Per cambiare i membri, elimina e ricrea la spesa.
         </p>
       </div>
 
@@ -201,6 +204,17 @@ const isSettled = computed(() => {
   return Array.isArray(splits) && splits.length > 0 && splits.every(s => s.is_settled)
 })
 
+// Amount is locked when at least one non-payer split has already been settled:
+// propagating a new total would silently rewrite historical balances.
+const amountLocked = computed(() => {
+  if (isSettled.value) return true
+  if (!props.expense.is_split) return false
+  const splits = props.expense.splits
+  if (!Array.isArray(splits) || splits.length === 0) return false
+  const payerId = props.expense.paid_by_member_id
+  return splits.some(s => s.member_id !== payerId && s.is_settled)
+})
+
 async function fetchCategories() {
   try {
     const { data } = await categoriesAPI.list()
@@ -231,7 +245,9 @@ async function handleSubmit() {
     }
 
     if (!isSettled.value) {
-      expenseData.amount = parseFloat(form.value.amount)
+      if (!amountLocked.value) {
+        expenseData.amount = parseFloat(form.value.amount)
+      }
       expenseData.date = form.value.date
       expenseData.project_id = form.value.project_id
     }

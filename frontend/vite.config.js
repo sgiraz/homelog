@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
+    tailwindcss(),
   ],
   define: {
     __APP_VERSION__: JSON.stringify(process.env.APP_VERSION || 'dev'),
@@ -35,15 +37,23 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
-    minify: 'esbuild',
+    // Vite 8 defaults to Oxc for minification; esbuild is optional and would
+    // require installing it as an explicit dep.
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'chart-vendor': ['chart.js', 'vue-chartjs']
-        }
-      }
+        // Vite 8 uses Rolldown, which only accepts the function form of
+        // manualChunks — the object shorthand from Vite 7 is no longer valid.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (/node_modules[\\/](vue|vue-router|pinia|@vue)[\\/]/.test(id)) {
+            return 'vue-vendor'
+          }
+          if (/node_modules[\\/](chart\.js|vue-chartjs)[\\/]/.test(id)) {
+            return 'chart-vendor'
+          }
+        },
+      },
     }
   }
 })
