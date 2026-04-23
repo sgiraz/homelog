@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-//go:embed static/*
+//go:embed all:static
 var staticFiles embed.FS
 
 // serveFrontend configures the router to serve the embedded Vue SPA.
