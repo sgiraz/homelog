@@ -34,9 +34,9 @@ export const i18n = createI18n({
 })
 
 export function setI18nLocale(locale) {
-  if (!SUPPORTED_LOCALES.includes(locale)) return
-  i18n.global.locale.value = locale
-  document.documentElement.setAttribute('lang', locale)
+  const resolved = SUPPORTED_LOCALES.includes(locale) ? locale : DEFAULT_LOCALE
+  i18n.global.locale.value = resolved
+  document.documentElement.setAttribute('lang', resolved)
 }
 
 export default i18n

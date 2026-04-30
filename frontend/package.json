@@ -11,7 +11,6 @@
     "i18n:translate": "node scripts/translate-i18n.mjs"
   },
   "dependencies": {
-    "@intlify/unplugin-vue-i18n": "^11.1.2",
     "axios": "^1.6.5",
     "chart.js": "^4.4.1",
     "pinia": "^3.0.4",
@@ -23,6 +22,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
+    "@intlify/unplugin-vue-i18n": "^11.1.2",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.2.4",
     "@vitejs/plugin-vue": "^6.0.6",

@@ -238,7 +238,7 @@ const utilityTypeLabel = computed(() => {
   if (!utility.value?.type) return ''
   const key = `utilities.types.${utility.value.type}`
   const label = t(key)
-  return label === key ? '' : label
+  return label === key ? utility.value.type : label
 })
 
 const utilityColorClass = computed(() => {
