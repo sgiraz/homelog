@@ -26,6 +26,7 @@
           v-if="utility.customer_portal"
           :href="utility.customer_portal"
           target="_blank"
+          rel="noopener noreferrer"
           class="p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
           :title="t('utilities.detail.openPortal')"
         >
