@@ -8,7 +8,7 @@
           <button
             @click="$refs.avatarInput.click()"
             class="block relative cursor-pointer"
-            aria-label="Cambia foto profilo"
+            :aria-label="t('settings.profile.changeAvatar')"
           >
             <img
               v-if="authStore.avatarUrl"
@@ -52,14 +52,14 @@
           <div class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ authStore.user?.email }}</div>
           <div class="flex items-center gap-3 mt-1.5">
             <span class="text-xs text-gray-400 dark:text-gray-500">
-              {{ settingsStore.isPropertyAdmin ? 'Amministratore' : 'Utente' }}
+              {{ settingsStore.isPropertyAdmin ? t('settings.profile.roleAdmin') : t('settings.profile.roleUser') }}
             </span>
             <button
               v-if="authStore.avatarUrl"
               @click="removeAvatar"
               class="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400"
             >
-              Rimuovi foto
+              {{ t('settings.profile.removeAvatar') }}
             </button>
           </div>
         </div>
@@ -115,6 +115,7 @@
 defineOptions({ name: 'SettingsView' })
 
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
@@ -127,19 +128,20 @@ import PreferencesTab from '@/components/settings/PreferencesTab.vue'
 import CategoriesTab from '@/components/settings/CategoriesTab.vue'
 import DataTab from '@/components/settings/DataTab.vue'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 
-// Tabs
+// Tabs — IDs are stable (used as route query) so labels are translated separately.
 const activeTab = ref('famiglia')
-const tabs = [
-  { id: 'famiglia',   label: 'Famiglia',    icon: '👥' },
-  { id: 'proprieta',  label: 'Proprietà',   icon: '🏠' },
-  { id: 'preferenze', label: 'Preferenze',  icon: '⚙️' },
-  { id: 'categorie',  label: 'Categorie',   icon: '🏷️' },
-  { id: 'dati',       label: 'Dati',        icon: '📦' },
-]
+const tabs = computed(() => [
+  { id: 'famiglia',   label: t('settings.tabs.family'),      icon: '👥' },
+  { id: 'proprieta',  label: t('settings.tabs.properties'),  icon: '🏠' },
+  { id: 'preferenze', label: t('settings.tabs.preferences'), icon: '⚙️' },
+  { id: 'categorie',  label: t('settings.tabs.categories'),  icon: '🏷️' },
+  { id: 'dati',       label: t('settings.tabs.data'),        icon: '📦' },
+])
 
 const userInitials = computed(() => {
   const name = authStore.user?.name || 'U'
@@ -157,7 +159,7 @@ function onAvatarSelected(e) {
   const file = e.target.files[0]
   if (!file) return
   if (file.size > 5 * 1024 * 1024) {
-    window.$toast?.error('Immagine troppo grande (max 5MB)')
+    window.$toast?.error(t('settings.profile.avatarTooLarge'))
     if (avatarInput.value) avatarInput.value.value = ''
     return
   }
@@ -178,9 +180,9 @@ async function onAvatarCropped(file) {
   try {
     const { data } = await avatarAPI.upload(file)
     authStore.updateUser(data.user)
-    window.$toast?.success('Foto profilo aggiornata')
+    window.$toast?.success(t('settings.profile.avatarUploaded'))
   } catch (err) {
-    window.$toast?.error(err.response?.data?.error || 'Errore durante il caricamento')
+    window.$toast?.error(err.response?.data?.error || t('settings.profile.avatarUploadError'))
   } finally {
     avatarUploading.value = false
   }
@@ -188,18 +190,18 @@ async function onAvatarCropped(file) {
 
 async function removeAvatar() {
   const ok = await confirm({
-    title: 'Rimuovi foto profilo',
-    message: 'Sei sicuro di voler rimuovere la foto profilo?',
-    confirmText: 'Rimuovi',
+    title: t('settings.profile.confirmRemoveTitle'),
+    message: t('settings.profile.confirmRemoveMessage'),
+    confirmText: t('settings.profile.confirmRemoveAction'),
     variant: 'danger'
   })
   if (!ok) return
   try {
     const { data } = await avatarAPI.delete()
     authStore.updateUser(data.user)
-    window.$toast?.success('Foto profilo rimossa')
+    window.$toast?.success(t('settings.profile.avatarRemoved'))
   } catch {
-    window.$toast?.error('Errore durante la rimozione')
+    window.$toast?.error(t('settings.profile.avatarRemoveError'))
   }
 }
 </script>

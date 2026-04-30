@@ -3,9 +3,9 @@
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Servizi</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{{ t('utilities.title') }}</h1>
         <p class="text-gray-600 dark:text-gray-400 text-sm mt-1">
-          Utenze, abbonamenti e servizi ricorrenti
+          {{ t('utilities.subtitle') }}
         </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
@@ -27,7 +27,7 @@
           @click="showTemplatesManager = true"
           class="p-2.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300
                  border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          title="Gestisci template estrazione"
+          :title="t('utilities.templatesTooltip')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -37,14 +37,14 @@
           <svg class="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
-          <span class="hidden sm:inline">Aggiungi</span>
+          <span class="hidden sm:inline">{{ t('utilities.addButton') }}</span>
         </Button>
       </div>
     </div>
 
     <!-- Loading -->
     <div v-if="utilitiesStore.loading" class="text-center py-12 text-gray-600 dark:text-gray-400">
-      Caricamento...
+      {{ t('utilities.loading') }}
     </div>
 
     <!-- Empty State -->
@@ -53,10 +53,10 @@
         <svg class="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Nessun servizio configurato</h3>
-        <p class="mt-2 text-gray-500 dark:text-gray-400">Aggiungi utenze, abbonamenti o servizi ricorrenti</p>
+        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">{{ t('utilities.empty.title') }}</h3>
+        <p class="mt-2 text-gray-500 dark:text-gray-400">{{ t('utilities.empty.subtitle') }}</p>
         <Button v-if="settingsStore.isPropertyAdmin" class="mt-4" @click="showAddUtility = true">
-          Aggiungi il primo servizio
+          {{ t('utilities.empty.addFirst') }}
         </Button>
       </Card>
     </div>
@@ -65,21 +65,21 @@
       <!-- KPI Cards -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card class="p-4">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Spesa mensile media</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.kpi.avgMonthly') }}</div>
           <div class="text-xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(dashboardKPIs.avgMonthly) }}</div>
         </Card>
         <Card class="p-4">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Da pagare</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.kpi.unpaidTotal') }}</div>
           <div class="text-xl font-bold" :class="dashboardKPIs.unpaidTotal > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'">
             {{ formatCurrency(dashboardKPIs.unpaidTotal) }}
           </div>
         </Card>
         <Card class="p-4">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Bollette non pagate</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.kpi.unpaidCount') }}</div>
           <div class="text-xl font-bold text-gray-900 dark:text-white">{{ dashboardKPIs.unpaidCount }}</div>
         </Card>
         <Card class="p-4">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Servizi attivi</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.kpi.activeServices') }}</div>
           <div class="text-xl font-bold text-gray-900 dark:text-white">{{ utilitiesStore.utilities.length }}</div>
         </Card>
       </div>
@@ -106,7 +106,7 @@
             @click="$router.push(`/utilities/${alert.utilityId}`)"
             class="text-xs font-medium underline flex-shrink-0"
           >
-            Vai
+            {{ t('utilities.alerts.go') }}
           </button>
         </div>
       </div>
@@ -138,17 +138,17 @@
 
             <!-- Stats -->
             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              <div class="text-gray-500 dark:text-gray-400">{{ isMeteredType(utility.type) ? 'Ultima bolletta' : 'Ultimo importo' }}</div>
+              <div class="text-gray-500 dark:text-gray-400">{{ isMeteredType(utility.type) ? t('utilities.card.lastBill') : t('utilities.card.lastAmount') }}</div>
               <div class="text-right font-medium text-gray-900 dark:text-white">{{ getLastBillAmount(utility) }}</div>
-              <div class="text-gray-500 dark:text-gray-400">Scadenza</div>
+              <div class="text-gray-500 dark:text-gray-400">{{ t('utilities.card.dueDate') }}</div>
               <div class="text-right text-gray-900 dark:text-white">{{ getLastBillDueDate(utility) }}</div>
               <template v-if="isMeteredType(utility.type)">
-                <div class="text-gray-500 dark:text-gray-400">Consumo</div>
+                <div class="text-gray-500 dark:text-gray-400">{{ t('utilities.card.consumption') }}</div>
                 <div class="text-right text-gray-900 dark:text-white">{{ getLastConsumption(utility) }}</div>
               </template>
               <template v-else-if="utility.recurring_amount">
-                <div class="text-gray-500 dark:text-gray-400">Canone</div>
-                <div class="text-right text-gray-900 dark:text-white">{{ formatCurrency(utility.recurring_amount) }}/mese</div>
+                <div class="text-gray-500 dark:text-gray-400">{{ t('utilities.card.fee') }}</div>
+                <div class="text-right text-gray-900 dark:text-white">{{ t('utilities.card.feePerMonth', { amount: formatCurrency(utility.recurring_amount) }) }}</div>
               </template>
             </div>
 
@@ -172,7 +172,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                Lettura
+                {{ t('utilities.card.readingButton') }}
               </button>
               <button
                 @click.prevent="openAddBill(utility)"
@@ -183,7 +183,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
-                {{ isMeteredType(utility.type) ? 'Bolletta' : 'Fattura' }}
+                {{ isMeteredType(utility.type) ? t('utilities.card.billButton') : t('utilities.card.invoiceButton') }}
               </button>
             </div>
           </Card>
@@ -228,6 +228,7 @@ defineOptions({ name: 'UtilitiesView' })
 
 import { ref, computed, onMounted, onActivated, h } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { useHighlight } from '@/composables/useHighlight'
@@ -240,6 +241,7 @@ import AddReadingModal from '@/components/utilities/AddReadingModal.vue'
 import AddBillModal from '@/components/utilities/AddBillModal.vue'
 import TemplatesManager from '@/components/utilities/TemplatesManager.vue'
 
+const { t } = useI18n()
 const route = useRoute()
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
@@ -299,7 +301,7 @@ const alerts = computed(() => {
       const name = getUtilityName(u.type)
       result.push({
         type: 'warning',
-        message: `${name}: ${dueSoon.length} bolletta/e in scadenza`,
+        message: t('utilities.alerts.billsDueSoon', { name, n: dueSoon.length }),
         utilityId: u.id
       })
     }
@@ -311,7 +313,7 @@ const alerts = computed(() => {
       if (days >= 30) {
         result.push({
           type: 'info',
-          message: `${getUtilityName(u.type)}: autolettura consigliata (${days} giorni dall'ultima)`,
+          message: t('utilities.alerts.readingDue', { name: getUtilityName(u.type), n: days }),
           utilityId: u.id
         })
       }
@@ -428,11 +430,9 @@ function getUtilityColorClasses(type) {
 }
 
 function getUtilityName(type) {
-  const names = {
-    electricity: 'Luce', gas: 'Gas', water: 'Acqua', waste: 'Rifiuti',
-    internet: 'Internet', insurance: 'Assicurazione', affitto: 'Affitto', mutuo: 'Mutuo'
-  }
-  return names[type] || type
+  const key = `utilities.utilityTypes.${type}`
+  const label = t(key)
+  return label === key ? type : label
 }
 
 function isMeteredType(type) {
@@ -492,8 +492,8 @@ function getReadingAlertMessage(utility) {
   const lastReading = new Date(utility.readings[0].reading_date)
   const now = new Date()
   const daysSinceReading = Math.floor((now - lastReading) / (1000 * 60 * 60 * 24))
-  if (daysSinceReading >= 30) return 'Autolettura consigliata'
-  return `Autolettura consigliata tra ${30 - daysSinceReading} giorni`
+  if (daysSinceReading >= 30) return t('utilities.reading.alertNow')
+  return t('utilities.reading.alertSoon', { n: 30 - daysSinceReading })
 }
 
 // ── Actions ──

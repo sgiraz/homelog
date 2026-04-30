@@ -6,7 +6,7 @@
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
       </svg>
-      <p class="mt-4 text-gray-600 dark:text-gray-400">Caricamento bilancio...</p>
+      <p class="mt-4 text-gray-600 dark:text-gray-400">{{ t('balance.loading') }}</p>
     </div>
 
     <template v-else>
@@ -14,7 +14,7 @@
       <Card class="p-4 sm:p-8">
         <div class="text-center">
           <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
-            Bilancio con {{ balanceStore.otherMemberName || 'Partner' }}
+            {{ t('balance.balanceWith', { name: balanceStore.otherMemberName || t('balance.partnerFallback') }) }}
           </div>
           <div :class="[
             'text-3xl sm:text-5xl font-bold mb-3',
@@ -37,13 +37,13 @@
               <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              {{ balanceStore.balance > 0 ? 'Ricevi Pagamento' : 'Salda Conto' }}
+              {{ balanceStore.balance > 0 ? t('balance.receivePayment') : t('balance.settleUp') }}
             </Button>
             <Button v-else variant="secondary" disabled>
               <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
-              Siete in pari
+              {{ t('balance.evenBadge') }}
             </Button>
           </div>
         </div>
@@ -52,13 +52,13 @@
       <!-- Stats Cards -->
       <div class="grid grid-cols-2 gap-4">
         <Card class="p-4 sm:p-6 text-center">
-          <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Spese da saldare</div>
+          <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('balance.stats.unsettledCount') }}</div>
           <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">
             {{ balanceStore.unsettledSplits.length }}
           </div>
         </Card>
         <Card class="p-4 sm:p-6 text-center">
-          <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Totale saldato</div>
+          <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('balance.stats.totalSettled') }}</div>
           <div class="text-2xl font-bold text-green-600 dark:text-green-400">
             {{ formatCurrency(totalSettled) }}
           </div>
@@ -74,7 +74,7 @@
           class="w-full flex items-center justify-between text-left"
         >
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            Spese da saldare
+            {{ t('balance.unsettled.title') }}
             <span class="text-sm font-normal px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
               {{ balanceStore.unsettledSplits.length }}
             </span>
@@ -91,7 +91,7 @@
           <div v-if="unsettledOpen" id="unsettled-splits-list" class="mt-4 space-y-3">
             <!-- Totale da saldare -->
             <div class="text-sm text-gray-600 dark:text-gray-400 flex justify-between border-b border-gray-100 dark:border-gray-700 pb-2">
-              <span>Totale da saldare</span>
+              <span>{{ t('balance.unsettled.totalLabel') }}</span>
               <span class="font-semibold text-amber-600 dark:text-amber-400">{{ formatCurrency(totalUnsettled) }}</span>
             </div>
 
@@ -103,11 +103,11 @@
               <div class="flex items-start justify-between gap-3">
                 <div class="flex-1 min-w-0">
                   <div class="font-medium text-gray-900 dark:text-white truncate">
-                    {{ split.description || 'Senza descrizione' }}
+                    {{ split.description || t('balance.unsettled.noDescription') }}
                   </div>
                   <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-2">
                     <span>{{ formatDate(split.date) }}</span>
-                    <span class="text-xs">Pagato da {{ split.paid_by_name }}</span>
+                    <span class="text-xs">{{ t('balance.unsettled.paidBy', { name: split.paid_by_name }) }}</span>
                   </div>
                 </div>
                 <div class="text-lg font-bold shrink-0" :class="split.paid_by_id === balanceStore.currentMemberId
@@ -124,12 +124,12 @@
 
       <!-- Storico Pagamenti -->
       <Card class="p-4 sm:p-6">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Storico Pagamenti</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ t('balance.history.title') }}</h3>
         <div v-if="balanceStore.settlements.length === 0" class="text-center py-8">
           <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
-          <p class="text-gray-600 dark:text-gray-400">Nessun pagamento registrato</p>
+          <p class="text-gray-600 dark:text-gray-400">{{ t('balance.history.empty') }}</p>
         </div>
 
         <div v-else class="space-y-3">
@@ -182,6 +182,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useBalanceStore } from '@/stores/balance'
 import { useSettingsStore } from '@/stores/settings'
 import { useExpensesStore } from '@/stores/expenses'
@@ -191,6 +192,7 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import SettlementModal from '@/components/balance/SettlementModal.vue'
 
+const { t } = useI18n()
 const emit = defineEmits(['settlement-created'])
 
 const balanceStore = useBalanceStore()
@@ -201,9 +203,10 @@ const currentPropertyId = ref(null)
 const unsettledOpen = ref(false)
 
 const balanceMessage = computed(() => {
-  if (balanceStore.balance > 0) return `${balanceStore.otherMemberName || 'Partner'} ti deve`
-  if (balanceStore.balance < 0) return `Devi a ${balanceStore.otherMemberName || 'Partner'}`
-  return 'Siete in pari!'
+  const name = balanceStore.otherMemberName || t('balance.partnerFallback')
+  if (balanceStore.balance > 0) return t('balance.owesYou', { name })
+  if (balanceStore.balance < 0) return t('balance.youOwe', { name })
+  return t('balance.even')
 })
 
 const totalSettled = computed(() => {
@@ -223,14 +226,9 @@ function formatDate(dateStr) {
 }
 
 function paymentMethodLabel(method) {
-  const labels = {
-    bank_transfer: 'Bonifico',
-    cash: 'Contanti',
-    satispay: 'Satispay',
-    paypal: 'PayPal',
-    revolut: 'Revolut'
-  }
-  return labels[method] || method
+  const key = `balance.paymentMethods.${method}`
+  const label = t(key)
+  return label === key ? method : label
 }
 
 const expensesStore = useExpensesStore()

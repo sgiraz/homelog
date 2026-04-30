@@ -1,5 +1,5 @@
 <template>
-  <BaseModal title="Modifica Spesa" @close="$emit('close')">
+  <BaseModal :title="t('expenses.modal.editTitle')" @close="$emit('close')">
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <!-- Settled expense notice -->
       <div v-if="isSettled" class="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
@@ -7,14 +7,14 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
         </svg>
         <p class="text-sm text-amber-800 dark:text-amber-200">
-          Spesa saldata: puoi modificare solo descrizione, categoria e sottocategoria.
+          {{ t('expenses.modal.settledNotice') }}
         </p>
       </div>
 
       <div>
         <Input
           v-model="form.amount"
-          label="Importo *"
+          :label="t('expenses.modal.amountLabel')"
           type="number"
           step="0.01"
           min="0.01"
@@ -24,25 +24,25 @@
           :disabled="amountLocked"
         />
         <p v-if="amountLocked && !isSettled" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
-          Importo bloccato: alcune quote sono già state saldate. Annulla i pagamenti dal Bilancio per modificarlo.
+          {{ t('expenses.modal.amountLockedNotice') }}
         </p>
         <p v-if="expense.original_currency" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Importo originale: {{ formatOriginal(expense.original_amount, expense.original_currency) }}
+          {{ t('expenses.modal.originalAmountInfo', { amount: formatOriginal(expense.original_amount, expense.original_currency) }) }}
           <span v-if="expense.original_amount && expense.amount">
-            (tasso: {{ (expense.amount / expense.original_amount).toFixed(6) }})
+            {{ t('expenses.modal.originalRateInfo', { rate: (expense.amount / expense.original_amount).toFixed(6) }) }}
           </span>
         </p>
       </div>
 
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Descrizione *
+          {{ t('expenses.modal.descriptionLabel') }}
         </label>
         <textarea
           v-model="form.description"
           rows="2"
           required
-          placeholder="Es: Spesa supermercato"
+          :placeholder="t('expenses.modal.descriptionPlaceholder')"
           autocorrect="off"
           autocapitalize="off"
           class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
@@ -53,7 +53,7 @@
 
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Categoria *
+          {{ t('expenses.modal.categoryLabel') }}
         </label>
         <select
           v-model.number="form.category_id"
@@ -63,7 +63,7 @@
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="" disabled>Seleziona categoria</option>
+          <option value="" disabled>{{ t('expenses.modal.categoryPlaceholder') }}</option>
           <option
             v-for="cat in categories"
             :key="cat.id"
@@ -77,7 +77,7 @@
       <!-- Subcategory selector -->
       <div v-if="selectedCategorySubcategories.length > 0">
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Sottocategoria (opzionale)
+          {{ t('expenses.modal.subcategoryLabel') }}
         </label>
         <select
           v-model.number="form.subcategory_id"
@@ -85,7 +85,7 @@
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option :value="null">Nessuna sottocategoria</option>
+          <option :value="null">{{ t('expenses.modal.subcategoryNone') }}</option>
           <option
             v-for="sub in selectedCategorySubcategories"
             :key="sub.id"
@@ -98,7 +98,7 @@
 
       <Input
         v-model="form.date"
-        label="Data *"
+        :label="t('expenses.modal.dateLabel')"
         type="date"
         :required="!isSettled"
         :disabled="isSettled"
@@ -107,7 +107,7 @@
       <!-- Project (Optional) -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Progetto (opzionale)
+          {{ t('expenses.modal.projectLabel') }}
         </label>
         <select
           v-model.number="form.project_id"
@@ -117,7 +117,7 @@
                  focus:outline-none focus:ring-2 focus:ring-blue-500
                  disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <option :value="null">Nessun progetto</option>
+          <option :value="null">{{ t('expenses.modal.projectNone') }}</option>
           <option
             v-for="proj in activeProjects"
             :key="proj.id"
@@ -131,7 +131,7 @@
       <!-- Note about split -->
       <div v-if="expense.is_split && !isSettled" class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
         <p class="text-sm text-yellow-800 dark:text-yellow-200">
-          Le persone coinvolte nella divisione non possono essere modificate. Se cambi l'importo, le quote verranno ricalcolate equamente. Per cambiare i membri, elimina e ricrea la spesa.
+          {{ t('expenses.modal.splitEditNotice') }}
         </p>
       </div>
 
@@ -141,10 +141,10 @@
 
       <div class="flex gap-3 pt-2">
         <Button type="button" variant="secondary" @click="$emit('close')" class="flex-1">
-          Annulla
+          {{ t('expenses.modal.cancel') }}
         </Button>
         <Button type="submit" :disabled="loading" class="flex-1">
-          {{ loading ? 'Salvataggio...' : 'Salva Modifiche' }}
+          {{ loading ? t('expenses.modal.saving') : t('expenses.modal.saveChanges') }}
         </Button>
       </div>
     </form>
@@ -153,6 +153,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useExpensesStore } from '@/stores/expenses'
 import { useSettingsStore } from '@/stores/settings'
 import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
@@ -160,6 +161,8 @@ import { categoriesAPI, projectsAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   expense: {
@@ -196,16 +199,12 @@ const selectedCategorySubcategories = computed(() => {
   return cat?.subcategories || []
 })
 
-// Only split expenses can be "settled" (all splits paid).
-// Non-split expenses are always fully editable.
 const isSettled = computed(() => {
   if (!props.expense.is_split) return false
   const splits = props.expense.splits
   return Array.isArray(splits) && splits.length > 0 && splits.every(s => s.is_settled)
 })
 
-// Amount is locked when at least one non-payer split has already been settled:
-// propagating a new total would silently rewrite historical balances.
 const amountLocked = computed(() => {
   if (isSettled.value) return true
   if (!props.expense.is_split) return false
@@ -253,11 +252,11 @@ async function handleSubmit() {
     }
 
     await expensesStore.updateExpense(props.expense.id, expenseData)
-    window.$toast?.success('Spesa aggiornata!')
+    window.$toast?.success(t('expenses.modal.updatedToast'))
     emit('updated')
     emit('close')
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || 'Errore durante il salvataggio'
+    error.value = err.response?.data?.error || err.message || t('expenses.modal.genericSaveError')
   } finally {
     loading.value = false
   }

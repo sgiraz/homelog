@@ -1,0 +1,55 @@
+{
+  "loading": "Caricamento bilancio...",
+  "balanceWith": "Bilancio con {name}",
+  "partnerFallback": "Partner",
+  "owesYou": "{name} ti deve",
+  "youOwe": "Devi a {name}",
+  "even": "Siete in pari!",
+  "evenBadge": "Siete in pari",
+  "receivePayment": "Ricevi Pagamento",
+  "settleUp": "Salda Conto",
+  "stats": {
+    "unsettledCount": "Spese da saldare",
+    "totalSettled": "Totale saldato"
+  },
+  "unsettled": {
+    "title": "Spese da saldare",
+    "totalLabel": "Totale da saldare",
+    "noDescription": "Senza descrizione",
+    "paidBy": "Pagato da {name}"
+  },
+  "history": {
+    "title": "Storico Pagamenti",
+    "empty": "Nessun pagamento registrato"
+  },
+  "paymentMethods": {
+    "bank_transfer": "Bonifico",
+    "cash": "Contanti",
+    "satispay": "Satispay",
+    "paypal": "PayPal",
+    "revolut": "Revolut"
+  },
+  "settlement": {
+    "amountLabel": "Importo da saldare",
+    "fromOther": "Da ricevere da {name}",
+    "toOther": "Da pagare a {name}",
+    "dateLabel": "Data pagamento",
+    "methodLabel": "Metodo pagamento",
+    "methods": {
+      "bank_transfer": "Bonifico bancario",
+      "cash": "Contanti",
+      "satispay": "Satispay",
+      "paypal": "PayPal",
+      "revolut": "Revolut"
+    },
+    "noteLabel": "Nota (opzionale)",
+    "notePlaceholder": "Es: Pareggio gennaio 2026",
+    "warning": "Registrando questo pagamento, le spese collegate verranno marcate come saldate.",
+    "cancel": "Annulla",
+    "submit": "Conferma Pagamento",
+    "saving": "Registrazione...",
+    "missingMembers": "Impossibile determinare i membri per il saldo",
+    "genericError": "Errore durante la registrazione",
+    "successToast": "Saldo registrato con successo!"
+  }
+}

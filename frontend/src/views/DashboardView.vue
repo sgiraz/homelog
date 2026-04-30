@@ -3,14 +3,14 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p class="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base">Panoramica delle tue spese</p>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{{ t('dashboard.title') }}</h1>
+        <p class="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base">{{ t('dashboard.subtitle') }}</p>
       </div>
       <Button @click="showAddExpense = true">
         <svg class="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        <span class="hidden sm:inline">Aggiungi Spesa</span>
+        <span class="hidden sm:inline">{{ t('dashboard.addExpenseButton') }}</span>
       </Button>
     </div>
 
@@ -18,17 +18,18 @@
     <Card v-if="!settingsStore.hasProperty" className="p-6">
       <div v-if="settingsStore.pendingJoinRequest" class="text-center space-y-3">
         <div class="text-4xl">⏳</div>
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Richiesta in attesa</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('dashboard.noProperty.pendingTitle') }}</h2>
         <p class="text-gray-600 dark:text-gray-400">
-          La tua richiesta di accesso a <strong>{{ settingsStore.pendingJoinRequest.property_name }}</strong>
-          è in attesa di approvazione da parte di un amministratore.
+          <i18n-t keypath="dashboard.noProperty.pendingMessage" tag="span">
+            <template #name><strong>{{ settingsStore.pendingJoinRequest.property_name }}</strong></template>
+          </i18n-t>
         </p>
       </div>
       <div v-else class="text-center space-y-3">
         <div class="text-4xl">🏠</div>
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Nessuna proprietà</h2>
-        <p class="text-gray-600 dark:text-gray-400">Crea una proprietà o unisciti a una esistente per iniziare.</p>
-        <Button @click="$router.push('/onboarding')">Configura</Button>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('dashboard.noProperty.noneTitle') }}</h2>
+        <p class="text-gray-600 dark:text-gray-400">{{ t('dashboard.noProperty.noneDescription') }}</p>
+        <Button @click="$router.push('/onboarding')">{{ t('dashboard.noProperty.configureButton') }}</Button>
       </div>
     </Card>
 
@@ -109,6 +110,7 @@
 defineOptions({ name: 'DashboardView' })
 
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -124,6 +126,7 @@ import DashboardCharts from '@/components/dashboard/DashboardCharts.vue'
 import DashboardFilters from '@/components/dashboard/DashboardFilters.vue'
 import RecentExpensesList from '@/components/dashboard/RecentExpensesList.vue'
 
+const { t } = useI18n()
 const expensesStore = useExpensesStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
@@ -188,7 +191,7 @@ const categoryColors = [
 ]
 
 const categoryChartTitle = computed(() =>
-  stats.value?.is_subcategory ? 'Spese per Sottocategoria' : 'Spese per Categoria'
+  stats.value?.is_subcategory ? t('dashboard.charts.categoryBySubcategory') : t('dashboard.charts.categoryByCategory')
 )
 
 const hasCategoryData = computed(() => (stats.value?.by_category?.length ?? 0) > 0)
@@ -209,9 +212,9 @@ const hasTrendData = computed(() => (stats.value?.trend?.length ?? 0) > 0)
 
 const trendChartTitle = computed(() => {
   switch (stats.value?.granularity) {
-    case 'day': return 'Trend Giornaliero'
-    case 'quarter': return 'Trend Trimestrale'
-    default: return 'Trend Mensile'
+    case 'day': return t('dashboard.charts.trendDaily')
+    case 'quarter': return t('dashboard.charts.trendQuarterly')
+    default: return t('dashboard.charts.trendMonthly')
   }
 })
 
@@ -235,7 +238,7 @@ const trendBarChartData = computed(() => {
   const items = stats.value?.trend ?? []
   return {
     labels: abbreviateTrendLabels(items),
-    datasets: [{ label: 'Spese', data: items.map(i => i.amount), backgroundColor: '#3B82F6', borderRadius: 4 }]
+    datasets: [{ label: t('dashboard.charts.datasetLabel'), data: items.map(i => i.amount), backgroundColor: '#3B82F6', borderRadius: 4 }]
   }
 })
 
@@ -244,7 +247,7 @@ const trendLineChartData = computed(() => {
   return {
     labels: abbreviateTrendLabels(items),
     datasets: [{
-      label: 'Spese',
+      label: t('dashboard.charts.datasetLabel'),
       data: items.map(i => i.amount),
       borderColor: '#3B82F6',
       backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -339,16 +342,16 @@ function onExpenseUpdated() {
 
 async function deleteExpenseConfirm(id) {
   const ok = await confirm({
-    title: 'Elimina spesa',
-    message: 'Sei sicuro di voler eliminare questa spesa?',
-    confirmText: 'Elimina',
+    title: t('expenses.deleteConfirmTitle'),
+    message: t('expenses.deleteConfirmMessage'),
+    confirmText: t('expenses.deleteConfirmAction'),
     variant: 'danger'
   })
   if (ok) {
     try {
       await expensesStore.deleteExpense(id)
     } catch (err) {
-      window.$toast?.error('Errore eliminazione: ' + (err.response?.data?.error || err.message))
+      window.$toast?.error(t('expenses.deleteError', { error: err.response?.data?.error || err.message }))
     }
   }
 }

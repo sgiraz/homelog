@@ -11,7 +11,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Notifiche</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('notifications.title') }}</h1>
       </div>
 
       <!-- Bulk actions -->
@@ -21,14 +21,14 @@
           @click="markAllRead"
           class="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
         >
-          Segna tutte come lette
+          {{ t('notifications.markAllRead') }}
         </button>
         <button
           v-if="hasRead"
           @click="handleDeleteAllRead"
           class="text-sm text-red-600 dark:text-red-400 hover:underline font-medium"
         >
-          Elimina lette
+          {{ t('notifications.deleteRead') }}
         </button>
       </div>
     </div>
@@ -77,7 +77,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
       </svg>
       <p class="text-gray-500 dark:text-gray-400 text-lg font-medium">
-        {{ activeFilter === 'unread' ? 'Nessuna notifica non letta' : 'Nessuna notifica' }}
+        {{ activeFilter === 'unread' ? t('notifications.emptyUnread') : t('notifications.emptyAll') }}
       </p>
     </div>
 
@@ -102,13 +102,13 @@
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-0.5">
                 <span class="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                  {{ notif.title || notif.utility?.provider || 'Notifica' }}
+                  {{ notif.title || notif.utility?.provider || t('nav.notifications.fallbackTitle') }}
                 </span>
                 <span
                   v-if="notif.is_important"
                   class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
                 >
-                  IMPORTANTE
+                  {{ t('notifications.important') }}
                 </span>
                 <span
                   v-if="!notif.is_read"
@@ -132,7 +132,7 @@
                   v-if="notif.type"
                   class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
                 >
-                  {{ typeLabels[notif.type] || notif.type }}
+                  {{ getTypeLabel(notif.type) }}
                 </span>
               </div>
             </div>
@@ -141,7 +141,7 @@
             <button
               @click.stop="handleDelete(notif)"
               class="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
-              title="Elimina"
+              :title="t('notifications.deleteAria')"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -161,12 +161,14 @@ defineOptions({ name: 'NotificationsView' })
 
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { communicationsAPI, notificationsAPI, utilitiesAPI } from '@/api/client'
 import { useConfirm } from '@/composables/useConfirm'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 
 const router = useRouter()
+const { t, te } = useI18n()
 const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 
@@ -174,13 +176,9 @@ const notifications = ref([])
 const loading = ref(true)
 const activeFilter = ref('all')
 
-const typeLabels = {
-  price_change: 'Variazione prezzo',
-  contract_modification: 'Modifica contratto',
-  info: 'Informazione',
-  privacy: 'Privacy',
-  join_request: 'Richiesta accesso',
-  expense_shared: 'Spesa condivisa'
+function getTypeLabel(type) {
+  const key = `notifications.types.${type}`
+  return te(key) ? t(key) : type
 }
 
 const filteredNotifications = computed(() => {
@@ -192,16 +190,16 @@ const hasUnread = computed(() => notifications.value.some(n => !n.is_read))
 const hasRead = computed(() => notifications.value.some(n => n.is_read))
 
 const filterTabs = computed(() => [
-  { value: 'all', label: 'Tutte', count: notifications.value.length },
-  { value: 'unread', label: 'Non lette', count: notifications.value.filter(n => !n.is_read).length },
+  { value: 'all', label: t('notifications.filterAll'), count: notifications.value.length },
+  { value: 'unread', label: t('notifications.filterUnread'), count: notifications.value.filter(n => !n.is_read).length },
 ])
 
 function getUtilityIcon(type) {
   const icons = {
-    electricity: '\u26A1', gas: '\uD83D\uDD25', water: '\uD83D\uDCA7', waste: '\u267B\uFE0F',
-    internet: '\uD83C\uDF10', insurance: '\uD83D\uDEE1\uFE0F', affitto: '\uD83C\uDFE0', mutuo: '\uD83C\uDFE6'
+    electricity: '⚡', gas: '🔥', water: '💧', waste: '♻️',
+    internet: '🌐', insurance: '🛡️', affitto: '🏠', mutuo: '🏦'
   }
-  return icons[type] || '\uD83D\uDCEC'
+  return icons[type] || '📬'
 }
 
 function getUtilityBgClass(type) {
@@ -220,9 +218,9 @@ function getUtilityBgClass(type) {
 
 function getNotifIcon(notif) {
   if (notif._source === 'notification') {
-    if (notif.type === 'join_request') return '\uD83D\uDC64'
-    if (notif.type === 'expense_shared') return '\uD83D\uDCB3'
-    return '\uD83D\uDD14'
+    if (notif.type === 'join_request') return '👤'
+    if (notif.type === 'expense_shared') return '💳'
+    return '🔔'
   }
   return getUtilityIcon(notif.utility?.type)
 }
@@ -241,10 +239,10 @@ function formatTimeAgo(dateStr) {
   const d = new Date(dateStr)
   const now = new Date()
   const diff = Math.floor((now - d) / 1000)
-  if (diff < 60) return 'Ora'
-  if (diff < 3600) return `${Math.floor(diff / 60)} min fa`
-  if (diff < 86400) return `${Math.floor(diff / 3600)} ore fa`
-  if (diff < 604800) return `${Math.floor(diff / 86400)} giorni fa`
+  if (diff < 60) return t('nav.notifications.timeAgo.now')
+  if (diff < 3600) return t('nav.notifications.timeAgo.minutes', { n: Math.floor(diff / 60) })
+  if (diff < 86400) return t('nav.notifications.timeAgo.hours', { n: Math.floor(diff / 3600) })
+  if (diff < 604800) return t('nav.notifications.timeAgo.days', { n: Math.floor(diff / 86400) })
   return d.toLocaleDateString(settingsStore.language === 'en' ? 'en-US' : 'it-IT', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
@@ -301,9 +299,9 @@ async function markAllRead() {
 
 async function handleDelete(notif) {
   const ok = await confirm({
-    title: 'Elimina notifica',
-    message: 'Vuoi eliminare questa notifica?',
-    confirmText: 'Elimina',
+    title: t('notifications.deleteOneTitle'),
+    message: t('notifications.deleteOneMessage'),
+    confirmText: t('notifications.deleteOneConfirm'),
     variant: 'danger'
   })
   if (!ok) return
@@ -322,9 +320,9 @@ async function handleDelete(notif) {
 async function handleDeleteAllRead() {
   const readCount = notifications.value.filter(n => n.is_read).length
   const ok = await confirm({
-    title: 'Elimina notifiche lette',
-    message: `Vuoi eliminare ${readCount} notifiche lette?`,
-    confirmText: 'Elimina tutte',
+    title: t('notifications.deleteAllTitle'),
+    message: t('notifications.deleteAllMessage', { n: readCount }),
+    confirmText: t('notifications.deleteAllConfirm'),
     variant: 'danger'
   })
   if (!ok) return

@@ -1,0 +1,27 @@
+{
+  "actions": {
+    "save": "Salva",
+    "cancel": "Annulla",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "confirm": "Conferma",
+    "close": "Chiudi",
+    "back": "Indietro",
+    "create": "Crea",
+    "update": "Aggiorna",
+    "add": "Aggiungi"
+  },
+  "states": {
+    "loading": "Caricamento...",
+    "saving": "Salvataggio...",
+    "empty": "Nessun risultato"
+  },
+  "toast": {
+    "dismiss": "Chiudi notifica"
+  },
+  "avatarCrop": {
+    "title": "Ritaglia foto",
+    "zoomIn": "Aumenta zoom",
+    "zoomOut": "Riduci zoom"
+  }
+}

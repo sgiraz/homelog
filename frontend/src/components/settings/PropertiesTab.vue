@@ -3,8 +3,8 @@
     <Card class="p-6">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white">Gestione Abitazioni</h2>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Aggiungi una nuova abitazione al sistema</p>
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ t('settings.properties.title') }}</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ t('settings.properties.subtitle') }}</p>
         </div>
         <Button @click="showAddPropertyForm = !showAddPropertyForm" :variant="showAddPropertyForm ? 'secondary' : 'primary'" size="sm">
           <svg v-if="!showAddPropertyForm" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -27,17 +27,17 @@
             <div class="font-medium text-gray-900 dark:text-white">{{ prop.name }}</div>
             <div v-if="prop.address" class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ prop.address }}</div>
           </div>
-          <span v-if="prop.is_current" class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 font-medium">Principale</span>
+          <span v-if="prop.is_current" class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 font-medium">{{ t('settings.properties.principalBadge') }}</span>
         </div>
       </div>
 
       <div v-if="showAddPropertyForm" class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 space-y-3">
-        <h3 class="text-sm font-medium text-gray-900 dark:text-white">Nuova Abitazione</h3>
+        <h3 class="text-sm font-medium text-gray-900 dark:text-white">{{ t('settings.properties.newTitle') }}</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input
             v-model="newProperty.name"
             type="text"
-            placeholder="Nome abitazione *"
+            :placeholder="t('settings.properties.namePlaceholder')"
             class="px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -45,7 +45,7 @@
           <input
             v-model="newProperty.address"
             type="text"
-            placeholder="Indirizzo"
+            :placeholder="t('settings.properties.addressPlaceholder')"
             autocomplete="street-address"
             class="px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
@@ -57,8 +57,8 @@
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="owned">Di proprietà</option>
-            <option value="rented">In affitto</option>
+            <option value="owned">{{ t('settings.properties.typeOwned') }}</option>
+            <option value="rented">{{ t('settings.properties.typeRented') }}</option>
           </select>
           <div class="flex items-center gap-2">
             <input
@@ -68,13 +68,13 @@
               class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
             />
             <label for="prop-is-current" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-              Imposta come principale
+              {{ t('settings.properties.setAsPrincipal') }}
             </label>
           </div>
         </div>
         <div v-if="propertyError" class="text-sm text-red-600 dark:text-red-400">{{ propertyError }}</div>
         <Button @click="addProperty" :disabled="!newProperty.name.trim() || propertyLoading">
-          {{ propertyLoading ? 'Creazione...' : 'Crea Abitazione' }}
+          {{ propertyLoading ? t('settings.properties.creatingButton') : t('settings.properties.createButton') }}
         </Button>
       </div>
     </Card>
@@ -86,10 +86,12 @@
 defineOptions({ name: 'PropertiesTab' })
 
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 
+const { t } = useI18n()
 const allProperties = ref([])
 const showAddPropertyForm = ref(false)
 const propertyLoading = ref(false)
@@ -120,7 +122,7 @@ async function addProperty() {
     showAddPropertyForm.value = false
     await fetchAllProperties()
   } catch (err) {
-    propertyError.value = err.response?.data?.error || 'Errore durante la creazione'
+    propertyError.value = err.response?.data?.error || t('settings.properties.createError')
   } finally {
     propertyLoading.value = false
   }

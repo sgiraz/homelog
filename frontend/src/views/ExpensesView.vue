@@ -2,12 +2,12 @@
   <div class="space-y-4">
     <!-- Header -->
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Spese</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{{ t('expenses.title') }}</h1>
       <Button v-if="activeTab === 'lista'" @click="showAddExpense = true">
         <svg class="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        <span class="hidden sm:inline">Aggiungi Spesa</span>
+        <span class="hidden sm:inline">{{ t('expenses.addButton') }}</span>
       </Button>
     </div>
 
@@ -48,7 +48,7 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
             </svg>
-            Filtri
+            {{ t('expenses.filters.filtersLabel') }}
             <span
               v-if="activeFiltersCount > 0"
               class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full"
@@ -61,7 +61,7 @@
               {{ expensesStore.total > 0 ? `${expensesStore.expenses.length} / ${expensesStore.total}` : '' }}
             </span>
             <Button v-if="hasActiveFilters" @click="resetFilters" variant="secondary" size="sm">
-              Reset
+              {{ t('expenses.filters.reset') }}
             </Button>
           </div>
         </div>
@@ -78,7 +78,7 @@
                 v-model="filters.search"
                 @input="onFiltersChanged"
                 type="search"
-                placeholder="Cerca..."
+                :placeholder="t('expenses.filters.searchPlaceholderShort')"
                 class="w-full pl-9 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
                        bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -92,7 +92,7 @@
                        bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Tutte categorie</option>
+                <option value="">{{ t('expenses.filters.allCategoriesLong') }}</option>
                 <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ cat.name }}</option>
               </select>
               <select
@@ -102,7 +102,7 @@
                        bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Tutti progetti</option>
+                <option value="">{{ t('expenses.filters.allProjectsLong') }}</option>
                 <option v-for="proj in projects" :key="proj.id" :value="proj.id">{{ proj.icon }} {{ proj.name }}</option>
               </select>
               <input
@@ -128,11 +128,11 @@
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="date_desc">Data ↓</option>
-              <option value="date_asc">Data ↑</option>
-              <option value="amount_desc">Importo ↓</option>
-              <option value="amount_asc">Importo ↑</option>
-              <option value="description_asc">Descrizione A-Z</option>
+              <option value="date_desc">{{ t('expenses.sort.dateDesc') }}</option>
+              <option value="date_asc">{{ t('expenses.sort.dateAsc') }}</option>
+              <option value="amount_desc">{{ t('expenses.sort.amountDesc') }}</option>
+              <option value="amount_asc">{{ t('expenses.sort.amountAsc') }}</option>
+              <option value="description_asc">{{ t('expenses.sort.descriptionAsc') }}</option>
             </select>
             <button
               type="button"
@@ -148,7 +148,7 @@
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Da saldare
+              {{ t('expenses.filters.unsettledOnly') }}
             </button>
           </div>
         </Transition>
@@ -164,7 +164,7 @@
             v-model="filters.search"
             @input="onFiltersChanged"
             type="text"
-            placeholder="Cerca per descrizione..."
+            :placeholder="t('expenses.filters.searchPlaceholderLong')"
             class="w-full pl-9 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -173,7 +173,7 @@
 
         <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Categoria:</label>
+            <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ t('expenses.filters.categoryLabel') }}</label>
             <select
               v-model="filters.categoryId"
               @change="onFiltersChanged"
@@ -181,13 +181,13 @@
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Tutte</option>
+              <option value="">{{ t('expenses.filters.allCategoriesShort') }}</option>
               <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ cat.name }}</option>
             </select>
           </div>
 
           <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Progetto:</label>
+            <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ t('expenses.filters.projectLabel') }}</label>
             <select
               v-model="filters.projectId"
               @change="onFiltersChanged"
@@ -195,13 +195,13 @@
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Tutti</option>
+              <option value="">{{ t('expenses.filters.allProjectsShort') }}</option>
               <option v-for="proj in projects" :key="proj.id" :value="proj.id">{{ proj.icon }} {{ proj.name }}</option>
             </select>
           </div>
 
           <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600 dark:text-gray-400">Da:</label>
+            <label class="text-sm text-gray-600 dark:text-gray-400">{{ t('expenses.filters.fromLabel') }}</label>
             <input
               v-model="filters.from"
               @change="onFiltersChanged"
@@ -213,7 +213,7 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600 dark:text-gray-400">A:</label>
+            <label class="text-sm text-gray-600 dark:text-gray-400">{{ t('expenses.filters.toLabel') }}</label>
             <input
               v-model="filters.to"
               @change="onFiltersChanged"
@@ -225,18 +225,18 @@
           </div>
 
           <div class="flex items-center gap-2 ml-auto">
-            <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Ordina:</label>
+            <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ t('expenses.filters.sortLabel') }}</label>
             <select
               v-model="sortOption"
               class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="date_desc">Data ↓</option>
-              <option value="date_asc">Data ↑</option>
-              <option value="amount_desc">Importo ↓</option>
-              <option value="amount_asc">Importo ↑</option>
-              <option value="description_asc">Descrizione A-Z</option>
+              <option value="date_desc">{{ t('expenses.sort.dateDesc') }}</option>
+              <option value="date_asc">{{ t('expenses.sort.dateAsc') }}</option>
+              <option value="amount_desc">{{ t('expenses.sort.amountDesc') }}</option>
+              <option value="amount_asc">{{ t('expenses.sort.amountAsc') }}</option>
+              <option value="description_asc">{{ t('expenses.sort.descriptionAsc') }}</option>
             </select>
           </div>
 
@@ -252,19 +252,19 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Da saldare
+            {{ t('expenses.filters.unsettledOnly') }}
           </button>
 
           <Button v-if="hasActiveFilters" @click="resetFilters" variant="secondary" size="sm" class="text-sm">
-            Reset
+            {{ t('expenses.filters.reset') }}
           </Button>
         </div>
 
         <div v-if="hasActiveFilters || expensesStore.total > 0" class="text-xs text-gray-500 dark:text-gray-400">
-          {{ expensesStore.expenses.length }} mostrate
-          <span v-if="expensesStore.total > 0"> di {{ expensesStore.total }}</span>
-          <span v-if="filters.projectId"> · Progetto: {{ selectedProjectName }}</span>
-          <span v-if="filters.categoryId"> · Categoria: {{ selectedCategoryName }}</span>
+          {{ t('expenses.list.shownCount', { n: expensesStore.expenses.length }) }}
+          <span v-if="expensesStore.total > 0"> {{ t('expenses.list.ofTotal', { n: expensesStore.total }) }}</span>
+          <span v-if="filters.projectId"> {{ t('expenses.list.filterProjectInfo', { name: selectedProjectName }) }}</span>
+          <span v-if="filters.categoryId"> {{ t('expenses.list.filterCategoryInfo', { name: selectedCategoryName }) }}</span>
         </div>
       </div>
     </Card>
@@ -272,12 +272,12 @@
     <!-- Lista spese -->
     <Card class="p-4 sm:p-6">
       <div v-if="expensesStore.loading && expensesStore.expenses.length === 0" class="text-center py-8 text-gray-600 dark:text-gray-400">
-        Caricamento...
+        {{ t('expenses.list.loading') }}
       </div>
 
       <div v-else-if="expensesStore.expenses.length === 0" class="text-center py-8 text-gray-600 dark:text-gray-400">
-        <span v-if="hasActiveFilters">Nessuna spesa corrisponde ai filtri applicati.</span>
-        <span v-else>Nessuna spesa registrata.</span>
+        <span v-if="hasActiveFilters">{{ t('expenses.list.emptyFiltered') }}</span>
+        <span v-else>{{ t('expenses.list.empty') }}</span>
       </div>
 
       <div v-else class="space-y-3">
@@ -293,13 +293,13 @@
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-medium text-gray-900 dark:text-white line-clamp-2">
-                  {{ expense.description || 'Senza descrizione' }}
+                  {{ expense.description || t('expenses.noDescription') }}
                 </span>
                 <span
                   v-if="expense.is_split"
                   class="px-2 py-0.5 text-xs rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300"
                 >
-                  Split
+                  {{ t('expenses.splitBadge') }}
                 </span>
                 <span
                   v-if="expense.is_split"
@@ -310,7 +310,7 @@
                       : 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700'
                   ]"
                 >
-                  {{ isExpenseSettled(expense) ? 'Saldato' : 'Da saldare' }}
+                  {{ isExpenseSettled(expense) ? t('expenses.settled') : t('expenses.unsettled') }}
                 </span>
               </div>
               <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex flex-wrap items-center gap-2">
@@ -328,7 +328,7 @@
                   {{ expense.project.icon }} {{ expense.project.name }}
                 </span>
                 <span v-if="expense.is_split && expense.paid_by" class="text-xs flex items-center gap-1 max-w-full overflow-hidden">
-                  <span class="hidden sm:inline">Pagato da</span>
+                  <span class="hidden sm:inline">{{ t('expenses.paidBy') }}</span>
                   <span class="truncate">{{ expense.paid_by.name }}</span>
                   <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
@@ -345,20 +345,20 @@
                 ({{ formatOriginalCurrency(expense.original_amount, expense.original_currency) }})
               </div>
               <div v-if="expense.is_split && expense.splits?.length" class="text-xs text-gray-500 dark:text-gray-400">
-                ({{ formatCurrency(expense.splits[0]?.amount || 0) }} a testa)
+                {{ t('expenses.shareEach', { amount: formatCurrency(expense.splits[0]?.amount || 0) }) }}
               </div>
               <div v-if="expense.bill_id" class="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                Da bolletta
+                {{ t('expenses.fromBill') }}
               </div>
               <!-- Actions: on mobile always visible, on desktop hover -->
               <div
                 v-if="isOwner(expense) && !expense.bill_id"
-                class="flex gap-1 justify-end mt-1 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
+                class="flex gap-1 justify-end mt-1 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity"
               >
                 <button
                   @click="editExpense(expense)"
                   class="p-1.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-                  aria-label="Modifica spesa"
+                  :aria-label="t('expenses.editAria')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -368,7 +368,7 @@
                   v-if="!(expense.is_split && isExpenseSettled(expense))"
                   @click="deleteExpenseConfirm(expense.id)"
                   class="p-1.5 text-red-600 hover:text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                  aria-label="Elimina spesa"
+                  :aria-label="t('expenses.deleteAria')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -393,7 +393,7 @@
             v-else-if="!expensesStore.hasMore && expensesStore.expenses.length > 0 && expensesStore.total > 0"
             class="text-xs text-gray-400 dark:text-gray-500"
           >
-            Tutte le {{ expensesStore.total }} spese mostrate
+            {{ t('expenses.list.allShown', { n: expensesStore.total }) }}
           </span>
         </div>
       </div>
@@ -421,6 +421,7 @@ defineOptions({ name: 'ExpensesView' })
 
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -435,6 +436,7 @@ import EditExpenseModal from '@/components/expenses/EditExpenseModal.vue'
 import BalanceSection from '@/components/balance/BalanceSection.vue'
 
 const route = useRoute()
+const { t } = useI18n()
 const expensesStore = useExpensesStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
@@ -443,10 +445,10 @@ const { isHighlighted, registerRow } = useHighlight({
   source: () => expensesStore.expenses,
 })
 
-const expenseTabs = [
-  { id: 'lista',    label: 'Lista',    icon: '📋' },
-  { id: 'bilancio', label: 'Bilancio', icon: '⚖️' },
-]
+const expenseTabs = computed(() => [
+  { id: 'lista',    label: t('expenses.tabs.list'),    icon: '📋' },
+  { id: 'bilancio', label: t('expenses.tabs.balance'), icon: '⚖️' },
+])
 
 const activeTab = ref(route.query.tab === 'bilancio' ? 'bilancio' : 'lista')
 const showAddExpense = ref(false)
@@ -598,16 +600,16 @@ function onExpenseUpdated() {
 
 async function deleteExpenseConfirm(id) {
   const ok = await confirm({
-    title: 'Elimina spesa',
-    message: 'Sei sicuro di voler eliminare questa spesa?',
-    confirmText: 'Elimina',
+    title: t('expenses.deleteConfirmTitle'),
+    message: t('expenses.deleteConfirmMessage'),
+    confirmText: t('expenses.deleteConfirmAction'),
     variant: 'danger'
   })
   if (ok) {
     try {
       await expensesStore.deleteExpense(id)
     } catch (err) {
-      window.$toast?.error('Errore eliminazione: ' + (err.response?.data?.error || err.message))
+      window.$toast?.error(t('expenses.deleteError', { error: err.response?.data?.error || err.message }))
     }
   }
 }

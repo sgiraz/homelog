@@ -15,7 +15,7 @@
       </svg>
       <div>
         <h4 :class="['font-semibold', consumptionSummary.cumulative_alert_level === 'alert' ? 'text-red-700 dark:text-red-300' : 'text-yellow-700 dark:text-yellow-300']">
-          {{ consumptionSummary.cumulative_alert_level === 'alert' ? 'Sovrafatturazione Rilevata!' : 'Attenzione: Differenza Accumulata' }}
+          {{ consumptionSummary.cumulative_alert_level === 'alert' ? t('utilities.consumptionSummary.overcharge') : t('utilities.consumptionSummary.warning') }}
         </h4>
         <p :class="['text-sm mt-1', consumptionSummary.cumulative_alert_level === 'alert' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400']">
           {{ consumptionSummary.cumulative_message }}
@@ -41,7 +41,7 @@
 
   <!-- Consumption Summary Card -->
   <div v-if="consumptionSummary && (consumptionSummary.total_user > 0 || consumptionSummary.total_provider > 0)" class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-    <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Riepilogo Consumi Cumulativi</h4>
+    <h4 class="font-semibold text-gray-900 dark:text-white mb-3">{{ t('utilities.consumptionSummary.title') }}</h4>
 
     <div v-if="utilityType === 'electricity'" class="space-y-3">
       <div class="grid grid-cols-4 gap-2 sm:gap-3 text-sm">
@@ -50,17 +50,17 @@
         <div class="text-center font-medium text-yellow-600 dark:text-yellow-400">F2</div>
         <div class="text-center font-medium text-green-600 dark:text-green-400">F3</div>
 
-        <div class="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Autoletture</div>
+        <div class="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">{{ t('utilities.consumptionSummary.selfReadings') }}</div>
         <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_user_f1) }}</div>
         <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_user_f2) }}</div>
         <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_user_f3) }}</div>
 
-        <div class="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Fornitore</div>
+        <div class="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">{{ t('utilities.consumptionSummary.provider') }}</div>
         <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_provider_f1) }}</div>
         <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_provider_f2) }}</div>
         <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_provider_f3) }}</div>
 
-        <div class="text-gray-600 dark:text-gray-400 font-medium text-xs sm:text-sm">Differenza</div>
+        <div class="text-gray-600 dark:text-gray-400 font-medium text-xs sm:text-sm">{{ t('utilities.consumptionSummary.difference') }}</div>
         <div :class="['text-center font-medium text-xs sm:text-sm', getDiffClass(consumptionSummary.cumulative_difference_f1)]">
           {{ fmtDiff(consumptionSummary.cumulative_difference_f1) }}
         </div>
@@ -72,27 +72,30 @@
         </div>
       </div>
 
-      <!-- Total summary for electricity — responsive grid instead of flex -->
       <div :class="[
         'p-3 rounded grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm',
         consumptionSummary.cumulative_difference > 1 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-white dark:bg-gray-700'
       ]">
-        <div class="text-gray-600 dark:text-gray-400 text-xs sm:text-sm sm:text-center">Totale:</div>
-        <div class="text-gray-900 dark:text-white text-xs sm:text-sm sm:text-center">Autoletture: <strong>{{ fmtNum(consumptionSummary.total_user) }}</strong> kWh</div>
-        <div class="text-gray-900 dark:text-white text-xs sm:text-sm sm:text-center">Fornitore: <strong>{{ fmtNum(consumptionSummary.total_provider) }}</strong> kWh</div>
+        <div class="text-gray-600 dark:text-gray-400 text-xs sm:text-sm sm:text-center">{{ t('utilities.consumptionSummary.total') }}</div>
+        <i18n-t keypath="utilities.consumptionSummary.totalSelfWithUnit" tag="div" class="text-gray-900 dark:text-white text-xs sm:text-sm sm:text-center">
+          <template #value><strong>{{ fmtNum(consumptionSummary?.total_user) }}</strong></template>
+        </i18n-t>
+        <i18n-t keypath="utilities.consumptionSummary.totalProviderWithUnit" tag="div" class="text-gray-900 dark:text-white text-xs sm:text-sm sm:text-center">
+          <template #value><strong>{{ fmtNum(consumptionSummary?.total_provider) }}</strong></template>
+        </i18n-t>
         <div :class="['font-semibold text-xs sm:text-sm sm:text-center', getDiffClass(consumptionSummary.cumulative_difference)]">
-          {{ consumptionSummary.cumulative_difference > 0 ? 'Sovrafatt.' : 'Diff.' }} {{ fmtDiff(consumptionSummary.cumulative_difference) }} kWh
+          {{ consumptionSummary.cumulative_difference > 0 ? t('utilities.consumptionSummary.overchargeShort') : t('utilities.consumptionSummary.diffShort') }} {{ fmtDiff(consumptionSummary.cumulative_difference) }} kWh
         </div>
       </div>
     </div>
 
     <div v-else class="grid grid-cols-3 gap-3 text-sm">
       <div class="text-center p-3 bg-white dark:bg-gray-700 rounded">
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Autoletture</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.consumptionSummary.selfReadings') }}</p>
         <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ fmtNum(consumptionSummary.total_user) }} {{ getUnit() }}</p>
       </div>
       <div class="text-center p-3 bg-white dark:bg-gray-700 rounded">
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Fatturati</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.consumptionSummary.billed') }}</p>
         <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ fmtNum(consumptionSummary.total_provider) }} {{ getUnit() }}</p>
       </div>
       <div :class="[
@@ -100,7 +103,7 @@
         consumptionSummary.cumulative_difference > 1 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-white dark:bg-gray-700'
       ]">
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
-          {{ consumptionSummary.cumulative_difference > 0 ? 'Sovrafatt.' : 'Differenza' }}
+          {{ consumptionSummary.cumulative_difference > 0 ? t('utilities.consumptionSummary.overchargeShort') : t('utilities.consumptionSummary.difference') }}
         </p>
         <p :class="['text-lg font-semibold', getDiffClass(consumptionSummary.cumulative_difference)]">
           {{ fmtDiff(consumptionSummary.cumulative_difference) }} {{ getUnit() }}
@@ -109,12 +112,14 @@
     </div>
 
     <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
-      Periodo: {{ formatDate(consumptionSummary.first_period) }} – {{ formatDate(consumptionSummary.last_period) }}
+      {{ t('utilities.consumptionSummary.period', { start: formatDate(consumptionSummary.first_period), end: formatDate(consumptionSummary.last_period) }) }}
     </p>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
+
 defineOptions({ name: 'ConsumptionSummary' })
 
 defineProps({
@@ -147,4 +152,7 @@ defineProps({
     required: true
   }
 })
+
+const { t } = useI18n()
+
 </script>

@@ -1,0 +1,49 @@
+{
+  "title": "Dashboard",
+  "subtitle": "Overview of your expenses",
+  "addExpenseButton": "Add Expense",
+  "noProperty": {
+    "pendingTitle": "Request pending",
+    "pendingMessage": "Your request to access {name} is awaiting approval from an administrator.",
+    "noneTitle": "No property",
+    "noneDescription": "Create a property or join an existing one to get started.",
+    "configureButton": "Configure"
+  },
+  "kpi": {
+    "monthExpenses": "Month Expenses",
+    "periodCount": "In Period",
+    "dailyAverage": "Daily Avg.",
+    "yearExpenses": "Year Expenses"
+  },
+  "charts": {
+    "categoryByCategory": "Expenses by Category",
+    "categoryBySubcategory": "Expenses by Subcategory",
+    "trendDaily": "Daily Trend",
+    "trendQuarterly": "Quarterly Trend",
+    "trendMonthly": "Monthly Trend",
+    "datasetLabel": "Expenses",
+    "noData": "No data available",
+    "lineTooltip": "Line chart",
+    "barTooltip": "Bar chart"
+  },
+  "filters": {
+    "filtersLabel": "Filters",
+    "reset": "Reset",
+    "resetFilters": "Reset Filters",
+    "categoryLabel": "Category:",
+    "projectLabel": "Project:",
+    "fromLabel": "From:",
+    "toLabel": "To:",
+    "allCategoriesShort": "All",
+    "allProjectsShort": "All",
+    "allCategoriesLong": "All categories",
+    "allProjectsLong": "All projects"
+  },
+  "recent": {
+    "title": "Recent Expenses",
+    "viewAll": "View all",
+    "loading": "Loading...",
+    "empty": "No expenses recorded",
+    "addFirst": "Add your first expense"
+  }
+}

@@ -1,5 +1,5 @@
 <template>
-  <BaseModal title="Ritaglia foto" @close="$emit('close')">
+  <BaseModal :title="t('common.avatarCrop.title')" @close="$emit('close')">
     <div class="space-y-5">
       <!-- Cropper area -->
       <div class="relative rounded-xl overflow-hidden bg-gray-950"
@@ -22,7 +22,7 @@
           class="p-2 rounded-full text-gray-500 dark:text-gray-400
                  hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600
                  transition-colors"
-          aria-label="Riduci zoom"
+          :aria-label="t('common.avatarCrop.zoomOut')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
@@ -47,7 +47,7 @@
           class="p-2 rounded-full text-gray-500 dark:text-gray-400
                  hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600
                  transition-colors"
-          aria-label="Aumenta zoom"
+          :aria-label="t('common.avatarCrop.zoomIn')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
@@ -58,10 +58,10 @@
       <!-- Action buttons -->
       <div class="flex gap-3">
         <Button variant="secondary" class="flex-1" @click="$emit('close')">
-          Annulla
+          {{ t('common.actions.cancel') }}
         </Button>
         <Button class="flex-1" :disabled="saving" @click="handleSave">
-          {{ saving ? 'Salvataggio...' : 'Salva' }}
+          {{ saving ? t('common.states.saving') : t('common.actions.save') }}
         </Button>
       </div>
     </div>
@@ -70,10 +70,13 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Cropper, CircleStencil } from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css'
 import BaseModal from './BaseModal.vue'
 import Button from './Button.vue'
+
+const { t } = useI18n()
 
 defineProps({
   imageSrc: { type: String, required: true },

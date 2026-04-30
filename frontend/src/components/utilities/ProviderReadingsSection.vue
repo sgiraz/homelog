@@ -6,7 +6,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
         <span class="text-sm font-medium text-blue-700 dark:text-blue-300">
-          Letture Fornitore (per confronto)
+          {{ t('utilities.providerReadings.title') }}
         </span>
       </div>
       <button
@@ -14,7 +14,7 @@
         @click="isEditing = !isEditing"
         class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
       >
-        {{ isEditing ? 'Nascondi' : 'Modifica' }}
+        {{ isEditing ? t('utilities.providerReadings.hide') : t('utilities.providerReadings.edit') }}
       </button>
     </div>
 
@@ -36,11 +36,11 @@
       </div>
       <div v-else-if="utilityType === 'gas'" class="space-y-1">
         <div class="text-center bg-white dark:bg-gray-800 rounded p-2">
-          <p class="text-xs text-gray-500 dark:text-gray-400">Lettura</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.providerReadings.readingLabel') }}</p>
           <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ fmt(reading) }} mc</p>
         </div>
         <div v-if="conversionCoefficient" class="text-center bg-white dark:bg-gray-800 rounded p-2">
-          <p class="text-xs text-gray-500 dark:text-gray-400">Coeff. C: {{ conversionCoefficient }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.providerReadings.coefficientLabel', { value: conversionCoefficient }) }}</p>
         </div>
       </div>
       <div v-else class="text-center bg-white dark:bg-gray-800 rounded p-2">
@@ -51,23 +51,23 @@
     <!-- Expanded form for manual entry -->
     <div v-show="isEditing" class="space-y-3">
       <p class="text-xs text-gray-500 dark:text-gray-400">
-        Inserisci le letture riportate in bolletta per confrontarle con le tue autoletture
+        {{ t('utilities.providerReadings.instructions') }}
       </p>
 
       <!-- Electricity readings (F1/F2/F3) -->
       <div v-if="utilityType === 'electricity'" class="grid grid-cols-3 gap-2">
         <div>
-          <label class="block text-xs text-red-600 dark:text-red-400 mb-1 font-medium">F1 (kWh)</label>
+          <label class="block text-xs text-red-600 dark:text-red-400 mb-1 font-medium">{{ t('utilities.providerReadings.f1Label') }}</label>
           <input v-model="f1" type="number" step="0.001" placeholder="0"
             class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div>
-          <label class="block text-xs text-yellow-600 dark:text-yellow-400 mb-1 font-medium">F2 (kWh)</label>
+          <label class="block text-xs text-yellow-600 dark:text-yellow-400 mb-1 font-medium">{{ t('utilities.providerReadings.f2Label') }}</label>
           <input v-model="f2" type="number" step="0.001" placeholder="0"
             class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div>
-          <label class="block text-xs text-green-600 dark:text-green-400 mb-1 font-medium">F3 (kWh)</label>
+          <label class="block text-xs text-green-600 dark:text-green-400 mb-1 font-medium">{{ t('utilities.providerReadings.f3Label') }}</label>
           <input v-model="f3" type="number" step="0.001" placeholder="0"
             class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
@@ -76,35 +76,35 @@
       <!-- Gas: reading + conversion coefficient -->
       <div v-else-if="utilityType === 'gas'" class="space-y-3">
         <div>
-          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Lettura Contatore (mc)</label>
+          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.providerReadings.meterGas') }}</label>
           <input v-model="reading" type="number" step="0.001" placeholder="0"
             class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div>
-          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Coefficiente di Conversione (C)</label>
+          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.providerReadings.conversionCoeff') }}</label>
           <input v-model="conversionCoefficient" type="number" step="0.00000001" min="0" placeholder="1.00000000"
             class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div v-if="previousBillHasEstimate && !previousBill?.estimated_reading">
-          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Consumi Precedenti Stimati (Smc)</label>
+          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.providerReadings.previousEstimatedSmc') }}</label>
           <input v-model="previousEstimatedConsumption" type="number" step="0.000001" placeholder="0"
             class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-          <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">La bolletta precedente contiene una stima di {{ fmt(previousBill.estimated_consumption) }} Smc</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ t('utilities.providerReadings.previousEstimateHintSmc', { value: fmt(previousBill.estimated_consumption) }) }}</p>
         </div>
       </div>
 
       <!-- Water single reading -->
       <div v-else-if="utilityType === 'water'" class="space-y-3">
         <div>
-          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Lettura Contatore (mc)</label>
+          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.providerReadings.meterWater') }}</label>
           <input v-model="reading" type="number" step="0.001" placeholder="0"
             class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div v-if="previousBillHasEstimate && !previousBill?.estimated_reading">
-          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Consumi Precedenti Stimati (mc)</label>
+          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.providerReadings.previousEstimatedMc') }}</label>
           <input v-model="previousEstimatedConsumption" type="number" step="0.001" placeholder="0"
             class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-          <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">La bolletta precedente contiene una stima di {{ fmt(previousBill.estimated_consumption) }} mc</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ t('utilities.providerReadings.previousEstimateHintMc', { value: fmt(previousBill.estimated_consumption) }) }}</p>
         </div>
       </div>
     </div>
@@ -113,6 +113,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { formatNumber as _formatNumber } from '@/utils/dateFormatter'
 
@@ -129,6 +130,7 @@ const reading = defineModel('reading')
 const conversionCoefficient = defineModel('conversionCoefficient')
 const previousEstimatedConsumption = defineModel('previousEstimatedConsumption')
 
+const { t } = useI18n()
 const settingsStore = useSettingsStore()
 const isEditing = ref(true)
 

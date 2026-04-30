@@ -3,9 +3,9 @@
     <Card class="p-6">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white">Gestione Categorie</h2>
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ t('settings.categories.title') }}</h2>
           <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Gestisci le categorie per organizzare le spese
+            {{ t('settings.categories.subtitle') }}
           </p>
         </div>
         <Button v-if="!showAddCategoryForm" @click="showAddCategoryForm = true" size="sm">
@@ -17,12 +17,12 @@
 
       <!-- Add Category Form -->
       <div v-if="showAddCategoryForm" class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 overflow-hidden">
-        <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Nuova categoria personale</h3>
+        <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">{{ t('settings.categories.newCategoryTitle') }}</h3>
         <div class="flex gap-2 mb-2 min-w-0">
           <input
             v-model="newCategory.icon"
             type="text"
-            placeholder="🏠"
+            :placeholder="t('settings.categories.iconPlaceholder')"
             maxlength="4"
             class="w-14 shrink-0 px-2 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-center text-base
@@ -31,7 +31,7 @@
           <input
             v-model="newCategory.name"
             type="text"
-            placeholder="Nome categoria"
+            :placeholder="t('settings.categories.namePlaceholder')"
             class="flex-1 min-w-0 px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -46,25 +46,25 @@
             class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
           <label for="cat-is-default" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-            Categoria predefinita (visibile a tutti)
+            {{ t('settings.categories.isDefault') }}
           </label>
         </div>
         <div class="flex gap-2">
-          <Button @click="addCategory" :disabled="!newCategory.name.trim()">Salva</Button>
-          <Button variant="secondary" @click="showAddCategoryForm = false; newCategory = { name: '', icon: '', is_default: false }">Annulla</Button>
+          <Button @click="addCategory" :disabled="!newCategory.name.trim()">{{ t('settings.categories.save') }}</Button>
+          <Button variant="secondary" @click="showAddCategoryForm = false; newCategory = { name: '', icon: '', is_default: false }">{{ t('settings.categories.cancel') }}</Button>
         </div>
       </div>
 
       <!-- Category List -->
       <div v-if="categories.length === 0 && !categoriesLoading" class="text-sm text-gray-500 dark:text-gray-400 italic p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-center">
-        Nessuna categoria disponibile.
+        {{ t('settings.categories.empty') }}
       </div>
 
       <div class="space-y-2">
         <!-- Default categories -->
         <div v-if="defaultCategories.length > 0">
           <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-            Categorie predefinite
+            {{ t('settings.categories.defaultSection') }}
           </div>
           <div
             v-for="cat in defaultCategories"
@@ -78,14 +78,14 @@
               <span class="text-lg w-6 shrink-0 text-center">{{ cat.icon }}</span>
               <div class="flex-1 min-w-0">
                 <span class="font-medium text-gray-900 dark:text-white truncate block">{{ cat.name }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400">{{ cat.subcategories?.length || 0 }} sottocategorie</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('settings.categories.subcategoriesCount', { n: cat.subcategories?.length || 0 }) }}</span>
               </div>
               <div class="flex items-center shrink-0">
                 <button
                   v-if="isAdmin"
                   @click.stop="startAddSubcategory(cat)"
                   class="p-1.5 text-blue-500 hover:text-blue-700 dark:hover:text-blue-400"
-                  aria-label="Aggiungi sottocategoria"
+                  :aria-label="t('settings.categories.addSubcategoryAria')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -95,7 +95,7 @@
                   v-if="isAdmin"
                   @click.stop="deleteCategory(cat)"
                   class="p-1.5 text-red-400 hover:text-red-600 dark:hover:text-red-400"
-                  aria-label="Elimina categoria"
+                  :aria-label="t('settings.categories.deleteCategoryAria')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -116,20 +116,20 @@
                   <input
                     v-model="newSubcategoryName"
                     type="text"
-                    placeholder="Nome sottocategoria"
+                    :placeholder="t('settings.categories.subcategoryPlaceholder')"
                     class="flex-1 px-2 py-2 text-base border border-gray-200 dark:border-gray-700 rounded
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                            focus:outline-none focus:ring-1 focus:ring-blue-500"
                     @keyup.enter="saveSubcategory(cat.id)"
                     ref="subcategoryInput"
                   />
-                  <button @click="saveSubcategory(cat.id)" class="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Aggiungi</button>
-                  <button @click="addSubcategoryForCat = null; newSubcategoryName = ''" class="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800">Annulla</button>
+                  <button @click="saveSubcategory(cat.id)" class="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">{{ t('settings.categories.addSubcategoryButton') }}</button>
+                  <button @click="addSubcategoryForCat = null; newSubcategoryName = ''" class="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800">{{ t('settings.categories.cancel') }}</button>
                 </div>
               </div>
 
               <div v-if="!cat.subcategories?.length" class="px-4 py-2 text-sm text-gray-400 italic">
-                Nessuna sottocategoria
+                {{ t('settings.categories.noSubcategories') }}
               </div>
               <div
                 v-for="sub in cat.subcategories"
@@ -142,7 +142,7 @@
                   v-if="isAdmin"
                   @click="deleteSubcategory(cat, sub)"
                   class="p-2 text-red-400 hover:text-red-600 opacity-60 hover:opacity-100"
-                  aria-label="Elimina sottocategoria"
+                  :aria-label="t('settings.categories.deleteSubcategoryAria')"
                 >
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -156,7 +156,7 @@
         <!-- Personal categories -->
         <div v-if="personalCategories.length > 0" :class="defaultCategories.length > 0 ? 'mt-4' : ''">
           <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-            Le mie categorie
+            {{ t('settings.categories.personalSection') }}
           </div>
           <div
             v-for="cat in personalCategories"
@@ -170,13 +170,13 @@
               <span class="text-lg w-6 shrink-0 text-center">{{ cat.icon }}</span>
               <div class="flex-1 min-w-0">
                 <span class="font-medium text-gray-900 dark:text-white truncate block">{{ cat.name }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400">{{ cat.subcategories?.length || 0 }} sottocategorie</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('settings.categories.subcategoriesCount', { n: cat.subcategories?.length || 0 }) }}</span>
               </div>
               <div class="flex items-center shrink-0">
                 <button
                   @click.stop="startAddSubcategory(cat)"
                   class="p-1.5 text-blue-500 hover:text-blue-700 dark:hover:text-blue-400"
-                  aria-label="Aggiungi sottocategoria"
+                  :aria-label="t('settings.categories.addSubcategoryAria')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -185,7 +185,7 @@
                 <button
                   @click.stop="deleteCategory(cat)"
                   class="p-1.5 text-red-400 hover:text-red-600 dark:hover:text-red-400"
-                  aria-label="Elimina categoria"
+                  :aria-label="t('settings.categories.deleteCategoryAria')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -206,19 +206,19 @@
                   <input
                     v-model="newSubcategoryName"
                     type="text"
-                    placeholder="Nome sottocategoria"
+                    :placeholder="t('settings.categories.subcategoryPlaceholder')"
                     class="flex-1 px-2 py-2 text-base border border-gray-200 dark:border-gray-700 rounded
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                            focus:outline-none focus:ring-1 focus:ring-blue-500"
                     @keyup.enter="saveSubcategory(cat.id)"
                   />
-                  <button @click="saveSubcategory(cat.id)" class="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Aggiungi</button>
-                  <button @click="addSubcategoryForCat = null; newSubcategoryName = ''" class="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800">Annulla</button>
+                  <button @click="saveSubcategory(cat.id)" class="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">{{ t('settings.categories.addSubcategoryButton') }}</button>
+                  <button @click="addSubcategoryForCat = null; newSubcategoryName = ''" class="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800">{{ t('settings.categories.cancel') }}</button>
                 </div>
               </div>
 
               <div v-if="!cat.subcategories?.length" class="px-4 py-2 text-sm text-gray-400 italic">
-                Nessuna sottocategoria
+                {{ t('settings.categories.noSubcategories') }}
               </div>
               <div
                 v-for="sub in cat.subcategories"
@@ -230,7 +230,7 @@
                 <button
                   @click="deleteSubcategory(cat, sub)"
                   class="p-2 text-red-400 hover:text-red-600 opacity-60 hover:opacity-100"
-                  aria-label="Elimina sottocategoria"
+                  :aria-label="t('settings.categories.deleteSubcategoryAria')"
                 >
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -253,12 +253,14 @@
 defineOptions({ name: 'CategoriesTab' })
 
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
 import { categoriesAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 
+const { t } = useI18n()
 const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 
@@ -310,16 +312,17 @@ async function addCategory() {
     showAddCategoryForm.value = false
     await fetchCategories()
   } catch (err) {
-    categoryError.value = err.response?.data?.error || 'Errore durante la creazione'
+    categoryError.value = err.response?.data?.error || t('settings.categories.createError')
   }
 }
 
 async function deleteCategory(cat) {
-  const label = cat.is_default ? 'categoria predefinita' : 'categoria personale'
   const ok = await confirm({
-    title: 'Elimina categoria',
-    message: `Eliminare la ${label} "${cat.name}"? Anche tutte le sue sottocategorie verranno eliminate.`,
-    confirmText: 'Elimina',
+    title: t('settings.categories.deleteCategoryTitle'),
+    message: cat.is_default
+      ? t('settings.categories.deleteCategoryMessageDefault', { name: cat.name })
+      : t('settings.categories.deleteCategoryMessagePersonal', { name: cat.name }),
+    confirmText: t('settings.categories.deleteCategoryConfirm'),
     variant: 'danger'
   })
   if (!ok) return
@@ -328,7 +331,7 @@ async function deleteCategory(cat) {
     await categoriesAPI.delete(cat.id)
     await fetchCategories()
   } catch (err) {
-    categoryError.value = err.response?.data?.error || 'Errore durante l\'eliminazione'
+    categoryError.value = err.response?.data?.error || t('settings.categories.deleteError')
   }
 }
 
@@ -350,15 +353,15 @@ async function saveSubcategory(catId) {
     newSubcategoryName.value = ''
     await fetchCategories()
   } catch (err) {
-    categoryError.value = err.response?.data?.error || 'Errore durante la creazione'
+    categoryError.value = err.response?.data?.error || t('settings.categories.createError')
   }
 }
 
 async function deleteSubcategory(cat, sub) {
   const ok = await confirm({
-    title: 'Elimina sottocategoria',
-    message: `Eliminare la sottocategoria "${sub.name}"?`,
-    confirmText: 'Elimina',
+    title: t('settings.categories.deleteSubcategoryTitle'),
+    message: t('settings.categories.deleteSubcategoryMessage', { name: sub.name }),
+    confirmText: t('settings.categories.deleteCategoryConfirm'),
     variant: 'danger'
   })
   if (!ok) return
@@ -367,7 +370,7 @@ async function deleteSubcategory(cat, sub) {
     await categoriesAPI.deleteSubcategory(cat.id, sub.id)
     await fetchCategories()
   } catch (err) {
-    categoryError.value = err.response?.data?.error || 'Errore durante l\'eliminazione'
+    categoryError.value = err.response?.data?.error || t('settings.categories.deleteError')
   }
 }
 

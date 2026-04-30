@@ -1,0 +1,25 @@
+{
+  "title": "Notifiche",
+  "markAllRead": "Segna tutte come lette",
+  "deleteRead": "Elimina lette",
+  "filterAll": "Tutte",
+  "filterUnread": "Non lette",
+  "emptyAll": "Nessuna notifica",
+  "emptyUnread": "Nessuna notifica non letta",
+  "important": "IMPORTANTE",
+  "deleteAria": "Elimina",
+  "types": {
+    "price_change": "Variazione prezzo",
+    "contract_modification": "Modifica contratto",
+    "info": "Informazione",
+    "privacy": "Privacy",
+    "join_request": "Richiesta accesso",
+    "expense_shared": "Spesa condivisa"
+  },
+  "deleteOneTitle": "Elimina notifica",
+  "deleteOneMessage": "Vuoi eliminare questa notifica?",
+  "deleteOneConfirm": "Elimina",
+  "deleteAllTitle": "Elimina notifiche lette",
+  "deleteAllMessage": "Vuoi eliminare {n} notifiche lette?",
+  "deleteAllConfirm": "Elimina tutte"
+}

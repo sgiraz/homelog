@@ -1,0 +1,49 @@
+{
+  "title": "Dashboard",
+  "subtitle": "Panoramica delle tue spese",
+  "addExpenseButton": "Aggiungi Spesa",
+  "noProperty": {
+    "pendingTitle": "Richiesta in attesa",
+    "pendingMessage": "La tua richiesta di accesso a {name} è in attesa di approvazione da parte di un amministratore.",
+    "noneTitle": "Nessuna proprietà",
+    "noneDescription": "Crea una proprietà o unisciti a una esistente per iniziare.",
+    "configureButton": "Configura"
+  },
+  "kpi": {
+    "monthExpenses": "Spese Mese",
+    "periodCount": "Nel Periodo",
+    "dailyAverage": "Media Giorn.",
+    "yearExpenses": "Spese Anno"
+  },
+  "charts": {
+    "categoryByCategory": "Spese per Categoria",
+    "categoryBySubcategory": "Spese per Sottocategoria",
+    "trendDaily": "Trend Giornaliero",
+    "trendQuarterly": "Trend Trimestrale",
+    "trendMonthly": "Trend Mensile",
+    "datasetLabel": "Spese",
+    "noData": "Nessun dato disponibile",
+    "lineTooltip": "Grafico a linee",
+    "barTooltip": "Grafico a barre"
+  },
+  "filters": {
+    "filtersLabel": "Filtri",
+    "reset": "Reset",
+    "resetFilters": "Reset Filtri",
+    "categoryLabel": "Categoria:",
+    "projectLabel": "Progetto:",
+    "fromLabel": "Da:",
+    "toLabel": "A:",
+    "allCategoriesShort": "Tutte",
+    "allProjectsShort": "Tutti",
+    "allCategoriesLong": "Tutte categorie",
+    "allProjectsLong": "Tutti progetti"
+  },
+  "recent": {
+    "title": "Spese Recenti",
+    "viewAll": "Vedi tutte",
+    "loading": "Caricamento...",
+    "empty": "Nessuna spesa registrata",
+    "addFirst": "Aggiungi la tua prima spesa"
+  }
+}

@@ -6,7 +6,7 @@
     <Card class="w-full max-w-6xl p-6 my-auto">
       <div class="flex items-center justify-between mb-6">
         <h3 class="text-xl font-bold text-gray-900 dark:text-white">
-          {{ isEditing ? 'Modifica Template' : 'Crea Template Estrazione' }}
+          {{ isEditing ? t('utilities.templateWizard.editTitle') : t('utilities.templateWizard.createTitle') }}
         </h3>
         <button @click="handleClose" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,7 +122,7 @@
           @click="step--"
           class="flex-1"
         >
-          Indietro
+          {{ t('utilities.templateWizard.back') }}
         </Button>
         <Button
           v-if="step === 1"
@@ -131,7 +131,7 @@
           @click="handleClose"
           class="flex-1"
         >
-          Annulla
+          {{ t('utilities.templateWizard.cancel') }}
         </Button>
         <Button
           v-if="step < 3"
@@ -139,7 +139,7 @@
           :disabled="!canProceed"
           class="flex-1"
         >
-          Avanti
+          {{ t('utilities.templateWizard.next') }}
         </Button>
         <Button
           v-if="step === 3"
@@ -147,7 +147,7 @@
           :disabled="saving"
           class="flex-1"
         >
-          {{ saving ? 'Salvataggio...' : 'Salva Template' }}
+          {{ saving ? t('utilities.templateWizard.saving') : t('utilities.templateWizard.save') }}
         </Button>
       </div>
     </Card>
@@ -156,6 +156,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { templatesAPI, pdfAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -173,9 +174,15 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'saved'])
 
+const { t } = useI18n()
+
 // Step management
 const step = ref(1)
-const steps = ['Info & PDF', 'Mappa Campi', 'Salva']
+const steps = computed(() => [
+  t('utilities.templateWizard.stepInfoLabel'),
+  t('utilities.templateWizard.stepMappingLabel'),
+  t('utilities.templateWizard.stepReviewLabel')
+])
 
 // File upload state
 const extracting = ref(false)
@@ -218,46 +225,46 @@ const template = ref({
 
 // Fields available for extraction (dynamic based on utility type)
 // consumption_total is always calculated from readings, never extracted from PDF
-const baseExtractionFields = [
-  { key: 'amount_total', label: 'Importo Totale', required: true },
-  { key: 'bill_number', label: 'Numero Bolletta', required: false },
-  { key: 'period_start', label: 'Data Inizio Periodo', required: false },
-  { key: 'period_end', label: 'Data Fine Periodo', required: false },
-  { key: 'due_date', label: 'Data Scadenza', required: false },
-  { key: 'issue_date', label: 'Data Emissione', required: false },
-  { key: 'communication_text', label: 'Comunicazioni', required: false, multiLine: true }
-]
+const baseExtractionFields = computed(() => [
+  { key: 'amount_total', label: t('utilities.templateWizard.fields.amount_total'), required: true },
+  { key: 'bill_number', label: t('utilities.templateWizard.fields.bill_number'), required: false },
+  { key: 'period_start', label: t('utilities.templateWizard.fields.period_start'), required: false },
+  { key: 'period_end', label: t('utilities.templateWizard.fields.period_end'), required: false },
+  { key: 'due_date', label: t('utilities.templateWizard.fields.due_date'), required: false },
+  { key: 'issue_date', label: t('utilities.templateWizard.fields.issue_date'), required: false },
+  { key: 'communication_text', label: t('utilities.templateWizard.fields.communication_text'), required: false, multiLine: true }
+])
 
-const gasExtraFields = [
-  { key: 'provider_reading', label: 'Lettura Contatore (mc)', required: false },
-  { key: 'conversion_coefficient', label: 'Coeff. Conversione (C)', required: false },
-  { key: 'estimated_date', label: 'Data Stima', required: false },
-  { key: 'estimated_reading', label: 'Lettura Stimata (mc)', required: false },
-  { key: 'previous_estimated_consumption', label: 'Consumi Precedenti Stimati (Smc)', required: false }
-]
+const gasExtraFields = computed(() => [
+  { key: 'provider_reading', label: t('utilities.templateWizard.fields.provider_reading'), required: false },
+  { key: 'conversion_coefficient', label: t('utilities.templateWizard.fields.conversion_coefficient'), required: false },
+  { key: 'estimated_date', label: t('utilities.templateWizard.fields.estimated_date'), required: false },
+  { key: 'estimated_reading', label: t('utilities.templateWizard.fields.estimated_reading'), required: false },
+  { key: 'previous_estimated_consumption', label: t('utilities.templateWizard.fields.previous_estimated_consumption_smc'), required: false }
+])
 
-const waterExtraFields = [
-  { key: 'provider_reading', label: 'Lettura Contatore (mc)', required: false },
-  { key: 'estimated_date', label: 'Data Stima', required: false },
-  { key: 'estimated_reading', label: 'Lettura Stimata (mc)', required: false },
-  { key: 'previous_estimated_consumption', label: 'Consumi Precedenti Stimati (mc)', required: false }
-]
+const waterExtraFields = computed(() => [
+  { key: 'provider_reading', label: t('utilities.templateWizard.fields.provider_reading'), required: false },
+  { key: 'estimated_date', label: t('utilities.templateWizard.fields.estimated_date'), required: false },
+  { key: 'estimated_reading', label: t('utilities.templateWizard.fields.estimated_reading'), required: false },
+  { key: 'previous_estimated_consumption', label: t('utilities.templateWizard.fields.previous_estimated_consumption_mc'), required: false }
+])
 
 const isMeteredTemplateType = computed(() => {
   return ['electricity', 'gas', 'water', 'waste'].includes(template.value.utility_type)
 })
 
 const extractionFields = computed(() => {
-  let fields = baseExtractionFields
+  let fields = baseExtractionFields.value
   // Fixed-cost services: period_end is derived from billing frequency, not extracted
   if (!isMeteredTemplateType.value) {
     fields = fields.filter(f => f.key !== 'period_end')
   }
   if (template.value.utility_type === 'gas') {
-    return [...fields, ...gasExtraFields]
+    return [...fields, ...gasExtraFields.value]
   }
   if (template.value.utility_type === 'water') {
-    return [...fields, ...waterExtraFields]
+    return [...fields, ...waterExtraFields.value]
   }
   return fields
 })
@@ -312,7 +319,7 @@ const canProceed = computed(() => {
 // which emits `file-selected` with the raw File instance.
 async function processFile(file) {
   if (file.type !== 'application/pdf') {
-    extractError.value = 'Per favore carica un file PDF'
+    extractError.value = t('utilities.templateWizard.uploadOnlyPdf')
     return
   }
 
@@ -326,8 +333,6 @@ async function processFile(file) {
     pdfAnalysis.value = data
     rawText.value = data.raw_text || ''
 
-    // The backend returns an opaque tag used to request cleanup later.
-    // Fall back to parsing the URL for backward compatibility during rollout.
     if (data.tag) {
       analysisTimestamp.value = data.tag
     } else if (data.pages?.length > 0) {
@@ -338,10 +343,10 @@ async function processFile(file) {
     }
 
     if (!data.pages || data.pages.length === 0) {
-      extractError.value = 'Impossibile analizzare il PDF. Verifica che sia un PDF valido.'
+      extractError.value = t('utilities.templateWizard.invalidPdf')
     }
   } catch (err) {
-    extractError.value = err.response?.data?.error || 'Errore durante l\'analisi del PDF'
+    extractError.value = err.response?.data?.error || t('utilities.templateWizard.analyzeError')
     console.error('PDF analysis error:', err)
   } finally {
     extracting.value = false
@@ -560,8 +565,9 @@ function getFieldLabel(fieldKey) {
 }
 
 function getDirectionLabel(direction) {
-  const labels = { right: 'destra', below: 'sotto', right_or_below: 'destra/sotto' }
-  return labels[direction] || direction
+  const key = `utilities.templateWizard.directions.${direction}`
+  const label = t(key)
+  return label === key ? direction : label
 }
 
 // Cleanup temporary images
@@ -635,7 +641,7 @@ async function saveTemplate() {
 
     emit('saved')
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || 'Errore durante il salvataggio'
+    error.value = err.response?.data?.error || err.message || t('utilities.templateWizard.saveError')
   } finally {
     saving.value = false
   }

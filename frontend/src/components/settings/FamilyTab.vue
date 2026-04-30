@@ -2,7 +2,7 @@
   <div class="space-y-4">
     <!-- Pending Join Requests (admin only) -->
     <Card v-if="isAdmin && pendingRequests.length > 0" class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Richieste di Accesso</h2>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.family.joinRequestsTitle') }}</h2>
       <div class="space-y-3">
         <div
           v-for="req in pendingRequests"
@@ -20,10 +20,10 @@
           </div>
           <div class="flex gap-2 flex-shrink-0">
             <Button size="sm" @click="resolveRequest(req.id, 'approved')" :disabled="resolvingRequest === req.id">
-              Approva
+              {{ t('settings.family.approve') }}
             </Button>
             <Button size="sm" variant="secondary" @click="resolveRequest(req.id, 'rejected')" :disabled="resolvingRequest === req.id">
-              Rifiuta
+              {{ t('settings.family.reject') }}
             </Button>
           </div>
         </div>
@@ -31,15 +31,15 @@
     </Card>
 
     <Card class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Impostazioni Famiglia</h2>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.family.settingsTitle') }}</h2>
 
       <div class="space-y-4">
         <!-- Split Mode Toggle -->
         <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
           <div class="flex-1">
-            <div class="font-medium text-gray-900 dark:text-white">Modalita Split</div>
+            <div class="font-medium text-gray-900 dark:text-white">{{ t('settings.family.splitMode') }}</div>
             <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Traccia chi deve cosa dividendo le spese tra i membri della famiglia
+              {{ t('settings.family.splitModeDescription') }}
             </div>
           </div>
           <label v-if="isAdmin" class="relative inline-flex items-center cursor-pointer ml-4">
@@ -59,7 +59,7 @@
             </div>
           </label>
           <span v-else class="ml-4 text-sm font-medium" :class="splitMode ? 'text-green-600 dark:text-green-400' : 'text-gray-400'">
-            {{ splitMode ? 'Attivo' : 'Disattivo' }}
+            {{ splitMode ? t('settings.family.splitActive') : t('settings.family.splitInactive') }}
           </span>
         </div>
 
@@ -67,7 +67,7 @@
         <div v-if="splitMode" class="pl-6 space-y-4 border-l-2 border-blue-200 dark:border-blue-800">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Dividi automaticamente le spese con:
+              {{ t('settings.family.splitWith') }}
             </label>
 
             <div v-if="householdMembers.length > 0" class="space-y-2">
@@ -101,8 +101,8 @@
                     {{ getInitials(member.name) }}
                   </div>
                   <span class="text-gray-900 dark:text-white truncate">{{ member.name }}</span>
-                  <span v-if="member.is_virtual" class="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">(virtuale)</span>
-                  <span v-if="member.user_role === 'admin'" class="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium flex-shrink-0">Admin</span>
+                  <span v-if="member.is_virtual" class="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">{{ t('settings.family.memberVirtual') }}</span>
+                  <span v-if="member.user_role === 'admin'" class="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium flex-shrink-0">{{ t('settings.family.memberAdminBadge') }}</span>
                 </div>
                 <div class="flex items-center gap-1 flex-shrink-0">
                   <!-- Admin: toggle admin role -->
@@ -111,7 +111,7 @@
                     @click="toggleAdminRole(member)"
                     class="p-2 transition-colors"
                     :class="member.user_role === 'admin' ? 'text-amber-500 hover:text-amber-700' : 'text-gray-400 hover:text-amber-500'"
-                    :title="member.user_role === 'admin' ? 'Rimuovi ruolo admin' : 'Promuovi ad admin'"
+                    :title="member.user_role === 'admin' ? t('settings.family.demoteAdminTooltip') : t('settings.family.promoteAdminTooltip')"
                   >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -122,7 +122,7 @@
                     v-if="isAdmin && member.is_virtual"
                     @click="deleteMember(member.id)"
                     class="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-2"
-                    aria-label="Elimina membro"
+                    :aria-label="t('settings.family.deleteMemberAria')"
                   >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -133,8 +133,8 @@
                     v-if="isAdmin && !member.is_virtual && member.user_id !== currentUserId"
                     @click="deleteUserAccount(member)"
                     class="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-2"
-                    aria-label="Elimina account utente"
-                    title="Elimina account e tutti i dati"
+                    :aria-label="t('settings.family.deleteUserAria')"
+                    :title="t('settings.family.deleteUserTooltip')"
                   >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728l-12.728-12.728" />
@@ -145,7 +145,7 @@
             </div>
 
             <div v-if="householdMembers.length === 0" class="text-sm text-gray-600 dark:text-gray-400 italic p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              Nessun altro membro nella casa. Aggiungi un membro per dividere le spese.
+              {{ t('settings.family.noMembers') }}
             </div>
 
             <!-- Add new member (admin only) -->
@@ -154,31 +154,31 @@
                 <input
                   v-model="newMemberName"
                   type="text"
-                  placeholder="Nome membro"
+                  :placeholder="t('settings.family.newMemberPlaceholder')"
                   class="flex-1 px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
                   @keyup.enter="addMember"
                 />
                 <Button @click="addMember" :disabled="!newMemberName.trim()">
-                  Aggiungi
+                  {{ t('settings.family.addButton') }}
                 </Button>
               </div>
             </div>
 
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
-              Quando aggiungi una nuova spesa, sara automaticamente divisa con le persone selezionate.
+              {{ t('settings.family.splitHint') }}
             </p>
           </div>
         </div>
 
         <div v-if="splitMode" class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
           <div class="text-sm text-gray-700 dark:text-gray-300">
-            <div class="font-medium mb-2">Split Mode Attivo</div>
+            <div class="font-medium mb-2">{{ t('settings.family.splitSummaryTitle') }}</div>
             <ul class="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
-              <li>Ogni spesa puo essere divisa tra membri della famiglia</li>
-              <li>Il sistema traccia chi deve cosa</li>
-              <li>Puoi saldare i conti dalla pagina Bilancio</li>
+              <li>{{ t('settings.family.splitSummaryItem1') }}</li>
+              <li>{{ t('settings.family.splitSummaryItem2') }}</li>
+              <li>{{ t('settings.family.splitSummaryItem3') }}</li>
             </ul>
           </div>
         </div>
@@ -191,6 +191,7 @@
 defineOptions({ name: 'FamilyTab' })
 
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
@@ -199,6 +200,7 @@ import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
@@ -318,9 +320,9 @@ async function addMember() {
 
 async function deleteMember(memberId) {
   const ok = await confirm({
-    title: 'Elimina membro',
-    message: 'Sei sicuro di voler eliminare questo membro?',
-    confirmText: 'Elimina',
+    title: t('settings.family.deleteMemberTitle'),
+    message: t('settings.family.deleteMemberMessage'),
+    confirmText: t('settings.family.deleteMemberConfirm'),
     variant: 'danger'
   })
   if (!ok) return
@@ -340,41 +342,42 @@ async function deleteMember(memberId) {
 
 async function deleteUserAccount(member) {
   const ok = await confirm({
-    title: 'Elimina account utente',
-    message: `Eliminare definitivamente l'account di "${member.name}"? Tutti i dati associati (spese, utenze, bollette, letture, progetti, template) verranno cancellati in modo irreversibile.`,
-    confirmText: 'Elimina definitivamente',
+    title: t('settings.family.deleteUserTitle'),
+    message: t('settings.family.deleteUserMessage', { name: member.name }),
+    confirmText: t('settings.family.deleteUserConfirm'),
     variant: 'danger'
   })
   if (!ok) return
 
   try {
     await adminAPI.deleteUser(member.user_id)
-    window.$toast?.success(`Account di "${member.name}" eliminato con successo`)
+    window.$toast?.success(t('settings.family.deleteUserSuccess', { name: member.name }))
     await fetchHouseholdMembers()
   } catch (err) {
     console.error('Error deleting user account:', err)
-    window.$toast?.error(err.response?.data?.error || "Errore durante l'eliminazione dell'account")
+    window.$toast?.error(err.response?.data?.error || t('settings.family.deleteUserError'))
   }
 }
 
 async function toggleAdminRole(member) {
   const newRole = member.user_role === 'admin' ? 'user' : 'admin'
-  const action = newRole === 'admin' ? 'promuovere ad admin' : 'rimuovere il ruolo admin da'
   const ok = await confirm({
-    title: newRole === 'admin' ? 'Promuovi ad admin' : 'Rimuovi ruolo admin',
-    message: `Sei sicuro di voler ${action} "${member.name}"?`,
-    confirmText: newRole === 'admin' ? 'Promuovi' : 'Rimuovi',
+    title: newRole === 'admin' ? t('settings.family.promoteTitle') : t('settings.family.demoteTitle'),
+    message: newRole === 'admin'
+      ? t('settings.family.promoteMessage', { name: member.name })
+      : t('settings.family.demoteMessage', { name: member.name }),
+    confirmText: newRole === 'admin' ? t('settings.family.promoteConfirm') : t('settings.family.demoteConfirm'),
     variant: newRole === 'admin' ? 'primary' : 'danger'
   })
   if (!ok) return
 
   try {
     await adminAPI.setUserRole(member.user_id, newRole)
-    window.$toast?.success(`Ruolo di "${member.name}" aggiornato a ${newRole}`)
+    window.$toast?.success(t('settings.family.roleUpdated', { name: member.name, role: newRole }))
     await fetchHouseholdMembers()
   } catch (err) {
     console.error('Error toggling admin role:', err)
-    window.$toast?.error(err.response?.data?.error || 'Errore durante il cambio ruolo')
+    window.$toast?.error(err.response?.data?.error || t('settings.family.roleError'))
   }
 }
 
@@ -392,11 +395,11 @@ async function resolveRequest(requestId, status) {
   resolvingRequest.value = requestId
   try {
     await joinRequestAPI.resolve(requestId, status)
-    window.$toast?.success(status === 'approved' ? 'Richiesta approvata!' : 'Richiesta rifiutata')
+    window.$toast?.success(status === 'approved' ? t('settings.family.requestApproved') : t('settings.family.requestRejected'))
     await fetchPendingRequests()
     await fetchHouseholdMembers()
   } catch (err) {
-    window.$toast?.error(err.response?.data?.error || 'Errore durante la risoluzione della richiesta')
+    window.$toast?.error(err.response?.data?.error || t('settings.family.requestError'))
   } finally {
     resolvingRequest.value = null
   }

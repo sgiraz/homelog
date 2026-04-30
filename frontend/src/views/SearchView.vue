@@ -11,7 +11,7 @@
           @click="goBack"
           class="p-2 -ml-1 rounded-lg text-gray-600 dark:text-gray-300
                  hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          aria-label="Indietro"
+          :aria-label="t('search.back')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -35,7 +35,7 @@
             autocomplete="off"
             autocapitalize="off"
             spellcheck="false"
-            placeholder="Cerca spese, bollette, progetti, servizi"
+            :placeholder="t('search.placeholder')"
             class="w-full pl-9 pr-9 py-3 rounded-xl text-base
                    bg-gray-100 dark:bg-gray-700/60 text-gray-900 dark:text-white
                    placeholder-gray-400 dark:placeholder-gray-400
@@ -47,7 +47,7 @@
             type="button"
             @click="clearQuery"
             class="absolute inset-y-0 right-2 flex items-center px-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-            aria-label="Cancella"
+            :aria-label="t('search.clear')"
           >
             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
@@ -65,8 +65,8 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
             d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
         </svg>
-        <p class="text-sm">Inizia a scrivere per cercare</p>
-        <p class="text-xs mt-1 text-gray-400">Spese, bollette, progetti, servizi</p>
+        <p class="text-sm">{{ t('search.promptTitle') }}</p>
+        <p class="text-xs mt-1 text-gray-400">{{ t('search.promptHint') }}</p>
       </div>
 
       <!-- Loading -->
@@ -79,7 +79,7 @@
         v-else-if="!loading && hits.length === 0 && q.trim().length >= 1"
         class="text-center py-16 text-gray-500 dark:text-gray-400"
       >
-        <p class="text-sm">Nessun risultato per "{{ q.trim() }}"</p>
+        <p class="text-sm">{{ t('search.noResults', { query: q.trim() }) }}</p>
       </div>
 
       <!-- Results grouped by entity type -->
@@ -118,7 +118,7 @@
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                    {{ hit.title || '(senza titolo)' }}
+                    {{ hit.title || t('search.untitled') }}
                   </p>
                   <p
                     v-if="hit.snippet"
@@ -141,9 +141,11 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { searchAPI } from '@/api/client'
 
 const router = useRouter()
+const { t } = useI18n()
 const q = ref('')
 const hits = ref([])
 const loading = ref(false)
@@ -151,13 +153,6 @@ const inputEl = ref(null)
 
 let debounceId = null
 let activeController = null
-
-const GROUP_LABELS = {
-  expense: 'Spese',
-  bill: 'Bollette',
-  project: 'Progetti',
-  utility: 'Servizi',
-}
 
 const ICON_BG = {
   expense: 'bg-emerald-100 dark:bg-emerald-900/30',
@@ -183,7 +178,7 @@ const groupedHits = computed(() => {
   const order = ['expense', 'bill', 'utility', 'project']
   return order
     .filter((k) => buckets[k]?.length)
-    .map((k) => ({ type: k, label: GROUP_LABELS[k] || k, hits: buckets[k] }))
+    .map((k) => ({ type: k, label: t(`search.groups.${k}`), hits: buckets[k] }))
 })
 
 function iconBgClass(type) {

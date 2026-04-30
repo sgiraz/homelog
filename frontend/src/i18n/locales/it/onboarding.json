@@ -1,0 +1,83 @@
+{
+  "stepIndicator": "Passo {current} di {total}",
+  "steps": {
+    "path": "Percorso",
+    "join": "Unisciti",
+    "property": "Proprietà",
+    "preferences": "Preferenze",
+    "discover": "Scopri"
+  },
+  "back": "← Torna indietro",
+  "previousButton": "Indietro",
+  "nextButton": "Avanti",
+  "skipButton": "Salta",
+  "savingButton": "Salvataggio...",
+  "step1": {
+    "title": "Come vuoi iniziare?",
+    "subtitle": "Puoi creare la tua proprietà o unirti a una esistente",
+    "createTitle": "Crea una nuova casa",
+    "createDescription": "Configura la tua proprietà e invita i familiari",
+    "joinTitle": "Unisciti a una casa esistente",
+    "joinDescription": "Invia una richiesta a un amministratore"
+  },
+  "step2Create": {
+    "title": "Crea la tua proprietà",
+    "subtitle": "Inserisci i dettagli della tua casa.",
+    "nameLabel": "Nome proprietà",
+    "namePlaceholder": "Es. Casa Milano, Appartamento Roma...",
+    "addressLabel": "Indirizzo (opzionale)",
+    "addressPlaceholder": "Es. Via Roma 1, Milano",
+    "nameRequired": "Inserisci il nome della proprietà.",
+    "createError": "Errore nella creazione della proprietà."
+  },
+  "step2Join": {
+    "title": "Unisciti a una casa",
+    "subtitle": "Seleziona la proprietà a cui vuoi accedere.",
+    "loading": "Caricamento...",
+    "noProperties": "Nessuna casa trovata. Puoi crearne una tu!",
+    "createMine": "Crea la tua!",
+    "memberCount_one": "{n} membro",
+    "memberCount_other": "{n} membri",
+    "requestSent": "Richiesta inviata! Un amministratore dovrà approvare la tua richiesta.",
+    "submitButton": "Invia Richiesta",
+    "submittingButton": "Invio...",
+    "submitError": "Errore nell'invio della richiesta.",
+    "submitSuccess": "Richiesta inviata con successo!"
+  },
+  "step3": {
+    "title": "Preferenze",
+    "subtitle": "Configura lingua, valuta e tema dell'applicazione.",
+    "currencyLabel": "Valuta",
+    "languageLabel": "Lingua",
+    "themeLabel": "Tema",
+    "themeAuto": "Auto",
+    "themeLight": "Chiaro",
+    "themeDark": "Scuro",
+    "saveError": "Errore nel salvataggio delle preferenze."
+  },
+  "step4": {
+    "title": "Scopri HomeLog",
+    "subtitle": "Ecco cosa puoi fare con la tua nuova app.",
+    "completeButton": "Inizia!",
+    "completingButton": "Completamento...",
+    "completeError": "Errore nel completamento dell'onboarding.",
+    "features": {
+      "pdf": {
+        "title": "Estrazione PDF bollette",
+        "description": "Carica le tue bollette in PDF e HomeLog estrae automaticamente i dati grazie ai template configurabili."
+      },
+      "split": {
+        "title": "Divisione spese",
+        "description": "Suddividi le spese tra i membri della famiglia in modo equo e tieni traccia dei saldi."
+      },
+      "consumption": {
+        "title": "Analisi consumi utenze",
+        "description": "Confronta le letture del contatore con quelle del fornitore e monitora i consumi nel tempo."
+      },
+      "projects": {
+        "title": "Gestione progetti",
+        "description": "Pianifica ristrutturazioni, acquisti o viaggi con budget dedicati e tracciamento delle spese."
+      }
+    }
+  }
+}

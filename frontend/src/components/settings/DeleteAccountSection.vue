@@ -1,27 +1,27 @@
 <template>
   <Card class="p-6 border-red-200 dark:border-red-800">
-    <h2 class="text-xl font-bold text-red-600 dark:text-red-400 mb-2">Zona Pericolosa</h2>
+    <h2 class="text-xl font-bold text-red-600 dark:text-red-400 mb-2">{{ t('settings.deleteAccount.title') }}</h2>
     <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-      Questa azione è irreversibile. Tutti i tuoi dati personali verranno eliminati permanentemente.
+      {{ t('settings.deleteAccount.description') }}
     </p>
 
     <!-- Step 0: Initial button -->
     <div v-if="deleteStep === 0">
       <Button variant="danger" @click="startDeleteAccount">
-        Elimina il mio account
+        {{ t('settings.deleteAccount.startButton') }}
       </Button>
     </div>
 
     <!-- Loading state -->
     <div v-else-if="deleteStep === 'loading'" class="text-sm text-gray-500 py-4 text-center">
-      Controllo in corso...
+      {{ t('settings.deleteAccount.loading') }}
     </div>
 
     <!-- Step 1: Blocking — must nominate admins -->
     <div v-else-if="deleteStep === 'blocking'" class="space-y-4">
       <div class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
         <p class="text-sm font-medium text-amber-800 dark:text-amber-300 mb-2">
-          Sei l'unico amministratore di queste proprietà. Devi nominare un nuovo admin prima di poter eliminare il tuo account:
+          {{ t('settings.deleteAccount.blockingHeader') }}
         </p>
       </div>
 
@@ -35,7 +35,7 @@
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option :value="null" disabled>Seleziona membro...</option>
+            <option :value="null" disabled>{{ t('settings.deleteAccount.selectMember') }}</option>
             <option v-for="m in bp.members" :key="m.member_id" :value="m.member_id">
               {{ m.name }}
             </option>
@@ -45,13 +45,13 @@
             :disabled="!adminNominations[bp.property_id] || promotingProperty === bp.property_id"
             @click="handlePromoteAdmin(bp.property_id)"
           >
-            {{ promotingProperty === bp.property_id ? 'Salvataggio...' : 'Nomina' }}
+            {{ promotingProperty === bp.property_id ? t('settings.deleteAccount.nominateSaving') : t('settings.deleteAccount.nominateButton') }}
           </Button>
         </div>
       </div>
 
       <div class="flex gap-2">
-        <Button variant="secondary" size="sm" @click="deleteStep = 0">Annulla</Button>
+        <Button variant="secondary" size="sm" @click="deleteStep = 0">{{ t('settings.deleteAccount.cancelButton') }}</Button>
       </div>
     </div>
 
@@ -60,7 +60,7 @@
       <div v-if="deleteCheckResult.data_loss_properties?.length > 0"
            class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
         <p class="text-sm font-medium text-red-800 dark:text-red-300 mb-1">
-          Le seguenti proprietà e tutti i loro dati verranno eliminati definitivamente:
+          {{ t('settings.deleteAccount.confirmHeader') }}
         </p>
         <ul class="text-sm text-red-700 dark:text-red-400 list-disc list-inside">
           <li v-for="name in deleteCheckResult.data_loss_properties" :key="name">{{ name }}</li>
@@ -69,16 +69,16 @@
 
       <Input
         v-model="deletePassword"
-        label="Inserisci la tua password per confermare"
+        :label="t('settings.deleteAccount.passwordLabel')"
         type="password"
-        placeholder="Password"
+        :placeholder="t('settings.deleteAccount.passwordPlaceholder')"
         autocomplete="current-password"
       />
 
       <label class="flex items-start gap-2 cursor-pointer">
         <input v-model="deleteConfirmed" type="checkbox" class="mt-1 rounded border-gray-300 dark:border-gray-600" />
         <span class="text-sm text-gray-700 dark:text-gray-300">
-          Confermo di voler eliminare il mio account e tutti i dati associati in modo irreversibile.
+          {{ t('settings.deleteAccount.confirmCheckbox') }}
         </span>
       </label>
 
@@ -92,9 +92,9 @@
           :disabled="!deletePassword || !deleteConfirmed || deleteLoading"
           @click="handleDeleteAccount"
         >
-          {{ deleteLoading ? 'Eliminazione...' : 'Elimina definitivamente' }}
+          {{ deleteLoading ? t('settings.deleteAccount.deletingButton') : t('settings.deleteAccount.confirmButton') }}
         </Button>
-        <Button variant="secondary" @click="deleteStep = 0">Annulla</Button>
+        <Button variant="secondary" @click="deleteStep = 0">{{ t('settings.deleteAccount.cancelButton') }}</Button>
       </div>
     </div>
   </Card>
@@ -105,6 +105,7 @@ defineOptions({ name: 'DeleteAccountSection' })
 
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { accountAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
@@ -112,6 +113,7 @@ import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
 
 const router = useRouter()
+const { t } = useI18n()
 const authStore = useAuthStore()
 
 const deleteStep = ref(0) // 0, 'loading', 'blocking', 'confirm'
@@ -140,7 +142,7 @@ async function startDeleteAccount() {
     }
   } catch {
     deleteStep.value = 0
-    window.$toast?.error('Errore nel controllo account')
+    window.$toast?.error(t('settings.deleteAccount.checkError'))
   }
 }
 
@@ -150,10 +152,10 @@ async function handlePromoteAdmin(propertyId) {
   promotingProperty.value = propertyId
   try {
     await accountAPI.promoteAdmin(propertyId, memberId)
-    window.$toast?.success('Admin nominato con successo')
+    window.$toast?.success(t('settings.deleteAccount.promoteSuccess'))
     await startDeleteAccount()
   } catch (err) {
-    window.$toast?.error(err.response?.data?.error || 'Errore nella nomina admin')
+    window.$toast?.error(err.response?.data?.error || t('settings.deleteAccount.promoteError'))
   } finally {
     promotingProperty.value = null
   }
@@ -166,9 +168,9 @@ async function handleDeleteAccount() {
     await accountAPI.deleteAccount(deletePassword.value)
     authStore.logout()
     router.push('/login')
-    window.$toast?.success('Account eliminato con successo')
+    window.$toast?.success(t('settings.deleteAccount.accountDeleted'))
   } catch (err) {
-    deleteError.value = err.response?.data?.error || 'Errore durante l\'eliminazione dell\'account'
+    deleteError.value = err.response?.data?.error || t('settings.deleteAccount.deleteGenericError')
   } finally {
     deleteLoading.value = false
   }

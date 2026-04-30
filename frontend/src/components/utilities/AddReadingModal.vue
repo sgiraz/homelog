@@ -1,20 +1,19 @@
 <template>
-  <BaseModal :title="isEditing ? 'Modifica Lettura' : 'Nuova Lettura'" @close="$emit('close')">
+  <BaseModal :title="isEditing ? t('utilities.addReadingModal.editTitle') : t('utilities.addReadingModal.addTitle')" @close="$emit('close')">
       <form @submit.prevent="handleSubmit" class="space-y-4">
-        <!-- Data Lettura -->
         <Input
           v-model="form.reading_date"
-          label="Data Lettura *"
+          :label="t('utilities.addReadingModal.dateLabel')"
           type="date"
           required
         />
 
         <!-- Electricity readings (F1/F2/F3) -->
         <div v-if="utility.type === 'electricity'" class="space-y-4">
-          <p class="text-sm text-gray-500 dark:text-gray-400">Letture per fascia (kWh) *</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('utilities.addReadingModal.tariffsLabel') }}</p>
           <div class="grid grid-cols-3 gap-3">
             <div>
-              <label class="block text-xs text-red-600 dark:text-red-400 mb-1 font-medium">F1 (Punta)</label>
+              <label class="block text-xs text-red-600 dark:text-red-400 mb-1 font-medium">{{ t('utilities.addReadingModal.f1Label') }}</label>
               <Input
                 v-model="form.value_f1"
                 type="number"
@@ -25,7 +24,7 @@
               />
             </div>
             <div>
-              <label class="block text-xs text-yellow-600 dark:text-yellow-400 mb-1 font-medium">F2 (Intermedia)</label>
+              <label class="block text-xs text-yellow-600 dark:text-yellow-400 mb-1 font-medium">{{ t('utilities.addReadingModal.f2Label') }}</label>
               <Input
                 v-model="form.value_f2"
                 type="number"
@@ -36,7 +35,7 @@
               />
             </div>
             <div>
-              <label class="block text-xs text-green-600 dark:text-green-400 mb-1 font-medium">F3 (Fuori Punta)</label>
+              <label class="block text-xs text-green-600 dark:text-green-400 mb-1 font-medium">{{ t('utilities.addReadingModal.f3Label') }}</label>
               <Input
                 v-model="form.value_f3"
                 type="number"
@@ -53,7 +52,7 @@
         <div v-else-if="utility.type === 'gas' || utility.type === 'water'">
           <Input
             v-model="form.value"
-            :label="'Lettura Contatore (' + getConsumptionUnit(utility.type) + ') *'"
+            :label="t('utilities.addReadingModal.meterLabel', { unit: getConsumptionUnit(utility.type) })"
             type="number"
             step="0.001"
             min="0"
@@ -61,11 +60,11 @@
             required
           />
           <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Inserisci il valore visualizzato sul contatore
+            {{ t('utilities.addReadingModal.meterHint') }}
           </p>
         </div>
 
-        <!-- Source (submitted to provider?) - Only show if provider accepts self-readings -->
+        <!-- Source (submitted to provider?) -->
         <div v-if="utility.allows_self_reading === true" class="flex items-center gap-3">
           <input
             type="checkbox"
@@ -74,19 +73,19 @@
             class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
           <label for="is-submitted" class="text-sm text-gray-900 dark:text-white cursor-pointer">
-            Inviata al fornitore
+            {{ t('utilities.addReadingModal.submittedLabel') }}
           </label>
         </div>
 
         <!-- Note -->
         <div>
           <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-            Note
+            {{ t('utilities.addReadingModal.notesLabel') }}
           </label>
           <textarea
             v-model="form.notes"
             rows="2"
-            placeholder="Note opzionali..."
+            :placeholder="t('utilities.addReadingModal.notesPlaceholder')"
             class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -99,10 +98,10 @@
 
         <div class="flex gap-3 pt-4">
           <Button type="button" variant="secondary" @click="$emit('close')" class="flex-1">
-            Annulla
+            {{ t('utilities.addReadingModal.cancel') }}
           </Button>
           <Button type="submit" :disabled="loading" class="flex-1">
-            {{ loading ? 'Salvataggio...' : 'Salva' }}
+            {{ loading ? t('utilities.addReadingModal.saving') : t('utilities.addReadingModal.save') }}
           </Button>
         </div>
       </form>
@@ -111,6 +110,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUtilitiesStore } from '@/stores/utilities'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
@@ -128,6 +128,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'saved'])
+const { t } = useI18n()
 const utilitiesStore = useUtilitiesStore()
 
 const loading = ref(false)
@@ -139,11 +140,11 @@ const today = new Date().toISOString().split('T')[0]
 
 const form = ref({
   reading_date: today,
-  value: null,        // For gas/water single reading
-  value_f1: null,     // For electricity F1
-  value_f2: null,     // For electricity F2
-  value_f3: null,     // For electricity F3
-  is_submitted: false, // Whether submitted to provider
+  value: null,
+  value_f1: null,
+  value_f2: null,
+  value_f3: null,
+  is_submitted: false,
   notes: ''
 })
 
@@ -173,13 +174,11 @@ async function handleSubmit() {
       source: form.value.is_submitted ? 'submitted' : 'manual'
     }
 
-    // For electricity, send F1/F2/F3
     if (props.utility.type === 'electricity') {
       readingData.value_f1 = form.value.value_f1 ? parseFloat(form.value.value_f1) : null
       readingData.value_f2 = form.value.value_f2 ? parseFloat(form.value.value_f2) : null
       readingData.value_f3 = form.value.value_f3 ? parseFloat(form.value.value_f3) : null
     } else {
-      // For gas/water, send single value
       readingData.value = form.value.value ? parseFloat(form.value.value) : null
     }
 
@@ -190,7 +189,7 @@ async function handleSubmit() {
     }
     emit('saved')
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || 'Errore durante il salvataggio'
+    error.value = err.response?.data?.error || err.message || t('utilities.addReadingModal.genericError')
   } finally {
     loading.value = false
   }

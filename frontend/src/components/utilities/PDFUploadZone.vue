@@ -3,7 +3,7 @@
     <!-- Template Selector -->
     <div v-if="availableTemplates.length > 0" class="mb-4">
       <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-        Template Estrazione
+        {{ t('utilities.pdfUploadZone.templateLabel') }}
       </label>
       <select
         v-model="selectedTemplateId"
@@ -11,17 +11,17 @@
                bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
       >
-        <option :value="null">Automatico (rileva dal fornitore)</option>
+        <option :value="null">{{ t('utilities.pdfUploadZone.templateAuto') }}</option>
         <option
           v-for="tpl in availableTemplates"
           :key="tpl.id"
           :value="tpl.id"
         >
-          {{ tpl.name }}{{ tpl.is_default ? ' (predefinito)' : '' }}
+          {{ tpl.name }}{{ tpl.is_default ? t('utilities.pdfUploadZone.templateDefault') : '' }}
         </option>
       </select>
       <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-        Seleziona il template per estrarre i dati dal PDF
+        {{ t('utilities.pdfUploadZone.templateHint') }}
       </p>
     </div>
 
@@ -53,7 +53,7 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <span class="text-sm text-gray-600 dark:text-gray-400">Estrazione dati dal PDF...</span>
+          <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('utilities.pdfUploadZone.extracting') }}</span>
         </div>
 
         <div v-else-if="uploadedFile" class="flex items-center justify-center gap-3">
@@ -62,7 +62,7 @@
           </svg>
           <div class="text-left">
             <p class="text-sm font-medium text-gray-900 dark:text-white">{{ uploadedFile.name }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Dati estratti automaticamente</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.pdfUploadZone.extractedAuto') }}</p>
           </div>
           <button
             type="button"
@@ -81,10 +81,10 @@
           </svg>
           <div>
             <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Trascina qui il PDF della {{ isMetered ? 'bolletta' : 'fattura' }}
+              {{ isMetered ? t('utilities.pdfUploadZone.dropPromptBill') : t('utilities.pdfUploadZone.dropPromptInvoice') }}
             </p>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              oppure clicca per selezionare
+              {{ t('utilities.pdfUploadZone.dropSubtitle') }}
             </p>
           </div>
         </div>
@@ -99,6 +99,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { utilitiesAPI, templatesAPI } from '@/api/client'
 import apiClient from '@/api/client'
 
@@ -114,6 +115,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['extracted'])
+
+const { t } = useI18n()
 
 const fileInput = ref(null)
 const isDragging = ref(false)
@@ -147,7 +150,7 @@ function handleDrop(event) {
   if (file && file.type === 'application/pdf') {
     processFile(file)
   } else {
-    error.value = 'Per favore carica un file PDF'
+    error.value = t('utilities.pdfUploadZone.uploadOnlyPdf')
   }
 }
 
@@ -176,7 +179,7 @@ function inferMissingPeriodDate(data) {
 
 async function processFile(file) {
   if (file.type !== 'application/pdf') {
-    error.value = 'Per favore carica un file PDF'
+    error.value = t('utilities.pdfUploadZone.uploadOnlyPdf')
     return
   }
 
@@ -188,18 +191,16 @@ async function processFile(file) {
     uploadedFile.value = file
 
     if (data) {
-      // Normalize date fields to YYYY-MM-DD
       const normalized = { ...data }
       for (const key of ['period_start', 'period_end', 'due_date', 'issue_date', 'provider_reading_date', 'estimated_date']) {
         if (normalized[key]) normalized[key] = formatDateForInput(normalized[key])
       }
 
-      // Infer missing period date for fixed services
       const result = !props.isMetered ? inferMissingPeriodDate(normalized) : normalized
       emit('extracted', result)
     }
   } catch (err) {
-    error.value = err.response?.data?.error || 'Errore durante l\'estrazione dei dati dal PDF'
+    error.value = err.response?.data?.error || t('utilities.pdfUploadZone.extractError')
     console.error('PDF extraction error:', err)
   } finally {
     processing.value = false
@@ -214,21 +215,19 @@ function clearUploadedFile() {
 async function loadTemplates() {
   try {
     const { data } = await templatesAPI.listBillTemplates()
-    availableTemplates.value = data.filter(t => t.utility_type === props.utilityType)
+    availableTemplates.value = data.filter(tpl => tpl.utility_type === props.utilityType)
 
-    // Priority 1: service-level default template (from utility.default_bill_template_id)
-    if (props.defaultTemplateId && availableTemplates.value.some(t => t.id === props.defaultTemplateId)) {
+    if (props.defaultTemplateId && availableTemplates.value.some(tpl => tpl.id === props.defaultTemplateId)) {
       selectedTemplateId.value = props.defaultTemplateId
       return
     }
 
-    // Priority 2: user-level default template (from settings.default_templates by type)
     try {
       const { data: settings } = await apiClient.get('/settings')
       if (settings.default_templates) {
         const defaultTemplates = JSON.parse(settings.default_templates)
         const defaultId = defaultTemplates[props.utilityType]
-        if (defaultId && availableTemplates.value.some(t => t.id === defaultId)) {
+        if (defaultId && availableTemplates.value.some(tpl => tpl.id === defaultId)) {
           selectedTemplateId.value = defaultId
         }
       }

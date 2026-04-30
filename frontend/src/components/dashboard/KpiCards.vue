@@ -3,7 +3,7 @@
     <Card class="p-3 sm:p-6">
       <div class="flex items-center justify-between gap-2">
         <div class="min-w-0">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Spese Mese</div>
+          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.kpi.monthExpenses') }}</div>
           <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
             {{ formatCurrency(monthTotal) }}
           </div>
@@ -19,7 +19,7 @@
     <Card class="p-3 sm:p-6">
       <div class="flex items-center justify-between gap-2">
         <div class="min-w-0">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Nel Periodo</div>
+          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.kpi.periodCount') }}</div>
           <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
             {{ periodCount }}
           </div>
@@ -35,7 +35,7 @@
     <Card class="p-3 sm:p-6">
       <div class="flex items-center justify-between gap-2">
         <div class="min-w-0">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Media Giorn.</div>
+          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.kpi.dailyAverage') }}</div>
           <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
             {{ formatCurrency(dailyAverage) }}
           </div>
@@ -51,7 +51,7 @@
     <Card class="p-3 sm:p-6">
       <div class="flex items-center justify-between gap-2">
         <div class="min-w-0">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Spese Anno</div>
+          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.kpi.yearExpenses') }}</div>
           <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
             {{ formatCurrency(yearTotal) }}
           </div>
@@ -69,7 +69,10 @@
 <script setup>
 defineOptions({ name: 'KpiCards' })
 
+import { useI18n } from 'vue-i18n'
 import Card from '@/components/common/Card.vue'
+
+const { t } = useI18n()
 
 defineProps({
   monthTotal: {

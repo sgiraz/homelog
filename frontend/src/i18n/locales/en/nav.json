@@ -1,0 +1,31 @@
+{
+  "dashboard": "Dashboard",
+  "dashboardShort": "Home",
+  "expenses": "Expenses",
+  "expensesShort": "Expenses",
+  "utilities": "Utilities",
+  "utilitiesShort": "Utilities",
+  "projects": "Projects",
+  "projectsShort": "Projects",
+  "settings": "Settings",
+  "search": "Search",
+  "logout": "Logout",
+  "skipToContent": "Skip to main content",
+  "themeToggleToLight": "Switch to light mode",
+  "themeToggleToDark": "Switch to dark mode",
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "viewAll": "View all",
+    "empty": "No notifications",
+    "loading": "Loading...",
+    "fallbackTitle": "Notification",
+    "fallbackUtility": "Utility",
+    "timeAgo": {
+      "now": "Just now",
+      "minutes": "{n} min ago",
+      "hours": "{n} h ago",
+      "days": "{n} days ago"
+    }
+  }
+}

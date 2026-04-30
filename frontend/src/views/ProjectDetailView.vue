@@ -5,7 +5,7 @@
       <button
         @click="goBack"
         class="p-2 -ml-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-        aria-label="Torna ai progetti"
+        :aria-label="t('projects.detail.backAria')"
       >
         <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -23,7 +23,7 @@
         <button
           @click="showEditModal = true"
           class="p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-          title="Modifica progetto"
+          :title="t('projects.detail.editTooltip')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -32,7 +32,7 @@
         <button
           @click="confirmDelete"
           class="p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 dark:hover:text-red-400"
-          title="Elimina progetto"
+          :title="t('projects.detail.deleteTooltip')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -43,35 +43,35 @@
 
     <!-- Loading -->
     <div v-if="loading" class="text-center py-12 text-gray-600">
-      Caricamento progetto...
+      {{ t('projects.detail.loading') }}
     </div>
 
     <!-- Not Found -->
     <div v-else-if="!project" class="text-center py-12">
       <div class="text-6xl mb-4">🔍</div>
-      <h3 class="text-xl font-semibold mb-2">Progetto non trovato</h3>
-      <Button @click="goBack">Torna ai progetti</Button>
+      <h3 class="text-xl font-semibold mb-2">{{ t('projects.detail.notFound') }}</h3>
+      <Button @click="goBack">{{ t('projects.detail.backButton') }}</Button>
     </div>
 
     <template v-else>
       <!-- KPI Cards -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card class="p-4">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Budget</div>
+          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('projects.detail.kpiBudget') }}</div>
           <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
             {{ formatCurrency(project.budget) }}
           </div>
         </Card>
 
         <Card class="p-4">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Speso</div>
+          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('projects.detail.kpiSpent') }}</div>
           <div class="text-lg sm:text-2xl font-bold text-blue-600">
             {{ formatCurrency(stats.total_spent) }}
           </div>
         </Card>
 
         <Card class="p-4">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Rimanente</div>
+          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('projects.detail.kpiRemaining') }}</div>
           <div :class="[
             'text-lg sm:text-2xl font-bold',
             stats.remaining >= 0 ? 'text-green-600' : 'text-red-600'
@@ -81,7 +81,7 @@
         </Card>
 
         <Card class="p-4">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Completamento</div>
+          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('projects.detail.kpiCompletion') }}</div>
           <div class="text-lg sm:text-2xl font-bold text-purple-600">
             {{ stats.percentage_spent.toFixed(1) }}%
           </div>
@@ -91,7 +91,7 @@
       <!-- Progress Bar -->
       <div>
         <div class="flex justify-between text-sm mb-2">
-          <span class="text-gray-600 dark:text-gray-400">Progresso Budget</span>
+          <span class="text-gray-600 dark:text-gray-400">{{ t('projects.detail.progressLabel') }}</span>
           <span :class="[
             'font-medium',
             stats.percentage_spent > 100 ? 'text-red-600' : 'text-gray-900 dark:text-white'
@@ -133,13 +133,13 @@
       <!-- Tab: Info -->
       <div v-if="activeTab === 'info'" class="space-y-4">
         <Card v-if="project.description" class="p-4">
-          <h4 class="font-medium text-gray-900 dark:text-white mb-2">Descrizione</h4>
+          <h4 class="font-medium text-gray-900 dark:text-white mb-2">{{ t('projects.detail.descriptionTitle') }}</h4>
           <p class="text-gray-600 dark:text-gray-400">{{ project.description }}</p>
         </Card>
 
         <Card class="p-4 space-y-3">
           <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-600 dark:text-gray-400">Status</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('projects.detail.infoStatus') }}</span>
             <span :class="[
               'px-2 py-1 text-xs rounded-full font-medium',
               getStatusColor(project.status)
@@ -148,13 +148,13 @@
             </span>
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-600 dark:text-gray-400">Inizio</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('projects.detail.infoStart') }}</span>
             <span class="text-sm font-medium text-gray-900 dark:text-white">
               {{ _formatDate(project.start_date, settingsStore.dateSettings) }}
             </span>
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-600 dark:text-gray-400">Fine</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('projects.detail.infoEnd') }}</span>
             <span class="text-sm font-medium text-gray-900 dark:text-white">
               {{ _formatDate(project.end_date, settingsStore.dateSettings) }}
             </span>
@@ -163,7 +163,7 @@
 
         <!-- Members -->
         <Card v-if="project.members?.length > 0" class="p-4">
-          <h4 class="font-medium text-gray-900 dark:text-white mb-3">Membri</h4>
+          <h4 class="font-medium text-gray-900 dark:text-white mb-3">{{ t('projects.detail.membersTitle') }}</h4>
           <div class="space-y-2">
             <div
               v-for="member in project.members"
@@ -180,7 +180,7 @@
                 member.role === 'owner' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' :
                 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
               ]">
-                {{ member.role === 'creator' ? 'Creatore' : member.role === 'owner' ? 'Co-proprietario' : 'Membro' }}
+                {{ member.role === 'creator' ? t('projects.detail.roleCreator') : member.role === 'owner' ? t('projects.detail.roleCoOwner') : t('projects.detail.roleMember') }}
               </span>
             </div>
           </div>
@@ -193,25 +193,25 @@
         <Card v-if="project.expenses?.length > 0" class="p-4 space-y-4">
           <div class="grid grid-cols-4 gap-3 text-center">
             <div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Spesa media</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('projects.detail.statAverage') }}</div>
               <div class="text-sm font-semibold text-gray-900 dark:text-white">
                 {{ formatCurrency(stats.expense_count > 0 ? stats.total_spent / stats.expense_count : 0) }}
               </div>
             </div>
             <div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Budget/giorno</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('projects.detail.statDailyBudget') }}</div>
               <div class="text-sm font-semibold text-gray-900 dark:text-white">
                 {{ formatCurrency(dailyBudget) }}
               </div>
             </div>
             <div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Giorni rimasti</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('projects.detail.statDaysRemaining') }}</div>
               <div class="text-sm font-semibold text-gray-900 dark:text-white">
                 {{ daysRemaining >= 0 ? daysRemaining : 0 }}
               </div>
             </div>
             <div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Nr. spese</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('projects.detail.statExpenseCount') }}</div>
               <div class="text-sm font-semibold text-gray-900 dark:text-white">
                 {{ stats.expense_count }}
               </div>
@@ -220,7 +220,7 @@
           <template v-if="categoryBreakdown.length > 1">
             <div class="border-t border-gray-200 dark:border-gray-700"></div>
             <div>
-              <h4 class="font-medium text-gray-900 dark:text-white mb-3">Spese per Categoria</h4>
+              <h4 class="font-medium text-gray-900 dark:text-white mb-3">{{ t('projects.detail.categoryChartTitle') }}</h4>
               <PieChart :chartData="categoryChartData" />
             </div>
           </template>
@@ -228,12 +228,12 @@
 
         <!-- Expense List Header -->
         <div class="flex items-center justify-between">
-          <h4 class="font-medium text-gray-900 dark:text-white">Lista Spese</h4>
+          <h4 class="font-medium text-gray-900 dark:text-white">{{ t('projects.detail.expenseListTitle') }}</h4>
           <Button size="sm" @click="showAddExpense = true">
             <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            Aggiungi Spesa
+            {{ t('projects.detail.addExpenseButton') }}
           </Button>
         </div>
 
@@ -261,7 +261,7 @@
         </div>
         <div v-else class="text-center py-8">
           <div class="text-4xl mb-3">📋</div>
-          <p class="text-gray-600 dark:text-gray-400 mb-4">Nessuna spesa associata</p>
+          <p class="text-gray-600 dark:text-gray-400 mb-4">{{ t('projects.detail.noExpenses') }}</p>
         </div>
       </div>
     </template>
@@ -289,6 +289,7 @@ defineOptions({ name: 'ProjectDetailView' })
 
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -302,6 +303,7 @@ import PieChart from '@/components/charts/PieChart.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const projectsStore = useProjectsStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
@@ -324,8 +326,8 @@ const canManage = computed(() => {
 })
 
 const tabs = computed(() => [
-  { value: 'expenses', label: `Spese (${stats.value.expense_count})`, icon: '💰' },
-  { value: 'info', label: 'Info', icon: 'ℹ️' }
+  { value: 'expenses', label: t('projects.detail.tabExpenses', { n: stats.value.expense_count }), icon: '💰' },
+  { value: 'info', label: t('projects.detail.tabInfo'), icon: 'ℹ️' }
 ])
 
 const sortedExpenses = computed(() => {
@@ -356,7 +358,7 @@ const categoryBreakdown = computed(() => {
     if (!map[catId]) {
       map[catId] = {
         category_id: catId,
-        category_name: exp.category?.name || 'Senza categoria',
+        category_name: exp.category?.name || t('projects.detail.noCategory'),
         category_icon: exp.category?.icon || '📦',
         category_color: exp.category?.color || '#6B7280',
         total: 0,
@@ -392,8 +394,8 @@ function formatDateRange(start, end) {
 }
 
 function getStatusLabel(status) {
-  const map = { planned: 'Pianificato', active: 'In Corso', completed: 'Completato', cancelled: 'Annullato' }
-  return map[status] || status
+  const key = `projects.status.${status}`
+  return t(key) === key ? status : t(key)
 }
 
 function getStatusColor(status) {
@@ -437,19 +439,19 @@ async function onProjectUpdated() {
 
 async function confirmDelete() {
   const ok = await confirm({
-    title: 'Elimina Progetto',
-    message: `Eliminare il progetto "${project.value.name}"?`,
-    confirmText: 'Elimina',
+    title: t('projects.detail.deleteTitle'),
+    message: t('projects.detail.deleteMessage', { name: project.value.name }),
+    confirmText: t('projects.detail.deleteConfirm'),
     confirmVariant: 'danger'
   })
   if (!ok) return
 
   try {
     await projectsStore.deleteProject(project.value.id)
-    window.$toast?.success('Progetto eliminato')
+    window.$toast?.success(t('projects.detail.deleteSuccess'))
     router.push('/projects')
   } catch (err) {
-    window.$toast?.error('Errore: ' + (err.response?.data?.error || err.message))
+    window.$toast?.error(t('projects.detail.deleteError', { error: err.response?.data?.error || err.message }))
   }
 }
 

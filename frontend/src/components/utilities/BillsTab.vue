@@ -6,7 +6,7 @@
         <input
           v-model="billSearch"
           type="search"
-          placeholder="Cerca bolletta..."
+          :placeholder="t('utilities.billsTab.searchPlaceholder')"
           class="flex-1 px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -17,9 +17,9 @@
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="all">Tutte</option>
-          <option value="unpaid">Qualcuna non pagata</option>
-          <option value="paid">Tutte pagate</option>
+          <option value="all">{{ t('utilities.billsTab.statusAll') }}</option>
+          <option value="unpaid">{{ t('utilities.billsTab.statusUnpaid') }}</option>
+          <option value="paid">{{ t('utilities.billsTab.statusPaid') }}</option>
         </select>
       </div>
       <div class="flex gap-2">
@@ -29,7 +29,7 @@
           class="px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
-          title="Da data"
+          :title="t('utilities.billsTab.dateFrom')"
         />
         <input
           v-model="billDateTo"
@@ -37,7 +37,7 @@
           class="px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
-          title="A data"
+          :title="t('utilities.billsTab.dateTo')"
         />
       </div>
     </div>
@@ -45,22 +45,22 @@
     <!-- Bill Summary -->
     <div v-if="filteredBills.length > 0" class="mb-3 flex items-center justify-between">
       <span class="text-sm text-gray-500 dark:text-gray-400">
-        {{ filteredBills.length }} bollette — Totale: {{ formatCurrency(filteredBillsTotal) }}
+        {{ t('utilities.billsTab.summary', { n: filteredBills.length, amount: formatCurrency(filteredBillsTotal) }) }}
       </span>
       <Button size="sm" @click="openAddBill">
         <svg class="w-4 h-4 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        <span class="hidden sm:inline">Aggiungi</span>
+        <span class="hidden sm:inline">{{ t('utilities.billsTab.addButton') }}</span>
       </Button>
     </div>
 
     <!-- Empty -->
     <div v-if="filteredBills.length === 0" class="text-center py-8">
       <p class="text-gray-500 dark:text-gray-400 mb-3">
-        {{ utility.bills?.length ? 'Nessuna bolletta corrisponde ai filtri' : 'Nessuna bolletta registrata' }}
+        {{ utility.bills?.length ? t('utilities.billsTab.emptyFiltered') : t('utilities.billsTab.empty') }}
       </p>
-      <Button size="sm" @click="openAddBill">Aggiungi bolletta</Button>
+      <Button size="sm" @click="openAddBill">{{ t('utilities.billsTab.addBillButton') }}</Button>
     </div>
 
     <!-- Bills List -->
@@ -83,7 +83,7 @@
               fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
-            {{ paidInstallmentsCount(bill) }}/{{ bill.installments.length }} rate pagate
+            {{ t('utilities.billsTab.installmentsCount', { paid: paidInstallmentsCount(bill), total: bill.installments.length }) }}
           </button>
         </div>
         <template v-if="hasMultipleInstallments(bill) && expandedBills.has(bill.id)">
@@ -102,10 +102,10 @@
                 />
                 <span class="text-gray-500 dark:text-gray-400 w-10">#{{ inst.number }}</span>
                 <span class="text-gray-900 dark:text-white font-medium">{{ formatCurrency(inst.amount) }}</span>
-                <span class="text-xs text-gray-400 dark:text-gray-500">scad. {{ formatDate(inst.due_date) }}</span>
+                <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('utilities.billsTab.installmentDue', { date: formatDate(inst.due_date) }) }}</span>
               </label>
-              <span v-if="inst.is_locked" class="text-xs text-amber-600 dark:text-amber-400" :title="lockedHint">🔒 saldata</span>
-              <span v-else-if="inst.is_paid" class="text-xs text-green-600 dark:text-green-400">✓ pagata</span>
+              <span v-if="inst.is_locked" class="text-xs text-amber-600 dark:text-amber-400" :title="lockedHint">{{ t('utilities.billsTab.installmentLocked') }}</span>
+              <span v-else-if="inst.is_paid" class="text-xs text-green-600 dark:text-green-400">{{ t('utilities.billsTab.installmentPaid') }}</span>
             </div>
           </div>
         </template>
@@ -118,7 +118,7 @@
               <span
                 v-if="bill.original_amount != null && bill.original_currency"
                 class="text-xs text-gray-500 dark:text-gray-400"
-                :title="'Importo originale fatturato'"
+                :title="t('utilities.billsTab.originalAmountTitle')"
               >
                 ({{ formatOriginal(bill.original_amount, bill.original_currency) }})
               </span>
@@ -130,29 +130,29 @@
                     ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300'
                     : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
               ]">
-                {{ bill.is_paid ? 'Pagata' : isDueSoon(bill) ? 'In scadenza' : 'Da pagare' }}
+                {{ bill.is_paid ? t('utilities.billsTab.statusPaidBadge') : isDueSoon(bill) ? t('utilities.billsTab.statusDueSoon') : t('utilities.billsTab.statusUnpaidBadge') }}
               </span>
             </div>
             <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {{ formatPeriod(bill.period_start, bill.period_end) }}
             </div>
             <div class="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500 mt-1">
-              <span>Scad. {{ formatDate(bill.due_date) }}</span>
+              <span>{{ t('utilities.billsTab.duePrefix', { date: formatDate(bill.due_date) }) }}</span>
               <span v-if="bill.consumption_total">{{ formatConsumption(bill.consumption_total) }} {{ consumptionUnit }}</span>
-              <span v-if="bill.bill_number" class="font-mono">N. {{ bill.bill_number }}</span>
+              <span v-if="bill.bill_number" class="font-mono">{{ t('utilities.billsTab.billNumberPrefix', { number: bill.bill_number }) }}</span>
             </div>
           </div>
 
           <!-- Actions -->
           <div class="flex items-center gap-1 flex-shrink-0">
             <span v-if="bill.is_locked" class="px-2 py-0.5 text-xs rounded-full font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" :title="lockedHint">
-              🔒 Saldata
+              {{ t('utilities.billsTab.lockedBadge') }}
             </span>
             <button
               v-if="!bill.is_paid && !hasMultipleInstallments(bill) && !bill.is_locked"
               @click="markBillAsPaid(bill)"
               class="p-2.5 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
-              title="Segna come pagata"
+              :title="t('utilities.billsTab.markPaidTitle')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -161,7 +161,7 @@
             <button
               @click="openEditBill(bill)"
               class="p-2.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-              :title="bill.is_locked ? 'Visualizza dettagli' : 'Modifica'"
+              :title="bill.is_locked ? t('utilities.billsTab.viewDetailsTitle') : t('utilities.billsTab.editTitle')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -171,7 +171,7 @@
               :disabled="bill.is_locked"
               @click="confirmDeleteBill(bill)"
               class="p-2.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400"
-              :title="bill.is_locked ? lockedHint : 'Elimina'"
+              :title="bill.is_locked ? lockedHint : t('utilities.billsTab.deleteTitle')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -196,6 +196,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { utilitiesAPI } from '@/api/client'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
@@ -214,6 +215,7 @@ const props = defineProps({
 
 const emit = defineEmits(['bill-saved', 'bill-deleted', 'bill-updated'])
 
+const { t } = useI18n()
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
@@ -231,7 +233,7 @@ const editingBill = ref(null)
 // Installment expand state
 const expandedBills = ref(new Set())
 
-const lockedHint = 'Spesa già saldata da uno o più membri. Annulla i pagamenti dal Bilancio per modificare la bolletta.'
+const lockedHint = computed(() => t('utilities.billsTab.lockedHint'))
 
 function hasMultipleInstallments(bill) {
   return Array.isArray(bill.installments) && bill.installments.length > 1
@@ -259,9 +261,9 @@ async function toggleInstallmentPaid(bill, inst, newValue) {
     console.error('Error toggling installment:', err)
     if (err?.response?.status === 409) {
       await confirm({
-        title: 'Operazione bloccata',
-        message: err.response.data?.error || lockedHint,
-        confirmText: 'Ho capito',
+        title: t('utilities.billsTab.operationBlocked'),
+        message: err.response.data?.error || lockedHint.value,
+        confirmText: t('utilities.billsTab.understood'),
         variant: 'info'
       })
       emit('bill-updated')
@@ -356,8 +358,6 @@ function onBillSaved() {
   emit('bill-saved')
 }
 
-// Fired when a single installment was toggled from inside the open modal.
-// Refresh list state (header "N/M pagate", bill.is_paid) WITHOUT closing the modal.
 function onInstallmentUpdated() {
   emit('bill-updated')
 }
@@ -373,9 +373,9 @@ async function markBillAsPaid(bill) {
     console.error('Error marking bill as paid:', err)
     if (err?.response?.status === 409) {
       await confirm({
-        title: 'Operazione bloccata',
-        message: err.response.data?.error || lockedHint,
-        confirmText: 'Ho capito',
+        title: t('utilities.billsTab.operationBlocked'),
+        message: err.response.data?.error || lockedHint.value,
+        confirmText: t('utilities.billsTab.understood'),
         variant: 'info'
       })
       emit('bill-updated')
@@ -385,9 +385,9 @@ async function markBillAsPaid(bill) {
 
 async function confirmDeleteBill(bill) {
   const ok = await confirm({
-    title: 'Elimina bolletta',
-    message: `Eliminare la bolletta di ${formatCurrency(bill.amount_total)}?`,
-    confirmText: 'Elimina',
+    title: t('utilities.billsTab.deleteConfirm.title'),
+    message: t('utilities.billsTab.deleteConfirm.message', { amount: formatCurrency(bill.amount_total) }),
+    confirmText: t('utilities.billsTab.deleteConfirm.action'),
     variant: 'danger'
   })
   if (!ok) return
@@ -398,9 +398,9 @@ async function confirmDeleteBill(bill) {
     console.error('Error deleting bill:', err)
     if (err?.response?.status === 409) {
       await confirm({
-        title: 'Operazione bloccata',
-        message: err.response.data?.error || lockedHint,
-        confirmText: 'Ho capito',
+        title: t('utilities.billsTab.operationBlocked'),
+        message: err.response.data?.error || lockedHint.value,
+        confirmText: t('utilities.billsTab.understood'),
         variant: 'info'
       })
       emit('bill-updated')

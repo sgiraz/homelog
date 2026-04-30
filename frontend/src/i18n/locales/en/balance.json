@@ -1,0 +1,55 @@
+{
+  "loading": "Loading balance...",
+  "balanceWith": "Balance with {name}",
+  "partnerFallback": "Partner",
+  "owesYou": "{name} owes you",
+  "youOwe": "You owe {name}",
+  "even": "You're all even!",
+  "evenBadge": "All even",
+  "receivePayment": "Receive Payment",
+  "settleUp": "Settle Up",
+  "stats": {
+    "unsettledCount": "Unsettled expenses",
+    "totalSettled": "Total settled"
+  },
+  "unsettled": {
+    "title": "Unsettled expenses",
+    "totalLabel": "Total to settle",
+    "noDescription": "No description",
+    "paidBy": "Paid by {name}"
+  },
+  "history": {
+    "title": "Payment History",
+    "empty": "No payments recorded"
+  },
+  "paymentMethods": {
+    "bank_transfer": "Bank transfer",
+    "cash": "Cash",
+    "satispay": "Satispay",
+    "paypal": "PayPal",
+    "revolut": "Revolut"
+  },
+  "settlement": {
+    "amountLabel": "Amount to settle",
+    "fromOther": "To receive from {name}",
+    "toOther": "To pay to {name}",
+    "dateLabel": "Payment date",
+    "methodLabel": "Payment method",
+    "methods": {
+      "bank_transfer": "Bank transfer",
+      "cash": "Cash",
+      "satispay": "Satispay",
+      "paypal": "PayPal",
+      "revolut": "Revolut"
+    },
+    "noteLabel": "Note (optional)",
+    "notePlaceholder": "E.g.: January 2026 settlement",
+    "warning": "By recording this payment, the linked expenses will be marked as settled.",
+    "cancel": "Cancel",
+    "submit": "Confirm Payment",
+    "saving": "Saving...",
+    "missingMembers": "Unable to determine members for settlement",
+    "genericError": "Error while saving",
+    "successToast": "Settlement recorded successfully!"
+  }
+}

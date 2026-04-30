@@ -1,0 +1,15 @@
+{
+  "back": "Back",
+  "clear": "Clear",
+  "placeholder": "Search expenses, bills, projects, utilities",
+  "promptTitle": "Start typing to search",
+  "promptHint": "Expenses, bills, projects, utilities",
+  "noResults": "No results for \"{query}\"",
+  "untitled": "(untitled)",
+  "groups": {
+    "expense": "Expenses",
+    "bill": "Bills",
+    "project": "Projects",
+    "utility": "Utilities"
+  }
+}
