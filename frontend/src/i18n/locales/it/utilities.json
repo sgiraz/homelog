@@ -35,16 +35,6 @@
     "alertNow": "Autolettura consigliata",
     "alertSoon": "Autolettura consigliata tra {n} giorni"
   },
-  "types": {
-    "electricity": "Luce",
-    "gas": "Gas",
-    "water": "Acqua",
-    "waste": "Rifiuti",
-    "internet": "Internet",
-    "insurance": "Assicurazione",
-    "affitto": "Affitto",
-    "mutuo": "Mutuo"
-  },
   "detail": {
     "back": "Torna ai servizi",
     "openPortal": "Area clienti",

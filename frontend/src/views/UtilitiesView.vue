@@ -430,7 +430,7 @@ function getUtilityColorClasses(type) {
 }
 
 function getUtilityName(type) {
-  const key = `utilities.types.${type}`
+  const key = `utilities.utilityTypes.${type}`
   const label = t(key)
   return label === key ? type : label
 }

@@ -65,7 +65,7 @@ import { useI18n } from 'vue-i18n'
 
 defineOptions({ name: 'WizardStepReview' })
 
-const props = defineProps({
+defineProps({
   template: {
     type: Object,
     required: true

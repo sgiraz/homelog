@@ -122,7 +122,7 @@ import { useI18n } from 'vue-i18n'
 
 defineOptions({ name: 'ConsumptionSummary' })
 
-const props = defineProps({
+defineProps({
   consumptionSummary: {
     type: Object,
     default: null

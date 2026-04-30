@@ -236,7 +236,7 @@ const utilityIcon = computed(() => {
 
 const utilityTypeLabel = computed(() => {
   if (!utility.value?.type) return ''
-  const key = `utilities.types.${utility.value.type}`
+  const key = `utilities.utilityTypes.${utility.value.type}`
   const label = t(key)
   return label === key ? utility.value.type : label
 })

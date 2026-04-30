@@ -526,16 +526,6 @@
     "alertNow": "Meter reading recommended",
     "alertSoon": "Meter reading recommended in {n} days"
   },
-  "types": {
-    "electricity": "Electricity",
-    "gas": "Gas",
-    "water": "Water",
-    "waste": "Waste",
-    "internet": "Internet",
-    "insurance": "Insurance",
-    "affitto": "Rent",
-    "mutuo": "Mortgage"
-  },
   "detail": {
     "back": "Back to services",
     "openPortal": "Customer portal",
