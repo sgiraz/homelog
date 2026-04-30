@@ -82,12 +82,13 @@ func (h *SettingsHandler) getPropertyStatus(userID uint) (hasProperty bool, isPr
 	h.db.Model(&models.HouseholdMember{}).Where("user_id = ? AND role = 'admin'", userID).Count(&adminCount)
 	isPropertyAdmin = adminCount > 0
 
-	var joinReq models.PropertyJoinRequest
-	if err := h.db.Where("user_id = ? AND status = 'pending'", userID).
-		Preload("Property").First(&joinReq).Error; err == nil {
+	var joinReqs []models.PropertyJoinRequest
+	h.db.Where("user_id = ? AND status = 'pending'", userID).
+		Preload("Property").Limit(1).Find(&joinReqs)
+	if len(joinReqs) > 0 {
 		pendingReq = &PendingJoinRequestInfo{
-			PropertyName: joinReq.Property.Name,
-			RequestedAt:  joinReq.CreatedAt,
+			PropertyName: joinReqs[0].Property.Name,
+			RequestedAt:  joinReqs[0].CreatedAt,
 		}
 	}
 	return
