@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   homelog:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: sgira/homelog:latest
     container_name: homelog
     restart: unless-stopped
     ports:
