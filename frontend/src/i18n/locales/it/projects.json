@@ -25,7 +25,8 @@
     "percentUsed": "{percent}% utilizzato",
     "remaining": "Rimangono",
     "overrun": "Sforato",
-    "expenseCount": "{n} spesa | {n} spese",
+    "expenseCount_one": "{n} spesa",
+    "expenseCount_other": "{n} spese",
     "overdue": "Scaduto"
   },
   "modal": {

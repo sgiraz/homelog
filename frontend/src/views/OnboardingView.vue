@@ -186,7 +186,7 @@
                   <p class="font-semibold text-gray-900 dark:text-white">{{ prop.name }}</p>
                   <p v-if="prop.address" class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ prop.address }}</p>
                   <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    {{ t('onboarding.step2Join.memberCount', prop.residents ?? 1) }}
+                    {{ t(`onboarding.step2Join.${(prop.residents ?? 1) === 1 ? 'memberCount_one' : 'memberCount_other'}`, { n: prop.residents ?? 1 }) }}
                   </p>
                 </div>
                 <div

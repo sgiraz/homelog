@@ -62,7 +62,8 @@
     "percentUsed": "{percent}% used",
     "remaining": "Remaining",
     "overrun": "Over budget",
-    "expenseCount": "{n} expense | {n} expenses",
+    "expenseCount_one": "{n} expense",
+    "expenseCount_other": "{n} expenses",
     "overdue": "Overdue"
   },
   "modal": {

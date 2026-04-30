@@ -5,7 +5,9 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
       <h4 class="text-lg font-bold text-gray-900 dark:text-white mt-4">{{ t('utilities.wizardStepReview.ready') }}</h4>
-      <p class="text-gray-600 dark:text-gray-400 mt-2" v-html="readyDescriptionHtml"></p>
+      <i18n-t keypath="utilities.wizardStepReview.readyDescription" tag="p" class="text-gray-600 dark:text-gray-400 mt-2">
+        <template #provider><strong>{{ template.provider }}</strong></template>
+      </i18n-t>
     </div>
 
     <!-- Summary -->
@@ -59,7 +61,6 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 defineOptions({ name: 'WizardStepReview' })
@@ -86,16 +87,6 @@ const props = defineProps({
 const emit = defineEmits(['update:template'])
 
 const { t } = useI18n()
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]))
-}
-
-const readyDescriptionHtml = computed(() => {
-  return t('utilities.wizardStepReview.readyDescription', { provider: `<strong>${escapeHtml(props.template.provider)}</strong>` })
-})
 
 function getUtilityTypeName(type) {
   const key = `utilities.utilityTypes.${type}`

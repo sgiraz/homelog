@@ -133,7 +133,7 @@
         <!-- Footer Stats -->
         <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center text-sm">
           <span class="text-gray-600 dark:text-gray-400">
-            {{ t('projects.card.expenseCount', project.stats?.expense_count || 0) }}
+            {{ t(`projects.card.${(project.stats?.expense_count || 0) === 1 ? 'expenseCount_one' : 'expenseCount_other'}`, { n: project.stats?.expense_count || 0 }) }}
           </span>
           <div class="flex items-center gap-2">
             <!-- Shared member avatars -->

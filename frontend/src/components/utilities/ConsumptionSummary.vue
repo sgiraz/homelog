@@ -77,8 +77,12 @@
         consumptionSummary.cumulative_difference > 1 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-white dark:bg-gray-700'
       ]">
         <div class="text-gray-600 dark:text-gray-400 text-xs sm:text-sm sm:text-center">{{ t('utilities.consumptionSummary.total') }}</div>
-        <div class="text-gray-900 dark:text-white text-xs sm:text-sm sm:text-center" v-html="totalSelfHtml"></div>
-        <div class="text-gray-900 dark:text-white text-xs sm:text-sm sm:text-center" v-html="totalProviderHtml"></div>
+        <i18n-t keypath="utilities.consumptionSummary.totalSelfWithUnit" tag="div" class="text-gray-900 dark:text-white text-xs sm:text-sm sm:text-center">
+          <template #value><strong>{{ fmtNum(consumptionSummary?.total_user) }}</strong></template>
+        </i18n-t>
+        <i18n-t keypath="utilities.consumptionSummary.totalProviderWithUnit" tag="div" class="text-gray-900 dark:text-white text-xs sm:text-sm sm:text-center">
+          <template #value><strong>{{ fmtNum(consumptionSummary?.total_provider) }}</strong></template>
+        </i18n-t>
         <div :class="['font-semibold text-xs sm:text-sm sm:text-center', getDiffClass(consumptionSummary.cumulative_difference)]">
           {{ consumptionSummary.cumulative_difference > 0 ? t('utilities.consumptionSummary.overchargeShort') : t('utilities.consumptionSummary.diffShort') }} {{ fmtDiff(consumptionSummary.cumulative_difference) }} kWh
         </div>
@@ -114,7 +118,6 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 defineOptions({ name: 'ConsumptionSummary' })
@@ -152,19 +155,4 @@ const props = defineProps({
 
 const { t } = useI18n()
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]))
-}
-
-const totalSelfHtml = computed(() => {
-  const value = `<strong>${escapeHtml(props.fmtNum(props.consumptionSummary?.total_user))}</strong>`
-  return t('utilities.consumptionSummary.totalSelfWithUnit', { value })
-})
-
-const totalProviderHtml = computed(() => {
-  const value = `<strong>${escapeHtml(props.fmtNum(props.consumptionSummary?.total_provider))}</strong>`
-  return t('utilities.consumptionSummary.totalProviderWithUnit', { value })
-})
 </script>
