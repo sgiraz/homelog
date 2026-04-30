@@ -353,7 +353,7 @@
               <!-- Actions: on mobile always visible, on desktop hover -->
               <div
                 v-if="isOwner(expense) && !expense.bill_id"
-                class="flex gap-1 justify-end mt-1 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
+                class="flex gap-1 justify-end mt-1 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity"
               >
                 <button
                   @click="editExpense(expense)"
