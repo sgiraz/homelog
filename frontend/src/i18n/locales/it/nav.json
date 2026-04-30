@@ -1,0 +1,31 @@
+{
+  "dashboard": "Dashboard",
+  "dashboardShort": "Home",
+  "expenses": "Spese",
+  "expensesShort": "Spese",
+  "utilities": "Servizi",
+  "utilitiesShort": "Servizi",
+  "projects": "Progetti",
+  "projectsShort": "Progetti",
+  "settings": "Impostazioni",
+  "search": "Cerca",
+  "logout": "Logout",
+  "skipToContent": "Vai al contenuto principale",
+  "themeToggleToLight": "Passa a modalità chiara",
+  "themeToggleToDark": "Passa a modalità scura",
+  "notifications": {
+    "title": "Notifiche",
+    "markAllRead": "Segna tutte come lette",
+    "viewAll": "Vedi tutte",
+    "empty": "Nessuna notifica",
+    "loading": "Caricamento...",
+    "fallbackTitle": "Notifica",
+    "fallbackUtility": "Servizio",
+    "timeAgo": {
+      "now": "Ora",
+      "minutes": "{n} min fa",
+      "hours": "{n} ore fa",
+      "days": "{n} giorni fa"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "close": "Close",
+    "back": "Back",
+    "create": "Create",
+    "update": "Update",
+    "add": "Add"
+  },
+  "states": {
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "empty": "No results"
+  },
+  "toast": {
+    "dismiss": "Dismiss notification"
+  },
+  "avatarCrop": {
+    "title": "Crop photo",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out"
+  }
+}

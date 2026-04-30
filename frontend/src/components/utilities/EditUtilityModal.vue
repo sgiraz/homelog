@@ -1,10 +1,10 @@
 <template>
-  <BaseModal title="Modifica Servizio" @close="$emit('close')">
+  <BaseModal :title="t('utilities.editUtilityModal.title')" @close="$emit('close')">
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <!-- Tipo Servizio (read-only badge) -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">
-          Tipo
+          {{ t('utilities.editUtilityModal.typeLabel') }}
         </label>
         <div class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <span class="text-2xl">{{ typeInfo.icon }}</span>
@@ -31,10 +31,10 @@
         </button>
         <div>
           <span class="text-sm font-medium text-gray-900 dark:text-white">
-            {{ form.is_active ? 'Attivo' : 'Disattivo' }}
+            {{ form.is_active ? t('utilities.editUtilityModal.active') : t('utilities.editUtilityModal.inactive') }}
           </span>
           <p class="text-xs text-gray-500 dark:text-gray-400">
-            {{ form.is_active ? 'Il servizio è attualmente attivo' : 'Il servizio è stato disattivato' }}
+            {{ form.is_active ? t('utilities.editUtilityModal.activeHint') : t('utilities.editUtilityModal.inactiveHint') }}
           </p>
         </div>
       </div>
@@ -42,12 +42,12 @@
       <!-- Provider -->
       <Input
         v-model="form.provider"
-        :label="isMetered ? 'Fornitore *' : 'Operatore / Ente *'"
-        :placeholder="isMetered ? 'Nome del fornitore' : 'es. WindTre, Allianz, Proprietario...'"
+        :label="isMetered ? t('utilities.addUtilityModal.providerLabel') : t('utilities.addUtilityModal.operatorLabel')"
+        :placeholder="isMetered ? t('utilities.addUtilityModal.providerPlaceholder') : t('utilities.addUtilityModal.operatorPlaceholder')"
         required
       />
 
-      <!-- Service Code (context-aware) -->
+      <!-- Service Code -->
       <Input
         v-model="form.service_code"
         :label="serviceCodeLabel"
@@ -59,25 +59,25 @@
       <!-- Customer Code -->
       <Input
         v-model="form.customer_code"
-        :label="isMetered ? 'Codice Cliente' : 'Numero Contratto'"
-        :placeholder="isMetered ? 'Numero cliente' : 'Riferimento contratto'"
+        :label="isMetered ? t('utilities.addUtilityModal.customerCodeLabel') : t('utilities.addUtilityModal.contractNumberLabel')"
+        :placeholder="isMetered ? t('utilities.addUtilityModal.customerCodePlaceholder') : t('utilities.addUtilityModal.contractRefPlaceholder')"
       />
 
-      <!-- Recurring Amount (fixed services only) -->
+      <!-- Recurring Amount -->
       <Input
         v-if="!isMetered"
         v-model="form.recurring_amount"
-        label="Importo ricorrente (€)"
+        :label="t('utilities.addUtilityModal.recurringAmountLabel')"
         type="number"
         step="0.01"
-        placeholder="es. 29.99"
+        :placeholder="t('utilities.addUtilityModal.recurringAmountPlaceholder')"
         inputmode="decimal"
       />
 
-      <!-- Billing Frequency (fixed services only) -->
+      <!-- Billing Frequency -->
       <div v-if="!isMetered">
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Frequenza fatturazione
+          {{ t('utilities.addUtilityModal.billingFrequencyLabel') }}
         </label>
         <div class="flex gap-2">
           <input
@@ -96,28 +96,28 @@
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="day">{{ form.billing_interval === 1 ? 'Giorno' : 'Giorni' }}</option>
-            <option value="week">{{ form.billing_interval === 1 ? 'Settimana' : 'Settimane' }}</option>
-            <option value="month">{{ form.billing_interval === 1 ? 'Mese' : 'Mesi' }}</option>
-            <option value="year">{{ form.billing_interval === 1 ? 'Anno' : 'Anni' }}</option>
+            <option value="day">{{ frequencyUnitLabel('day') }}</option>
+            <option value="week">{{ frequencyUnitLabel('week') }}</option>
+            <option value="month">{{ frequencyUnitLabel('month') }}</option>
+            <option value="year">{{ frequencyUnitLabel('year') }}</option>
           </select>
         </div>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ frequencyPreview }}</p>
       </div>
 
-      <!-- Address (optional) -->
+      <!-- Address -->
       <Input
         v-model="form.address"
-        :label="isMetered ? 'Indirizzo fornitura' : 'Indirizzo'"
-        placeholder="Se diverso dall'indirizzo principale"
+        :label="isMetered ? t('utilities.addUtilityModal.addressMetered') : t('utilities.addUtilityModal.addressFixed')"
+        :placeholder="t('utilities.addUtilityModal.addressPlaceholder')"
         autocomplete="street-address"
       />
 
-      <!-- Power Capacity (only for electricity) -->
+      <!-- Power Capacity -->
       <Input
         v-if="form.type === 'electricity'"
         v-model="form.power_capacity"
-        label="Potenza (kW)"
+        :label="t('utilities.addUtilityModal.powerLabel')"
         type="number"
         step="0.1"
         placeholder="3.0"
@@ -127,27 +127,27 @@
       <!-- Start Date -->
       <Input
         v-model="form.start_date"
-        label="Data inizio contratto"
+        :label="t('utilities.addUtilityModal.startDateLabel')"
         type="date"
       />
 
       <!-- End Date -->
       <Input
         v-model="form.end_date"
-        label="Data fine contratto"
+        :label="t('utilities.editUtilityModal.endDateLabel')"
         type="date"
       />
 
       <!-- Customer Portal URL -->
       <Input
         v-model="form.customer_portal"
-        label="Area clienti (URL)"
+        :label="t('utilities.addUtilityModal.portalLabel')"
         type="url"
         placeholder="https://..."
         inputmode="url"
       />
 
-      <!-- Allows Self Reading (metered only, not waste) -->
+      <!-- Allows Self Reading -->
       <div v-if="isMetered && form.type !== 'waste'" class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <input
           type="checkbox"
@@ -157,23 +157,23 @@
         />
         <div>
           <label for="edit-allows-self-reading" class="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
-            Il fornitore accetta autolettura
+            {{ t('utilities.addUtilityModal.allowsSelfReadingLabel') }}
           </label>
           <p class="text-xs text-gray-500 dark:text-gray-400">
-            Attiva se puoi comunicare le tue letture al fornitore
+            {{ t('utilities.addUtilityModal.allowsSelfReadingHint') }}
           </p>
         </div>
       </div>
 
-      <!-- Comparison Threshold (metered only, not waste) -->
+      <!-- Comparison Threshold -->
       <div v-if="isMetered && form.type !== 'waste'" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <div class="flex items-center justify-between">
           <div>
             <label for="edit-comparison-threshold" class="text-sm font-medium text-gray-900 dark:text-white">
-              Soglia confronto letture
+              {{ t('utilities.addUtilityModal.thresholdLabel') }}
             </label>
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              Differenza per segnalare anomalie
+              {{ t('utilities.addUtilityModal.thresholdHint') }}
             </p>
           </div>
           <div class="flex items-center gap-2">
@@ -194,15 +194,15 @@
         </div>
       </div>
 
-      <!-- Threshold per Day (metered only) -->
+      <!-- Threshold per Day -->
       <div v-if="isMetered && form.type !== 'waste'" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <div class="flex items-center justify-between">
           <div>
             <label for="edit-threshold-per-day" class="text-sm font-medium text-gray-900 dark:text-white">
-              Soglia consumo giornaliero
+              {{ t('utilities.editUtilityModal.thresholdPerDayLabel') }}
             </label>
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              Consumo massimo atteso al giorno
+              {{ t('utilities.editUtilityModal.thresholdPerDayHint') }}
             </p>
           </div>
           <div class="flex items-center gap-2">
@@ -217,7 +217,7 @@
                      bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                      focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
-            <span class="text-sm text-gray-500 dark:text-gray-400">{{ consumptionUnitLabel }}/g</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">{{ t('utilities.editUtilityModal.thresholdPerDayUnit', { unit: consumptionUnitLabel }) }}</span>
           </div>
         </div>
       </div>
@@ -225,7 +225,7 @@
       <!-- Chi paga -->
       <div v-if="members.length > 1">
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Chi paga
+          {{ t('utilities.addUtilityModal.paidByLabel') }}
         </label>
         <select
           v-model="form.paid_by_member_id"
@@ -233,7 +233,7 @@
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option :value="null">Non specificato</option>
+          <option :value="null">{{ t('utilities.addUtilityModal.notSpecified') }}</option>
           <option
             v-for="member in members"
             :key="member.id"
@@ -242,14 +242,14 @@
             {{ member.name }}{{ member.role ? ` (${member.role})` : '' }}
           </option>
         </select>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Chi paga di default le bollette/fatture di questo servizio</p>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ t('utilities.addUtilityModal.paidByHint') }}</p>
       </div>
 
       <!-- Split Override -->
       <div v-if="members.length > 1" class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
         <div>
           <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1">
-            Divisione spese
+            {{ t('utilities.addUtilityModal.splitOverrideLabel') }}
           </label>
           <select
             v-model="form.split_override"
@@ -257,19 +257,18 @@
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Usa impostazione globale</option>
-            <option value="no_split">Mai dividere</option>
-            <option value="custom">Dividi con membri specifici</option>
+            <option value="">{{ t('utilities.addUtilityModal.splitOverrideGlobal') }}</option>
+            <option value="no_split">{{ t('utilities.addUtilityModal.splitOverrideNoSplit') }}</option>
+            <option value="custom">{{ t('utilities.addUtilityModal.splitOverrideCustom') }}</option>
           </select>
           <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
             {{ splitOverrideHint }}
           </p>
         </div>
 
-        <!-- Custom split member selection -->
         <div v-if="form.split_override === 'custom'" class="space-y-2">
           <label class="block text-sm text-gray-600 dark:text-gray-400">
-            Dividi con
+            {{ t('utilities.addUtilityModal.splitWithLabel') }}
           </label>
           <div
             v-for="member in members"
@@ -290,7 +289,7 @@
         </div>
       </div>
 
-      <!-- Billing flags: domiciliation + installments -->
+      <!-- Billing flags -->
       <div class="space-y-2">
         <label class="flex items-start gap-3 cursor-pointer">
           <input
@@ -299,8 +298,8 @@
             class="mt-0.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
           <div>
-            <div class="text-sm text-gray-900 dark:text-white">Domiciliata</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">I pagamenti vengono marcati automaticamente come saldati alla scadenza</div>
+            <div class="text-sm text-gray-900 dark:text-white">{{ t('utilities.addUtilityModal.domiciledLabel') }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.addUtilityModal.domiciledHint') }}</div>
           </div>
         </label>
         <label class="flex items-start gap-3 cursor-pointer">
@@ -310,8 +309,8 @@
             class="mt-0.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
           <div>
-            <div class="text-sm text-gray-900 dark:text-white">Bollette rateizzate</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">La bolletta è suddivisa in più rate con scadenze separate</div>
+            <div class="text-sm text-gray-900 dark:text-white">{{ t('utilities.addUtilityModal.installmentsLabel') }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.addUtilityModal.installmentsHint') }}</div>
           </div>
         </label>
       </div>
@@ -319,7 +318,7 @@
       <!-- Currency -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Valuta
+          {{ t('utilities.addUtilityModal.currencyLabel') }}
         </label>
         <select
           v-model="form.currency"
@@ -334,17 +333,17 @@
           </option>
         </select>
         <p v-if="isCurrencyLocked" class="text-xs text-amber-600 dark:text-amber-400 mt-1">
-          Bloccata: esistono bollette già saldate per questo servizio.
+          {{ t('utilities.editUtilityModal.currencyLocked') }}
         </p>
         <p v-else class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Non potrà essere cambiata dopo la prima bolletta saldata.
+          {{ t('utilities.addUtilityModal.currencyLockNotice') }}
         </p>
       </div>
 
       <!-- Default Bill Template -->
       <div v-if="billTemplates.length > 0">
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Template bolletta predefinito
+          {{ t('utilities.editUtilityModal.billTemplateLabel') }}
         </label>
         <select
           v-model="form.default_bill_template_id"
@@ -352,17 +351,17 @@
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option :value="null">Nessun template (auto)</option>
+          <option :value="null">{{ t('utilities.editUtilityModal.billTemplateNone') }}</option>
           <option
             v-for="tpl in billTemplates"
             :key="tpl.id"
             :value="tpl.id"
           >
-            {{ tpl.name }} — {{ tpl.provider }}
+            {{ t('utilities.editUtilityModal.billTemplateOption', { name: tpl.name, provider: tpl.provider }) }}
           </option>
         </select>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-          Usato per estrarre automaticamente i dati dalle bollette PDF
+          {{ t('utilities.editUtilityModal.billTemplateHint') }}
         </p>
       </div>
 
@@ -374,12 +373,12 @@
       <!-- Notes -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Note
+          {{ t('utilities.addUtilityModal.notesLabel') }}
         </label>
         <textarea
           v-model="form.notes"
           rows="2"
-          placeholder="Note aggiuntive..."
+          :placeholder="t('utilities.addUtilityModal.notesPlaceholder')"
           autocorrect="off"
           class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
@@ -393,10 +392,10 @@
 
       <div class="flex gap-3 pt-2">
         <Button type="button" variant="secondary" @click="$emit('close')" class="flex-1">
-          Annulla
+          {{ t('utilities.addUtilityModal.cancel') }}
         </Button>
         <Button type="submit" :disabled="loading" class="flex-1">
-          {{ loading ? 'Salvataggio...' : 'Salva modifiche' }}
+          {{ loading ? t('utilities.addUtilityModal.saving') : t('utilities.editUtilityModal.saveChanges') }}
         </Button>
       </div>
     </form>
@@ -405,6 +404,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { utilitiesAPI, membersAPI, templatesAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -419,6 +419,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'updated'])
+const { t } = useI18n()
 const settingsStore = useSettingsStore()
 
 const isCurrencyLocked = computed(() => !!props.utility.is_currency_locked)
@@ -426,7 +427,7 @@ const isCurrencyLocked = computed(() => !!props.utility.is_currency_locked)
 const currencyOptions = computed(() => {
   const base = settingsStore.formatSettings.currency || 'EUR'
   return [
-    { value: '', label: `Valuta globale (${base})` },
+    { value: '', label: t('utilities.addUtilityModal.currencyGlobalOption', { base }) },
     { value: 'EUR', label: 'EUR — Euro' },
     { value: 'USD', label: 'USD — Dollaro USA' },
     { value: 'GBP', label: 'GBP — Sterlina' },
@@ -447,69 +448,71 @@ const members = ref([])
 const billTemplates = ref([])
 const splitMemberIds = ref([])
 
-const meteredTypes = [
-  { value: 'electricity', label: 'Luce', icon: '\u26A1', iconClass: 'text-yellow-500', metered: true },
-  { value: 'gas', label: 'Gas', icon: '\uD83D\uDD25', iconClass: 'text-orange-500', metered: true },
-  { value: 'water', label: 'Acqua', icon: '\uD83D\uDCA7', iconClass: 'text-blue-500', metered: true },
-  { value: 'waste', label: 'Rifiuti', icon: '\u267B\uFE0F', iconClass: 'text-green-500', metered: true },
-]
+function typeLabel(value) {
+  const key = `utilities.utilityTypes.${value}`
+  const label = t(key)
+  return label === key ? value : label
+}
 
-const fixedTypes = [
-  { value: 'internet', label: 'Internet', icon: '\uD83C\uDF10', iconClass: 'text-indigo-500', metered: false },
-  { value: 'insurance', label: 'Assicurazione', icon: '\uD83D\uDEE1\uFE0F', iconClass: 'text-emerald-500', metered: false },
-  { value: 'affitto', label: 'Affitto', icon: '\uD83C\uDFE0', iconClass: 'text-purple-500', metered: false },
-  { value: 'mutuo', label: 'Mutuo', icon: '\uD83C\uDFE6', iconClass: 'text-sky-500', metered: false },
-]
-
-const allTypes = [...meteredTypes, ...fixedTypes]
+const allTypes = computed(() => [
+  { value: 'electricity', label: typeLabel('electricity'), icon: '⚡', metered: true },
+  { value: 'gas', label: typeLabel('gas'), icon: '🔥', metered: true },
+  { value: 'water', label: typeLabel('water'), icon: '💧', metered: true },
+  { value: 'waste', label: typeLabel('waste'), icon: '♻️', metered: true },
+  { value: 'internet', label: typeLabel('internet'), icon: '🌐', metered: false },
+  { value: 'insurance', label: typeLabel('insurance'), icon: '🛡️', metered: false },
+  { value: 'affitto', label: typeLabel('affitto'), icon: '🏠', metered: false },
+  { value: 'mutuo', label: typeLabel('mutuo'), icon: '🏦', metered: false },
+])
 
 const typeInfo = computed(() => {
-  return allTypes.find(t => t.value === form.value.type) || { label: form.value.type, icon: '', iconClass: '' }
+  return allTypes.value.find(tt => tt.value === form.value.type) || { label: form.value.type, icon: '' }
 })
 
 const isMetered = computed(() => {
-  const found = allTypes.find(t => t.value === form.value.type)
+  const found = allTypes.value.find(tt => tt.value === form.value.type)
   return found ? found.metered : true
 })
 
 const serviceCodeLabel = computed(() => {
-  const labels = { electricity: 'POD', gas: 'PDR', internet: 'Numero linea', affitto: 'Riferimento contratto', mutuo: 'Numero mutuo' }
-  return labels[form.value.type] || 'Codice Servizio'
+  const key = `utilities.addUtilityModal.serviceCodeLabels.${form.value.type}`
+  const label = t(key)
+  return label === key ? t('utilities.addUtilityModal.serviceCodeLabels.default') : label
 })
 
 const serviceCodePlaceholder = computed(() => {
-  const placeholders = { electricity: 'IT001E...', gas: 'IT001...', internet: '04XXXXXXXX', affitto: '', mutuo: '' }
-  return placeholders[form.value.type] || ''
+  const key = `utilities.addUtilityModal.serviceCodePlaceholder.${form.value.type}`
+  const label = t(key)
+  return label === key ? '' : label
 })
 
 const consumptionUnitLabel = computed(() => {
-  const units = { electricity: 'kWh', gas: 'Smc', water: 'm\u00B3' }
+  const units = { electricity: 'kWh', gas: 'Smc', water: 'm³' }
   return units[form.value.type] || ''
 })
+
+function frequencyUnitLabel(unit) {
+  const suffix = (form.value.billing_interval === 1) ? '_one' : '_other'
+  return t(`utilities.addUtilityModal.frequency.${unit}${suffix}`)
+}
 
 const frequencyPreview = computed(() => {
   const n = form.value.billing_interval || 1
   const u = form.value.billing_unit
-  const unitLabels = {
-    day: n === 1 ? 'giorno' : 'giorni',
-    week: n === 1 ? 'settimana' : 'settimane',
-    month: n === 1 ? 'mese' : 'mesi',
-    year: n === 1 ? 'anno' : 'anni'
-  }
-  return n === 1 ? `Ogni ${unitLabels[u]}` : `Ogni ${n} ${unitLabels[u]}`
+  const word = frequencyUnitLabel(u).toLowerCase()
+  return n === 1
+    ? t('utilities.addUtilityModal.frequencyPreviewSingular', { unit: word })
+    : t('utilities.addUtilityModal.frequencyPreviewPlural', { n, unit: word })
 })
 
 function formatDateForInput(dateStr) {
   if (!dateStr) return ''
-  // Handle ISO timestamps like "2025-01-15T00:00:00Z" -> "2025-01-15"
   if (dateStr.includes('T')) {
     return dateStr.split('T')[0]
   }
-  // Already YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     return dateStr
   }
-  // Try to parse as date
   const d = new Date(dateStr)
   if (!isNaN(d.getTime())) {
     return d.toISOString().split('T')[0]
@@ -544,7 +547,6 @@ const form = ref({
   currency: props.utility.currency || '',
 })
 
-// Initialize split member IDs from utility
 if (props.utility.split_member_ids) {
   try {
     splitMemberIds.value = JSON.parse(props.utility.split_member_ids)
@@ -555,9 +557,9 @@ if (props.utility.split_member_ids) {
 
 const splitOverrideHint = computed(() => {
   switch (form.value.split_override) {
-    case 'no_split': return 'Le spese di questo servizio non verranno mai divise'
-    case 'custom': return 'Le spese verranno divise con i membri selezionati sotto'
-    default: return 'Segue le impostazioni di divisione della famiglia'
+    case 'no_split': return t('utilities.addUtilityModal.splitOverrideHintNoSplit')
+    case 'custom': return t('utilities.addUtilityModal.splitOverrideHintCustom')
+    default: return t('utilities.addUtilityModal.splitOverrideHintGlobal')
   }
 })
 
@@ -576,8 +578,7 @@ async function fetchMembers() {
 async function fetchBillTemplates() {
   try {
     const { data } = await templatesAPI.listBillTemplates()
-    // Filter templates for this utility type
-    billTemplates.value = (data || []).filter(t => t.utility_type === props.utility.type)
+    billTemplates.value = (data || []).filter(tpl => tpl.utility_type === props.utility.type)
   } catch (err) {
     console.error('Error fetching bill templates:', err)
   }
@@ -585,7 +586,7 @@ async function fetchBillTemplates() {
 
 async function handleSubmit() {
   if (!form.value.provider) {
-    error.value = 'Il fornitore è obbligatorio'
+    error.value = t('utilities.editUtilityModal.providerRequired')
     return
   }
 
@@ -617,15 +618,13 @@ async function handleSubmit() {
       split_member_ids: form.value.split_override === 'custom' ? JSON.stringify(splitMemberIds.value) : '',
       is_domiciled: form.value.is_domiciled,
       is_installment_based: form.value.is_installment_based,
-      // Only send currency when unlocked — server rejects changes post-lock,
-      // and omitting the field leaves the existing value untouched.
       ...(isCurrencyLocked.value ? {} : { currency: form.value.currency }),
     }
 
     const { data } = await utilitiesAPI.update(props.utility.id, updateData)
     emit('updated', data)
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || 'Errore durante il salvataggio'
+    error.value = err.response?.data?.error || err.message || t('utilities.addUtilityModal.genericError')
   } finally {
     loading.value = false
   }

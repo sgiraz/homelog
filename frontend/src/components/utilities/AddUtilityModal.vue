@@ -1,5 +1,5 @@
 <template>
-  <BaseModal title="Nuovo Servizio" @close="$emit('close')">
+  <BaseModal :title="t('utilities.addUtilityModal.title')" @close="$emit('close')">
     <!-- PDF Contract Drop Zone -->
     <div class="mb-6">
       <div
@@ -28,7 +28,7 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <span class="text-sm text-gray-600 dark:text-gray-400">Estrazione dati dal contratto...</span>
+          <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('utilities.addUtilityModal.extracting') }}</span>
         </div>
 
         <div v-else-if="uploadedFile" class="flex items-center justify-center gap-3">
@@ -37,7 +37,7 @@
           </svg>
           <div class="text-left">
             <p class="text-sm font-medium text-gray-900 dark:text-white">{{ uploadedFile.name }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Dati estratti dal contratto</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.addUtilityModal.extractedFromContract') }}</p>
           </div>
           <button
             type="button"
@@ -56,10 +56,10 @@
           </svg>
           <div>
             <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Trascina qui il PDF del contratto
+              {{ t('utilities.addUtilityModal.dropZoneTitle') }}
             </p>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              oppure clicca per selezionare (opzionale)
+              {{ t('utilities.addUtilityModal.dropZoneSubtitle') }}
             </p>
           </div>
         </div>
@@ -74,10 +74,9 @@
       <!-- Tipo Servizio -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">
-          Tipo *
+          {{ t('utilities.addUtilityModal.typeLabel') }}
         </label>
-        <!-- Category labels -->
-        <div class="text-xs text-gray-400 dark:text-gray-500 mb-1.5 font-medium uppercase tracking-wider">Utenze</div>
+        <div class="text-xs text-gray-400 dark:text-gray-500 mb-1.5 font-medium uppercase tracking-wider">{{ t('utilities.addUtilityModal.categoryMetered') }}</div>
         <div class="grid grid-cols-2 gap-2 mb-3">
           <button
             v-for="type in meteredTypes"
@@ -95,7 +94,7 @@
             <span class="text-sm font-medium text-gray-900 dark:text-white">{{ type.label }}</span>
           </button>
         </div>
-        <div class="text-xs text-gray-400 dark:text-gray-500 mb-1.5 font-medium uppercase tracking-wider">Abbonamenti e Ricorrenti</div>
+        <div class="text-xs text-gray-400 dark:text-gray-500 mb-1.5 font-medium uppercase tracking-wider">{{ t('utilities.addUtilityModal.categoryFixed') }}</div>
         <div class="grid grid-cols-2 gap-2">
           <button
             v-for="type in fixedTypes"
@@ -118,12 +117,12 @@
       <!-- Provider -->
       <Input
         v-model="form.provider"
-        :label="isMetered ? 'Fornitore *' : 'Operatore / Ente *'"
-        :placeholder="isMetered ? 'Nome del fornitore' : 'es. WindTre, Allianz, Proprietario...'"
+        :label="isMetered ? t('utilities.addUtilityModal.providerLabel') : t('utilities.addUtilityModal.operatorLabel')"
+        :placeholder="isMetered ? t('utilities.addUtilityModal.providerPlaceholder') : t('utilities.addUtilityModal.operatorPlaceholder')"
         required
       />
 
-      <!-- Service Code (context-aware) -->
+      <!-- Service Code -->
       <Input
         v-model="form.service_code"
         :label="serviceCodeLabel"
@@ -135,25 +134,25 @@
       <!-- Customer Code -->
       <Input
         v-model="form.customer_code"
-        :label="isMetered ? 'Codice Cliente' : 'Numero Contratto'"
-        :placeholder="isMetered ? 'Numero cliente' : 'Riferimento contratto'"
+        :label="isMetered ? t('utilities.addUtilityModal.customerCodeLabel') : t('utilities.addUtilityModal.contractNumberLabel')"
+        :placeholder="isMetered ? t('utilities.addUtilityModal.customerCodePlaceholder') : t('utilities.addUtilityModal.contractRefPlaceholder')"
       />
 
-      <!-- Recurring Amount (fixed services only) -->
+      <!-- Recurring Amount -->
       <Input
         v-if="!isMetered"
         v-model="form.recurring_amount"
-        label="Importo ricorrente (€)"
+        :label="t('utilities.addUtilityModal.recurringAmountLabel')"
         type="number"
         step="0.01"
-        placeholder="es. 29.99"
+        :placeholder="t('utilities.addUtilityModal.recurringAmountPlaceholder')"
         inputmode="decimal"
       />
 
-      <!-- Billing Frequency (fixed services only) -->
+      <!-- Billing Frequency -->
       <div v-if="!isMetered">
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Frequenza fatturazione
+          {{ t('utilities.addUtilityModal.billingFrequencyLabel') }}
         </label>
         <div class="flex gap-2">
           <input
@@ -172,28 +171,28 @@
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="day">{{ form.billing_interval === 1 ? 'Giorno' : 'Giorni' }}</option>
-            <option value="week">{{ form.billing_interval === 1 ? 'Settimana' : 'Settimane' }}</option>
-            <option value="month">{{ form.billing_interval === 1 ? 'Mese' : 'Mesi' }}</option>
-            <option value="year">{{ form.billing_interval === 1 ? 'Anno' : 'Anni' }}</option>
+            <option value="day">{{ frequencyUnitLabel('day') }}</option>
+            <option value="week">{{ frequencyUnitLabel('week') }}</option>
+            <option value="month">{{ frequencyUnitLabel('month') }}</option>
+            <option value="year">{{ frequencyUnitLabel('year') }}</option>
           </select>
         </div>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ frequencyPreview }}</p>
       </div>
 
-      <!-- Address (optional) -->
+      <!-- Address -->
       <Input
         v-model="form.address"
-        :label="isMetered ? 'Indirizzo fornitura' : 'Indirizzo'"
-        placeholder="Se diverso dall'indirizzo principale"
+        :label="isMetered ? t('utilities.addUtilityModal.addressMetered') : t('utilities.addUtilityModal.addressFixed')"
+        :placeholder="t('utilities.addUtilityModal.addressPlaceholder')"
         autocomplete="street-address"
       />
 
-      <!-- Power Capacity (only for electricity) -->
+      <!-- Power Capacity -->
       <Input
         v-if="form.type === 'electricity'"
         v-model="form.power_capacity"
-        label="Potenza (kW)"
+        :label="t('utilities.addUtilityModal.powerLabel')"
         type="number"
         step="0.1"
         placeholder="3.0"
@@ -203,20 +202,20 @@
       <!-- Start Date -->
       <Input
         v-model="form.start_date"
-        label="Data inizio contratto"
+        :label="t('utilities.addUtilityModal.startDateLabel')"
         type="date"
       />
 
       <!-- Customer Portal URL -->
       <Input
         v-model="form.customer_portal"
-        label="Area clienti (URL)"
+        :label="t('utilities.addUtilityModal.portalLabel')"
         type="url"
         placeholder="https://..."
         inputmode="url"
       />
 
-      <!-- Allows Self Reading (metered only, not waste) -->
+      <!-- Allows Self Reading -->
       <div v-if="isMetered && form.type !== 'waste'" class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <input
           type="checkbox"
@@ -226,23 +225,23 @@
         />
         <div>
           <label for="allows-self-reading" class="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
-            Il fornitore accetta autolettura
+            {{ t('utilities.addUtilityModal.allowsSelfReadingLabel') }}
           </label>
           <p class="text-xs text-gray-500 dark:text-gray-400">
-            Attiva se puoi comunicare le tue letture al fornitore
+            {{ t('utilities.addUtilityModal.allowsSelfReadingHint') }}
           </p>
         </div>
       </div>
 
-      <!-- Comparison Threshold (metered only, not waste) -->
+      <!-- Comparison Threshold -->
       <div v-if="isMetered && form.type !== 'waste'" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <div class="flex items-center justify-between">
           <div>
             <label for="comparison-threshold" class="text-sm font-medium text-gray-900 dark:text-white">
-              Soglia confronto letture
+              {{ t('utilities.addUtilityModal.thresholdLabel') }}
             </label>
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              Differenza per segnalare anomalie
+              {{ t('utilities.addUtilityModal.thresholdHint') }}
             </p>
           </div>
           <div class="flex items-center gap-2">
@@ -266,7 +265,7 @@
       <!-- Chi paga -->
       <div v-if="members.length > 1">
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Chi paga
+          {{ t('utilities.addUtilityModal.paidByLabel') }}
         </label>
         <select
           v-model="form.paid_by_member_id"
@@ -274,7 +273,7 @@
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option :value="null">Non specificato</option>
+          <option :value="null">{{ t('utilities.addUtilityModal.notSpecified') }}</option>
           <option
             v-for="member in members"
             :key="member.id"
@@ -283,14 +282,14 @@
             {{ member.name }}{{ member.role ? ` (${member.role})` : '' }}
           </option>
         </select>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Chi paga di default le bollette/fatture di questo servizio</p>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ t('utilities.addUtilityModal.paidByHint') }}</p>
       </div>
 
       <!-- Split Override -->
       <div v-if="members.length > 1" class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
         <div>
           <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1">
-            Divisione spese
+            {{ t('utilities.addUtilityModal.splitOverrideLabel') }}
           </label>
           <select
             v-model="form.split_override"
@@ -298,19 +297,18 @@
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Usa impostazione globale</option>
-            <option value="no_split">Mai dividere</option>
-            <option value="custom">Dividi con membri specifici</option>
+            <option value="">{{ t('utilities.addUtilityModal.splitOverrideGlobal') }}</option>
+            <option value="no_split">{{ t('utilities.addUtilityModal.splitOverrideNoSplit') }}</option>
+            <option value="custom">{{ t('utilities.addUtilityModal.splitOverrideCustom') }}</option>
           </select>
           <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
             {{ splitOverrideHint }}
           </p>
         </div>
 
-        <!-- Custom split member selection -->
         <div v-if="form.split_override === 'custom'" class="space-y-2">
           <label class="block text-sm text-gray-600 dark:text-gray-400">
-            Dividi con
+            {{ t('utilities.addUtilityModal.splitWithLabel') }}
           </label>
           <div
             v-for="member in members"
@@ -331,7 +329,7 @@
         </div>
       </div>
 
-      <!-- Billing flags: domiciliation + installments -->
+      <!-- Billing flags -->
       <div class="space-y-2">
         <label class="flex items-start gap-3 cursor-pointer">
           <input
@@ -340,8 +338,8 @@
             class="mt-0.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
           <div>
-            <div class="text-sm text-gray-900 dark:text-white">Domiciliata</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">I pagamenti vengono marcati automaticamente come saldati alla scadenza</div>
+            <div class="text-sm text-gray-900 dark:text-white">{{ t('utilities.addUtilityModal.domiciledLabel') }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.addUtilityModal.domiciledHint') }}</div>
           </div>
         </label>
         <label class="flex items-start gap-3 cursor-pointer">
@@ -351,8 +349,8 @@
             class="mt-0.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
           <div>
-            <div class="text-sm text-gray-900 dark:text-white">Bollette rateizzate</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">La bolletta è suddivisa in più rate con scadenze separate</div>
+            <div class="text-sm text-gray-900 dark:text-white">{{ t('utilities.addUtilityModal.installmentsLabel') }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.addUtilityModal.installmentsHint') }}</div>
           </div>
         </label>
       </div>
@@ -360,7 +358,7 @@
       <!-- Currency -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Valuta
+          {{ t('utilities.addUtilityModal.currencyLabel') }}
         </label>
         <select
           v-model="form.currency"
@@ -373,19 +371,19 @@
           </option>
         </select>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Non potrà essere cambiata dopo la prima bolletta saldata.
+          {{ t('utilities.addUtilityModal.currencyLockNotice') }}
         </p>
       </div>
 
       <!-- Notes -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Note
+          {{ t('utilities.addUtilityModal.notesLabel') }}
         </label>
         <textarea
           v-model="form.notes"
           rows="2"
-          placeholder="Note aggiuntive..."
+          :placeholder="t('utilities.addUtilityModal.notesPlaceholder')"
           autocorrect="off"
           class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
@@ -399,10 +397,10 @@
 
       <div class="flex gap-3 pt-2">
         <Button type="button" variant="secondary" @click="$emit('close')" class="flex-1">
-          Annulla
+          {{ t('utilities.addUtilityModal.cancel') }}
         </Button>
         <Button type="submit" :disabled="loading" class="flex-1">
-          {{ loading ? 'Salvataggio...' : 'Salva' }}
+          {{ loading ? t('utilities.addUtilityModal.saving') : t('utilities.addUtilityModal.save') }}
         </Button>
       </div>
     </form>
@@ -411,6 +409,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import apiClient, { utilitiesAPI, membersAPI } from '@/api/client'
@@ -426,15 +425,14 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'created'])
+const { t } = useI18n()
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 
-// Short curated list — covers realistic multi-currency households without
-// overwhelming the dropdown. Empty-string option means "use household currency".
 const currencyOptions = computed(() => {
   const base = settingsStore.formatSettings.currency || 'EUR'
   return [
-    { value: '', label: `Valuta globale (${base})` },
+    { value: '', label: t('utilities.addUtilityModal.currencyGlobalOption', { base }) },
     { value: 'EUR', label: 'EUR — Euro' },
     { value: 'USD', label: 'USD — Dollaro USA' },
     { value: 'GBP', label: 'GBP — Sterlina' },
@@ -459,51 +457,61 @@ const uploadedFile = ref(null)
 const members = ref([])
 const splitMemberIds = ref([])
 
-const meteredTypes = [
-  { value: 'electricity', label: 'Luce', icon: '\u26A1', iconClass: 'text-yellow-500', metered: true },
-  { value: 'gas', label: 'Gas', icon: '\uD83D\uDD25', iconClass: 'text-orange-500', metered: true },
-  { value: 'water', label: 'Acqua', icon: '\uD83D\uDCA7', iconClass: 'text-blue-500', metered: true },
-  { value: 'waste', label: 'Rifiuti', icon: '\u267B\uFE0F', iconClass: 'text-green-500', metered: true },
-]
+function typeLabel(value) {
+  const key = `utilities.utilityTypes.${value}`
+  const label = t(key)
+  return label === key ? value : label
+}
 
-const fixedTypes = [
-  { value: 'internet', label: 'Internet', icon: '\uD83C\uDF10', iconClass: 'text-indigo-500', metered: false },
-  { value: 'insurance', label: 'Assicurazione', icon: '\uD83D\uDEE1\uFE0F', iconClass: 'text-emerald-500', metered: false },
-  { value: 'affitto', label: 'Affitto', icon: '\uD83C\uDFE0', iconClass: 'text-purple-500', metered: false },
-  { value: 'mutuo', label: 'Mutuo', icon: '\uD83C\uDFE6', iconClass: 'text-sky-500', metered: false },
-]
+const meteredTypes = computed(() => [
+  { value: 'electricity', label: typeLabel('electricity'), icon: '⚡', iconClass: 'text-yellow-500', metered: true },
+  { value: 'gas', label: typeLabel('gas'), icon: '🔥', iconClass: 'text-orange-500', metered: true },
+  { value: 'water', label: typeLabel('water'), icon: '💧', iconClass: 'text-blue-500', metered: true },
+  { value: 'waste', label: typeLabel('waste'), icon: '♻️', iconClass: 'text-green-500', metered: true },
+])
+
+const fixedTypes = computed(() => [
+  { value: 'internet', label: typeLabel('internet'), icon: '🌐', iconClass: 'text-indigo-500', metered: false },
+  { value: 'insurance', label: typeLabel('insurance'), icon: '🛡️', iconClass: 'text-emerald-500', metered: false },
+  { value: 'affitto', label: typeLabel('affitto'), icon: '🏠', iconClass: 'text-purple-500', metered: false },
+  { value: 'mutuo', label: typeLabel('mutuo'), icon: '🏦', iconClass: 'text-sky-500', metered: false },
+])
 
 const isMetered = computed(() => {
-  const allTypes = [...meteredTypes, ...fixedTypes]
-  const found = allTypes.find(t => t.value === form.value.type)
+  const allTypes = [...meteredTypes.value, ...fixedTypes.value]
+  const found = allTypes.find(tt => tt.value === form.value.type)
   return found ? found.metered : true
 })
 
 const serviceCodeLabel = computed(() => {
-  const labels = { electricity: 'POD', gas: 'PDR', internet: 'Numero linea', affitto: 'Riferimento contratto', mutuo: 'Numero mutuo' }
-  return labels[form.value.type] || 'Codice Servizio'
+  const key = `utilities.addUtilityModal.serviceCodeLabels.${form.value.type}`
+  const label = t(key)
+  return label === key ? t('utilities.addUtilityModal.serviceCodeLabels.default') : label
 })
 
 const serviceCodePlaceholder = computed(() => {
-  const placeholders = { electricity: 'IT001E...', gas: 'IT001...', internet: '04XXXXXXXX', affitto: '', mutuo: '' }
-  return placeholders[form.value.type] || ''
+  const key = `utilities.addUtilityModal.serviceCodePlaceholder.${form.value.type}`
+  const label = t(key)
+  return label === key ? '' : label
 })
 
 const consumptionUnitLabel = computed(() => {
-  const units = { electricity: 'kWh', gas: 'Smc', water: 'm\u00B3' }
+  const units = { electricity: 'kWh', gas: 'Smc', water: 'm³' }
   return units[form.value.type] || ''
 })
+
+function frequencyUnitLabel(unit) {
+  const suffix = (form.value.billing_interval === 1) ? '_one' : '_other'
+  return t(`utilities.addUtilityModal.frequency.${unit}${suffix}`)
+}
 
 const frequencyPreview = computed(() => {
   const n = form.value.billing_interval || 1
   const u = form.value.billing_unit
-  const unitLabels = {
-    day: n === 1 ? 'giorno' : 'giorni',
-    week: n === 1 ? 'settimana' : 'settimane',
-    month: n === 1 ? 'mese' : 'mesi',
-    year: n === 1 ? 'anno' : 'anni'
-  }
-  return n === 1 ? `Ogni ${unitLabels[u]}` : `Ogni ${n} ${unitLabels[u]}`
+  const word = frequencyUnitLabel(u).toLowerCase()
+  return n === 1
+    ? t('utilities.addUtilityModal.frequencyPreviewSingular', { unit: word })
+    : t('utilities.addUtilityModal.frequencyPreviewPlural', { n, unit: word })
 })
 
 function selectType(type) {
@@ -537,9 +545,9 @@ const form = ref({
 
 const splitOverrideHint = computed(() => {
   switch (form.value.split_override) {
-    case 'no_split': return 'Le spese di questo servizio non verranno mai divise'
-    case 'custom': return 'Le spese verranno divise con i membri selezionati sotto'
-    default: return 'Segue le impostazioni di divisione della famiglia'
+    case 'no_split': return t('utilities.addUtilityModal.splitOverrideHintNoSplit')
+    case 'custom': return t('utilities.addUtilityModal.splitOverrideHintCustom')
+    default: return t('utilities.addUtilityModal.splitOverrideHintGlobal')
   }
 })
 
@@ -558,13 +566,13 @@ function handleDrop(event) {
   if (file && file.type === 'application/pdf') {
     processFile(file)
   } else {
-    pdfError.value = 'Per favore carica un file PDF'
+    pdfError.value = t('utilities.addUtilityModal.uploadOnlyPdf')
   }
 }
 
 async function processFile(file) {
   if (file.type !== 'application/pdf') {
-    pdfError.value = 'Per favore carica un file PDF'
+    pdfError.value = t('utilities.addUtilityModal.uploadOnlyPdf')
     return
   }
 
@@ -593,7 +601,7 @@ async function processFile(file) {
       }
     }
   } catch (err) {
-    pdfError.value = err.response?.data?.error || 'Errore durante l\'estrazione dei dati dal contratto'
+    pdfError.value = err.response?.data?.error || t('utilities.addUtilityModal.extractError')
   } finally {
     pdfProcessing.value = false
   }
@@ -619,7 +627,6 @@ async function fetchCurrentProperty() {
     }
   }
 
-  // Fetch household members for payer selection
   if (form.value.property_id) {
     try {
       const { data } = await membersAPI.list(form.value.property_id)
@@ -632,7 +639,7 @@ async function fetchCurrentProperty() {
 
 async function handleSubmit() {
   if (!form.value.provider || !form.value.type) {
-    error.value = 'Tipo e fornitore sono obbligatori'
+    error.value = t('utilities.addUtilityModal.validationRequired')
     return
   }
 
@@ -653,10 +660,10 @@ async function handleSubmit() {
     }
 
     await utilitiesStore.createUtility(utilityData)
-    window.$toast?.success('Servizio aggiunto con successo!')
+    window.$toast?.success(t('utilities.addUtilityModal.successToast'))
     emit('created')
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || 'Errore durante il salvataggio'
+    error.value = err.response?.data?.error || err.message || t('utilities.addUtilityModal.genericError')
   } finally {
     loading.value = false
   }

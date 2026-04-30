@@ -2,10 +2,10 @@
   <div class="space-y-4">
     <!-- Versione & Aggiornamenti -->
     <Card class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Versione</h2>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.data.versionTitle') }}</h2>
       <div class="flex items-center justify-between gap-4">
         <div>
-          <div class="text-sm text-gray-600 dark:text-gray-400">Versione corrente</div>
+          <div class="text-sm text-gray-600 dark:text-gray-400">{{ t('settings.data.versionLabel') }}</div>
           <div class="text-lg font-semibold text-gray-900 dark:text-white font-mono">{{ currentVersion }}</div>
         </div>
         <Button @click="checkForUpdates" :disabled="checking" variant="secondary" size="sm">
@@ -13,7 +13,7 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
           </svg>
-          {{ checking ? 'Controllo...' : 'Controlla aggiornamenti' }}
+          {{ checking ? t('settings.data.checking') : t('settings.data.checkUpdates') }}
         </Button>
       </div>
 
@@ -25,7 +25,7 @@
           </svg>
           <div>
             <div class="text-sm font-medium text-green-800 dark:text-green-200">
-              Nuova versione disponibile: <span class="font-mono">{{ updateResult.latest }}</span>
+              {{ t('settings.data.updateAvailable', { version: updateResult.latest }) }}
             </div>
             <a
               :href="updateResult.latest_url"
@@ -33,10 +33,10 @@
               rel="noopener noreferrer"
               class="text-sm text-green-700 dark:text-green-300 underline hover:no-underline mt-1 inline-block"
             >
-              Vedi le novità
+              {{ t('settings.data.viewChangelog') }}
             </a>
             <div class="text-xs text-green-600 dark:text-green-400 mt-2">
-              Per aggiornare: <code class="bg-green-100 dark:bg-green-800/50 px-1.5 py-0.5 rounded">docker compose pull &amp;&amp; docker compose up -d</code>
+              {{ t('settings.data.updateInstructions') }} <code class="bg-green-100 dark:bg-green-800/50 px-1.5 py-0.5 rounded">docker compose pull &amp;&amp; docker compose up -d</code>
             </div>
           </div>
         </div>
@@ -44,24 +44,24 @@
           <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
-          <span class="text-sm text-gray-600 dark:text-gray-400">Sei aggiornato alla versione più recente.</span>
+          <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('settings.data.upToDate') }}</span>
         </div>
       </div>
 
       <div v-if="checkError" class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-sm text-red-700 dark:text-red-300">
-        Impossibile verificare gli aggiornamenti. Riprova più tardi.
+        {{ t('settings.data.checkError') }}
       </div>
     </Card>
 
     <Card class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Backup &amp; Dati</h2>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.data.backupTitle') }}</h2>
 
       <div class="space-y-6">
         <!-- Export -->
         <div>
-          <h3 class="font-medium text-gray-900 dark:text-white mb-1">Esporta Dati</h3>
+          <h3 class="font-medium text-gray-900 dark:text-white mb-1">{{ t('settings.data.exportTitle') }}</h3>
           <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-            Scarica i tuoi dati per backup o migrazione.
+            {{ t('settings.data.exportDescription') }}
           </p>
 
           <!-- Format toggle -->
@@ -92,25 +92,25 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Button @click="doExport('all')" :disabled="exportLoading" class="w-full">
-              {{ exportLoading === 'all' ? 'Esportazione...' : 'Esporta Tutto' }}
+              {{ exportLoading === 'all' ? t('settings.data.exporting') : t('settings.data.exportAll') }}
             </Button>
             <Button @click="doExport('expenses')" :disabled="exportLoading" variant="secondary" class="w-full">
-              {{ exportLoading === 'expenses' ? 'Esportazione...' : 'Esporta Spese' }}
+              {{ exportLoading === 'expenses' ? t('settings.data.exporting') : t('settings.data.exportExpenses') }}
             </Button>
             <Button @click="doExport('utilities')" :disabled="exportLoading" variant="secondary" class="w-full">
-              {{ exportLoading === 'utilities' ? 'Esportazione...' : 'Esporta Servizi' }}
+              {{ exportLoading === 'utilities' ? t('settings.data.exporting') : t('settings.data.exportUtilities') }}
             </Button>
             <Button @click="doExport('projects')" :disabled="exportLoading" variant="secondary" class="w-full">
-              {{ exportLoading === 'projects' ? 'Esportazione...' : 'Esporta Progetti' }}
+              {{ exportLoading === 'projects' ? t('settings.data.exporting') : t('settings.data.exportProjects') }}
             </Button>
           </div>
         </div>
 
         <!-- Import -->
         <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <h3 class="font-medium text-gray-900 dark:text-white mb-1">Importa Dati</h3>
+          <h3 class="font-medium text-gray-900 dark:text-white mb-1">{{ t('settings.data.importTitle') }}</h3>
           <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Carica un file di backup JSON per ripristinare o aggiungere dati.
+            {{ t('settings.data.importDescription') }}
           </p>
 
           <div
@@ -129,7 +129,7 @@
             <input ref="fileInput" type="file" accept=".json" class="hidden" @change="handleFileSelect" />
             <div class="text-3xl mb-2">📁</div>
             <p class="text-sm text-gray-600 dark:text-gray-400">
-              Trascina il file JSON oppure <span class="text-blue-600 dark:text-blue-400 underline">seleziona</span>
+              {{ t('settings.data.importDropPrompt') }} <span class="text-blue-600 dark:text-blue-400 underline">{{ t('settings.data.importDropSelect') }}</span>
             </p>
             <p v-if="selectedFile" class="text-sm font-medium text-gray-800 dark:text-gray-200 mt-2">
               {{ selectedFile.name }}
@@ -139,10 +139,10 @@
           <div v-if="selectedFile" class="mt-4 space-y-3">
             <div class="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-sm text-yellow-800 dark:text-yellow-200">
               <span class="shrink-0 font-bold">!</span>
-              <span>L'importazione <strong>aggiunge</strong> nuovi dati senza sovrascrivere quelli esistenti.</span>
+              <span>{{ t('settings.data.importWarning') }}</span>
             </div>
             <Button @click="doImport" :disabled="importLoading" class="w-full">
-              {{ importLoading ? 'Importazione in corso...' : 'Importa Dati' }}
+              {{ importLoading ? t('settings.data.importing') : t('settings.data.importButton') }}
             </Button>
           </div>
         </div>
@@ -155,10 +155,12 @@
 defineOptions({ name: 'DataTab' })
 
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { exportAPI, versionAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 
+const { t } = useI18n()
 const currentVersion = __APP_VERSION__
 const checking = ref(false)
 const updateResult = ref(null)
@@ -205,9 +207,9 @@ async function doExport(type) {
     const res = await apiMap[type]()
     const timestamp = new Date().toISOString().slice(0, 10)
     triggerDownload(res.data, `homelog_${nameMap[type]}_${timestamp}.${ext}`)
-    window.$toast?.success('File scaricato con successo!')
+    window.$toast?.success(t('settings.data.exportSuccess'))
   } catch (err) {
-    window.$toast?.error('Errore esportazione: ' + (err.response?.data?.error || err.message))
+    window.$toast?.error(t('settings.data.exportError', { error: err.response?.data?.error || err.message }))
   } finally {
     exportLoading.value = null
   }
@@ -230,7 +232,7 @@ function handleFileDrop(e) {
   if (file && file.name.endsWith('.json')) {
     selectedFile.value = file
   } else {
-    window.$toast?.error('Seleziona un file .json valido.')
+    window.$toast?.error(t('settings.data.invalidFile'))
   }
 }
 
@@ -252,15 +254,15 @@ async function doImport() {
     const summary = Object.entries(counts)
       .map(([k, v]) => `${v} ${k}`)
       .join(', ')
-    window.$toast?.success(`Importazione completata: ${summary || 'nessun dato'}.`)
+    window.$toast?.success(t('settings.data.importSuccess', { summary: summary || t('settings.data.importEmpty') }))
     selectedFile.value = null
     if (fileInput.value) fileInput.value.value = ''
     setTimeout(() => { window.location.reload() }, 2000)
   } catch (err) {
     if (err instanceof SyntaxError) {
-      window.$toast?.error('Il file non è un JSON valido.')
+      window.$toast?.error(t('settings.data.invalidJson'))
     } else {
-      window.$toast?.error(err.response?.data?.error || 'Errore importazione: ' + err.message)
+      window.$toast?.error(err.response?.data?.error || t('settings.data.importError', { error: err.message }))
     }
   } finally {
     importLoading.value = false

@@ -2,19 +2,19 @@
   <div>
     <div class="flex justify-between items-center mb-4">
       <span class="text-sm text-gray-500 dark:text-gray-400">
-        {{ utility.readings?.length || 0 }} letture registrate
+        {{ t('utilities.readingsTab.count', { n: utility.readings?.length || 0 }) }}
       </span>
       <Button size="sm" @click="openAddReading">
         <svg class="w-4 h-4 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        <span class="hidden sm:inline">Aggiungi</span>
+        <span class="hidden sm:inline">{{ t('utilities.readingsTab.addButton') }}</span>
       </Button>
     </div>
 
     <div v-if="!utility.readings?.length" class="text-center py-8">
-      <p class="text-gray-500 dark:text-gray-400 mb-3">Nessuna lettura registrata</p>
-      <Button size="sm" @click="openAddReading">Aggiungi lettura</Button>
+      <p class="text-gray-500 dark:text-gray-400 mb-3">{{ t('utilities.readingsTab.empty') }}</p>
+      <Button size="sm" @click="openAddReading">{{ t('utilities.readingsTab.addReadingButton') }}</Button>
     </div>
 
     <!-- Timeline -->
@@ -50,10 +50,10 @@
                 <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-0.5 flex-wrap">
                   <span>{{ formatDate(reading.reading_date) }}</span>
                   <span v-if="reading.source === 'submitted'" class="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 text-xs rounded">
-                    Inviata
+                    {{ t('utilities.readingsTab.submittedBadge') }}
                   </span>
                   <span v-if="readingBillMap[reading.id]" class="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-300 text-xs rounded font-mono">
-                    Boll. {{ readingBillMap[reading.id] }}
+                    {{ t('utilities.readingsTab.billBadge', { number: readingBillMap[reading.id] }) }}
                   </span>
                 </div>
                 <div v-if="reading.notes" class="text-xs text-gray-400 mt-1">{{ reading.notes }}</div>
@@ -62,7 +62,7 @@
                 <button
                   @click="openEditReading(reading)"
                   class="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                  title="Modifica"
+                  :title="t('utilities.readingsTab.editTitle')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -71,7 +71,7 @@
                 <button
                   @click="confirmDeleteReading(reading)"
                   class="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  title="Elimina"
+                  :title="t('utilities.readingsTab.deleteTitle')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -97,6 +97,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
@@ -115,6 +116,7 @@ const props = defineProps({
 
 const emit = defineEmits(['reading-saved', 'reading-deleted'])
 
+const { t } = useI18n()
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
@@ -161,9 +163,9 @@ function onReadingSaved() {
 
 async function confirmDeleteReading(reading) {
   const ok = await confirm({
-    title: 'Elimina lettura',
-    message: 'Sei sicuro di voler eliminare questa lettura?',
-    confirmText: 'Elimina',
+    title: t('utilities.readingsTab.deleteConfirm.title'),
+    message: t('utilities.readingsTab.deleteConfirm.message'),
+    confirmText: t('utilities.readingsTab.deleteConfirm.action'),
     variant: 'danger'
   })
   if (!ok) return
@@ -175,7 +177,6 @@ async function confirmDeleteReading(reading) {
   }
 }
 
-// Fetch bill map when tab becomes active
 watch(() => props.active, (isActive) => {
   if (isActive) fetchReadingBillMap()
 }, { immediate: true })

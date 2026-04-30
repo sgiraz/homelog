@@ -18,7 +18,7 @@
                      bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
                      transition-colors"
             >
-              {{ state.cancelText }}
+              {{ state.cancelText || t('common.actions.cancel') }}
             </button>
             <button
               @click="handleConfirm"
@@ -29,7 +29,7 @@
                   : 'bg-blue-600 hover:bg-blue-700'
               ]"
             >
-              {{ state.confirmText }}
+              {{ state.confirmText || t('common.actions.confirm') }}
             </button>
           </div>
         </div>
@@ -39,8 +39,10 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
 
+const { t } = useI18n()
 const { state, handleConfirm, handleCancel } = useConfirm()
 </script>
 

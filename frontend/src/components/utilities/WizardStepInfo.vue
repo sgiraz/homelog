@@ -1,29 +1,29 @@
 <template>
   <div class="space-y-4">
     <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">
-      Carica un PDF di esempio del fornitore per creare le regole di estrazione.
+      {{ t('utilities.wizardStepInfo.intro') }}
     </p>
 
     <!-- Basic Info -->
     <Input
       :model-value="template.name"
       @update:model-value="emit('update:template', { ...template, name: $event })"
-      label="Nome Template *"
-      placeholder="Es: Fornitore Luce Bimestrale"
+      :label="t('utilities.wizardStepInfo.nameLabel')"
+      :placeholder="t('utilities.wizardStepInfo.namePlaceholder')"
       required
     />
 
     <Input
       :model-value="template.provider"
       @update:model-value="emit('update:template', { ...template, provider: $event })"
-      label="Fornitore *"
-      placeholder="Nome del fornitore"
+      :label="t('utilities.wizardStepInfo.providerLabel')"
+      :placeholder="t('utilities.wizardStepInfo.providerPlaceholder')"
       required
     />
 
     <div>
       <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-        Tipo Utenza *
+        {{ t('utilities.wizardStepInfo.typeLabel') }}
       </label>
       <select
         :value="template.utility_type"
@@ -32,18 +32,18 @@
                bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
-        <option value="electricity">Luce</option>
-        <option value="gas">Gas</option>
-        <option value="water">Acqua</option>
-        <option value="waste">Rifiuti</option>
-        <option value="internet">Internet</option>
-        <option value="insurance">Assicurazione</option>
-        <option value="affitto">Affitto</option>
-        <option value="mutuo">Mutuo</option>
+        <option value="electricity">{{ t('utilities.utilityTypes.electricity') }}</option>
+        <option value="gas">{{ t('utilities.utilityTypes.gas') }}</option>
+        <option value="water">{{ t('utilities.utilityTypes.water') }}</option>
+        <option value="waste">{{ t('utilities.utilityTypes.waste') }}</option>
+        <option value="internet">{{ t('utilities.utilityTypes.internet') }}</option>
+        <option value="insurance">{{ t('utilities.utilityTypes.insurance') }}</option>
+        <option value="affitto">{{ t('utilities.utilityTypes.affitto') }}</option>
+        <option value="mutuo">{{ t('utilities.utilityTypes.mutuo') }}</option>
       </select>
     </div>
 
-    <!-- Hidden native file input — iOS shows the Files app picker with .pdf filter -->
+    <!-- Hidden native file input -->
     <input
       ref="fileInput"
       type="file"
@@ -75,7 +75,7 @@
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <span class="text-sm text-gray-600 dark:text-gray-400">Analisi PDF in corso...</span>
+        <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('utilities.wizardStepInfo.analyzing') }}</span>
       </div>
 
       <div v-else-if="pdfFile" class="flex flex-col items-center gap-2">
@@ -84,7 +84,7 @@
         </svg>
         <p class="text-sm font-medium text-gray-900 dark:text-white">{{ pdfFile.name }}</p>
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          {{ pdfAnalysis?.page_count || 0 }} pagine estratte - Clicca per cambiare file
+          {{ t('utilities.wizardStepInfo.pageCount', { n: pdfAnalysis?.page_count || 0 }) }}
         </p>
       </div>
 
@@ -93,9 +93,9 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Trascina qui un PDF di esempio
+          {{ t('utilities.wizardStepInfo.dropTitle') }}
         </p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">oppure clicca per selezionare</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.wizardStepInfo.dropSubtitle') }}</p>
       </div>
     </div>
 
@@ -107,6 +107,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Input from '@/components/common/Input.vue'
 
 defineOptions({ name: 'WizardStepInfo' })
@@ -136,11 +137,12 @@ defineProps({
 
 const emit = defineEmits(['update:template', 'file-selected'])
 
+const { t } = useI18n()
+
 const isDraggingFile = ref(false)
 const fileInput = ref(null)
 
 function openPicker() {
-  // Reset the input so picking the same file twice still fires `change`.
   if (fileInput.value) fileInput.value.value = ''
   fileInput.value?.click()
 }

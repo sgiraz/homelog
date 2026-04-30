@@ -1,20 +1,19 @@
 <template>
-  <!-- Consumption Periods Table -->
   <div v-if="consumptionAnalysis && consumptionAnalysis.length > 0" class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-    <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Dettaglio Consumi per Periodo</h4>
+    <h4 class="font-semibold text-gray-900 dark:text-white mb-3">{{ t('utilities.consumptionPeriods.title') }}</h4>
 
     <div class="overflow-x-auto -mx-2">
       <table class="w-full text-xs sm:text-sm min-w-0">
         <thead>
           <tr class="border-b border-gray-300 dark:border-gray-600">
-            <th class="text-left py-2 px-1.5 text-gray-600 dark:text-gray-400">Periodo</th>
+            <th class="text-left py-2 px-1.5 text-gray-600 dark:text-gray-400">{{ t('utilities.consumptionPeriods.period') }}</th>
             <th class="text-right py-2 px-1.5 text-gray-600 dark:text-gray-400">
-              <span class="hidden sm:inline">Consumo </span>Effettivo
+              <span class="hidden sm:inline">{{ t('utilities.consumptionPeriods.consumptionPrefix') }} </span>{{ t('utilities.consumptionPeriods.actual') }}
             </th>
             <th class="text-right py-2 px-1.5 text-gray-600 dark:text-gray-400">
-              <span class="hidden sm:inline">Consumo </span>Fatturato
+              <span class="hidden sm:inline">{{ t('utilities.consumptionPeriods.consumptionPrefix') }} </span>{{ t('utilities.consumptionPeriods.billed') }}
             </th>
-            <th class="text-right py-2 px-1.5 text-gray-600 dark:text-gray-400 w-16 sm:w-auto">Diff.</th>
+            <th class="text-right py-2 px-1.5 text-gray-600 dark:text-gray-400 w-16 sm:w-auto">{{ t('utilities.consumptionPeriods.diff') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -39,7 +38,7 @@
         </tbody>
         <tfoot>
           <tr class="border-t-2 border-gray-400 dark:border-gray-500 font-semibold">
-            <td class="py-2 px-1.5 text-gray-900 dark:text-white">TOTALE</td>
+            <td class="py-2 px-1.5 text-gray-900 dark:text-white">{{ t('utilities.consumptionPeriods.total') }}</td>
             <td class="py-2 px-1.5 text-right text-gray-900 dark:text-white whitespace-nowrap tabular-nums">
               {{ fmtNum(consumptionSummary?.total_user || 0) }} <span class="text-gray-400 font-normal">{{ getUnit() }}</span>
             </td>
@@ -57,6 +56,8 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
+
 defineOptions({ name: 'ConsumptionPeriodsTable' })
 
 defineProps({
@@ -97,4 +98,6 @@ defineProps({
     required: true
   }
 })
+
+const { t } = useI18n()
 </script>

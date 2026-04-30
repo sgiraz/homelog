@@ -1,13 +1,13 @@
 <template>
   <Card class="p-6">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white">Spese Recenti</h2>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ t('dashboard.recent.title') }}</h2>
       <router-link
         v-if="expenses.length > 3"
         to="/expenses"
         class="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm"
       >
-        Vedi tutte
+        {{ t('dashboard.recent.viewAll') }}
       </router-link>
     </div>
 
@@ -16,16 +16,16 @@
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
       </svg>
-      Caricamento...
+      {{ t('dashboard.recent.loading') }}
     </div>
 
     <div v-else-if="expenses.length === 0" class="text-center py-8">
       <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
       </svg>
-      <p class="text-gray-600 dark:text-gray-400">Nessuna spesa registrata</p>
+      <p class="text-gray-600 dark:text-gray-400">{{ t('dashboard.recent.empty') }}</p>
       <Button @click="emit('add')" class="mt-4">
-        Aggiungi la tua prima spesa
+        {{ t('dashboard.recent.addFirst') }}
       </Button>
     </div>
 
@@ -40,14 +40,14 @@
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
               <span class="font-medium text-gray-900 dark:text-white line-clamp-2">
-                {{ expense.description || 'Senza descrizione' }}
+                {{ expense.description || t('expenses.noDescription') }}
               </span>
               <!-- Badge Split -->
               <span
                 v-if="expense.is_split"
                 class="px-2 py-0.5 text-xs rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300"
               >
-                Split
+                {{ t('expenses.splitBadge') }}
               </span>
               <!-- Badge Saldato/Da saldare -->
               <span
@@ -59,7 +59,7 @@
                     : 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700'
                 ]"
               >
-                {{ isExpenseSettled(expense) ? 'Saldato' : 'Da saldare' }}
+                {{ isExpenseSettled(expense) ? t('expenses.settled') : t('expenses.unsettled') }}
               </span>
             </div>
             <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex flex-wrap items-center gap-2">
@@ -71,7 +71,7 @@
                 {{ expense.category.name }}
               </span>
               <span v-if="expense.is_split && expense.paid_by" class="text-xs flex items-center gap-1 max-w-full overflow-hidden">
-                <span class="hidden sm:inline">Pagato da</span>
+                <span class="hidden sm:inline">{{ t('expenses.paidBy') }}</span>
                 <span class="truncate">{{ expense.paid_by.name }}</span>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
@@ -86,11 +86,11 @@
             </div>
             <!-- Mostra quota se split -->
             <div v-if="expense.is_split && expense.splits?.length" class="text-xs text-gray-500 dark:text-gray-400">
-              ({{ formatCurrency(expense.splits[0]?.amount || 0) }} a testa)
+              {{ t('expenses.shareEach', { amount: formatCurrency(expense.splits[0]?.amount || 0) }) }}
             </div>
             <!-- Bill-linked indicator -->
             <div v-if="expense.bill_id" class="text-xs text-orange-600 dark:text-orange-400 mt-1 text-right">
-              Da bolletta
+              {{ t('expenses.fromBill') }}
             </div>
             <!-- Actions: only visible to the creator, not for bill-linked or fully-settled expenses -->
             <div
@@ -100,7 +100,7 @@
               <button
                 @click="emit('edit', expense)"
                 class="p-1.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-                aria-label="Modifica spesa"
+                :aria-label="t('expenses.editAria')"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -109,7 +109,7 @@
               <button
                 @click="emit('delete', expense.id)"
                 class="p-1.5 text-red-600 hover:text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                aria-label="Elimina spesa"
+                :aria-label="t('expenses.deleteAria')"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -126,9 +126,11 @@
 <script setup>
 defineOptions({ name: 'RecentExpensesList' })
 
+import { useI18n } from 'vue-i18n'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 
+const { t } = useI18n()
 const props = defineProps({
   expenses: {
     type: Array,

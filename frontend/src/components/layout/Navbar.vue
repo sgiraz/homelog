@@ -31,7 +31,7 @@
         <router-link
           to="/search"
           class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          aria-label="Cerca"
+          :aria-label="t('nav.search')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -43,7 +43,7 @@
         <button
           @click="handleToggleDarkMode"
           class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          :aria-label="isDark ? 'Passa a modalit\u00E0 chiara' : 'Passa a modalit\u00E0 scura'"
+          :aria-label="isDark ? t('nav.themeToggleToLight') : t('nav.themeToggleToDark')"
         >
           <svg v-if="isDark" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -60,7 +60,7 @@
           <button
             @click="toggleNotifications"
             class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
-            aria-label="Notifiche"
+            :aria-label="t('nav.notifications.title')"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -91,25 +91,25 @@
                      border border-gray-200 dark:border-gray-700 overflow-hidden z-50"
             >
               <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                <span class="text-sm font-semibold text-gray-900 dark:text-white">Notifiche</span>
+                <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('nav.notifications.title') }}</span>
                 <button
                   v-if="notifications.length > 0"
                   @click="markAllRead"
                   class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                 >
-                  Segna tutte come lette
+                  {{ t('nav.notifications.markAllRead') }}
                 </button>
               </div>
 
               <div class="max-h-80 overflow-y-auto">
                 <div v-if="loadingNotifications" class="py-8 text-center text-sm text-gray-400">
-                  Caricamento...
+                  {{ t('nav.notifications.loading') }}
                 </div>
                 <div v-else-if="notifications.length === 0" class="py-8 text-center">
                   <svg class="w-8 h-8 mx-auto text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
-                  <p class="text-sm text-gray-400 dark:text-gray-500">Nessuna notifica</p>
+                  <p class="text-sm text-gray-400 dark:text-gray-500">{{ t('nav.notifications.empty') }}</p>
                 </div>
                 <template v-else>
                   <button
@@ -149,7 +149,7 @@
                        hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
                        border-t border-gray-100 dark:border-gray-700"
               >
-                Vedi tutte
+                {{ t('nav.notifications.viewAll') }}
               </router-link>
             </div>
           </Transition>
@@ -162,7 +162,7 @@
             to="/settings"
             class="md:hidden flex items-center rounded-full transition-all"
             :class="$route.path === '/settings' ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-800' : ''"
-            aria-label="Impostazioni"
+            :aria-label="t('nav.settings')"
           >
             <img
               v-if="authStore.avatarUrl"
@@ -227,7 +227,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                Impostazioni
+                {{ t('nav.settings') }}
               </router-link>
               <div class="border-t border-gray-100 dark:border-gray-700 my-1" />
               <button
@@ -237,7 +237,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                Logout
+                {{ t('nav.logout') }}
               </button>
             </div>
           </Transition>
@@ -309,6 +309,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useDarkMode } from '@/composables/useDarkMode'
@@ -316,6 +317,7 @@ import { communicationsAPI, notificationsAPI, utilitiesAPI } from '@/api/client'
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const { isDark, themeMode, toggleDarkMode } = useDarkMode()
@@ -327,12 +329,12 @@ function handleToggleDarkMode() {
   settingsStore.updateSettings({ theme: themeMode.value })
 }
 
-const navLinks = [
-  { path: '/',          label: 'Dashboard',  shortLabel: 'Home',     id: 'home' },
-  { path: '/expenses',  label: 'Spese',      shortLabel: 'Spese',    id: 'expenses' },
-  { path: '/utilities', label: 'Servizi',     shortLabel: 'Servizi',  id: 'utilities' },
-  { path: '/projects',  label: 'Progetti',   shortLabel: 'Progetti', id: 'projects' },
-]
+const navLinks = computed(() => [
+  { path: '/',          label: t('nav.dashboard'),  shortLabel: t('nav.dashboardShort'),  id: 'home' },
+  { path: '/expenses',  label: t('nav.expenses'),   shortLabel: t('nav.expensesShort'),   id: 'expenses' },
+  { path: '/utilities', label: t('nav.utilities'),  shortLabel: t('nav.utilitiesShort'),  id: 'utilities' },
+  { path: '/projects',  label: t('nav.projects'),   shortLabel: t('nav.projectsShort'),   id: 'projects' },
+])
 
 // Notifications
 const showNotifications = ref(false)
@@ -396,8 +398,8 @@ function getNotifBgClass(notif) {
 }
 
 function getNotifLabel(notif) {
-  if (notif._source === 'notification') return notif.title || 'Notifica'
-  return notif.utility?.provider || 'Servizio'
+  if (notif._source === 'notification') return notif.title || t('nav.notifications.fallbackTitle')
+  return notif.utility?.provider || t('nav.notifications.fallbackUtility')
 }
 
 function formatTimeAgo(dateStr) {
@@ -405,10 +407,10 @@ function formatTimeAgo(dateStr) {
   const d = new Date(dateStr)
   const now = new Date()
   const diff = Math.floor((now - d) / 1000)
-  if (diff < 60) return 'Ora'
-  if (diff < 3600) return `${Math.floor(diff / 60)} min fa`
-  if (diff < 86400) return `${Math.floor(diff / 3600)} ore fa`
-  if (diff < 604800) return `${Math.floor(diff / 86400)} giorni fa`
+  if (diff < 60) return t('nav.notifications.timeAgo.now')
+  if (diff < 3600) return t('nav.notifications.timeAgo.minutes', { n: Math.floor(diff / 60) })
+  if (diff < 86400) return t('nav.notifications.timeAgo.hours', { n: Math.floor(diff / 3600) })
+  if (diff < 604800) return t('nav.notifications.timeAgo.days', { n: Math.floor(diff / 86400) })
   return d.toLocaleDateString(settingsStore.language === 'en' ? 'en-US' : 'it-IT', { day: 'numeric', month: 'short' })
 }
 

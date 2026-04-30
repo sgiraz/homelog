@@ -4,7 +4,7 @@
       <!-- Header -->
       <div class="text-center mb-6">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">HomeLog</h1>
-        <p class="text-gray-500 dark:text-gray-400 mt-1">Passo {{ currentStep }} di {{ totalSteps }}</p>
+        <p class="text-gray-500 dark:text-gray-400 mt-1">{{ t('onboarding.stepIndicator', { current: currentStep, total: totalSteps }) }}</p>
       </div>
 
       <!-- Step indicator -->
@@ -47,9 +47,9 @@
         <div v-if="currentStep === 1">
           <div class="text-center mb-6">
             <div class="text-5xl mb-3">🏠</div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Come vuoi iniziare?</h2>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('onboarding.step1.title') }}</h2>
             <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm leading-relaxed">
-              Puoi creare la tua proprietà o unirti a una esistente
+              {{ t('onboarding.step1.subtitle') }}
             </p>
           </div>
 
@@ -70,8 +70,8 @@
                 </svg>
               </div>
               <div>
-                <p class="font-semibold text-gray-900 dark:text-white text-center">Crea una nuova casa</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Configura la tua proprietà e invita i familiari</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-center">{{ t('onboarding.step1.createTitle') }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">{{ t('onboarding.step1.createDescription') }}</p>
               </div>
             </button>
 
@@ -91,15 +91,15 @@
                 </svg>
               </div>
               <div>
-                <p class="font-semibold text-gray-900 dark:text-white text-center">Unisciti a una casa esistente</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Invia una richiesta a un amministratore</p>
+                <p class="font-semibold text-gray-900 dark:text-white text-center">{{ t('onboarding.step1.joinTitle') }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">{{ t('onboarding.step1.joinDescription') }}</p>
               </div>
             </button>
           </div>
 
           <div class="flex justify-end mt-6">
             <Button class="w-full sm:w-auto px-8" @click="handleStep1" :disabled="!path">
-              Avanti
+              {{ t('onboarding.nextButton') }}
             </Button>
           </div>
         </div>
@@ -108,23 +108,23 @@
         <div v-else-if="currentStep === 2 && path === 'create'">
           <div class="text-center mb-6">
             <div class="text-5xl mb-3">🏠</div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Crea la tua proprietà</h2>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('onboarding.step2Create.title') }}</h2>
             <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm">
-              Inserisci i dettagli della tua casa.
+              {{ t('onboarding.step2Create.subtitle') }}
             </p>
           </div>
 
           <div class="space-y-4">
             <Input
               v-model="property.name"
-              label="Nome proprietà"
-              placeholder="Es. Casa Milano, Appartamento Roma..."
+              :label="t('onboarding.step2Create.nameLabel')"
+              :placeholder="t('onboarding.step2Create.namePlaceholder')"
               id="property-name"
             />
             <Input
               v-model="property.address"
-              label="Indirizzo (opzionale)"
-              placeholder="Es. Via Roma 1, Milano"
+              :label="t('onboarding.step2Create.addressLabel')"
+              :placeholder="t('onboarding.step2Create.addressPlaceholder')"
               id="property-address"
             />
           </div>
@@ -135,10 +135,10 @@
 
           <div class="flex gap-3 mt-6">
             <Button variant="secondary" class="flex-1" @click="currentStep = 1" :disabled="saving">
-              Indietro
+              {{ t('onboarding.previousButton') }}
             </Button>
             <Button class="flex-1" @click="handleStep2Create" :disabled="saving || !property.name">
-              {{ saving ? 'Salvataggio...' : 'Avanti' }}
+              {{ saving ? t('onboarding.savingButton') : t('onboarding.nextButton') }}
             </Button>
           </div>
         </div>
@@ -147,25 +147,25 @@
         <div v-else-if="currentStep === 2 && path === 'join'">
           <div class="text-center mb-6">
             <div class="text-5xl mb-3">👥</div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Unisciti a una casa</h2>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('onboarding.step2Join.title') }}</h2>
             <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm">
-              Seleziona la proprietà a cui vuoi accedere.
+              {{ t('onboarding.step2Join.subtitle') }}
             </p>
           </div>
 
           <!-- Loading -->
           <div v-if="loadingJoinable" class="py-8 text-center">
             <div class="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Caricamento...</p>
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ t('onboarding.step2Join.loading') }}</p>
           </div>
 
           <!-- No properties available -->
           <div v-else-if="joinableProperties.length === 0" class="py-6 text-center space-y-4">
             <div class="text-4xl">🔍</div>
             <p class="text-gray-600 dark:text-gray-400 text-sm">
-              Nessuna casa trovata. Puoi crearne una tu!
+              {{ t('onboarding.step2Join.noProperties') }}
             </p>
-            <Button @click="switchToCreate">Crea la tua!</Button>
+            <Button @click="switchToCreate">{{ t('onboarding.step2Join.createMine') }}</Button>
           </div>
 
           <!-- Properties list -->
@@ -186,7 +186,7 @@
                   <p class="font-semibold text-gray-900 dark:text-white">{{ prop.name }}</p>
                   <p v-if="prop.address" class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ prop.address }}</p>
                   <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    {{ prop.residents ?? 1 }} {{ (prop.residents ?? 1) === 1 ? 'membro' : 'membri' }}
+                    {{ t('onboarding.step2Join.memberCount', prop.residents ?? 1) }}
                   </p>
                 </div>
                 <div
@@ -208,7 +208,7 @@
           <!-- Join request sent success -->
           <div v-if="joinRequestSent" class="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
             <p class="text-green-700 dark:text-green-400 text-sm font-medium">
-              Richiesta inviata! Un amministratore dovrà approvare la tua richiesta.
+              {{ t('onboarding.step2Join.requestSent') }}
             </p>
           </div>
 
@@ -218,7 +218,7 @@
 
           <div v-if="joinableProperties.length > 0" class="flex gap-3 mt-6">
             <Button variant="secondary" class="flex-1" @click="currentStep = 1" :disabled="saving">
-              Indietro
+              {{ t('onboarding.previousButton') }}
             </Button>
             <Button
               v-if="!joinRequestSent"
@@ -226,10 +226,10 @@
               @click="handleStep2Join"
               :disabled="saving || !selectedPropertyId"
             >
-              {{ saving ? 'Invio...' : 'Invia Richiesta' }}
+              {{ saving ? t('onboarding.step2Join.submittingButton') : t('onboarding.step2Join.submitButton') }}
             </Button>
             <Button v-else class="flex-1" @click="currentStep++">
-              Avanti
+              {{ t('onboarding.nextButton') }}
             </Button>
           </div>
           <div v-else-if="!loadingJoinable" class="mt-4">
@@ -241,16 +241,16 @@
         <div v-else-if="currentStep === 3">
           <div class="text-center mb-6">
             <div class="text-5xl mb-3">⚙️</div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Preferenze</h2>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('onboarding.step3.title') }}</h2>
             <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm">
-              Configura lingua, valuta e tema dell'applicazione.
+              {{ t('onboarding.step3.subtitle') }}
             </p>
           </div>
 
           <div class="space-y-5">
             <!-- Currency -->
             <div>
-              <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">Valuta</label>
+              <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">{{ t('onboarding.step3.currencyLabel') }}</label>
               <select
                 v-model="preferences.currency"
                 class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
@@ -265,7 +265,7 @@
 
             <!-- Language -->
             <div>
-              <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">Lingua</label>
+              <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">{{ t('onboarding.step3.languageLabel') }}</label>
               <div class="grid grid-cols-2 gap-2">
                 <button
                   v-for="l in languages"
@@ -285,20 +285,20 @@
 
             <!-- Theme -->
             <div>
-              <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">Tema</label>
+              <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">{{ t('onboarding.step3.themeLabel') }}</label>
               <div class="grid grid-cols-3 gap-2">
                 <button
-                  v-for="t in themes"
-                  :key="t.value"
-                  @click="preferences.theme = t.value"
+                  v-for="th in themes"
+                  :key="th.value"
+                  @click="preferences.theme = th.value"
                   :class="[
                     'px-3 py-2 rounded-lg text-sm font-medium border transition-colors',
-                    preferences.theme === t.value
+                    preferences.theme === th.value
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                       : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                   ]"
                 >
-                  {{ t.icon }} {{ t.label }}
+                  {{ th.icon }} {{ th.label }}
                 </button>
               </div>
             </div>
@@ -310,10 +310,10 @@
 
           <div class="flex gap-3 mt-6">
             <Button variant="secondary" class="flex-1" @click="skipStep" :disabled="saving">
-              Salta
+              {{ t('onboarding.skipButton') }}
             </Button>
             <Button class="flex-1" @click="handleStep3" :disabled="saving">
-              {{ saving ? 'Salvataggio...' : 'Avanti' }}
+              {{ saving ? t('onboarding.savingButton') : t('onboarding.nextButton') }}
             </Button>
           </div>
         </div>
@@ -322,21 +322,21 @@
         <div v-else-if="currentStep === 4">
           <div class="text-center mb-6">
             <div class="text-5xl mb-3">✨</div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Scopri HomeLog</h2>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('onboarding.step4.title') }}</h2>
             <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm">
-              Ecco cosa puoi fare con la tua nuova app.
+              {{ t('onboarding.step4.subtitle') }}
             </p>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
             <div
               v-for="feature in features"
-              :key="feature.title"
+              :key="feature.key"
               class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-700"
             >
               <div class="text-2xl mb-2">{{ feature.icon }}</div>
-              <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">{{ feature.title }}</h3>
-              <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{{ feature.description }}</p>
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">{{ t(`onboarding.step4.features.${feature.key}.title`) }}</h3>
+              <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{{ t(`onboarding.step4.features.${feature.key}.description`) }}</p>
             </div>
           </div>
 
@@ -345,7 +345,7 @@
           </div>
 
           <Button class="w-full" @click="completeOnboarding" :disabled="saving">
-            {{ saving ? 'Completamento...' : 'Inizia!' }}
+            {{ saving ? t('onboarding.step4.completingButton') : t('onboarding.step4.completeButton') }}
           </Button>
         </div>
       </Card>
@@ -356,7 +356,7 @@
           @click="currentStep--"
           class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
         >
-          ← Torna indietro
+          {{ t('onboarding.back') }}
         </button>
       </div>
     </div>
@@ -366,6 +366,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { propertiesAPI, settingsAPI, joinRequestAPI } from '@/api/client'
 import { currencies as allCurrencies } from '@/utils/currencies'
 import { useSettingsStore } from '@/stores/settings'
@@ -376,6 +377,7 @@ import Input from '@/components/common/Input.vue'
 defineOptions({ name: 'OnboardingView' })
 
 const router = useRouter()
+const { t } = useI18n()
 const settingsStore = useSettingsStore()
 
 const totalSteps = 4
@@ -405,10 +407,10 @@ const preferences = ref({
 
 // Step labels depend on path
 const steps = computed(() => [
-  { id: 1, label: 'Percorso' },
-  { id: 2, label: path.value === 'join' ? 'Unisciti' : 'Proprietà' },
-  { id: 3, label: 'Preferenze' },
-  { id: 4, label: 'Scopri' }
+  { id: 1, label: t('onboarding.steps.path') },
+  { id: 2, label: path.value === 'join' ? t('onboarding.steps.join') : t('onboarding.steps.property') },
+  { id: 3, label: t('onboarding.steps.preferences') },
+  { id: 4, label: t('onboarding.steps.discover') }
 ])
 
 const currencies = allCurrencies.map(c => ({ value: c.code, symbol: c.symbol, name: c.name }))
@@ -418,33 +420,18 @@ const languages = [
   { value: 'en', label: '🇬🇧 English' }
 ]
 
-const themes = [
-  { value: 'auto', label: 'Auto', icon: '💻' },
-  { value: 'light', label: 'Chiaro', icon: '☀️' },
-  { value: 'dark', label: 'Scuro', icon: '🌙' }
-]
+const themes = computed(() => [
+  { value: 'auto', label: t('onboarding.step3.themeAuto'), icon: '💻' },
+  { value: 'light', label: t('onboarding.step3.themeLight'), icon: '☀️' },
+  { value: 'dark', label: t('onboarding.step3.themeDark'), icon: '🌙' }
+])
 
+// Feature keys (icon stays in code, copy lives in i18n).
 const features = [
-  {
-    icon: '📄',
-    title: 'Estrazione PDF bollette',
-    description: 'Carica le tue bollette in PDF e HomeLog estrae automaticamente i dati grazie ai template configurabili.'
-  },
-  {
-    icon: '⚖️',
-    title: 'Divisione spese',
-    description: 'Suddividi le spese tra i membri della famiglia in modo equo e tieni traccia dei saldi.'
-  },
-  {
-    icon: '📊',
-    title: 'Analisi consumi utenze',
-    description: 'Confronta le letture del contatore con quelle del fornitore e monitora i consumi nel tempo.'
-  },
-  {
-    icon: '🏗️',
-    title: 'Gestione progetti',
-    description: 'Pianifica ristrutturazioni, acquisti o viaggi con budget dedicati e tracciamento delle spese.'
-  }
+  { key: 'pdf', icon: '📄' },
+  { key: 'split', icon: '⚖️' },
+  { key: 'consumption', icon: '📊' },
+  { key: 'projects', icon: '🏗️' }
 ]
 
 onMounted(async () => {
@@ -511,7 +498,7 @@ function handleStep1() {
 async function handleStep2Create() {
   stepError.value = null
   if (!property.value.name.trim()) {
-    stepError.value = 'Inserisci il nome della proprietà.'
+    stepError.value = t('onboarding.step2Create.nameRequired')
     return
   }
 
@@ -528,7 +515,7 @@ async function handleStep2Create() {
     createdPropertyId.value = data.id
     currentStep.value++
   } catch (err) {
-    stepError.value = err.response?.data?.error || 'Errore nella creazione della proprietà.'
+    stepError.value = err.response?.data?.error || t('onboarding.step2Create.createError')
     window.$toast?.error(stepError.value)
   } finally {
     saving.value = false
@@ -543,9 +530,9 @@ async function handleStep2Join() {
   try {
     await joinRequestAPI.create(selectedPropertyId.value)
     joinRequestSent.value = true
-    window.$toast?.success('Richiesta inviata con successo!')
+    window.$toast?.success(t('onboarding.step2Join.submitSuccess'))
   } catch (err) {
-    stepError.value = err.response?.data?.error || 'Errore nell\'invio della richiesta.'
+    stepError.value = err.response?.data?.error || t('onboarding.step2Join.submitError')
     window.$toast?.error(stepError.value)
   } finally {
     saving.value = false
@@ -564,7 +551,7 @@ async function handleStep3() {
     })
     currentStep.value++
   } catch (err) {
-    stepError.value = err.response?.data?.error || 'Errore nel salvataggio delle preferenze.'
+    stepError.value = err.response?.data?.error || t('onboarding.step3.saveError')
     window.$toast?.error(stepError.value)
   } finally {
     saving.value = false
@@ -581,7 +568,7 @@ async function completeOnboarding() {
     await settingsStore.loadSettings()
     router.push('/')
   } catch (err) {
-    stepError.value = err.response?.data?.error || 'Errore nel completamento dell\'onboarding.'
+    stepError.value = err.response?.data?.error || t('onboarding.step4.completeError')
     window.$toast?.error(stepError.value)
   } finally {
     saving.value = false

@@ -1,17 +1,20 @@
 import { reactive } from 'vue'
 
+// confirmText/cancelText default to '' so ConfirmDialog can render translated
+// fallbacks (common.actions.confirm/cancel) via i18n. Callers can still pass
+// custom strings for context-specific wording.
 const state = reactive({
   show: false,
   title: '',
   message: '',
-  confirmText: 'Conferma',
-  cancelText: 'Annulla',
+  confirmText: '',
+  cancelText: '',
   variant: 'default',
   resolve: null
 })
 
 export function useConfirm() {
-  function confirm({ title = '', message = '', confirmText = 'Conferma', cancelText = 'Annulla', variant = 'default' } = {}) {
+  function confirm({ title = '', message = '', confirmText = '', cancelText = '', variant = 'default' } = {}) {
     return new Promise((resolve) => {
       state.show = true
       state.title = title

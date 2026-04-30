@@ -1,7 +1,7 @@
 <template>
   <!-- Individual Comparisons (Accordion) -->
   <div class="space-y-3">
-    <h4 class="font-semibold text-gray-900 dark:text-white">Confronto per Bolletta</h4>
+    <h4 class="font-semibold text-gray-900 dark:text-white">{{ t('utilities.comparisonAccordion.title') }}</h4>
     <div
       v-for="comparison in comparisons"
       :key="comparison.bill_id"
@@ -42,8 +42,8 @@
       <div v-show="expandedCards.has(comparison.bill_id)" class="px-3 sm:px-4 pb-3 sm:pb-4 space-y-3">
         <!-- Days difference and effective threshold info -->
         <div v-if="comparison.days_difference > 0" class="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-3 py-2 rounded">
-          <span class="font-medium">{{ comparison.days_difference }} giorni</span> di differenza tra le letture.
-          Soglia effettiva: <span class="font-medium">{{ fmtNum(comparison.effective_threshold) }} {{ getUnit() }}</span>
+          <span class="font-medium">{{ t('utilities.comparisonAccordion.daysDifference', { n: comparison.days_difference }) }}</span> {{ t('utilities.comparisonAccordion.daysDifferenceMessage') }}
+          {{ t('utilities.comparisonAccordion.effectiveThreshold') }} <span class="font-medium">{{ fmtNum(comparison.effective_threshold) }} {{ getUnit() }}</span>
         </div>
 
         <!-- Alert message if any -->
@@ -70,14 +70,14 @@
         <!-- Gas/Water comparison (single value) -->
         <div v-else class="grid grid-cols-2 gap-3">
           <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Fornitore</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.comparisonAccordion.providerLabel') }}</p>
             <p class="text-base font-semibold text-gray-900 dark:text-white">
               {{ comparison.provider_reading != null ? fmtNum(comparison.provider_reading) : '-' }}
               <span class="text-xs font-normal text-gray-500">{{ getUnit() }}</span>
             </p>
           </div>
           <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Autolettura</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.comparisonAccordion.selfLabel') }}</p>
             <p class="text-base font-semibold text-gray-900 dark:text-white">
               {{ comparison.user_reading != null ? fmtNum(comparison.user_reading) : '-' }}
               <span class="text-xs font-normal text-gray-500">{{ getUnit() }}</span>
@@ -89,7 +89,7 @@
               comparison.status === 'alert' ? 'text-red-600' :
               comparison.status === 'warning' ? 'text-yellow-600' : 'text-green-600'
             ]">
-              Differenza: {{ fmtDiff(comparison.difference) }} {{ getUnit() }}
+              {{ t('utilities.comparisonAccordion.differencePrefix') }} {{ fmtDiff(comparison.difference) }} {{ getUnit() }}
             </span>
           </div>
         </div>
@@ -101,10 +101,10 @@
             comparison.reading_type === 'actual' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
             'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
           ]">
-            {{ comparison.reading_type === 'actual' ? 'Lettura Effettiva' : 'Lettura Stimata' }}
+            {{ comparison.reading_type === 'actual' ? t('utilities.comparisonAccordion.actualReading') : t('utilities.comparisonAccordion.estimatedReading') }}
           </span>
           <span v-if="comparison.provider_reading_date">
-            del {{ formatDate(comparison.provider_reading_date) }}
+            {{ t('utilities.comparisonAccordion.ofDate', { date: formatDate(comparison.provider_reading_date) }) }}
           </span>
         </div>
       </div>
@@ -114,8 +114,11 @@
 
 <script setup>
 import { h } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 defineOptions({ name: 'ComparisonAccordion' })
+
+const { t } = useI18n()
 
 defineProps({
   comparisons: {
@@ -178,10 +181,10 @@ function getStatusBadgeClasses(status) {
 
 function getStatusLabel(status) {
   switch (status) {
-    case 'alert': return 'Anomalia'
-    case 'warning': return 'Attenzione'
-    case 'no_data': return 'No dati'
-    default: return 'OK'
+    case 'alert': return t('utilities.comparisonAccordion.statusAlert')
+    case 'warning': return t('utilities.comparisonAccordion.statusWarning')
+    case 'no_data': return t('utilities.comparisonAccordion.statusNoData')
+    default: return t('utilities.comparisonAccordion.statusOk')
   }
 }
 
@@ -223,6 +226,7 @@ function getStatusIcon(status) {
 const ReadingBandComparison = {
   props: ['band', 'providerValue', 'userValue', 'difference', 'unit', 'threshold'],
   setup(props) {
+    const { t: bt } = useI18n()
     const formatNum = (v) => v != null ? v.toLocaleString(undefined, { maximumFractionDigits: 3 }) : '-'
 
     const getBandColor = () => {
@@ -246,8 +250,8 @@ const ReadingBandComparison = {
     return () => h('div', { class: 'text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg' }, [
       h('p', { class: ['text-xs font-medium mb-1', getBandColor()] }, props.band),
       h('div', { class: 'text-xs text-gray-500 dark:text-gray-400' }, [
-        h('p', {}, ['Fornitore: ', h('span', { class: 'font-medium text-gray-700 dark:text-gray-300' }, formatNum(props.providerValue))]),
-        h('p', {}, ['Tu: ', h('span', { class: 'font-medium text-gray-700 dark:text-gray-300' }, formatNum(props.userValue))]),
+        h('p', {}, [bt('utilities.comparisonAccordion.providerLabel') + ': ', h('span', { class: 'font-medium text-gray-700 dark:text-gray-300' }, formatNum(props.providerValue))]),
+        h('p', {}, [bt('utilities.comparisonAccordion.yourLabel') + ' ', h('span', { class: 'font-medium text-gray-700 dark:text-gray-300' }, formatNum(props.userValue))]),
         props.difference != null && h('p', { class: getDiffColor() },
           (props.difference > 0 ? '+' : '') + formatNum(props.difference) + ' ' + props.unit
         )

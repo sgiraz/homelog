@@ -8,7 +8,7 @@
           @click="prevPage"
           :disabled="currentPage <= 1"
           class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          title="Pagina precedente"
+          :title="t('utilities.pdfTextract.prevPage')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -21,7 +21,7 @@
           @click="nextPage"
           :disabled="currentPage >= totalPages"
           class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          title="Pagina successiva"
+          :title="t('utilities.pdfTextract.nextPage')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -35,7 +35,7 @@
           @click="zoomOut"
           :disabled="zoom <= 0.5"
           class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          title="Riduci"
+          :title="t('utilities.pdfTextract.zoomOut')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
@@ -48,7 +48,7 @@
           @click="zoomIn"
           :disabled="zoom >= 2"
           class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          title="Ingrandisci"
+          :title="t('utilities.pdfTextract.zoomIn')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -57,9 +57,9 @@
         <button
           @click="resetZoom"
           class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-xs font-medium text-gray-600 dark:text-gray-400"
-          title="Reset zoom"
+          :title="t('utilities.pdfTextract.resetZoom')"
         >
-          Fit
+          {{ t('utilities.pdfTextract.fitButton') }}
         </button>
       </div>
 
@@ -67,19 +67,19 @@
       <div class="flex items-center gap-3 text-xs">
         <span class="flex items-center gap-1">
           <span class="w-3 h-3 rounded bg-green-400/60 border border-green-500"></span>
-          Valuta
+          {{ t('utilities.pdfTextract.legendCurrency') }}
         </span>
         <span class="flex items-center gap-1">
           <span class="w-3 h-3 rounded bg-purple-400/60 border border-purple-500"></span>
-          Data
+          {{ t('utilities.pdfTextract.legendDate') }}
         </span>
         <span class="flex items-center gap-1">
           <span class="w-3 h-3 rounded bg-blue-400/60 border border-blue-500"></span>
-          Numero
+          {{ t('utilities.pdfTextract.legendNumber') }}
         </span>
         <span class="flex items-center gap-1">
           <span class="w-3 h-3 rounded bg-yellow-400/60 border border-yellow-500"></span>
-          Simbolo
+          {{ t('utilities.pdfTextract.legendSymbol') }}
         </span>
       </div>
     </div>
@@ -101,7 +101,7 @@
         <!-- PDF Image Background -->
         <img
           :src="apiBaseUrl + currentPageData.image_url"
-          :alt="`Pagina ${currentPage}`"
+          :alt="t('utilities.pdfTextract.pageAlt', { n: currentPage })"
           class="absolute inset-0 w-full h-full opacity-40 pointer-events-none select-none"
           draggable="false"
         />
@@ -141,24 +141,24 @@
               <hr class="border-gray-700">
               <!-- Properties -->
               <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-                <span class="text-gray-400">Tipo</span>
+                <span class="text-gray-400">{{ t('utilities.pdfTextract.tooltipType') }}</span>
                 <span class="font-medium">{{ getTypeLabel(word.type) }}</span>
-                <span class="text-gray-400">Pag.</span>
+                <span class="text-gray-400">{{ t('utilities.pdfTextract.tooltipPage') }}</span>
                 <span>{{ (word.page || 0) + 1 }}</span>
-                <span class="text-gray-400">Pos.</span>
+                <span class="text-gray-400">{{ t('utilities.pdfTextract.tooltipPos') }}</span>
                 <span>x:{{ Math.round(word.x) }} y:{{ Math.round(word.y) }}</span>
-                <span class="text-gray-400">Dim.</span>
+                <span class="text-gray-400">{{ t('utilities.pdfTextract.tooltipSize') }}</span>
                 <span>{{ Math.round(word.width) }}x{{ Math.round(word.height) }}</span>
               </div>
               <!-- Neighbors -->
               <div v-if="hoveredWordNeighbors" class="pt-1 border-t border-gray-700">
-                <p class="text-gray-400 mb-0.5">Contesto</p>
+                <p class="text-gray-400 mb-0.5">{{ t('utilities.pdfTextract.tooltipContext') }}</p>
                 <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-                  <span v-if="hoveredWordNeighbors.left" class="text-gray-500">sx</span>
+                  <span v-if="hoveredWordNeighbors.left" class="text-gray-500">{{ t('utilities.pdfTextract.tooltipLeft') }}</span>
                   <span v-if="hoveredWordNeighbors.left" class="font-mono truncate">{{ hoveredWordNeighbors.left.text }}</span>
-                  <span v-if="hoveredWordNeighbors.right" class="text-gray-500">dx</span>
+                  <span v-if="hoveredWordNeighbors.right" class="text-gray-500">{{ t('utilities.pdfTextract.tooltipRight') }}</span>
                   <span v-if="hoveredWordNeighbors.right" class="font-mono truncate">{{ hoveredWordNeighbors.right.text }}</span>
-                  <span v-if="hoveredWordNeighbors.above" class="text-gray-500">sopra</span>
+                  <span v-if="hoveredWordNeighbors.above" class="text-gray-500">{{ t('utilities.pdfTextract.tooltipAbove') }}</span>
                   <span v-if="hoveredWordNeighbors.above" class="font-mono truncate">{{ hoveredWordNeighbors.above.text }}</span>
                 </div>
               </div>
@@ -180,7 +180,7 @@
         <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
-        <p>Nessun PDF caricato</p>
+        <p>{{ t('utilities.pdfTextract.noPdf') }}</p>
       </div>
     </div>
   </div>
@@ -188,7 +188,10 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { classifyToken, TokenType, findTokenNeighbors } from '@/utils/tokenizer'
+
+const { t } = useI18n()
 
 const props = defineProps({
   pages: {
@@ -317,17 +320,19 @@ function getWordStyle(word) {
 }
 
 function getTypeLabel(type) {
-  const labels = {
-    [TokenType.CURRENCY]: 'Valuta',
-    [TokenType.NUMBER]: 'Numero',
-    [TokenType.DATE]: 'Data',
-    [TokenType.MONTH]: 'Mese',
-    [TokenType.SYMBOL]: 'Simbolo',
-    [TokenType.TEXT]: 'Testo',
-    [TokenType.POD]: 'POD',
-    [TokenType.PDR]: 'PDR'
+  const map = {
+    [TokenType.CURRENCY]: 'currency',
+    [TokenType.NUMBER]: 'number',
+    [TokenType.DATE]: 'date',
+    [TokenType.MONTH]: 'month',
+    [TokenType.SYMBOL]: 'symbol',
+    [TokenType.TEXT]: 'text',
+    [TokenType.POD]: 'pod',
+    [TokenType.PDR]: 'pdr'
   }
-  return labels[type] || type
+  const key = map[type]
+  if (!key) return type
+  return t(`utilities.pdfTextract.tokenTypes.${key}`)
 }
 
 function getTooltipTextColor(type) {

@@ -2,12 +2,12 @@
   <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center justify-between">
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Progetti</h1>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ t('projects.title') }}</h1>
       <Button @click="showAddModal = true">
         <svg class="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        <span class="hidden sm:inline">Nuovo Progetto</span>
+        <span class="hidden sm:inline">{{ t('projects.newProjectButton') }}</span>
       </Button>
     </div>
 
@@ -33,20 +33,20 @@
 
     <!-- Loading -->
     <div v-if="projectsStore.loading" class="text-center py-12 text-gray-600">
-      Caricamento progetti...
+      {{ t('projects.loading') }}
     </div>
 
     <!-- Empty State -->
     <div v-else-if="filteredProjects.length === 0" class="text-center py-12">
       <div class="text-6xl mb-4">🏗️</div>
       <h3 class="text-xl font-semibold mb-2">
-        {{ selectedStatus === '' ? 'Nessun progetto' : 'Nessun progetto ' + statuses.find(s => s.value === selectedStatus)?.label.toLowerCase() }}
+        {{ selectedStatus === '' ? t('projects.emptyAll') : t('projects.emptyFiltered', { filter: statuses.find(s => s.value === selectedStatus)?.label.toLowerCase() }) }}
       </h3>
       <p class="text-gray-600 mb-6">
-        Crea progetti per tracciare lavori casa, ristrutturazioni, eventi con budget dedicato
+        {{ t('projects.emptyDescription') }}
       </p>
       <Button @click="showAddModal = true">
-        + Crea Primo Progetto
+        {{ t('projects.createFirstButton') }}
       </Button>
     </div>
 
@@ -83,7 +83,7 @@
               {{ getStatusLabel(project.status) }}
             </span>
             <span v-if="!isOwner(project)" class="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-medium">
-              Condiviso
+              {{ t('projects.card.shared') }}
             </span>
           </div>
         </div>
@@ -96,12 +96,12 @@
         <!-- Budget Progress -->
         <div class="space-y-2">
           <div class="flex justify-between text-sm">
-            <span class="text-gray-600 dark:text-gray-400">Budget:</span>
+            <span class="text-gray-600 dark:text-gray-400">{{ t('projects.card.budget') }}</span>
             <span class="font-medium">{{ formatCurrency(project.budget) }}</span>
           </div>
 
           <div class="flex justify-between text-sm">
-            <span class="text-gray-600 dark:text-gray-400">Speso:</span>
+            <span class="text-gray-600 dark:text-gray-400">{{ t('projects.card.spent') }}</span>
             <span :class="[
               'font-medium',
               (project.stats?.total_spent || 0) > project.budget ? 'text-red-600' : 'text-gray-900 dark:text-white'
@@ -122,9 +122,9 @@
           </div>
 
           <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400">
-            <span>{{ (project.stats?.percentage_spent || 0).toFixed(1) }}% utilizzato</span>
+            <span>{{ t('projects.card.percentUsed', { percent: (project.stats?.percentage_spent || 0).toFixed(1) }) }}</span>
             <span>
-              {{ (project.stats?.remaining ?? 0) >= 0 ? 'Rimangono' : 'Sforato' }}
+              {{ (project.stats?.remaining ?? 0) >= 0 ? t('projects.card.remaining') : t('projects.card.overrun') }}
               {{ formatCurrency(Math.abs(project.stats?.remaining ?? 0)) }}
             </span>
           </div>
@@ -133,7 +133,7 @@
         <!-- Footer Stats -->
         <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center text-sm">
           <span class="text-gray-600 dark:text-gray-400">
-            {{ project.stats?.expense_count || 0 }} spese
+            {{ t('projects.card.expenseCount', project.stats?.expense_count || 0) }}
           </span>
           <div class="flex items-center gap-2">
             <!-- Shared member avatars -->
@@ -151,7 +151,7 @@
               </div>
             </div>
             <span v-if="isOverdue(project)" class="text-red-600 font-medium">
-              Scaduto
+              {{ t('projects.card.overdue') }}
             </span>
           </div>
         </div>
@@ -173,6 +173,7 @@ defineOptions({ name: 'ProjectsView' })
 
 import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -185,6 +186,7 @@ import AddProjectModal from '@/components/projects/AddProjectModal.vue'
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
 const projectsStore = useProjectsStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
@@ -198,12 +200,12 @@ const currentPropertyId = ref(null)
 
 const selectedStatus = ref('active')
 
-const statuses = [
-  { value: 'active', label: 'Attivi', icon: '🔨' },
-  { value: 'planned', label: 'Pianificati', icon: '📅' },
-  { value: 'completed', label: 'Completati', icon: '✅' },
-  { value: '', label: 'Tutti', icon: '📋' }
-]
+const statuses = computed(() => [
+  { value: 'active', label: t('projects.filters.active'), icon: '🔨' },
+  { value: 'planned', label: t('projects.filters.planned'), icon: '📅' },
+  { value: 'completed', label: t('projects.filters.completed'), icon: '✅' },
+  { value: '', label: t('projects.filters.all'), icon: '📋' }
+])
 
 const defaultStats = { total_budget: 0, total_spent: 0, remaining: 0, percentage_spent: 0, expense_count: 0 }
 
@@ -220,6 +222,7 @@ const filteredProjects = computed(() => {
   }
   return all.filter(p => p.status === selectedStatus.value)
 })
+
 
 // Search-highlight wiring: if `?highlight=<id>` refers to a project hidden by
 // the current status filter, relax the filter to "all" so the row is visible.
@@ -243,8 +246,8 @@ function formatCurrency(value) {
 }
 
 function getStatusLabel(status) {
-  const map = { planned: 'Pianificato', active: 'In Corso', completed: 'Completato', cancelled: 'Annullato' }
-  return map[status] || status
+  const key = `projects.status.${status}`
+  return t(key) === key ? status : t(key)
 }
 
 function getStatusColor(status) {

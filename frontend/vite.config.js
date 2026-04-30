@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
@@ -8,6 +9,10 @@ export default defineConfig({
   plugins: [
     vue(),
     tailwindcss(),
+    VueI18nPlugin({
+      include: [fileURLToPath(new URL('./src/i18n/locales/**', import.meta.url))],
+      strictMessage: false,
+    }),
   ],
   define: {
     __APP_VERSION__: JSON.stringify(process.env.APP_VERSION || 'dev'),

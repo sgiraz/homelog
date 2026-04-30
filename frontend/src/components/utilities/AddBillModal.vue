@@ -1,5 +1,5 @@
 <template>
-  <BaseModal :title="isEditing ? (isMetered ? 'Modifica Bolletta' : 'Modifica Fattura') : (isMetered ? 'Nuova Bolletta' : 'Nuova Fattura')" @close="$emit('close')">
+  <BaseModal :title="modalTitle" @close="$emit('close')">
 
       <!-- PDF Upload (only for new bills) -->
       <PDFUploadZone
@@ -16,18 +16,13 @@
       <form @submit.prevent="handleSubmit" class="space-y-4">
         <div v-if="isLocked" class="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200">
           <span>🔒</span>
-          <span>
-            Una o più rate di questa bolletta sono già state saldate dai membri.
-            Puoi consultare i dettagli e modificare i campi non finanziari, ma
-            l'importo totale e lo stato di pagamento delle rate saldate sono bloccati
-            per non compromettere il bilancio. Annulla i pagamenti dal Bilancio per sbloccarli.
-          </span>
+          <span>{{ t('utilities.addBillModal.lockedNotice') }}</span>
         </div>
 
         <!-- Importo Totale -->
         <div v-if="isForeignCurrency">
           <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-            Importo Totale ({{ utility.currency }})
+            {{ t('utilities.addBillModal.totalAmountForeign', { currency: utility.currency }) }}
           </label>
           <Input
             v-model="form.original_amount"
@@ -39,18 +34,18 @@
           />
           <div class="mt-1.5">
             <div v-if="rateLoading" class="text-xs text-gray-400">
-              Conversione in corso...
+              {{ t('utilities.addBillModal.rateConverting') }}
             </div>
             <div v-else-if="form.original_amount && convertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
               {{ formatOriginal(form.original_amount, utility.currency) }} ≈ {{ formatCurrency(convertedAmount) }}
-              <span class="text-gray-400">(tasso: {{ exchangeRate?.toFixed(6) }})</span>
+              <span class="text-gray-400">{{ t('utilities.addBillModal.rateInfo', { rate: exchangeRate?.toFixed(6) }) }}</span>
             </div>
             <div v-else-if="rateError" class="space-y-1">
               <p class="text-xs text-amber-600 dark:text-amber-400">
-                Tasso non disponibile. Inserisci manualmente:
+                {{ t('utilities.addBillModal.rateUnavailable') }}
               </p>
               <div class="flex items-center gap-2">
-                <span class="text-xs text-gray-500">1 {{ utility.currency }} =</span>
+                <span class="text-xs text-gray-500">{{ t('utilities.addBillModal.currencyEquals', { currency: utility.currency }) }}</span>
                 <input
                   v-model.number="manualRate"
                   type="number"
@@ -73,7 +68,7 @@
         <Input
           v-else
           v-model="form.amount_total"
-          label="Importo Totale"
+          :label="t('utilities.addBillModal.totalAmount')"
           type="number"
           step="0.01"
           min="0"
@@ -85,13 +80,13 @@
         <div class="grid grid-cols-2 gap-4 w-full min-w-0 overflow-hidden">
           <Input
             v-model="form.period_start"
-            label="Inizio Periodo *"
+            :label="t('utilities.addBillModal.periodStart')"
             type="date"
             required
           />
           <Input
             v-model="form.period_end"
-            label="Fine Periodo *"
+            :label="t('utilities.addBillModal.periodEnd')"
             type="date"
             required
           />
@@ -101,13 +96,13 @@
         <div class="grid grid-cols-2 gap-4 w-full min-w-0 overflow-hidden">
           <Input
             v-model="form.due_date"
-            label="Scadenza *"
+            :label="t('utilities.addBillModal.due')"
             type="date"
             required
           />
           <Input
             v-model="form.issue_date"
-            label="Emissione *"
+            :label="t('utilities.addBillModal.issue')"
             type="date"
             required
           />
@@ -117,7 +112,7 @@
         <Input
           v-if="isMetered"
           v-model="form.consumption_total"
-          :label="'Consumo (' + consumptionUnit + ')'"
+          :label="t('utilities.addBillModal.consumption', { unit: consumptionUnit })"
           type="number"
           step="0.001"
           min="0"
@@ -127,18 +122,18 @@
         <!-- Numero Bolletta/Fattura -->
         <Input
           v-model="form.bill_number"
-          :label="isMetered ? 'Numero Bolletta *' : 'Numero Fattura *'"
-          :placeholder="isMetered ? 'Es. 32455111' : 'Es. F2601900450'"
+          :label="isMetered ? t('utilities.addBillModal.billNumber') : t('utilities.addBillModal.invoiceNumber')"
+          :placeholder="isMetered ? t('utilities.addBillModal.billNumberPlaceholder') : t('utilities.addBillModal.invoiceNumberPlaceholder')"
           required
         />
 
         <!-- Autolettura di riferimento (metered only) -->
         <div v-if="isMetered" class="space-y-2">
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Autolettura di riferimento
+            {{ t('utilities.addBillModal.userReadingLabel') }}
           </label>
           <p class="text-xs text-gray-500 dark:text-gray-400">
-            Associa l'autolettura corrispondente alla lettura finale di questa bolletta
+            {{ t('utilities.addBillModal.userReadingHint') }}
           </p>
 
           <select
@@ -148,7 +143,7 @@
                    focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             @change="inlineReadingValue = null"
           >
-            <option :value="null">-- Nessuna autolettura --</option>
+            <option :value="null">{{ t('utilities.addBillModal.noReading') }}</option>
             <option
               v-for="r in sortedReadings"
               :key="r.id"
@@ -161,7 +156,7 @@
           <!-- Inline reading creation -->
           <div v-if="form.user_reading_id === null" class="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
             <p class="text-xs text-amber-700 dark:text-amber-300 mb-2">
-              Puoi inserire una lettura al volo (verrà creata automaticamente):
+              {{ t('utilities.addBillModal.inlineReadingHint') }}
             </p>
             <div class="flex gap-2 items-center">
               <input
@@ -176,7 +171,7 @@
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ readingUnit }}</span>
             </div>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-              Lascia vuoto per usare la lettura del fornitore come riferimento
+              {{ t('utilities.addBillModal.inlineReadingFooter') }}
             </p>
           </div>
         </div>
@@ -201,41 +196,31 @@
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" v-model="form.has_estimated"
                 class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">Contiene lettura stimata</span>
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('utilities.addBillModal.estimatedToggle') }}</span>
             </label>
             <button type="button" @click="showEstimatedHelp = !showEstimatedHelp"
               class="w-5 h-5 inline-flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
               :aria-expanded="showEstimatedHelp"
-              aria-label="Cosa significa">?</button>
+              :aria-label="t('utilities.addBillModal.estimatedHelpAria')">?</button>
           </div>
           <div v-if="showEstimatedHelp"
             class="mt-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-100 space-y-1.5">
-            <p>
-              Spunta questa casella quando la bolletta riporta una <strong>lettura stimata</strong>
-              dal fornitore (non basata su un'autolettura reale o su una lettura del distributore).
-            </p>
-            <p>
-              In quel caso il consumo fatturato è una <em>previsione</em>: nella prossima bolletta
-              verrà conguagliato confrontandolo con la lettura effettiva. Marcare la stima permette
-              all'analisi consumi di distinguere i conguagli dalle reali variazioni di consumo
-              ed evitare allarmi falsi.
-            </p>
-            <p class="text-amber-700 dark:text-amber-300">
-              Inserisci la data e il valore stimato esattamente come riportati in bolletta.
-            </p>
+            <p>{{ t('utilities.addBillModal.estimatedHelp1') }}</p>
+            <p>{{ t('utilities.addBillModal.estimatedHelp2') }}</p>
+            <p class="text-amber-700 dark:text-amber-300">{{ t('utilities.addBillModal.estimatedHelp3') }}</p>
           </div>
           <div v-if="form.has_estimated" class="mt-3 space-y-3 pl-4 border-l-2 border-amber-300 dark:border-amber-600">
             <div>
-              <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Data stima</label>
+              <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.addBillModal.estimatedDate') }}</label>
               <input v-model="form.estimated_date" type="date"
                 class="w-full min-w-0 max-w-full box-border px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500" />
             </div>
             <div>
-              <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Lettura Stimata (mc)</label>
+              <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.addBillModal.estimatedReading') }}</label>
               <input v-model="form.estimated_reading" type="number" step="0.001" placeholder="0"
                 class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500" />
               <p v-if="calculatedEstimatedConsumption != null" class="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                Consumo stimato: {{ formatNumber(calculatedEstimatedConsumption) }} {{ utility.type === 'gas' ? 'Smc' : 'mc' }}
+                {{ t('utilities.addBillModal.estimatedConsumption', { value: formatNumber(calculatedEstimatedConsumption), unit: utility.type === 'gas' ? 'Smc' : 'mc' }) }}
               </p>
             </div>
           </div>
@@ -244,22 +229,22 @@
         <!-- Comunicazioni importanti -->
         <div>
           <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-            Comunicazioni importanti
+            {{ t('utilities.addBillModal.communicationsLabel') }}
           </label>
           <textarea
             v-model="form.communication_text"
             rows="3"
-            :placeholder="isMetered ? 'Eventuali comunicazioni rilevanti...' : 'Es. Modifica condizioni contrattuali, variazioni di prezzo...'"
+            :placeholder="isMetered ? t('utilities.addBillModal.communicationsPlaceholderBill') : t('utilities.addBillModal.communicationsPlaceholderInvoice')"
             class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            Inserisci comunicazioni importanti contenute nella {{ isMetered ? 'bolletta' : 'fattura' }} (variazioni prezzo, scadenze recesso, ecc.)
+            {{ isMetered ? t('utilities.addBillModal.communicationsHintBill') : t('utilities.addBillModal.communicationsHintInvoice') }}
           </p>
         </div>
 
-        <!-- Rate (installments) — shown for installment-based services -->
+        <!-- Rate (installments) -->
         <InstallmentsSection
           v-if="isInstallmentBased"
           v-model="form.installments"
@@ -272,14 +257,14 @@
           @error="submitError = $event"
         />
 
-        <!-- Stato Pagamento — solo per bollette non rateizzate -->
+        <!-- Stato Pagamento -->
         <div v-if="!isInstallmentBased" class="flex items-center gap-3">
           <input type="checkbox" id="is-paid" v-model="form.is_paid"
             :disabled="isLocked"
             class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
           <label for="is-paid" class="text-sm cursor-pointer"
             :class="isLocked ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'text-gray-900 dark:text-white'">
-            Già pagata{{ isLocked ? ' (bloccata: spesa già saldata)' : '' }}
+            {{ isLocked ? t('utilities.addBillModal.alreadyPaidLocked') : t('utilities.addBillModal.alreadyPaid') }}
           </label>
         </div>
 
@@ -289,10 +274,10 @@
 
         <div class="flex gap-3 pt-4">
           <Button type="button" variant="secondary" @click="$emit('close')" class="flex-1">
-            Annulla
+            {{ t('utilities.addBillModal.cancel') }}
           </Button>
           <Button type="submit" :disabled="saving" class="flex-1">
-            {{ saving ? 'Salvataggio...' : 'Salva' }}
+            {{ saving ? t('utilities.addBillModal.saving') : t('utilities.addBillModal.save') }}
           </Button>
         </div>
       </form>
@@ -301,6 +286,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { formatDate as _formatDate, formatNumber as _formatNumber, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
@@ -319,21 +305,26 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'saved', 'installment-updated'])
+const { t } = useI18n()
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 
-// Rifiuti (waste) non ha lettura contatore né consumo: è una fattura con importo
-// e (opzionalmente) rate. Trattiamolo come non-metered lato UI bolletta.
 const isMetered = computed(() => ['electricity', 'gas', 'water'].includes(props.utility?.type))
 const isEditing = computed(() => !!props.bill)
 const isInstallmentBased = computed(() => !!props.utility?.is_installment_based)
 const isLocked = computed(() => !!props.bill?.is_locked)
 const showEstimatedHelp = ref(false)
 
+const modalTitle = computed(() => {
+  if (isEditing.value) {
+    return isMetered.value ? t('utilities.addBillModal.editBillTitle') : t('utilities.addBillModal.editInvoiceTitle')
+  }
+  return isMetered.value ? t('utilities.addBillModal.newBillTitle') : t('utilities.addBillModal.newInvoiceTitle')
+})
+
 const saving = ref(false)
 const submitError = ref(null)
 
-// Available readings for this utility
 const availableReadings = ref([])
 const inlineReadingValue = ref(null)
 
@@ -353,11 +344,6 @@ const sortedReadings = computed(() => {
   return [...availableReadings.value].sort((a, b) => new Date(b.reading_date) - new Date(a.reading_date))
 })
 
-// ── Currency / FX ──
-// Utility.currency is the provider's billing currency. When empty, or matching
-// the user's household currency, the bill is stored as-is. When different, we
-// store the converted user-currency amount in amount_total and preserve the
-// provider's figure in original_amount/original_currency.
 const isForeignCurrency = computed(() => {
   const u = props.utility?.currency
   if (!u) return false
@@ -442,15 +428,12 @@ const form = ref({
   installments: []
 })
 
-// Debounced FX lookup when original amount changes (only in foreign mode).
 watch(() => form.value.original_amount, () => {
   if (!isForeignCurrency.value) return
   clearTimeout(fetchRateTimer)
   fetchRateTimer = setTimeout(fetchExchangeRate, 500)
 })
 
-// Mirror final converted amount into amount_total so downstream validation
-// (installment sum vs total) and payload building keep working unchanged.
 watch(finalConvertedAmount, (val) => {
   if (!isForeignCurrency.value) return
   form.value.amount_total = val
@@ -462,15 +445,12 @@ const installmentsAmountMismatch = computed(() => {
   return Math.abs(sum - (parseFloat(form.value.amount_total) || 0)) > 0.01
 })
 
-// Consumption calculation composable
 const { previousBill, previousBillHasEstimate, calculatedEstimatedConsumption } = useConsumptionCalculation(
   form,
   computed(() => props.utility),
   isEditing,
   props.bill
 )
-
-// ── Helpers ──
 
 function formatNumber(value) {
   if (value == null) return '-'
@@ -481,7 +461,7 @@ function formatReadingOption(r) {
   const d = new Date(r.reading_date)
   const dateStr = _formatDate(d, settingsStore.dateSettings)
   const val = r.value != null ? _formatNumber(r.value, settingsStore.formatSettings) : '-'
-  return `${dateStr} — ${val} ${readingUnit.value}`
+  return t('utilities.addBillModal.readingOption', { date: dateStr, value: val, unit: readingUnit.value })
 }
 
 function formatDateForInput(dateStr) {
@@ -491,8 +471,6 @@ function formatDateForInput(dateStr) {
   if (isNaN(date.getTime())) return ''
   return date.toISOString().split('T')[0]
 }
-
-// ── PDF Extraction ──
 
 function onPDFExtracted(data) {
   if (!data) return
@@ -518,8 +496,6 @@ function onPDFExtracted(data) {
   if (data.communication_text) form.value.communication_text = data.communication_text
 }
 
-// ── Readings ──
-
 async function fetchReadings() {
   try {
     const { data } = await utilitiesAPI.getReadings(props.utility.id)
@@ -529,24 +505,22 @@ async function fetchReadings() {
   }
 }
 
-// ── Submit ──
-
 async function handleSubmit() {
   if (isMetered.value && (form.value.consumption_total == null || form.value.consumption_total === '')) {
-    submitError.value = 'Il consumo è obbligatorio'
+    submitError.value = t('utilities.addBillModal.consumptionRequired')
     return
   }
   if (isInstallmentBased.value && !isEditing.value && installmentsAmountMismatch.value) {
-    submitError.value = 'La somma delle rate non corrisponde al totale della bolletta'
+    submitError.value = t('utilities.addBillModal.installmentsMismatch')
     return
   }
   if (isForeignCurrency.value) {
     if (!form.value.original_amount) {
-      submitError.value = `Inserisci l'importo in ${props.utility.currency}`
+      submitError.value = t('utilities.addBillModal.foreignAmountRequired', { currency: props.utility.currency })
       return
     }
     if (finalConvertedAmount.value == null) {
-      submitError.value = 'Tasso di cambio mancante: inserisci manualmente un tasso per convertire l\'importo'
+      submitError.value = t('utilities.addBillModal.rateMissing')
       return
     }
   }
@@ -555,7 +529,6 @@ async function handleSubmit() {
   submitError.value = null
 
   try {
-    // Create inline reading if needed
     let resolvedReadingId = form.value.user_reading_id
     if (resolvedReadingId === null && inlineReadingValue.value != null && inlineReadingValue.value !== '') {
       const readingDate = form.value.period_end
@@ -564,15 +537,13 @@ async function handleSubmit() {
       const { data: newReading } = await utilitiesAPI.addReading(props.utility.id, {
         reading_date: readingDate,
         value: parseFloat(inlineReadingValue.value),
-        notes: `Creata in fase di inserimento bolletta ${form.value.bill_number}`
+        notes: t('utilities.addBillModal.inlineReadingNote', { number: form.value.bill_number })
       })
       resolvedReadingId = newReading.id
     }
 
     const billData = {
       amount_total: parseFloat(form.value.amount_total) || 0,
-      // Original-currency snapshot: only sent when the utility bills in a
-      // currency other than the user's household currency.
       original_amount: isForeignCurrency.value ? parseFloat(form.value.original_amount) : undefined,
       original_currency: isForeignCurrency.value ? props.utility.currency : undefined,
       period_start: new Date(form.value.period_start).toISOString(),
@@ -601,9 +572,7 @@ async function handleSubmit() {
       communication_text: form.value.communication_text || ''
     }
 
-    // Installments (only when creating + service is installment-based)
     if (isInstallmentBased.value && !isEditing.value && form.value.installments.length > 0) {
-      // If user has first installment due_date, align bill due_date to it (backend does the same)
       const first = form.value.installments[0]
       if (first.due_date) {
         billData.due_date = new Date(first.due_date).toISOString()
@@ -624,13 +593,11 @@ async function handleSubmit() {
     }
     emit('saved')
   } catch (err) {
-    submitError.value = err.response?.data?.error || err.message || 'Errore durante il salvataggio'
+    submitError.value = err.response?.data?.error || err.message || t('utilities.addBillModal.genericError')
   } finally {
     saving.value = false
   }
 }
-
-// ── Init ──
 
 onMounted(async () => {
   if (props.bill) {
@@ -667,7 +634,6 @@ onMounted(async () => {
       }))
     }
 
-    // Load existing communication
     try {
       const { data: comms } = await utilitiesAPI.getCommunications(props.utility.id)
       const billComm = comms.find(c => c.bill_id === props.bill.id)
@@ -675,14 +641,12 @@ onMounted(async () => {
     } catch { /* non-critical */ }
   }
 
-  // Seed first installment for installment-based new bills
   if (!props.bill && isInstallmentBased.value && form.value.installments.length === 0) {
     form.value.installments.push({ number: 1, due_date: form.value.due_date || '', amount: 0, is_paid: false })
   }
 
   await fetchReadings()
 
-  // Auto-suggest closest reading for new bills
   if (!props.bill && sortedReadings.value.length > 0 && form.value.period_end) {
     const periodEnd = new Date(form.value.period_end)
     let closest = null

@@ -23,7 +23,7 @@
             <button
               @click="removeToast(toast.id)"
               class="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity"
-              aria-label="Chiudi notifica"
+              :aria-label="t('common.toast.dismiss')"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -50,7 +50,9 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const toasts = ref([])
 let nextId = 0
 

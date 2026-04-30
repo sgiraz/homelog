@@ -10,7 +10,7 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
           </svg>
-          Filtri
+          {{ t('dashboard.filters.filtersLabel') }}
           <span
             v-if="activeFiltersCount > 0"
             class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full"
@@ -19,7 +19,7 @@
           </span>
         </button>
         <Button v-if="hasActiveFilters" @click="emit('reset')" variant="secondary" size="sm">
-          Reset
+          {{ t('dashboard.filters.reset') }}
         </Button>
       </div>
       <Transition name="filter-expand">
@@ -32,7 +32,7 @@
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Tutte categorie</option>
+              <option value="">{{ t('dashboard.filters.allCategoriesLong') }}</option>
               <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ cat.name }}</option>
             </select>
             <select
@@ -42,7 +42,7 @@
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Tutti progetti</option>
+              <option value="">{{ t('dashboard.filters.allProjectsLong') }}</option>
               <option v-for="proj in projects" :key="proj.id" :value="proj.id">{{ proj.icon }} {{ proj.name }}</option>
             </select>
             <input
@@ -69,7 +69,7 @@
     <!-- Desktop: filtri sempre visibili -->
     <div class="hidden sm:flex flex-wrap items-center gap-4">
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600 dark:text-gray-400">Categoria:</label>
+        <label class="text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.filters.categoryLabel') }}</label>
         <select
           :value="filters.categoryId"
           @change="emit('update:filters', { ...filters, categoryId: $event.target.value }); emit('apply')"
@@ -77,7 +77,7 @@
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="">Tutte</option>
+          <option value="">{{ t('dashboard.filters.allCategoriesShort') }}</option>
           <option v-for="cat in categories" :key="cat.id" :value="cat.id">
             {{ cat.icon }} {{ cat.name }}
           </option>
@@ -85,7 +85,7 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600 dark:text-gray-400">Progetto:</label>
+        <label class="text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.filters.projectLabel') }}</label>
         <select
           :value="filters.projectId"
           @change="emit('update:filters', { ...filters, projectId: $event.target.value }); emit('apply')"
@@ -93,7 +93,7 @@
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="">Tutti</option>
+          <option value="">{{ t('dashboard.filters.allProjectsShort') }}</option>
           <option v-for="proj in projects" :key="proj.id" :value="proj.id">
             {{ proj.icon }} {{ proj.name }}
           </option>
@@ -101,7 +101,7 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600 dark:text-gray-400">Da:</label>
+        <label class="text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.filters.fromLabel') }}</label>
         <input
           :value="filters.from"
           @change="emit('update:filters', { ...filters, from: $event.target.value }); emit('apply')"
@@ -112,7 +112,7 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600 dark:text-gray-400">A:</label>
+        <label class="text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.filters.toLabel') }}</label>
         <input
           :value="filters.to"
           @change="emit('update:filters', { ...filters, to: $event.target.value }); emit('apply')"
@@ -123,7 +123,7 @@
       </div>
 
       <Button @click="emit('reset')" variant="secondary" class="text-sm">
-        Reset Filtri
+        {{ t('dashboard.filters.resetFilters') }}
       </Button>
     </div>
   </Card>
@@ -132,8 +132,11 @@
 <script setup>
 defineOptions({ name: 'DashboardFilters' })
 
+import { useI18n } from 'vue-i18n'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
+
+const { t } = useI18n()
 
 defineProps({
   filters: {

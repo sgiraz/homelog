@@ -2,13 +2,13 @@
   <div class="space-y-4">
     <div class="flex justify-between items-center">
       <span class="text-sm text-gray-500 dark:text-gray-400">
-        {{ utility.price_changes?.length || 0 }} variazioni registrate
+        {{ t('utilities.priceHistoryTab.count', { n: utility.price_changes?.length || 0 }) }}
       </span>
     </div>
 
     <div v-if="!utility.price_changes?.length" class="text-center py-8">
-      <p class="text-gray-500 dark:text-gray-400">Nessuna variazione di prezzo registrata</p>
-      <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Le variazioni verranno rilevate automaticamente dalle fatture</p>
+      <p class="text-gray-500 dark:text-gray-400">{{ t('utilities.priceHistoryTab.empty') }}</p>
+      <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ t('utilities.priceHistoryTab.emptyHint') }}</p>
     </div>
 
     <!-- Price history timeline -->
@@ -35,11 +35,11 @@
                   </span>
                 </div>
                 <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                  Dal {{ formatDate(change.effective_date) }}
+                  {{ t('utilities.priceHistoryTab.fromDate', { date: formatDate(change.effective_date) }) }}
                 </div>
                 <div v-if="change.reason" class="text-xs text-gray-400 mt-1">{{ change.reason }}</div>
                 <div v-if="change.cancellation_deadline" class="mt-1 px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs text-yellow-700 dark:text-yellow-300 inline-block">
-                  Recesso entro il {{ formatDate(change.cancellation_deadline) }}
+                  {{ t('utilities.priceHistoryTab.cancellationDeadline', { date: formatDate(change.cancellation_deadline) }) }}
                 </div>
               </div>
             </div>
@@ -51,15 +51,16 @@
     <!-- Current price summary -->
     <Card v-if="utility.recurring_amount" class="p-4">
       <div class="text-center">
-        <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Importo attuale</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.priceHistoryTab.currentAmount') }}</div>
         <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(utility.recurring_amount) }}</div>
-        <div class="text-xs text-gray-400 mt-1">al mese</div>
+        <div class="text-xs text-gray-400 mt-1">{{ t('utilities.priceHistoryTab.perMonth') }}</div>
       </div>
     </Card>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import Card from '@/components/common/Card.vue'
@@ -70,6 +71,7 @@ defineProps({
   utility: { type: Object, required: true },
 })
 
+const { t } = useI18n()
 const settingsStore = useSettingsStore()
 
 function formatCurrency(value) {

@@ -1,0 +1,82 @@
+{
+  "stepIndicator": "Step {current} of {total}",
+  "steps": {
+    "path": "Path",
+    "join": "Join",
+    "property": "Property",
+    "preferences": "Preferences",
+    "discover": "Discover"
+  },
+  "back": "← Go back",
+  "previousButton": "Back",
+  "nextButton": "Next",
+  "skipButton": "Skip",
+  "savingButton": "Saving...",
+  "step1": {
+    "title": "How do you want to get started?",
+    "subtitle": "You can create your own property or join an existing one",
+    "createTitle": "Create a new home",
+    "createDescription": "Set up your property and invite family members",
+    "joinTitle": "Join an existing home",
+    "joinDescription": "Send a request to an administrator"
+  },
+  "step2Create": {
+    "title": "Create your property",
+    "subtitle": "Enter your home details.",
+    "nameLabel": "Property name",
+    "namePlaceholder": "E.g. Family Home, Downtown Apartment...",
+    "addressLabel": "Address (optional)",
+    "addressPlaceholder": "E.g. 1 Main Street, New York",
+    "nameRequired": "Please enter a property name.",
+    "createError": "Error creating the property."
+  },
+  "step2Join": {
+    "title": "Join a home",
+    "subtitle": "Select the property you want to access.",
+    "loading": "Loading...",
+    "noProperties": "No homes found. You can create one yourself!",
+    "createMine": "Create yours!",
+    "memberCount": "{n} member | {n} members",
+    "requestSent": "Request sent! An administrator will need to approve your request.",
+    "submitButton": "Send Request",
+    "submittingButton": "Sending...",
+    "submitError": "Error sending the request.",
+    "submitSuccess": "Request sent successfully!"
+  },
+  "step3": {
+    "title": "Preferences",
+    "subtitle": "Configure the app's language, currency, and theme.",
+    "currencyLabel": "Currency",
+    "languageLabel": "Language",
+    "themeLabel": "Theme",
+    "themeAuto": "Auto",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "saveError": "Error saving preferences."
+  },
+  "step4": {
+    "title": "Discover HomeLog",
+    "subtitle": "Here's what you can do with your new app.",
+    "completeButton": "Get started!",
+    "completingButton": "Finishing up...",
+    "completeError": "Error completing onboarding.",
+    "features": {
+      "pdf": {
+        "title": "Bill PDF extraction",
+        "description": "Upload your bills as PDFs and HomeLog automatically extracts the data using configurable templates."
+      },
+      "split": {
+        "title": "Expense splitting",
+        "description": "Split expenses among family members fairly and keep track of balances."
+      },
+      "consumption": {
+        "title": "Utility consumption analysis",
+        "description": "Compare your meter readings with your provider's and monitor consumption over time."
+      },
+      "projects": {
+        "title": "Project management",
+        "description": "Plan renovations, purchases, or trips with dedicated budgets and expense tracking."
+      }
+    }
+  }
+}

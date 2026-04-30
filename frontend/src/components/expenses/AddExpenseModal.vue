@@ -1,10 +1,10 @@
 <template>
-  <BaseModal title="Nuova Spesa" @close="$emit('close')">
+  <BaseModal :title="t('expenses.modal.addTitle')" @close="$emit('close')">
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <!-- Quick Templates -->
       <div v-if="expenseTemplates.length > 0">
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Modello rapido
+          {{ t('expenses.modal.templateLabel') }}
         </label>
         <select
           v-model.number="selectedTemplateId"
@@ -13,7 +13,7 @@
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option :value="null">— Nessun modello —</option>
+          <option :value="null">{{ t('expenses.modal.templateNone') }}</option>
           <option
             v-for="tpl in expenseTemplates"
             :key="tpl.id"
@@ -26,7 +26,7 @@
 
       <!-- Amount + Currency -->
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Importo *</label>
+        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('expenses.modal.amountLabel') }}</label>
         <div class="flex gap-2">
           <div class="flex-1">
             <Input
@@ -54,15 +54,15 @@
         <!-- Conversion preview -->
         <div v-if="isForeignCurrency && form.amount" class="mt-1.5">
           <div v-if="rateLoading" class="text-xs text-gray-400">
-            Conversione in corso...
+            {{ t('expenses.modal.rateLoading') }}
           </div>
           <div v-else-if="convertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
             {{ formatOriginal(form.amount, selectedCurrency) }} ≈ {{ formatCurrency(convertedAmount) }}
-            <span class="text-gray-400">(tasso: {{ exchangeRate?.toFixed(6) }})</span>
+            <span class="text-gray-400">{{ t('expenses.modal.rateInfo', { rate: exchangeRate?.toFixed(6) }) }}</span>
           </div>
           <div v-else-if="rateError" class="space-y-1">
             <p class="text-xs text-amber-600 dark:text-amber-400">
-              Tasso non disponibile. Inserisci manualmente:
+              {{ t('expenses.modal.rateUnavailable') }}
             </p>
             <div class="flex items-center gap-2">
               <span class="text-xs text-gray-500">1 {{ selectedCurrency }} =</span>
@@ -88,13 +88,13 @@
 
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Descrizione *
+          {{ t('expenses.modal.descriptionLabel') }}
         </label>
         <textarea
           v-model="form.description"
           rows="2"
           required
-          placeholder="Es: Spesa supermercato"
+          :placeholder="t('expenses.modal.descriptionPlaceholder')"
           autocorrect="off"
           autocapitalize="off"
           class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
@@ -105,7 +105,7 @@
 
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Categoria *
+          {{ t('expenses.modal.categoryLabel') }}
         </label>
         <select
           v-model.number="form.category_id"
@@ -115,7 +115,7 @@
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="" disabled>Seleziona categoria</option>
+          <option value="" disabled>{{ t('expenses.modal.categoryPlaceholder') }}</option>
           <option
             v-for="cat in categories"
             :key="cat.id"
@@ -129,7 +129,7 @@
       <!-- Subcategory (shown only when selected category has subcategories) -->
       <div v-if="selectedCategorySubcategories.length > 0">
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Sottocategoria (opzionale)
+          {{ t('expenses.modal.subcategoryLabel') }}
         </label>
         <select
           v-model.number="form.subcategory_id"
@@ -137,7 +137,7 @@
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option :value="null">Nessuna sottocategoria</option>
+          <option :value="null">{{ t('expenses.modal.subcategoryNone') }}</option>
           <option
             v-for="sub in selectedCategorySubcategories"
             :key="sub.id"
@@ -150,7 +150,7 @@
 
       <Input
         v-model="form.date"
-        label="Data *"
+        :label="t('expenses.modal.dateLabel')"
         type="date"
         required
       />
@@ -158,7 +158,7 @@
       <!-- Project (Optional) -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Progetto (opzionale)
+          {{ t('expenses.modal.projectLabel') }}
         </label>
         <select
           v-model.number="form.project_id"
@@ -166,7 +166,7 @@
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option :value="null">Nessun progetto</option>
+          <option :value="null">{{ t('expenses.modal.projectNone') }}</option>
           <option
             v-for="proj in activeProjects"
             :key="proj.id"
@@ -187,7 +187,7 @@
             class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
           <label for="split-checkbox" class="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
-            Dividi questa spesa
+            {{ t('expenses.modal.splitToggle') }}
           </label>
         </div>
 
@@ -195,7 +195,7 @@
           <!-- Chi ha pagato -->
           <div class="pl-4">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Chi ha pagato?
+              {{ t('expenses.modal.paidByLabel') }}
             </label>
             <div class="space-y-2">
               <label
@@ -210,7 +210,7 @@
                   class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                 />
                 <span class="text-gray-900 dark:text-white">{{ user.name }}</span>
-                <span v-if="user.user_id === authStore.user?.id" class="text-xs text-gray-500">(tu)</span>
+                <span v-if="user.user_id === authStore.user?.id" class="text-xs text-gray-500">{{ t('expenses.modal.paidByYou') }}</span>
               </label>
             </div>
           </div>
@@ -218,7 +218,7 @@
           <!-- Con chi dividere -->
           <div class="pl-4">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Dividi con:
+              {{ t('expenses.modal.splitWithLabel') }}
             </label>
             <div class="space-y-2">
               <label
@@ -243,9 +243,9 @@
             class="ml-4 bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg"
           >
             <div class="text-sm space-y-1">
-              <div class="font-medium text-gray-900 dark:text-white mb-2">Riepilogo divisione:</div>
+              <div class="font-medium text-gray-900 dark:text-white mb-2">{{ t('expenses.modal.summaryTitle') }}</div>
               <div class="text-gray-600 dark:text-gray-400">
-                Totale: <span class="font-medium">
+                {{ t('expenses.modal.summaryTotal') }} <span class="font-medium">
                   <template v-if="isForeignCurrency">{{ formatOriginal(form.amount, selectedCurrency) }}</template>
                   <template v-else>{{ formatCurrency(form.amount) }}</template>
                 </span>
@@ -254,10 +254,10 @@
                 </span>
               </div>
               <div class="text-gray-600 dark:text-gray-400">
-                Diviso tra {{ totalPeople }} persone
+                {{ t('expenses.modal.summaryDividedBetween', { n: totalPeople }) }}
               </div>
               <div class="text-lg font-bold text-blue-600 dark:text-blue-400 mt-2">
-                {{ formatCurrency(splitAmount) }} a testa
+                {{ t('expenses.modal.summaryEach', { amount: formatCurrency(splitAmount) }) }}
               </div>
             </div>
           </div>
@@ -275,16 +275,16 @@
           @click="saveAsTemplate"
           class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
         >
-          + Salva come modello rapido
+          {{ t('expenses.modal.saveAsTemplate') }}
         </button>
       </div>
 
       <div class="flex gap-3 pt-2">
         <Button type="button" variant="secondary" @click="$emit('close')" class="flex-1">
-          Annulla
+          {{ t('expenses.modal.cancel') }}
         </Button>
         <Button type="submit" :disabled="loading" class="flex-1">
-          {{ loading ? 'Salvataggio...' : 'Salva' }}
+          {{ loading ? t('expenses.modal.saving') : t('expenses.modal.save') }}
         </Button>
       </div>
     </form>
@@ -293,6 +293,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -303,6 +304,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 
+const { t } = useI18n()
 
 const props = defineProps({
   projectId: {
@@ -585,9 +587,9 @@ async function saveAsTemplate() {
       project_id: form.value.project_id || undefined,
     })
     expenseTemplates.value.push(data)
-    window.$toast?.success('Modello salvato!')
+    window.$toast?.success(t('expenses.modal.templateSavedToast'))
   } catch {
-    window.$toast?.error('Errore nel salvataggio del modello')
+    window.$toast?.error(t('expenses.modal.templateSaveErrorToast'))
   }
 }
 
@@ -600,7 +602,7 @@ async function handleSubmit() {
     const converted = finalConvertedAmount.value
 
     if (isForeign && converted == null) {
-      error.value = 'Conversione valuta non disponibile. Inserisci il tasso manualmente.'
+      error.value = t('expenses.modal.rateMissingError')
       loading.value = false
       return
     }
@@ -623,11 +625,11 @@ async function handleSubmit() {
     }
 
     await expensesStore.createExpense(expenseData)
-    window.$toast?.success('Spesa creata con successo!')
+    window.$toast?.success(t('expenses.modal.createdToast'))
     emit('created')
     emit('close')
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || 'Errore durante il salvataggio'
+    error.value = err.response?.data?.error || err.message || t('expenses.modal.genericSaveError')
   } finally {
     loading.value = false
   }

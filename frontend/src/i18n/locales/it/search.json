@@ -1,0 +1,15 @@
+{
+  "back": "Indietro",
+  "clear": "Cancella",
+  "placeholder": "Cerca spese, bollette, progetti, servizi",
+  "promptTitle": "Inizia a scrivere per cercare",
+  "promptHint": "Spese, bollette, progetti, servizi",
+  "noResults": "Nessun risultato per \"{query}\"",
+  "untitled": "(senza titolo)",
+  "groups": {
+    "expense": "Spese",
+    "bill": "Bollette",
+    "project": "Progetti",
+    "utility": "Servizi"
+  }
+}

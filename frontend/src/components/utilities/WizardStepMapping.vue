@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-4">
     <p class="text-gray-600 dark:text-gray-400 text-sm">
-      Trascina i valori dal PDF ai campi corrispondenti sulla destra.
+      {{ t('utilities.wizardStepMapping.intro') }}
     </p>
 
     <div class="flex gap-4" style="height: 500px;">
@@ -18,7 +18,7 @@
 
       <!-- Right Panel: Drop Zones for Fields -->
       <div class="w-72 flex flex-col">
-        <h4 class="font-medium text-gray-900 dark:text-white text-sm mb-2">Campi da Mappare</h4>
+        <h4 class="font-medium text-gray-900 dark:text-white text-sm mb-2">{{ t('utilities.wizardStepMapping.fieldsTitle') }}</h4>
         <div class="flex-1 space-y-2 overflow-y-auto pr-1">
           <div
             v-for="field in extractionFields"
@@ -44,7 +44,7 @@
                 v-if="mappings[field.key]"
                 @click="emit('clear-mapping', field.key)"
                 class="text-gray-400 hover:text-red-500 transition-colors"
-                title="Rimuovi mappatura"
+                :title="t('utilities.wizardStepMapping.removeMapping')"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -63,10 +63,10 @@
                 </svg>
               </div>
               <!-- Anchor/strategy feedback -->
-              <div v-if="mappings[field.key].globalSearch" class="text-[10px] text-blue-500 dark:text-blue-400 truncate" title="Ricerca globale nel documento">
-                Ricerca globale
+              <div v-if="mappings[field.key].globalSearch" class="text-[10px] text-blue-500 dark:text-blue-400 truncate" :title="t('utilities.wizardStepMapping.globalSearchTitle')">
+                {{ t('utilities.wizardStepMapping.globalSearch') }}
               </div>
-              <div v-else-if="mappings[field.key].anchorText" class="text-[10px] text-gray-400 dark:text-gray-500 truncate" :title="'Ancora: &quot;' + mappings[field.key].anchorText + '&quot; → ' + getDirectionLabel(mappings[field.key].anchorDirection)">
+              <div v-else-if="mappings[field.key].anchorText" class="text-[10px] text-gray-400 dark:text-gray-500 truncate" :title="t('utilities.wizardStepMapping.anchorTooltip', { anchor: mappings[field.key].anchorText, direction: getDirectionLabel(mappings[field.key].anchorDirection) })">
                 {{ mappings[field.key].anchorText }} → {{ getDirectionLabel(mappings[field.key].anchorDirection) }}
               </div>
 
@@ -78,7 +78,7 @@
                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                   </svg>
-                  Contesto {{ getContextSummary(field.key) }}
+                  {{ t('utilities.wizardStepMapping.context') }} {{ getContextSummary(field.key) }}
                 </button>
 
                 <div v-if="contextEditorOpen === field.key" class="mt-1.5 space-y-1.5 text-xs">
@@ -110,10 +110,10 @@
               v-else
               class="text-gray-400 dark:text-gray-500 text-sm py-2 text-center border-2 border-dashed border-gray-200 dark:border-gray-600 rounded"
             >
-              {{ field.multiLine ? 'Trascina una parola dalla sezione comunicazioni...' : 'Trascina qui...' }}
+              {{ field.multiLine ? t('utilities.wizardStepMapping.dropMultiLine') : t('utilities.wizardStepMapping.dropHere') }}
             </div>
             <div v-if="field.multiLine && mappings[field.key]" class="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
-              Estrazione multi-riga: il testo sotto l'ancora verrà catturato automaticamente
+              {{ t('utilities.wizardStepMapping.multiLineNotice') }}
             </div>
           </div>
         </div>
@@ -127,7 +127,7 @@
             size="sm"
             class="w-full"
           >
-            {{ testing ? 'Test in corso...' : 'Testa Pattern' }}
+            {{ testing ? t('utilities.wizardStepMapping.testing') : t('utilities.wizardStepMapping.testButton') }}
           </Button>
         </div>
       </div>
@@ -136,7 +136,7 @@
     <!-- Test Results -->
     <div v-if="hasTestedPatterns && Object.keys(testResults).length > 0"
          class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
-      <h5 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Risultati Test</h5>
+      <h5 class="text-sm font-medium text-gray-900 dark:text-white mb-2">{{ t('utilities.wizardStepMapping.testResultsTitle') }}</h5>
       <div v-for="(result, fieldKey) in testResults" :key="fieldKey" class="flex flex-col gap-1 text-sm py-1 border-b border-gray-200 dark:border-gray-700 last:border-0">
         <div class="flex items-center gap-2">
           <svg v-if="result.success" class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,14 +145,13 @@
           <svg v-else class="w-4 h-4 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <span class="text-gray-600 dark:text-gray-400">{{ getFieldLabel(fieldKey) }}:</span>
+          <span class="text-gray-600 dark:text-gray-400">{{ t('utilities.wizardStepMapping.fieldLabel', { field: getFieldLabel(fieldKey) }) }}</span>
           <span :class="result.success ? 'text-green-600 dark:text-green-400 font-medium' : 'text-orange-600 dark:text-orange-400'">
             {{ result.success ? result.value : result.error }}
           </span>
         </div>
-        <!-- Show position context if available -->
         <div v-if="result.hasPosition" class="text-xs text-gray-400 dark:text-gray-500 ml-6">
-          Pag. {{ result.page + 1 }}, pos: ({{ Math.round(result.x) }}, {{ Math.round(result.y) }})
+          {{ t('utilities.wizardStepMapping.positionInfo', { page: result.page + 1, x: Math.round(result.x), y: Math.round(result.y) }) }}
           <span v-if="result.contextLeft"> | ← "{{ result.contextLeft }}"</span>
         </div>
       </div>
@@ -161,6 +160,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import PDFTextractView from './PDFTextractView.vue'
 import Button from '@/components/common/Button.vue'
 
@@ -243,4 +243,6 @@ const emit = defineEmits([
   'test-patterns',
   'update:dragOverField'
 ])
+
+const { t } = useI18n()
 </script>

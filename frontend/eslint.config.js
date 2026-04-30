@@ -26,9 +26,9 @@ export default [
     },
   },
 
-  // Node globals for config files
+  // Node globals for config files and CLI scripts
   {
-    files: ['vite.config.js', 'tailwind.config.js', 'postcss.config.js'],
+    files: ['vite.config.js', 'tailwind.config.js', 'postcss.config.js', 'scripts/**/*.{js,mjs}'],
     languageOptions: {
       globals: {
         ...globals.node,

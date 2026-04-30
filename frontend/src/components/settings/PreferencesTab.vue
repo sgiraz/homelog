@@ -1,11 +1,11 @@
 <template>
   <div class="space-y-4">
     <Card class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Preferenze Personali</h2>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.preferences.title') }}</h2>
 
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tema</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t('settings.preferences.theme') }}</label>
           <select
             v-model="preferences.theme"
             @change="updateUserSettings"
@@ -13,14 +13,14 @@
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="light">Chiaro</option>
-            <option value="dark">Scuro</option>
-            <option value="auto">Automatico</option>
+            <option value="light">{{ t('settings.preferences.themeLight') }}</option>
+            <option value="dark">{{ t('settings.preferences.themeDark') }}</option>
+            <option value="auto">{{ t('settings.preferences.themeAuto') }}</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Valuta</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t('settings.preferences.currency') }}</label>
           <select
             v-model="preferences.currency"
             @change="updateUserSettings"
@@ -28,14 +28,14 @@
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="EUR">EUR (Euro)</option>
-            <option value="USD">USD (Dollaro)</option>
-            <option value="GBP">GBP (Sterlina)</option>
+            <option value="EUR">{{ t('settings.preferences.options.currencyEUR') }}</option>
+            <option value="USD">{{ t('settings.preferences.options.currencyUSD') }}</option>
+            <option value="GBP">{{ t('settings.preferences.options.currencyGBP') }}</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Lingua</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t('settings.preferences.language') }}</label>
           <select
             v-model="preferences.language"
             @change="updateUserSettings"
@@ -43,13 +43,13 @@
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="it">Italiano</option>
-            <option value="en">English</option>
+            <option value="it">{{ t('settings.preferences.options.languageIT') }}</option>
+            <option value="en">{{ t('settings.preferences.options.languageEN') }}</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Formato Data</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t('settings.preferences.dateFormat') }}</label>
           <select
             v-model="preferences.date_format"
             @change="updateUserSettings"
@@ -57,10 +57,10 @@
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="DD/MM/YYYY">GG/MM/AAAA (31/12/2024)</option>
-            <option value="MM/DD/YYYY">MM/GG/AAAA (12/31/2024)</option>
-            <option value="YYYY-MM-DD">AAAA-MM-GG (2024-12-31)</option>
-            <option value="DD MMM YYYY">GG MMM AAAA (31 dic 2024)</option>
+            <option value="DD/MM/YYYY">{{ t('settings.preferences.options.dateFormatDDMMYYYY') }}</option>
+            <option value="MM/DD/YYYY">{{ t('settings.preferences.options.dateFormatMMDDYYYY') }}</option>
+            <option value="YYYY-MM-DD">{{ t('settings.preferences.options.dateFormatYYYYMMDD') }}</option>
+            <option value="DD MMM YYYY">{{ t('settings.preferences.options.dateFormatDDMMMYYYY') }}</option>
           </select>
         </div>
       </div>
@@ -69,22 +69,22 @@
     <!-- Expense Templates -->
     <Card class="p-6">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Modelli Spesa</h2>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ t('settings.preferences.templates.title') }}</h2>
         <button
           type="button"
           @click="showAddTemplate = true"
           class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
         >
-          + Nuovo
+          {{ t('settings.preferences.templates.addNew') }}
         </button>
       </div>
 
       <div v-if="templatesLoading" class="text-sm text-gray-500 py-4 text-center">
-        Caricamento...
+        {{ t('common.states.loading') }}
       </div>
 
       <div v-else-if="templates.length === 0" class="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
-        Nessun modello salvato. Puoi crearne uno qui o dal form "Nuova Spesa".
+        {{ t('settings.preferences.templates.empty') }}
       </div>
 
       <div v-else class="space-y-2">
@@ -126,22 +126,22 @@
       <div v-if="showAddTemplate" class="mt-4 p-4 border border-blue-200 dark:border-blue-800 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 space-y-3">
         <Input
           v-model="tplForm.name"
-          label="Nome modello *"
-          placeholder="es. Spesa Esselunga"
+          :label="t('settings.preferences.templates.nameLabel')"
+          :placeholder="t('settings.preferences.templates.namePlaceholder')"
           required
         />
         <div class="grid grid-cols-2 gap-3">
           <Input
             v-model.number="tplForm.amount"
-            label="Importo (0 = chiedi)"
+            :label="t('settings.preferences.templates.amountLabel')"
             type="number"
             step="0.01"
             min="0"
-            placeholder="0.00"
+            :placeholder="t('settings.preferences.templates.amountPlaceholder')"
             inputmode="decimal"
           />
           <div>
-            <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Categoria *</label>
+            <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('settings.preferences.templates.categoryLabel') }}</label>
             <select
               v-model.number="tplForm.category_id"
               @change="tplForm.subcategory_id = null"
@@ -157,14 +157,14 @@
           </div>
         </div>
         <div v-if="tplSubcategories.length > 0">
-          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Sottocategoria (opzionale)</label>
+          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('settings.preferences.templates.subcategoryLabel') }}</label>
           <select
             v-model.number="tplForm.subcategory_id"
             class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option :value="null">Nessuna sottocategoria</option>
+            <option :value="null">{{ t('settings.preferences.templates.noSubcategory') }}</option>
             <option v-for="sub in tplSubcategories" :key="sub.id" :value="sub.id">
               {{ sub.name }}
             </option>
@@ -172,10 +172,10 @@
         </div>
         <div class="flex gap-2">
           <Button size="sm" @click="handleSaveTemplate" :disabled="!tplForm.name || !tplForm.category_id">
-            {{ editingTemplateId ? 'Aggiorna' : 'Salva' }}
+            {{ editingTemplateId ? t('settings.preferences.templates.saveUpdate') : t('settings.preferences.templates.saveCreate') }}
           </Button>
           <Button size="sm" variant="secondary" @click="cancelTemplateForm">
-            Annulla
+            {{ t('settings.preferences.templates.cancel') }}
           </Button>
         </div>
       </div>
@@ -183,24 +183,24 @@
 
     <!-- Notifications -->
     <Card class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Notifiche</h2>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.preferences.notifications.title') }}</h2>
       <div class="space-y-4">
         <div class="space-y-3 mb-2">
-          <p class="text-sm text-gray-600 dark:text-gray-400">Scegli quali notifiche ricevere.</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('settings.preferences.notifications.description') }}</p>
           <label class="flex items-center justify-between cursor-pointer">
-            <span class="text-sm text-gray-700 dark:text-gray-300">Richieste di accesso</span>
+            <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('settings.preferences.notifications.joinRequests') }}</span>
             <input type="checkbox" v-model="notifyJoinRequests" @change="updateNotificationPrefs"
                    class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
           </label>
           <label class="flex items-center justify-between cursor-pointer">
-            <span class="text-sm text-gray-700 dark:text-gray-300">Spese condivise</span>
+            <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('settings.preferences.notifications.sharedExpenses') }}</span>
             <input type="checkbox" v-model="notifySharedExpenses" @change="updateNotificationPrefs"
                    class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
           </label>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Conserva notifiche per (giorni)
+            {{ t('settings.preferences.notifications.retentionLabel') }}
           </label>
           <select
             v-model.number="notificationRetentionDays"
@@ -209,14 +209,14 @@
                    bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option :value="30">30 giorni</option>
-            <option :value="60">60 giorni</option>
-            <option :value="90">90 giorni</option>
-            <option :value="180">180 giorni</option>
-            <option :value="365">1 anno</option>
+            <option :value="30">{{ t('settings.preferences.notifications.retentionDays', { n: 30 }) }}</option>
+            <option :value="60">{{ t('settings.preferences.notifications.retentionDays', { n: 60 }) }}</option>
+            <option :value="90">{{ t('settings.preferences.notifications.retentionDays', { n: 90 }) }}</option>
+            <option :value="180">{{ t('settings.preferences.notifications.retentionDays', { n: 180 }) }}</option>
+            <option :value="365">{{ t('settings.preferences.notifications.retentionYear') }}</option>
           </select>
           <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Le notifiche più vecchie verranno eliminate automaticamente.
+            {{ t('settings.preferences.notifications.retentionInfo') }}
           </p>
         </div>
       </div>
@@ -224,7 +224,7 @@
 
     <!-- Account -->
     <Card class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Account</h2>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.preferences.account.title') }}</h2>
       <div class="space-y-3">
         <!-- Change Password toggle -->
         <div>
@@ -233,29 +233,29 @@
             @click="showChangePassword = !showChangePassword; pwError = null; pwSuccess = null"
             class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
           >
-            {{ showChangePassword ? '✕ Annulla' : 'Cambia password' }}
+            {{ showChangePassword ? t('settings.preferences.account.cancelChange') : t('settings.preferences.account.changePassword') }}
           </button>
 
           <div v-if="showChangePassword" class="mt-4 space-y-3">
             <Input
               v-model="pwForm.current"
-              label="Password attuale"
+              :label="t('settings.preferences.account.currentPasswordLabel')"
               type="password"
-              placeholder="Password attuale"
+              :placeholder="t('settings.preferences.account.currentPasswordPlaceholder')"
               autocomplete="current-password"
             />
             <Input
               v-model="pwForm.newPw"
-              label="Nuova password"
+              :label="t('settings.preferences.account.newPasswordLabel')"
               type="password"
-              placeholder="Minimo 6 caratteri"
+              :placeholder="t('settings.preferences.account.newPasswordPlaceholder')"
               autocomplete="new-password"
             />
             <Input
               v-model="pwForm.confirm"
-              label="Conferma nuova password"
+              :label="t('settings.preferences.account.confirmPasswordLabel')"
               type="password"
-              placeholder="Ripeti la nuova password"
+              :placeholder="t('settings.preferences.account.confirmPasswordPlaceholder')"
               autocomplete="new-password"
             />
 
@@ -267,13 +267,13 @@
             </div>
 
             <Button :disabled="pwLoading" @click="handleChangePassword">
-              {{ pwLoading ? 'Salvataggio...' : 'Aggiorna password' }}
+              {{ pwLoading ? t('settings.preferences.account.submittingButton') : t('settings.preferences.account.submitButton') }}
             </Button>
           </div>
         </div>
 
         <Button variant="danger" @click="handleLogout">
-          Esci dall'account
+          {{ t('settings.preferences.account.logout') }}
         </Button>
       </div>
     </Card>
@@ -287,6 +287,7 @@ defineOptions({ name: 'PreferencesTab' })
 
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useDarkMode } from '@/composables/useDarkMode'
@@ -299,6 +300,7 @@ import Input from '@/components/common/Input.vue'
 import DeleteAccountSection from './DeleteAccountSection.vue'
 
 const router = useRouter()
+const { t } = useI18n()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const { setTheme } = useDarkMode()
@@ -384,27 +386,27 @@ async function handleSaveTemplate() {
 
     if (editingTemplateId.value) {
       const { data } = await expenseTemplatesAPI.update(editingTemplateId.value, payload)
-      const idx = templates.value.findIndex(t => t.id === editingTemplateId.value)
+      const idx = templates.value.findIndex(tpl => tpl.id === editingTemplateId.value)
       if (idx !== -1) templates.value[idx] = data
-      window.$toast?.success('Modello aggiornato!')
+      window.$toast?.success(t('settings.preferences.templates.updated'))
     } else {
       const { data } = await expenseTemplatesAPI.create(payload)
       templates.value.push(data)
-      window.$toast?.success('Modello creato!')
+      window.$toast?.success(t('settings.preferences.templates.created'))
     }
     cancelTemplateForm()
   } catch {
-    window.$toast?.error(editingTemplateId.value ? 'Errore nell\'aggiornamento' : 'Errore nella creazione del modello')
+    window.$toast?.error(editingTemplateId.value ? t('settings.preferences.templates.updateError') : t('settings.preferences.templates.createError'))
   }
 }
 
 async function deleteTemplate(tpl) {
   try {
     await expenseTemplatesAPI.delete(tpl.id)
-    templates.value = templates.value.filter(t => t.id !== tpl.id)
-    window.$toast?.success('Modello eliminato')
+    templates.value = templates.value.filter(item => item.id !== tpl.id)
+    window.$toast?.success(t('settings.preferences.templates.deleted'))
   } catch {
-    window.$toast?.error('Errore nell\'eliminazione')
+    window.$toast?.error(t('settings.preferences.templates.deleteError'))
   }
 }
 
@@ -483,26 +485,26 @@ async function handleChangePassword() {
   pwSuccess.value = null
 
   if (!pwForm.value.current) {
-    pwError.value = 'Inserisci la password attuale.'
+    pwError.value = t('settings.preferences.account.currentRequired')
     return
   }
   if (pwForm.value.newPw.length < 6) {
-    pwError.value = 'La nuova password deve avere almeno 6 caratteri.'
+    pwError.value = t('settings.preferences.account.newTooShort')
     return
   }
   if (pwForm.value.newPw !== pwForm.value.confirm) {
-    pwError.value = 'Le due password non coincidono.'
+    pwError.value = t('settings.preferences.account.mismatch')
     return
   }
 
   pwLoading.value = true
   try {
     await authAPI.changePassword(pwForm.value.current, pwForm.value.newPw)
-    pwSuccess.value = 'Password aggiornata con successo!'
+    pwSuccess.value = t('settings.preferences.account.success')
     pwForm.value = { current: '', newPw: '', confirm: '' }
     setTimeout(() => { showChangePassword.value = false; pwSuccess.value = null }, 2000)
   } catch (err) {
-    pwError.value = err.response?.data?.error || 'Errore durante il cambio password.'
+    pwError.value = err.response?.data?.error || t('settings.preferences.account.genericError')
   } finally {
     pwLoading.value = false
   }

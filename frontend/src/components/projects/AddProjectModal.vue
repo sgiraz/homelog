@@ -1,18 +1,18 @@
 <template>
-  <BaseModal title="Nuovo Progetto" size="2xl" @close="$emit('close')">
+  <BaseModal :title="t('projects.modal.addTitle')" size="2xl" @close="$emit('close')">
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <!-- Name -->
       <Input
         v-model="form.name"
-        label="Nome Progetto *"
-        placeholder="es. Ristrutturazione Bagno, Matrimonio, Viaggio"
+        :label="t('projects.modal.nameLabel')"
+        :placeholder="t('projects.modal.nameAddPlaceholder')"
         required
       />
 
       <!-- Icon -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">
-          Icona
+          {{ t('projects.modal.iconLabel') }}
         </label>
         <div class="flex gap-2 flex-wrap">
           <button
@@ -35,12 +35,12 @@
       <!-- Description -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Descrizione
+          {{ t('projects.modal.descriptionLabel') }}
         </label>
         <textarea
           v-model="form.description"
           rows="3"
-          placeholder="Descrivi il progetto..."
+          :placeholder="t('projects.modal.descriptionPlaceholder')"
           autocorrect="off"
           class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
@@ -51,11 +51,11 @@
       <!-- Budget -->
       <Input
         v-model.number="form.budget"
-        label="Budget *"
+        :label="t('projects.modal.budgetLabel')"
         type="number"
         step="0.01"
         min="0.01"
-        placeholder="0.00"
+        :placeholder="t('projects.modal.budgetPlaceholder')"
         inputmode="decimal"
         required
       />
@@ -64,13 +64,13 @@
       <div class="grid grid-cols-2 gap-4">
         <Input
           v-model="form.start_date"
-          label="Data Inizio *"
+          :label="t('projects.modal.startDateLabel')"
           type="date"
           required
         />
         <Input
           v-model="form.end_date"
-          label="Data Fine *"
+          :label="t('projects.modal.endDateLabel')"
           type="date"
           required
         />
@@ -79,7 +79,7 @@
       <!-- Status -->
       <div>
         <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-          Status *
+          {{ t('projects.modal.statusLabel') }}
         </label>
         <select
           v-model="form.status"
@@ -88,17 +88,17 @@
                  bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="planned">Pianificato</option>
-          <option value="active">In Corso</option>
-          <option value="completed">Completato</option>
-          <option value="cancelled">Annullato</option>
+          <option value="planned">{{ t('projects.status.planned') }}</option>
+          <option value="active">{{ t('projects.status.active') }}</option>
+          <option value="completed">{{ t('projects.status.completed') }}</option>
+          <option value="cancelled">{{ t('projects.status.cancelled') }}</option>
         </select>
       </div>
 
       <!-- Share with household members -->
       <div v-if="otherMembers.length > 0" class="border-t border-gray-200 dark:border-gray-700 pt-4">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Condividi con
+          {{ t('projects.modal.shareWithLabel') }}
         </label>
         <div class="space-y-2">
           <div
@@ -125,13 +125,13 @@
               class="text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-600
                      bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex-shrink-0"
             >
-              <option value="member">Membro</option>
-              <option value="owner">Co-proprietario</option>
+              <option value="member">{{ t('projects.modal.roleMember') }}</option>
+              <option value="owner">{{ t('projects.modal.roleCoOwner') }}</option>
             </select>
           </div>
         </div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-          I membri possono aggiungere spese. I co-proprietari possono anche modificare il progetto.
+          {{ t('projects.modal.shareHint') }}
         </p>
       </div>
 
@@ -143,10 +143,10 @@
       <!-- Actions -->
       <div class="flex gap-3 pt-2">
         <Button type="button" variant="secondary" @click="$emit('close')" class="flex-1">
-          Annulla
+          {{ t('projects.modal.cancel') }}
         </Button>
         <Button type="submit" :disabled="loading" class="flex-1">
-          {{ loading ? 'Creazione...' : 'Crea Progetto' }}
+          {{ loading ? t('projects.modal.creatingButton') : t('projects.modal.createButton') }}
         </Button>
       </div>
     </form>
@@ -155,6 +155,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/client'
@@ -162,6 +163,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 
+const { t } = useI18n()
 const emit = defineEmits(['close', 'created'])
 const projectsStore = useProjectsStore()
 const authStore = useAuthStore()
@@ -236,14 +238,14 @@ async function handleSubmit() {
   error.value = null
 
   if (new Date(form.value.end_date) < new Date(form.value.start_date)) {
-    error.value = 'La data di fine deve essere successiva alla data di inizio'
+    error.value = t('projects.modal.endDateError')
     loading.value = false
     return
   }
 
   try {
     await projectsStore.createProject(form.value)
-    window.$toast?.success('Progetto creato con successo!')
+    window.$toast?.success(t('projects.modal.createSuccess'))
     emit('created')
     emit('close')
   } catch (err) {

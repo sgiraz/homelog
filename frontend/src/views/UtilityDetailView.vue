@@ -5,7 +5,7 @@
       <button
         @click="goBack"
         class="p-2 -ml-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-        aria-label="Torna ai servizi"
+        :aria-label="t('utilities.detail.back')"
       >
         <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -27,7 +27,7 @@
           :href="utility.customer_portal"
           target="_blank"
           class="p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-          title="Area clienti"
+          :title="t('utilities.detail.openPortal')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -37,7 +37,7 @@
           v-if="settingsStore.isPropertyAdmin"
           @click="showEditModal = true"
           class="p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-          title="Modifica servizio"
+          :title="t('utilities.detail.editService')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -47,7 +47,7 @@
           v-if="settingsStore.isPropertyAdmin"
           @click="confirmDeleteUtility"
           class="p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 dark:hover:text-red-400"
-          title="Elimina servizio"
+          :title="t('utilities.detail.deleteService')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -59,7 +59,7 @@
     <!-- Loading -->
     <div v-if="loading" class="text-center py-12 text-gray-500 dark:text-gray-400">
       <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-      Caricamento...
+      {{ t('utilities.loading') }}
     </div>
 
     <template v-else-if="utility">
@@ -70,19 +70,19 @@
           <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ utility.service_code }}</div>
         </div>
         <div v-if="utility.customer_code" class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ isMetered ? 'Cliente' : 'Contratto' }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ isMetered ? t('utilities.detail.infoCustomer') : t('utilities.detail.infoContract') }}</div>
           <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ utility.customer_code }}</div>
         </div>
         <div v-if="utility.power_capacity" class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Potenza</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.detail.infoPower') }}</div>
           <div class="text-sm font-medium text-gray-900 dark:text-white">{{ utility.power_capacity }} kW</div>
         </div>
         <div v-if="utility.recurring_amount" class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Canone</div>
-          <div class="text-sm font-medium text-gray-900 dark:text-white">{{ formatCurrency(utility.recurring_amount) }}/{{ billingFrequencyLabel }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.detail.infoFee') }}</div>
+          <div class="text-sm font-medium text-gray-900 dark:text-white">{{ t('utilities.detail.infoFeePerUnit', { amount: formatCurrency(utility.recurring_amount), unit: billingFrequencyLabel }) }}</div>
         </div>
         <div v-if="utility.paid_by_member?.name" class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Pagato da</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.detail.infoPaidBy') }}</div>
           <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ utility.paid_by_member.name }}</div>
         </div>
       </div>
@@ -157,6 +157,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
@@ -169,6 +170,7 @@ import EditUtilityModal from '@/components/utilities/EditUtilityModal.vue'
 
 defineOptions({ name: 'UtilityDetailView' })
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const utilitiesStore = useUtilitiesStore()
@@ -201,25 +203,27 @@ const isMetered = computed(() => {
 const billingFrequencyLabel = computed(() => {
   const n = utility.value?.billing_interval || 1
   const u = utility.value?.billing_unit || 'month'
-  const labels = { day: ['giorno', 'giorni'], week: ['settimana', 'settimane'], month: ['mese', 'mesi'], year: ['anno', 'anni'] }
-  const [singular, plural] = labels[u] || labels.month
-  return n === 1 ? singular : `${n} ${plural}`
+  const suffix = n === 1 ? '_one' : '_other'
+  const key = `utilities.detail.billingFrequency.${u}${suffix}`
+  const word = t(key)
+  const fallback = key === word ? u : word
+  return n === 1 ? fallback : t('utilities.detail.billingFrequency.compact', { n, unit: fallback })
 })
 
 const tabs = computed(() => {
-  const billLabel = isMetered.value ? 'Bollette' : 'Fatture'
-  const t = [
+  const billLabel = isMetered.value ? t('utilities.detail.tabs.bills') : t('utilities.detail.tabs.invoices')
+  const list = [
     { id: 'bills', label: billLabel, icon: '\uD83D\uDCC4', count: utility.value?.bills?.length || 0 },
   ]
   if (isMetered.value) {
-    t.push({ id: 'readings', label: 'Letture', icon: '\uD83D\uDCCA', count: utility.value?.readings?.length || 0 })
+    list.push({ id: 'readings', label: t('utilities.detail.tabs.readings'), icon: '\uD83D\uDCCA', count: utility.value?.readings?.length || 0 })
     if (utility.value?.type !== 'waste') {
-      t.push({ id: 'analysis', label: 'Analisi', icon: '\uD83D\uDCC8', count: null })
+      list.push({ id: 'analysis', label: t('utilities.detail.tabs.analysis'), icon: '\uD83D\uDCC8', count: null })
     }
   } else {
-    t.push({ id: 'price_history', label: 'Storico Prezzi', icon: '\uD83D\uDCC8', count: utility.value?.price_changes?.length || 0 })
+    list.push({ id: 'price_history', label: t('utilities.detail.tabs.priceHistory'), icon: '\uD83D\uDCC8', count: utility.value?.price_changes?.length || 0 })
   }
-  return t
+  return list
 })
 
 const utilityIcon = computed(() => {
@@ -231,11 +235,10 @@ const utilityIcon = computed(() => {
 })
 
 const utilityTypeLabel = computed(() => {
-  const labels = {
-    electricity: 'Luce', gas: 'Gas', water: 'Acqua', waste: 'Rifiuti',
-    internet: 'Internet', insurance: 'Assicurazione', affitto: 'Affitto', mutuo: 'Mutuo'
-  }
-  return labels[utility.value?.type] || ''
+  if (!utility.value?.type) return ''
+  const key = `utilities.types.${utility.value.type}`
+  const label = t(key)
+  return label === key ? '' : label
 })
 
 const utilityColorClass = computed(() => {
@@ -258,8 +261,10 @@ const consumptionUnit = computed(() => {
 })
 
 const serviceCodeLabel = computed(() => {
-  const labels = { electricity: 'POD', gas: 'PDR', internet: 'Numero linea', affitto: 'Rif. Contratto', mutuo: 'N. Mutuo' }
-  return labels[utility.value?.type] || 'Codice'
+  if (!utility.value?.type) return t('utilities.detail.serviceCode.default')
+  const key = `utilities.detail.serviceCode.${utility.value.type}`
+  const label = t(key)
+  return label === key ? t('utilities.detail.serviceCode.default') : label
 })
 
 // ── Functions ──
@@ -307,14 +312,14 @@ function onThresholdSaved(thresholds) {
 async function onUtilityUpdated(updatedUtility) {
   showEditModal.value = false
   utility.value = updatedUtility
-  window.$toast?.success('Servizio aggiornato')
+  window.$toast?.success(t('utilities.detail.updatedToast'))
 }
 
 async function confirmDeleteUtility() {
   const ok = await confirm({
-    title: 'Elimina servizio',
-    message: 'Eliminare questo servizio e tutti i dati associati (bollette, letture)?',
-    confirmText: 'Elimina',
+    title: t('utilities.detail.deleteConfirm.title'),
+    message: t('utilities.detail.deleteConfirm.message'),
+    confirmText: t('utilities.detail.deleteConfirm.action'),
     variant: 'danger'
   })
   if (!ok) return

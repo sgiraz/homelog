@@ -3,7 +3,7 @@
     <!-- Period Filter -->
     <Card class="p-4">
       <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Periodo:</span>
+        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('utilities.analysisTab.periodLabel') }}</span>
         <div class="flex gap-2 flex-wrap">
           <button
             v-for="preset in periodPresets"
@@ -30,15 +30,15 @@
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
       <Card class="p-4 text-center">
         <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(analysisData.totalSpent) }}</div>
-        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Spesa totale</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ t('utilities.analysisTab.kpi.totalSpent') }}</div>
       </Card>
       <Card class="p-4 text-center">
         <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatConsumption(analysisData.totalConsumption) }}</div>
-        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Consumo ({{ consumptionUnit }})</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ t('utilities.analysisTab.kpi.totalConsumption', { unit: consumptionUnit }) }}</div>
       </Card>
       <Card class="p-4 text-center col-span-2 sm:col-span-1">
         <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ analysisData.billCount }}</div>
-        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Bollette nel periodo</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ t('utilities.analysisTab.kpi.billCount') }}</div>
       </Card>
     </div>
 
@@ -50,7 +50,7 @@
           @click="showThresholdSettings = !showThresholdSettings"
           class="flex items-center justify-between w-full text-sm font-medium text-gray-700 dark:text-gray-300"
         >
-          <span>Impostazioni soglia confronto</span>
+          <span>{{ t('utilities.analysisTab.thresholdSettings') }}</span>
           <svg :class="['w-4 h-4 transition-transform', showThresholdSettings ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
           </svg>
@@ -59,8 +59,8 @@
         <div v-if="showThresholdSettings" class="mt-3 space-y-3">
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-sm text-gray-600 dark:text-gray-400">Soglia base</div>
-              <div class="text-xs text-gray-400">Stesso giorno</div>
+              <div class="text-sm text-gray-600 dark:text-gray-400">{{ t('utilities.analysisTab.baseThreshold') }}</div>
+              <div class="text-xs text-gray-400">{{ t('utilities.analysisTab.baseThresholdHint') }}</div>
             </div>
             <div class="flex items-center gap-2">
               <input v-model.number="thresholdValue" type="number" min="0.5" max="50" step="0.5"
@@ -70,17 +70,17 @@
           </div>
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-sm text-gray-600 dark:text-gray-400">Per giorno</div>
-              <div class="text-xs text-gray-400">Tolleranza aggiuntiva</div>
+              <div class="text-sm text-gray-600 dark:text-gray-400">{{ t('utilities.analysisTab.perDayThreshold') }}</div>
+              <div class="text-xs text-gray-400">{{ t('utilities.analysisTab.perDayThresholdHint') }}</div>
             </div>
             <div class="flex items-center gap-2">
               <input v-model.number="thresholdPerDayValue" type="number" min="0.1" max="10" step="0.1"
                 class="w-16 px-2 py-2 text-sm text-center border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              <span class="text-xs text-gray-400">{{ consumptionUnit }}/g</span>
+              <span class="text-xs text-gray-400">{{ t('utilities.analysisTab.perDayUnit', { unit: consumptionUnit }) }}</span>
             </div>
           </div>
           <Button v-if="hasThresholdChanges" size="sm" @click="saveThreshold" :disabled="savingThreshold">
-            {{ savingThreshold ? 'Salvataggio...' : 'Salva soglia' }}
+            {{ savingThreshold ? t('utilities.analysisTab.saving') : t('utilities.analysisTab.saveThreshold') }}
           </Button>
         </div>
       </Card>
@@ -99,6 +99,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { formatNumber as _formatNumber, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
@@ -115,6 +116,7 @@ const props = defineProps({
 
 const emit = defineEmits(['threshold-saved'])
 
+const { t } = useI18n()
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 
@@ -128,13 +130,13 @@ const analysisPeriod = ref('12m')
 const analysisFrom = ref('')
 const analysisTo = ref('')
 
-const periodPresets = [
-  { id: '3m', label: '3 mesi', months: 3 },
-  { id: '6m', label: '6 mesi', months: 6 },
-  { id: '12m', label: '1 anno', months: 12 },
-  { id: 'all', label: 'Tutto', months: 0 },
-  { id: 'custom', label: 'Personalizzato', months: 0 },
-]
+const periodPresets = computed(() => [
+  { id: '3m', label: t('utilities.analysisTab.presets.3m'), months: 3 },
+  { id: '6m', label: t('utilities.analysisTab.presets.6m'), months: 6 },
+  { id: '12m', label: t('utilities.analysisTab.presets.12m'), months: 12 },
+  { id: 'all', label: t('utilities.analysisTab.presets.all'), months: 0 },
+  { id: 'custom', label: t('utilities.analysisTab.presets.custom'), months: 0 },
+])
 
 function formatCurrency(value) {
   return _formatCurrency(value, settingsStore.formatSettings)
@@ -160,7 +162,7 @@ const analysisData = computed(() => {
       from = analysisFrom.value ? new Date(analysisFrom.value) : null
       to = analysisTo.value ? new Date(analysisTo.value) : null
     } else {
-      const preset = periodPresets.find(p => p.id === analysisPeriod.value)
+      const preset = periodPresets.value.find(p => p.id === analysisPeriod.value)
       if (preset?.months) {
         to = new Date()
         from = new Date()
