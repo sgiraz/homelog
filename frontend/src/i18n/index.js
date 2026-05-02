@@ -23,10 +23,9 @@ export const DEFAULT_LOCALE = 'it'
 export const i18n = createI18n({
   legacy: false,
   locale: DEFAULT_LOCALE,
-  // Fall back to IT (the source language) so partial translations during
-  // migration degrade gracefully — missing EN keys render in IT, never as
-  // raw key paths. Switch to 'en' after migration completes.
-  fallbackLocale: 'it',
+  // EN is the canonical source language — fall back to it so missing keys
+  // in any partial translation render in English, never as raw key paths.
+  fallbackLocale: 'en',
   messages,
   globalInjection: true,
   missingWarn: import.meta.env.DEV,
