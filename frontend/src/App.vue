@@ -25,6 +25,7 @@
 
     <Toast />
     <ConfirmDialog />
+    <PwaUpdatePrompt />
   </div>
 </template>
 
@@ -36,6 +37,7 @@ import { setI18nLocale } from '@/i18n'
 import Navbar from '@/components/layout/Navbar.vue'
 import Toast from '@/components/common/Toast.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import PwaUpdatePrompt from '@/components/common/PwaUpdatePrompt.vue'
 
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
