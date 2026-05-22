@@ -30,36 +30,36 @@ const VALUE_PATTERNS = {
   previous_estimated_consumption: '(\\d{1,3}(?:[.\\s]\\d{3})*,\\d+)'
 }
 
+// Extended Italian date form, e.g. "01 aprile 2026". Newer bills (Eon) write
+// the billing period this way instead of the numeric dd/mm/yyyy form.
+const EXTENDED_DATE_PATTERN = `\\d{1,2}\\s+${ITALIAN_MONTHS_PATTERN}\\s+\\d{4}`
+
 /**
- * Date pattern based on detected format
+ * Date value pattern. Picks the most specific numeric form for the dragged
+ * token, but ALWAYS also accepts the extended Italian month-name form via an
+ * alternation, so a single template tolerates a provider switching layouts and
+ * the captured value (match[1]) is one whole date the backend can parse.
  * @param {Object} token - The token containing the date
- * @returns {string} - Regex pattern for the date format
+ * @returns {string} - Regex pattern with a single capture group
  */
 function getDatePattern(token) {
-  const text = token.text
+  const text = token.text || ''
 
-  // Check if it's Italian text format (day month-name year)
-  if (token.type === TokenType.MONTH) {
-    // Will be combined with day and year from context
-    return `(\\d{1,2})\\s+${ITALIAN_MONTHS_PATTERN}\\s+(\\d{4})`
-  }
-
-  // Numeric date formats
+  // Most specific numeric sub-pattern for the value the user dragged.
+  let numeric
   if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(text)) {
-    return '(\\d{1,2}/\\d{1,2}/\\d{4})'
-  }
-  if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(text)) {
-    return '(\\d{1,2}-\\d{1,2}-\\d{4})'
-  }
-  if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(text)) {
-    return '(\\d{1,2}\\.\\d{1,2}\\.\\d{4})'
-  }
-  if (/^\d{1,2}\/\d{1,2}\/\d{2}$/.test(text)) {
-    return '(\\d{1,2}/\\d{1,2}/\\d{2})'
+    numeric = '\\d{1,2}/\\d{1,2}/\\d{4}'
+  } else if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(text)) {
+    numeric = '\\d{1,2}-\\d{1,2}-\\d{4}'
+  } else if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(text)) {
+    numeric = '\\d{1,2}\\.\\d{1,2}\\.\\d{4}'
+  } else if (/^\d{1,2}\/\d{1,2}\/\d{2}$/.test(text)) {
+    numeric = '\\d{1,2}/\\d{1,2}/\\d{2}'
+  } else {
+    numeric = '\\d{1,2}[/.\\-]\\d{1,2}[/.\\-]\\d{2,4}'
   }
 
-  // Generic date pattern
-  return '(\\d{1,2}[/.-]\\d{1,2}[/.-]\\d{2,4})'
+  return `(${numeric}|${EXTENDED_DATE_PATTERN})`
 }
 
 /**
