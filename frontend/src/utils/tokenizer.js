@@ -10,6 +10,10 @@ const ITALIAN_MONTHS = [
   'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'
 ]
 
+// Extended Italian date written across day/month/year, e.g. "01 aprile 2026".
+// Matched on the merged token text (see mergeExtendedDateTokens).
+const EXTENDED_DATE_RE = new RegExp(`^\\d{1,2}\\s+(?:${ITALIAN_MONTHS.join('|')})\\s+\\d{4}$`, 'i')
+
 // Threshold for detecting same line (in Y coordinate units)
 const SAME_LINE_THRESHOLD = 5
 
@@ -147,6 +151,11 @@ export function classifyToken(text) {
 
   // Date formats: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY
   if (/^\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}$/.test(trimmed)) {
+    return TokenType.DATE
+  }
+
+  // Extended Italian date: "01 aprile 2026" (merged day + month name + year)
+  if (EXTENDED_DATE_RE.test(trimmed)) {
     return TokenType.DATE
   }
 
@@ -315,6 +324,63 @@ function findClosestInLine(token, lineTokens) {
   })
 
   return closest
+}
+
+/**
+ * Merge consecutive day / month-name / year tokens into a single DATE token so
+ * the extended Italian form "01 aprile 2026" becomes one draggable box instead
+ * of three. Returns a new word array; the merged token's bounding box spans all
+ * three originals so the overlay draws one box and pattern generation/position
+ * disambiguation see the whole date.
+ * @param {Array} words - A page's words from the analyze response (with bbox)
+ * @returns {Array} - Words with extended dates merged
+ */
+export function mergeExtendedDateTokens(words) {
+  if (!Array.isArray(words) || words.length < 3) return words
+
+  const txt = w => (w.text || '').trim()
+  const isDay = w => /^\d{1,2}$/.test(txt(w))
+  const isYear = w => /^\d{4}$/.test(txt(w))
+  const isMonth = w => ITALIAN_MONTHS.includes(txt(w).toLowerCase())
+  const sameLine = (a, b) => Math.abs((a.y ?? 0) - (b.y ?? 0)) < SAME_LINE_THRESHOLD
+  // Tokens of one date sit side by side; reject far-apart matches across columns.
+  const adjacent = (a, b) => {
+    const gap = (b.x ?? 0) - ((a.x ?? 0) + (a.width ?? 0))
+    return (b.x ?? 0) >= (a.x ?? 0) && gap < 50
+  }
+
+  // Reading order (top-to-bottom, left-to-right) so a date's tokens are contiguous.
+  const sorted = [...words].sort((a, b) => (a.y ?? 0) - (b.y ?? 0) || (a.x ?? 0) - (b.x ?? 0))
+
+  const out = []
+  for (let i = 0; i < sorted.length; i++) {
+    const d = sorted[i]
+    const m = sorted[i + 1]
+    const y = sorted[i + 2]
+    if (
+      m && y &&
+      isDay(d) && isMonth(m) && isYear(y) &&
+      sameLine(d, m) && sameLine(m, y) &&
+      adjacent(d, m) && adjacent(m, y)
+    ) {
+      const left = d.x ?? 0
+      const top = Math.min(d.y ?? 0, m.y ?? 0, y.y ?? 0)
+      const right = Math.max((d.x ?? 0) + (d.width ?? 0), (m.x ?? 0) + (m.width ?? 0), (y.x ?? 0) + (y.width ?? 0))
+      const bottom = Math.max((d.y ?? 0) + (d.height ?? 0), (m.y ?? 0) + (m.height ?? 0), (y.y ?? 0) + (y.height ?? 0))
+      out.push({
+        ...d,
+        text: `${txt(d)} ${txt(m)} ${txt(y)}`,
+        x: left,
+        y: top,
+        width: right - left,
+        height: bottom - top
+      })
+      i += 2 // skip the consumed month + year tokens
+    } else {
+      out.push(d)
+    }
+  }
+  return out
 }
 
 

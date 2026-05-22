@@ -161,6 +161,7 @@ import { templatesAPI, pdfAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import { generatePatternForField, regeneratePatternWithContext, getNeighborWordsForToken, testPattern } from '@/utils/patternGenerator'
+import { mergeExtendedDateTokens } from '@/utils/tokenizer'
 import WizardStepInfo from './WizardStepInfo.vue'
 import WizardStepMapping from './WizardStepMapping.vue'
 import WizardStepReview from './WizardStepReview.vue'
@@ -330,6 +331,11 @@ async function processFile(file) {
     // Use the new analyze endpoint for Textract-like view
     const { data } = await pdfAPI.analyzePDF(file)
     uploadedFile.value = file
+    // Merge split day/month/year tokens so an extended date ("01 aprile 2026")
+    // is one draggable box; both the overlay and allTokens read these pages.
+    if (Array.isArray(data.pages)) {
+      data.pages = data.pages.map(p => ({ ...p, words: mergeExtendedDateTokens(p.words || []) }))
+    }
     pdfAnalysis.value = data
     rawText.value = data.raw_text || ''
 
