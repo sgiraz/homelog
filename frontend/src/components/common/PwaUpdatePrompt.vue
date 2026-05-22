@@ -17,10 +17,10 @@
     >
       <div class="flex-1 min-w-0">
         <p class="text-sm font-medium text-gray-900 dark:text-white">
-          {{ $t('pwa.updateAvailable') }}
+          {{ $t('common.pwa.updateAvailable') }}
         </p>
         <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-          {{ $t('pwa.updateHint') }}
+          {{ $t('common.pwa.updateHint') }}
         </p>
       </div>
       <div class="flex flex-col gap-2 shrink-0">
@@ -29,14 +29,14 @@
           class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
           @click="apply"
         >
-          {{ $t('pwa.update') }}
+          {{ $t('common.pwa.update') }}
         </button>
         <button
           type="button"
           class="px-3 py-1.5 rounded-lg text-gray-600 dark:text-gray-400 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
           @click="dismiss"
         >
-          {{ $t('pwa.later') }}
+          {{ $t('common.pwa.later') }}
         </button>
       </div>
     </div>

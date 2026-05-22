@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -555,9 +557,21 @@ func (h *PDFHandler) AnalyzePDFForTemplate(c *gin.Context) {
 	ppmCtx, cancelPpm := context.WithTimeout(c.Request.Context(), pdfProcessTimeout)
 	defer cancelPpm()
 	cmd := exec.CommandContext(ppmCtx, "pdftoppm", "-png", "-r", fmt.Sprintf("%d", renderDPI), pdfFile, imagePrefix)
+	var ppmStderr bytes.Buffer
+	cmd.Stderr = &ppmStderr
 	if err := cmd.Run(); err != nil {
-		log.Printf("pdftoppm failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to convert PDF to images. Make sure poppler-utils is installed."})
+		log.Printf("pdftoppm failed: %v (stderr: %s)", err, strings.TrimSpace(ppmStderr.String()))
+		// Distinguish the failure modes so the client gets an actionable message
+		// instead of a blanket "install poppler-utils" (which misleads when the
+		// real cause is a timeout on slow hardware or an unreadable PDF).
+		switch {
+		case ppmCtx.Err() == context.DeadlineExceeded:
+			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Conversione del PDF troppo lenta: il file è troppo complesso o ha troppe pagine. Riprova con un PDF più leggero."})
+		case errors.Is(err, exec.ErrNotFound):
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Conversione PDF non disponibile sul server: poppler-utils non è installato."})
+		default:
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Impossibile convertire il PDF in immagini: il file potrebbe essere corrotto o non supportato."})
+		}
 		return
 	}
 
