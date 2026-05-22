@@ -293,10 +293,12 @@ function getWordStyle(word) {
   const pageData = currentPageData.value
   if (!pageData) return {}
 
-  // Scale factor from PDF coordinates to image pixels
-  // pdftotext -bbox uses 72 DPI, pdftoppm uses 150 DPI
+  // Scale factor from PDF coordinates to image pixels.
+  // pdftotext -bbox emits 72-DPI coords; the image is rasterized by pdftoppm
+  // at pageData.render_dpi (sent by the backend). Fall back to 150 for
+  // responses produced before render_dpi existed.
   const pdfDPI = 72
-  const imageDPI = 150
+  const imageDPI = pageData.render_dpi || 150
   const scale = imageDPI / pdfDPI
 
   const widthPx = word.width * scale * zoom.value
