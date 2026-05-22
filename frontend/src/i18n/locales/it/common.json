@@ -23,5 +23,11 @@
     "title": "Ritaglia foto",
     "zoomIn": "Aumenta zoom",
     "zoomOut": "Riduci zoom"
+  },
+  "pwa": {
+    "updateAvailable": "Nuova versione disponibile",
+    "updateHint": "Aggiorna per usare l'ultima versione di HomeLog.",
+    "update": "Aggiorna",
+    "later": "Più tardi"
   }
 }

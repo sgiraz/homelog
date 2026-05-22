@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -30,7 +32,16 @@ const maxPDFUploadSize = 10 << 20 // 10 MiB
 
 // pdfProcessTimeout bounds how long pdftotext/pdftoppm may run before being
 // killed. Without this, a crafted PDF could hang the process indefinitely.
-const pdfProcessTimeout = 30 * time.Second
+// Generous enough for slow ARM hardware (Raspberry Pi 3B+) to rasterize a
+// multi-page utility bill at renderDPI without hitting a SIGKILL.
+const pdfProcessTimeout = 60 * time.Second
+
+// renderDPI is the resolution pdftoppm uses to rasterize PDF pages for the
+// template wizard preview. Kept modest so rendering stays within the Pi 3B+
+// time budget (see pdfProcessTimeout). The frontend reads it back via
+// PDFPageImage.RenderDPI to scale word overlays onto the image, so the
+// backend render resolution and the frontend coordinate scale never drift.
+const renderDPI = 100
 
 // randomSuffix returns n bytes of cryptographic randomness as hex (2n chars).
 // Used to make uploaded file paths unguessable so /uploads/<name> cannot be
@@ -317,7 +328,6 @@ func (h *PDFHandler) UploadContractPDF(c *gin.Context) {
 	c.JSON(http.StatusOK, extracted)
 }
 
-
 // === Template CRUD Operations ===
 
 // ListBillTemplates - GET /api/v1/templates/bills
@@ -488,11 +498,15 @@ func (h *PDFHandler) DeleteBillTemplate(c *gin.Context) {
 
 // PDFPageImage represents a page converted to image with word positions
 type PDFPageImage struct {
-	PageNumber  int        `json:"page_number"`
-	ImageURL    string     `json:"image_url"`
-	ImageWidth  int        `json:"image_width"`
-	ImageHeight int        `json:"image_height"`
-	Words       []WordInfo `json:"words"`
+	PageNumber  int    `json:"page_number"`
+	ImageURL    string `json:"image_url"`
+	ImageWidth  int    `json:"image_width"`
+	ImageHeight int    `json:"image_height"`
+	// RenderDPI echoes the resolution pdftoppm used so the frontend can scale
+	// the 72-DPI bbox word coordinates onto the rendered image without
+	// hardcoding (and drifting from) the backend value.
+	RenderDPI int        `json:"render_dpi"`
+	Words     []WordInfo `json:"words"`
 }
 
 // PDFAnalysisResult contains the full PDF analysis for template wizard.
@@ -542,10 +556,22 @@ func (h *PDFHandler) AnalyzePDFForTemplate(c *gin.Context) {
 	imagePrefix := filepath.Join(h.uploadsDir, fmt.Sprintf("page_%s", tag))
 	ppmCtx, cancelPpm := context.WithTimeout(c.Request.Context(), pdfProcessTimeout)
 	defer cancelPpm()
-	cmd := exec.CommandContext(ppmCtx, "pdftoppm", "-png", "-r", "150", pdfFile, imagePrefix)
+	cmd := exec.CommandContext(ppmCtx, "pdftoppm", "-png", "-r", fmt.Sprintf("%d", renderDPI), pdfFile, imagePrefix)
+	var ppmStderr bytes.Buffer
+	cmd.Stderr = &ppmStderr
 	if err := cmd.Run(); err != nil {
-		log.Printf("pdftoppm failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to convert PDF to images. Make sure poppler-utils is installed."})
+		log.Printf("pdftoppm failed: %v (stderr: %s)", err, strings.TrimSpace(ppmStderr.String()))
+		// Distinguish the failure modes so the client gets an actionable message
+		// instead of a blanket "install poppler-utils" (which misleads when the
+		// real cause is a timeout on slow hardware or an unreadable PDF).
+		switch {
+		case ppmCtx.Err() == context.DeadlineExceeded:
+			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Conversione del PDF troppo lenta: il file è troppo complesso o ha troppe pagine. Riprova con un PDF più leggero."})
+		case errors.Is(err, exec.ErrNotFound):
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Conversione PDF non disponibile sul server: poppler-utils non è installato."})
+		default:
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Impossibile convertire il PDF in immagini: il file potrebbe essere corrotto o non supportato."})
+		}
 		return
 	}
 
@@ -611,6 +637,7 @@ func (h *PDFHandler) AnalyzePDFForTemplate(c *gin.Context) {
 			ImageURL:    "/uploads/" + newName,
 			ImageWidth:  width,
 			ImageHeight: height,
+			RenderDPI:   renderDPI,
 			Words:       pageWords,
 		})
 	}

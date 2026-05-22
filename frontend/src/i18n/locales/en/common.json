@@ -23,5 +23,11 @@
     "title": "Crop photo",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out"
+  },
+  "pwa": {
+    "updateAvailable": "New version available",
+    "updateHint": "Reload to use the latest version of HomeLog.",
+    "update": "Update",
+    "later": "Later"
   }
 }
