@@ -12,16 +12,22 @@ npm run docs:dev      # local preview with hot reload
 npm run docs:build    # production build → .vitepress/dist
 ```
 
-## Deploy on Render (static site)
+## Deploy on GitHub Pages
 
-1. New → **Static Site** → connect the repo.
-2. **Root Directory:** `docs-site`
-3. **Build Command:** `npm install && npm run docs:build`
-4. **Publish Directory:** `.vitepress/dist`
-5. Add custom domain **docs.homelog.dev**.
+The docs are published to GitHub Pages (Render's free plan caps custom domains at
+2, used by the demo + landing). Deployment is automatic via
+[`.github/workflows/deploy-docs.yml`](../.github/workflows/deploy-docs.yml),
+which builds this site and publishes it on every push to `main` that touches
+`docs-site/**`.
 
-Because the site is served from a custom subdomain, `base` stays `/` — the same
-build works on GitHub Pages, Cloudflare Pages or Netlify.
+One-time setup:
+
+1. GitHub repo → **Settings → Pages → Source: GitHub Actions**.
+2. The custom domain `docs.homelog.dev` is set via `public/CNAME` (committed).
+3. On Cloudflare, add a `CNAME` record: `docs` → `sgiraz.github.io`.
+
+Because the site is served from a custom subdomain, `base` stays `/`. The same
+build also works on Render, Cloudflare Pages or Netlify if ever needed.
 
 ## Structure
 
