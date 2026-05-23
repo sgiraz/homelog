@@ -1,0 +1,15 @@
+/* HomeLog docs — warm "ember" accent to match homelog.dev. */
+:root {
+  --vp-c-brand-1: #B23F12;
+  --vp-c-brand-2: #D9531E;
+  --vp-c-brand-3: #D9531E;
+  --vp-c-brand-soft: rgba(217, 83, 30, 0.14);
+
+  --vp-home-hero-name-color: #D9531E;
+}
+
+.dark {
+  --vp-c-brand-1: #E2783F;
+  --vp-c-brand-2: #D9531E;
+  --vp-c-brand-3: #B23F12;
+}

@@ -2,6 +2,7 @@
   "banner": {
     "label": "Demo mode",
     "description": "Sample data resets every hour — any changes you make are temporary.",
+    "selfHost": "Self-host",
     "reset": "Reset demo data",
     "resetting": "Resetting…"
   },
@@ -13,6 +14,8 @@
   "login": {
     "title": "Try the live demo",
     "description": "Explore HomeLog with realistic sample data — no signup required.",
-    "button": "Enter demo"
+    "button": "Enter demo",
+    "selfHostPrompt": "Like it and want it for your own home?",
+    "selfHostLink": "Self-host it from GitHub"
   }
 }

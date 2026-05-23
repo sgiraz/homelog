@@ -7,6 +7,10 @@
 [![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D?logo=vue.js)](https://vuejs.org/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)](https://hub.docker.com/u/sgira)
 
+### 🌐 [Live Demo](https://demo.homelog.dev) &nbsp;·&nbsp; 🏠 [Website](https://homelog.dev) &nbsp;·&nbsp; 📖 [Documentation](https://docs.homelog.dev)
+
+> Try the **[live demo](https://demo.homelog.dev)** with sample data (resets hourly) — then self-host your own private instance with the [Quick Start](#quick-start) below.
+
 ## Screenshots
 
 <table>
@@ -151,11 +155,11 @@ Contributions are welcome! Here's how:
 
 If HomeLog is useful to you, consider supporting its development:
 
-- Star this repository
+- ⭐ Star this repository
+- ❤️ Donate via [Ko-fi](https://ko-fi.com/sgiraz) or [GitHub Sponsors](https://github.com/sponsors/sgiraz)
 - [Report bugs or suggest features](https://github.com/sgiraz/homelog/issues)
 - [Join the discussion](https://github.com/sgiraz/homelog/discussions)
 - Contribute code, translations, or documentation
-<!-- - [Sponsor on GitHub](https://github.com/sponsors/sgiraz) -->
 
 ---
 

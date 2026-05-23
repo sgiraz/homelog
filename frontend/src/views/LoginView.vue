@@ -20,6 +20,17 @@
         <Button class="w-full" :disabled="loading" @click="enterDemo">
           {{ t('demo.login.button') }}
         </Button>
+        <p class="text-xs text-indigo-700 dark:text-indigo-400 pt-1">
+          {{ t('demo.login.selfHostPrompt') }}
+          <a
+            :href="links.github"
+            target="_blank"
+            rel="noopener"
+            class="font-semibold underline hover:no-underline"
+          >
+            {{ t('demo.login.selfHostLink') }}
+          </a>
+        </p>
       </div>
 
       <!-- ── Login / Register ── -->
@@ -214,6 +225,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { authAPI } from '@/api/client'
 import { useDemoMode, DEMO_EMAIL, DEMO_PASSWORD } from '@/composables/useDemoMode'
+import { LINKS as links } from '@/config/links'
 import Card from '@/components/common/Card.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'

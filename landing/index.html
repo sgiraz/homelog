@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HomeLog — Your home's expenses, in one place</title>
+  <meta name="description" content="Self-hosted expense splitting, utility bills and meter readings for families. Free, open-source, and runs on a Raspberry Pi." />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="HomeLog — Your home's expenses, in one place" />
+  <meta property="og:description" content="Self-hosted expense splitting, utility bills and meter readings for families. Free and open-source." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://homelog.dev" />
+
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+
+  <!-- Fonts: Fraunces (display serif), Hanken Grotesk (body), Space Mono (numerals) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Fraunces', 'serif'],
+            sans: ['"Hanken Grotesk"', 'system-ui', 'sans-serif'],
+            mono: ['"Space Mono"', 'monospace'],
+          },
+          colors: {
+            paper: '#FBF6EC',
+            'paper-2': '#F4ECDC',
+            ink: '#211B16',
+            'ink-soft': '#6B5F52',
+            ember: '#D9531E',
+            'ember-deep': '#B23F12',
+            pine: '#234E3A',
+            line: '#E3D7C3',
+          },
+        },
+      },
+    }
+  </script>
+
+  <style>
+    :root { color-scheme: light; }
+    body { background: #FBF6EC; color: #211B16; font-family: 'Hanken Grotesk', system-ui, sans-serif; }
+
+    /* Paper grain overlay */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.4;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+      mix-blend-mode: multiply;
+    }
+
+    /* Warm radial glow behind the hero */
+    .hero-glow {
+      position: absolute;
+      inset: -20% -10% auto -10%;
+      height: 120%;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(60% 50% at 75% 15%, rgba(217, 83, 30, 0.16), transparent 70%),
+        radial-gradient(50% 50% at 15% 0%, rgba(35, 78, 58, 0.10), transparent 70%);
+    }
+
+    /* Ledger hairlines */
+    .ledger-line { border-bottom: 1px solid #E3D7C3; }
+
+    /* Staggered load reveal */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+    .reveal { opacity: 0; animation: fadeUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+    @media (prefers-reduced-motion: reduce) { .reveal { animation: none; opacity: 1; } }
+
+    /* Floating balance card */
+    @keyframes floaty { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-10px) rotate(-1.5deg); } }
+    .floaty { animation: floaty 7s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) { .floaty { animation: none; } }
+
+    /* Work-in-progress diagonal ribbon */
+    .wip-ribbon {
+      position: absolute; top: 26px; right: -54px;
+      transform: rotate(45deg);
+      background: #211B16; color: #FBF6EC;
+      font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.18em;
+      padding: 7px 64px; text-transform: uppercase;
+      box-shadow: 0 6px 18px rgba(33, 27, 22, 0.25);
+    }
+
+    .link-underline { background-image: linear-gradient(currentColor, currentColor); background-size: 0% 1.5px; background-repeat: no-repeat; background-position: 0 100%; transition: background-size 0.3s ease; }
+    .link-underline:hover { background-size: 100% 1.5px; }
+
+    .card-lift { transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s ease; }
+    .card-lift:hover { transform: translateY(-4px); box-shadow: 0 18px 40px -18px rgba(33,27,22,0.35); }
+
+    .lang-select { appearance: none; -webkit-appearance: none; }
+  </style>
+</head>
+
+<body class="font-sans antialiased text-ink selection:bg-ember selection:text-paper">
+
+  <!-- ░░ WIP notice bar ░░ -->
+  <div class="relative z-20 bg-ink text-paper text-center text-xs sm:text-sm font-mono tracking-wide py-2 px-4" data-i18n-html="wipbar">
+    🚧 Work in progress — this site and the <a href="https://docs.homelog.dev" class="underline underline-offset-2 hover:text-ember transition-colors">docs</a> are still being built.
+  </div>
+
+  <!-- ░░ Nav ░░ -->
+  <header class="relative z-20 max-w-6xl mx-auto px-6 py-6 flex items-center justify-between gap-4">
+    <a href="/" class="flex items-center gap-2.5 group shrink-0">
+      <span class="grid place-items-center w-9 h-9 rounded-xl bg-ink text-paper text-lg group-hover:bg-ember transition-colors">⌂</span>
+      <span class="font-display text-2xl font-semibold tracking-tight">HomeLog</span>
+    </a>
+    <nav class="flex items-center gap-4 sm:gap-6 text-sm font-medium">
+      <a href="https://docs.homelog.dev" class="hidden sm:inline link-underline text-ink-soft hover:text-ink" data-i18n="nav.docs">Docs</a>
+      <a href="https://github.com/sgiraz/homelog" class="link-underline text-ink-soft hover:text-ink">GitHub</a>
+
+      <!-- Language selector -->
+      <label class="relative inline-flex items-center">
+        <span class="sr-only" data-i18n="nav.language">Language</span>
+        <select id="lang-select" aria-label="Language"
+                class="lang-select bg-transparent border border-ink/20 hover:border-ink/60 rounded-full pl-3 pr-7 py-1.5 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-ember/40">
+          <option value="en">EN</option>
+          <option value="it">IT</option>
+        </select>
+        <span class="pointer-events-none absolute right-2.5 text-ink-soft text-[10px]">▼</span>
+      </label>
+
+      <a href="https://demo.homelog.dev" class="inline-flex items-center gap-1.5 rounded-full bg-ink text-paper px-4 py-2 hover:bg-ember transition-colors">
+        <span data-i18n="nav.demo">Live demo</span>
+        <span aria-hidden="true">→</span>
+      </a>
+    </nav>
+  </header>
+
+  <!-- ░░ Hero ░░ -->
+  <section class="relative overflow-hidden">
+    <div class="hero-glow"></div>
+    <div class="relative z-10 max-w-6xl mx-auto px-6 pt-10 pb-20 sm:pt-16 sm:pb-28 grid lg:grid-cols-[1.05fr_0.95fr] gap-14 lg:gap-10 items-center">
+
+      <!-- Copy -->
+      <div>
+        <p class="reveal font-mono text-xs sm:text-sm tracking-[0.22em] uppercase text-ember-deep mb-5" style="animation-delay:.05s" data-i18n="hero.kicker">
+          Self-hosted · Open-source
+        </p>
+        <h1 class="reveal font-display font-semibold tracking-tight leading-[0.98] text-[2.7rem] sm:text-6xl lg:text-[4.4rem]" style="animation-delay:.12s" data-i18n-html="hero.title">
+          Every euro that<br />
+          <span class="italic text-ember">runs your home</span>,<br />
+          in one ledger.
+        </h1>
+        <p class="reveal mt-7 text-lg sm:text-xl text-ink-soft max-w-xl leading-relaxed" style="animation-delay:.2s" data-i18n-html="hero.sub">
+          HomeLog tracks shared expenses, utility bills and meter readings for the
+          whole family — then settles up who owes what. Your data lives on
+          <em class="font-display not-italic font-semibold text-ink">your</em> server, not in someone else's cloud.
+        </p>
+
+        <div class="reveal mt-9 flex flex-wrap items-center gap-3.5" style="animation-delay:.28s">
+          <a href="https://demo.homelog.dev"
+             class="group inline-flex items-center gap-2 rounded-full bg-ember text-paper font-semibold px-6 py-3.5 shadow-[0_12px_30px_-10px_rgba(217,83,30,0.7)] hover:bg-ember-deep transition-colors">
+            <span data-i18n="hero.ctaDemo">Try the live demo</span>
+            <span class="transition-transform group-hover:translate-x-1" aria-hidden="true">→</span>
+          </a>
+          <a href="https://github.com/sgiraz/homelog"
+             class="inline-flex items-center gap-2 rounded-full border border-ink/20 hover:border-ink/60 px-6 py-3.5 font-semibold transition-colors">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.78 0 12.29c0 5.21 3.44 9.63 8.21 11.19.6.11.82-.25.82-.56 0-.28-.01-1.02-.02-2-3.34.71-4.04-1.58-4.04-1.58-.55-1.37-1.34-1.74-1.34-1.74-1.09-.73.08-.72.08-.72 1.21.08 1.84 1.22 1.84 1.22 1.07 1.8 2.81 1.28 3.5.98.11-.76.42-1.28.76-1.57-2.67-.3-5.47-1.31-5.47-5.84 0-1.29.47-2.34 1.24-3.17-.12-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.21a11.6 11.6 0 0 1 3-.39c1.02 0 2.05.13 3 .39 2.29-1.53 3.3-1.21 3.3-1.21.66 1.65.24 2.87.12 3.17.77.83 1.24 1.88 1.24 3.17 0 4.54-2.81 5.54-5.49 5.83.43.36.81 1.08.81 2.18 0 1.57-.01 2.84-.01 3.23 0 .31.22.68.83.56A12.02 12.02 0 0 0 24 12.29C24 5.78 18.63.5 12 .5z"/></svg>
+            <span data-i18n="hero.ctaSelfhost">Self-host it</span>
+          </a>
+        </div>
+
+        <p class="reveal mt-6 font-mono text-xs text-ink-soft" style="animation-delay:.36s" data-i18n-html="hero.note">
+          ✦ Free forever &nbsp;·&nbsp; ✦ Runs on a Raspberry Pi &nbsp;·&nbsp; ✦ AGPL-3.0
+        </p>
+      </div>
+
+      <!-- Ledger card visual -->
+      <div class="reveal relative" style="animation-delay:.3s">
+        <div class="wip-ribbon" data-i18n="wipRibbon">Work in progress</div>
+        <div class="floaty relative bg-paper rounded-[1.6rem] border border-line shadow-[0_30px_60px_-25px_rgba(33,27,22,0.45)] p-6 sm:p-7 max-w-md mx-auto">
+          <div class="flex items-baseline justify-between mb-1">
+            <span class="font-display text-xl font-semibold" data-i18n="card.balanceTitle">Household balance</span>
+            <span class="font-mono text-xs text-pine bg-pine/10 rounded-full px-2.5 py-1" data-i18n="card.period">May 2026</span>
+          </div>
+          <p class="text-sm text-ink-soft mb-5" data-i18n="card.sharedBetween">Shared between Simone &amp; Giulia</p>
+
+          <div class="space-y-0.5 font-mono text-sm">
+            <div class="flex items-center justify-between py-2.5 ledger-line">
+              <span class="flex items-center gap-2.5"><span>⚡</span> <span data-i18n="card.electricity">Electricity</span></span>
+              <span class="tabular-nums">€ 84,20</span>
+            </div>
+            <div class="flex items-center justify-between py-2.5 ledger-line">
+              <span class="flex items-center gap-2.5"><span>🔥</span> <span data-i18n="card.gas">Gas</span></span>
+              <span class="tabular-nums">€ 145,80</span>
+            </div>
+            <div class="flex items-center justify-between py-2.5 ledger-line">
+              <span class="flex items-center gap-2.5"><span>💧</span> <span data-i18n="card.water">Water</span></span>
+              <span class="tabular-nums">€ 58,20</span>
+            </div>
+            <div class="flex items-center justify-between py-2.5">
+              <span class="flex items-center gap-2.5"><span>🛒</span> <span data-i18n="card.groceries">Groceries</span></span>
+              <span class="tabular-nums">€ 996,30</span>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-4 border-t-2 border-dashed border-line flex items-end justify-between">
+            <span class="font-display font-semibold text-lg" data-i18n="card.thisMonth">This month</span>
+            <span class="font-mono text-2xl font-bold text-ember tabular-nums">€ 1.284,50</span>
+          </div>
+        </div>
+
+        <!-- Floating "bill matched" toast -->
+        <div class="hidden sm:flex absolute -bottom-6 -left-4 items-center gap-3 bg-ink text-paper rounded-2xl px-4 py-3 shadow-xl rotate-2">
+          <span class="grid place-items-center w-8 h-8 rounded-lg bg-pine text-paper">✓</span>
+          <div class="leading-tight">
+            <div class="text-sm font-semibold" data-i18n="toast.title">Bill matched to reading</div>
+            <div class="font-mono text-[11px] text-paper/70">GAS-771-2025 · 190 Smc</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ░░ Features ░░ -->
+  <section class="relative z-10 bg-paper-2 border-y border-line">
+    <div class="max-w-6xl mx-auto px-6 py-20 sm:py-24">
+      <div class="max-w-2xl mb-14">
+        <p class="font-mono text-xs tracking-[0.22em] uppercase text-ember-deep mb-3" data-i18n="features.kicker">What's inside</p>
+        <h2 class="font-display text-3xl sm:text-4xl font-semibold tracking-tight" data-i18n="features.title">
+          One app for the money that keeps a household running.
+        </h2>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="card-lift bg-paper rounded-2xl border border-line p-6">
+          <div class="text-2xl mb-4">🤝</div>
+          <h3 class="font-display text-xl font-semibold mb-2" data-i18n="feat1.title">Expense splitting</h3>
+          <p class="text-ink-soft text-[15px] leading-relaxed" data-i18n="feat1.body">Split costs between household members, track balances, and settle up — no more "who paid for what".</p>
+        </div>
+        <div class="card-lift bg-paper rounded-2xl border border-line p-6">
+          <div class="text-2xl mb-4">⚡</div>
+          <h3 class="font-display text-xl font-semibold mb-2" data-i18n="feat2.title">Utilities &amp; bills</h3>
+          <p class="text-ink-soft text-[15px] leading-relaxed" data-i18n="feat2.body">Electricity, gas and water — log meter readings, store bills, and watch consumption trends over time.</p>
+        </div>
+        <div class="card-lift bg-paper rounded-2xl border border-line p-6">
+          <div class="text-2xl mb-4">📄</div>
+          <h3 class="font-display text-xl font-semibold mb-2" data-i18n="feat3.title">PDF bill templates</h3>
+          <p class="text-ink-soft text-[15px] leading-relaxed" data-i18n="feat3.body">Teach HomeLog to read your provider's bills once with a drag-and-drop wizard; it auto-extracts every figure after that.</p>
+        </div>
+        <div class="card-lift bg-paper rounded-2xl border border-line p-6">
+          <div class="text-2xl mb-4">📊</div>
+          <h3 class="font-display text-xl font-semibold mb-2" data-i18n="feat4.title">Consumption analysis</h3>
+          <p class="text-ink-soft text-[15px] leading-relaxed" data-i18n="feat4.body">Compare billed vs. actual consumption, spot anomalies, and see exactly where your money goes each period.</p>
+        </div>
+        <div class="card-lift bg-paper rounded-2xl border border-line p-6">
+          <div class="text-2xl mb-4">🌍</div>
+          <h3 class="font-display text-xl font-semibold mb-2" data-i18n="feat5.title">Multi-currency &amp; language</h3>
+          <p class="text-ink-soft text-[15px] leading-relaxed" data-i18n="feat5.body">Italian &amp; English UI with locale-aware numbers, dates and currencies — per expense and per service.</p>
+        </div>
+        <div class="card-lift bg-paper rounded-2xl border border-line p-6">
+          <div class="text-2xl mb-4">🔒</div>
+          <h3 class="font-display text-xl font-semibold mb-2" data-i18n="feat6.title">Yours, privately</h3>
+          <p class="text-ink-soft text-[15px] leading-relaxed" data-i18n="feat6.body">Self-hosted in a single Docker container. Your family's finances never leave the hardware you control.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ░░ Positioning ░░ -->
+  <section class="relative z-10 max-w-6xl mx-auto px-6 py-20 sm:py-28">
+    <div class="grid lg:grid-cols-[0.9fr_1.1fr] gap-12 items-center">
+      <div>
+        <p class="font-mono text-xs tracking-[0.22em] uppercase text-ember-deep mb-3" data-i18n="why.kicker">Why HomeLog</p>
+        <h2 class="font-display text-3xl sm:text-4xl font-semibold tracking-tight leading-tight" data-i18n="why.title">
+          Splitwise meets your utility bills — without the cloud.
+        </h2>
+        <p class="mt-6 text-lg text-ink-soft leading-relaxed" data-i18n="why.body">
+          Expense-splitting apps live in the cloud and ignore your bills. Budgeting
+          tools ignore your family. HomeLog ties shared expenses, meter readings and
+          provider bills together — and runs entirely on hardware you own, down to a
+          Raspberry Pi in the closet.
+        </p>
+        <a href="https://github.com/sgiraz/homelog/blob/main/DEPLOY-GUIDE.md"
+           class="inline-flex items-center gap-2 mt-8 font-semibold link-underline text-ember-deep">
+          <span data-i18n="why.link">Read the deploy guide</span>
+          <span aria-hidden="true">→</span>
+        </a>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4 font-mono text-sm">
+        <div class="bg-pine text-paper rounded-2xl p-6">
+          <div class="text-3xl font-bold">256<span class="text-base font-normal opacity-70"> MB</span></div>
+          <p class="mt-2 text-paper/75 leading-snug" data-i18n="stat1.body">Runs comfortably in a single low-memory container.</p>
+        </div>
+        <div class="bg-paper border border-line rounded-2xl p-6">
+          <div class="text-3xl font-bold text-ember">2</div>
+          <p class="mt-2 text-ink-soft leading-snug" data-i18n="stat2.body">Languages today — Italian &amp; English, more welcome.</p>
+        </div>
+        <div class="bg-paper border border-line rounded-2xl p-6">
+          <div class="text-3xl font-bold">1</div>
+          <p class="mt-2 text-ink-soft leading-snug" data-i18n-html="stat3.body"><code>docker compose up</code> — one container, API + UI.</p>
+        </div>
+        <div class="bg-ink text-paper rounded-2xl p-6">
+          <div class="text-3xl font-bold text-ember">∞</div>
+          <p class="mt-2 text-paper/75 leading-snug" data-i18n="stat4.body">Households, members &amp; properties. No seats, no fees.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ░░ CTA band ░░ -->
+  <section class="relative z-10 overflow-hidden bg-ink text-paper">
+    <div class="max-w-6xl mx-auto px-6 py-20 sm:py-24 text-center">
+      <h2 class="font-display text-3xl sm:text-5xl font-semibold tracking-tight" data-i18n="cta.title">
+        Try it now. Host it forever.
+      </h2>
+      <p class="mt-5 text-lg text-paper/70 max-w-xl mx-auto" data-i18n="cta.body">
+        Poke around the live demo with sample data, then deploy your own private
+        instance from GitHub in minutes.
+      </p>
+      <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
+        <a href="https://demo.homelog.dev" class="rounded-full bg-ember text-paper font-semibold px-7 py-4 hover:bg-ember-deep transition-colors" data-i18n="cta.demo">Open the live demo</a>
+        <a href="https://github.com/sgiraz/homelog" class="rounded-full border border-paper/30 hover:border-paper px-7 py-4 font-semibold transition-colors" data-i18n="cta.github">View on GitHub</a>
+        <a href="https://ko-fi.com/sgiraz" class="inline-flex items-center gap-2 rounded-full bg-paper/10 hover:bg-paper/20 px-7 py-4 font-semibold transition-colors" data-i18n="cta.support">❤️ Support the project</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ░░ Footer ░░ -->
+  <footer class="relative z-10 bg-paper">
+    <div class="max-w-6xl mx-auto px-6 py-12 flex flex-col sm:flex-row items-center justify-between gap-6 text-sm text-ink-soft">
+      <div class="flex items-center gap-2.5">
+        <span class="grid place-items-center w-7 h-7 rounded-lg bg-ink text-paper">⌂</span>
+        <span class="font-display text-lg font-semibold text-ink">HomeLog</span>
+        <span class="font-mono text-xs ml-2 px-2 py-0.5 rounded-full bg-paper-2 border border-line">WIP</span>
+      </div>
+      <nav class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+        <a href="https://demo.homelog.dev" class="link-underline hover:text-ink">Demo</a>
+        <a href="https://docs.homelog.dev" class="link-underline hover:text-ink" data-i18n="footer.docs">Docs</a>
+        <a href="https://github.com/sgiraz/homelog" class="link-underline hover:text-ink">GitHub</a>
+        <a href="https://ko-fi.com/sgiraz" class="link-underline hover:text-ink" data-i18n="footer.donate">Donate</a>
+        <a href="https://github.com/sgiraz/homelog/blob/main/LICENSE" class="link-underline hover:text-ink">AGPL-3.0</a>
+      </nav>
+      <p class="font-mono text-xs" data-i18n="footer.tagline">Made with care for the home.</p>
+    </div>
+  </footer>
+
+  <!-- ░░ i18n (IT / EN), default = browser language, choice persisted ░░ -->
+  <script>
+    const I18N = {
+      en: {
+        'wipbar': '🚧 Work in progress — this site and the <a href="https://docs.homelog.dev" class="underline underline-offset-2 hover:text-ember transition-colors">docs</a> are still being built.',
+        'nav.docs': 'Docs',
+        'nav.demo': 'Live demo',
+        'nav.language': 'Language',
+        'hero.kicker': 'Self-hosted · Open-source',
+        'hero.title': 'Every euro that<br /><span class="italic text-ember">runs your home</span>,<br />in one ledger.',
+        'hero.sub': 'HomeLog tracks shared expenses, utility bills and meter readings for the whole family — then settles up who owes what. Your data lives on <em class="font-display not-italic font-semibold text-ink">your</em> server, not in someone else\'s cloud.',
+        'hero.ctaDemo': 'Try the live demo',
+        'hero.ctaSelfhost': 'Self-host it',
+        'hero.note': '✦ Free forever &nbsp;·&nbsp; ✦ Runs on a Raspberry Pi &nbsp;·&nbsp; ✦ AGPL-3.0',
+        'card.balanceTitle': 'Household balance',
+        'card.period': 'May 2026',
+        'card.sharedBetween': 'Shared between Simone & Giulia',
+        'card.electricity': 'Electricity',
+        'card.gas': 'Gas',
+        'card.water': 'Water',
+        'card.groceries': 'Groceries',
+        'card.thisMonth': 'This month',
+        'toast.title': 'Bill matched to reading',
+        'wipRibbon': 'Work in progress',
+        'features.kicker': "What's inside",
+        'features.title': 'One app for the money that keeps a household running.',
+        'feat1.title': 'Expense splitting',
+        'feat1.body': 'Split costs between household members, track balances, and settle up — no more "who paid for what".',
+        'feat2.title': 'Utilities & bills',
+        'feat2.body': 'Electricity, gas and water — log meter readings, store bills, and watch consumption trends over time.',
+        'feat3.title': 'PDF bill templates',
+        'feat3.body': "Teach HomeLog to read your provider's bills once with a drag-and-drop wizard; it auto-extracts every figure after that.",
+        'feat4.title': 'Consumption analysis',
+        'feat4.body': 'Compare billed vs. actual consumption, spot anomalies, and see exactly where your money goes each period.',
+        'feat5.title': 'Multi-currency & language',
+        'feat5.body': 'Italian & English UI with locale-aware numbers, dates and currencies — per expense and per service.',
+        'feat6.title': 'Yours, privately',
+        'feat6.body': "Self-hosted in a single Docker container. Your family's finances never leave the hardware you control.",
+        'why.kicker': 'Why HomeLog',
+        'why.title': 'Splitwise meets your utility bills — without the cloud.',
+        'why.body': 'Expense-splitting apps live in the cloud and ignore your bills. Budgeting tools ignore your family. HomeLog ties shared expenses, meter readings and provider bills together — and runs entirely on hardware you own, down to a Raspberry Pi in the closet.',
+        'why.link': 'Read the deploy guide',
+        'stat1.body': 'Runs comfortably in a single low-memory container.',
+        'stat2.body': 'Languages today — Italian & English, more welcome.',
+        'stat3.body': '<code>docker compose up</code> — one container, API + UI.',
+        'stat4.body': 'Households, members & properties. No seats, no fees.',
+        'cta.title': 'Try it now. Host it forever.',
+        'cta.body': 'Poke around the live demo with sample data, then deploy your own private instance from GitHub in minutes.',
+        'cta.demo': 'Open the live demo',
+        'cta.github': 'View on GitHub',
+        'cta.support': '❤️ Support the project',
+        'footer.docs': 'Docs',
+        'footer.donate': 'Donate',
+        'footer.tagline': 'Made with care for the home.',
+      },
+      it: {
+        'wipbar': '🚧 Lavori in corso — questo sito e la <a href="https://docs.homelog.dev" class="underline underline-offset-2 hover:text-ember transition-colors">documentazione</a> sono ancora in costruzione.',
+        'nav.docs': 'Documentazione',
+        'nav.demo': 'Demo live',
+        'nav.language': 'Lingua',
+        'hero.kicker': 'Self-hosted · Open-source',
+        'hero.title': 'Ogni euro che<br /><span class="italic text-ember">manda avanti casa</span>,<br />in un solo registro.',
+        'hero.sub': 'HomeLog tiene traccia di spese condivise, bollette e letture dei contatori per tutta la famiglia — poi calcola chi deve cosa. I tuoi dati vivono sul <em class="font-display not-italic font-semibold text-ink">tuo</em> server, non nel cloud di qualcun altro.',
+        'hero.ctaDemo': 'Prova la demo live',
+        'hero.ctaSelfhost': 'Installalo da te',
+        'hero.note': '✦ Gratis per sempre &nbsp;·&nbsp; ✦ Gira su un Raspberry Pi &nbsp;·&nbsp; ✦ AGPL-3.0',
+        'card.balanceTitle': 'Bilancio famiglia',
+        'card.period': 'Mag 2026',
+        'card.sharedBetween': 'Diviso tra Simone e Giulia',
+        'card.electricity': 'Luce',
+        'card.gas': 'Gas',
+        'card.water': 'Acqua',
+        'card.groceries': 'Spesa',
+        'card.thisMonth': 'Questo mese',
+        'toast.title': 'Bolletta abbinata alla lettura',
+        'wipRibbon': 'Lavori in corso',
+        'features.kicker': "Cosa c'è dentro",
+        'features.title': "Un'unica app per il denaro che manda avanti una casa.",
+        'feat1.title': 'Divisione delle spese',
+        'feat1.body': 'Dividi i costi tra i membri, tieni traccia dei saldi e pareggia i conti — basta con il "chi ha pagato cosa".',
+        'feat2.title': 'Utenze e bollette',
+        'feat2.body': "Luce, gas e acqua — registra le letture, archivia le bollette e osserva l'andamento dei consumi nel tempo.",
+        'feat3.title': 'Template PDF delle bollette',
+        'feat3.body': 'Insegna a HomeLog a leggere le bollette del tuo fornitore una volta sola con un wizard drag-and-drop; dopo estrae ogni dato da solo.',
+        'feat4.title': 'Analisi dei consumi',
+        'feat4.body': 'Confronta consumo fatturato ed effettivo, individua le anomalie e vedi esattamente dove vanno i tuoi soldi ogni periodo.',
+        'feat5.title': 'Multi-valuta e lingua',
+        'feat5.body': 'Interfaccia in italiano e inglese con numeri, date e valute localizzati — per spesa e per servizio.',
+        'feat6.title': 'Tuo, e privato',
+        'feat6.body': "Self-hosted in un singolo container Docker. Le finanze della tua famiglia non lasciano mai l'hardware che controlli tu.",
+        'why.kicker': 'Perché HomeLog',
+        'why.title': 'Splitwise incontra le tue bollette — senza il cloud.',
+        'why.body': 'Le app per dividere le spese vivono nel cloud e ignorano le bollette. I tool di budgeting ignorano la famiglia. HomeLog mette insieme spese condivise, letture dei contatori e bollette del fornitore — e gira interamente su hardware tuo, fino a un Raspberry Pi nello sgabuzzino.',
+        'why.link': 'Leggi la guida al deploy',
+        'stat1.body': 'Gira comodamente in un singolo container a bassa memoria.',
+        'stat2.body': 'Lingue oggi — italiano e inglese, altre benvenute.',
+        'stat3.body': '<code>docker compose up</code> — un container, API + UI.',
+        'stat4.body': 'Nuclei, membri e proprietà. Nessun posto a pagamento, nessuna fee.',
+        'cta.title': 'Provalo ora. Ospitalo per sempre.',
+        'cta.body': 'Esplora la demo live con dati di esempio, poi installa la tua istanza privata da GitHub in pochi minuti.',
+        'cta.demo': 'Apri la demo live',
+        'cta.github': 'Guarda su GitHub',
+        'cta.support': '❤️ Sostieni il progetto',
+        'footer.docs': 'Documentazione',
+        'footer.donate': 'Dona',
+        'footer.tagline': 'Fatto con cura per la casa.',
+      },
+    };
+
+    function applyLang(lang) {
+      const dict = I18N[lang] || I18N.en;
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-i18n]').forEach(function (el) {
+        const k = el.getAttribute('data-i18n');
+        if (dict[k] != null) el.textContent = dict[k];
+      });
+      document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
+        const k = el.getAttribute('data-i18n-html');
+        if (dict[k] != null) el.innerHTML = dict[k];
+      });
+      const sel = document.getElementById('lang-select');
+      if (sel) sel.value = lang;
+    }
+
+    (function () {
+      const stored = localStorage.getItem('homelog-lang');
+      const browser = (navigator.language || 'en').toLowerCase().indexOf('it') === 0 ? 'it' : 'en';
+      applyLang(stored || browser);
+
+      const sel = document.getElementById('lang-select');
+      if (sel) {
+        sel.addEventListener('change', function (e) {
+          const l = e.target.value;
+          localStorage.setItem('homelog-lang', l);
+          applyLang(l);
+        });
+      }
+    })();
+  </script>
+
+</body>
+</html>

@@ -4,6 +4,10 @@ import { versionAPI, demoAPI } from '@/api/client'
 // Module-level state — fetched once and shared across every component.
 const isDemoMode = ref(false)
 const isResetting = ref(false)
+// Instance/version info, also sourced from the single /version call.
+const appVersion = ref('')
+const updateAvailable = ref(false)
+const latestUrl = ref('')
 let initialized = false
 
 // Credentials for the single shared demo account. Mirrors the backend
@@ -20,6 +24,9 @@ export function useDemoMode() {
     try {
       const { data } = await versionAPI.check()
       isDemoMode.value = !!data.demo_mode
+      appVersion.value = data.current && data.current !== 'dev' ? data.current : ''
+      updateAvailable.value = !!data.update_available
+      latestUrl.value = data.latest_url || ''
     } catch {
       // Version check is best-effort; default to non-demo on failure.
       isDemoMode.value = false
@@ -40,5 +47,5 @@ export function useDemoMode() {
     }
   }
 
-  return { isDemoMode, isResetting, initDemoMode, resetDemo }
+  return { isDemoMode, isResetting, appVersion, updateAvailable, latestUrl, initDemoMode, resetDemo }
 }
