@@ -20,6 +20,13 @@
     "categories": "Categories",
     "data": "Data"
   },
+  "about": {
+    "title": "About & Support",
+    "tagline": "HomeLog is free and open-source. If it helps your household, consider supporting its development.",
+    "updateAvailable": "Update available",
+    "star": "Star on GitHub",
+    "donate": "Donate"
+  },
   "preferences": {
     "title": "Personal Preferences",
     "theme": "Theme",
