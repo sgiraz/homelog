@@ -62,6 +62,25 @@ func main() {
 		log.Printf("Warning: failed to migrate default subcategories: %v", err)
 	}
 
+	// Demo mode: seed the showcase dataset on a fresh container, then reset it
+	// hourly so the public demo stays clean and representative. Both are no-ops
+	// unless DEMO_MODE=true.
+	if database.IsDemoMode() {
+		log.Println("🎭 DEMO_MODE enabled — destructive operations are disabled")
+		if err := database.SeedDemoIfNeeded(db); err != nil {
+			log.Printf("Warning: failed to seed demo data: %v", err)
+		}
+		go func() {
+			ticker := time.NewTicker(1 * time.Hour)
+			defer ticker.Stop()
+			for range ticker.C {
+				if err := database.ResetDemoData(db); err != nil {
+					log.Printf("Warning: scheduled demo reset failed: %v", err)
+				}
+			}
+		}()
+	}
+
 	// Set Gin mode
 	if os.Getenv("GIN_MODE") == "release" {
 		gin.SetMode(gin.ReleaseMode)
@@ -113,6 +132,7 @@ func main() {
 			resp := gin.H{
 				"current":          appVersion,
 				"update_available": updateAvailable,
+				"demo_mode":        database.IsDemoMode(),
 			}
 			if latest != "" {
 				resp["latest"] = latest
@@ -295,12 +315,14 @@ func main() {
 			{
 				settings.GET("", settingsHandler.Get)
 				settings.PUT("", settingsHandler.Update)
-				settings.PUT("/password", handlers.NewAuthHandler(db).ChangePassword)
+				// Account-locking / destructive ops are blocked in demo mode so a
+				// visitor can't change the shared demo password or delete the account.
+				settings.PUT("/password", middleware.DemoGuard(), handlers.NewAuthHandler(db).ChangePassword)
 				settings.POST("/avatar", settingsHandler.UploadAvatar)
 				settings.DELETE("/avatar", settingsHandler.DeleteAvatar)
 				settings.GET("/account/delete-check", settingsHandler.DeleteAccountCheck)
-				settings.POST("/account/promote-admin", settingsHandler.PromoteAdmin)
-				settings.DELETE("/account", settingsHandler.DeleteAccount)
+				settings.POST("/account/promote-admin", middleware.DemoGuard(), settingsHandler.PromoteAdmin)
+				settings.DELETE("/account", middleware.DemoGuard(), settingsHandler.DeleteAccount)
 			}
 
 			// Balance (per property) - nested under properties
@@ -345,10 +367,18 @@ func main() {
 			// Admin operations (require admin role)
 			admin := protected.Group("/admin")
 			admin.Use(middleware.AdminRequired())
+			admin.Use(middleware.DemoGuard()) // no user management in demo mode
 			{
 				adminHandler := handlers.NewAdminHandler(db)
 				admin.DELETE("/users/:id", adminHandler.DeleteUser)
 				admin.PUT("/users/:id/role", adminHandler.ToggleAdmin)
+			}
+
+			// Demo-only: manual dataset reset (backs the "Reset demo data" button).
+			// Registered only in demo mode; the handler double-checks the flag.
+			if database.IsDemoMode() {
+				demoHandler := handlers.NewDemoHandler(db)
+				protected.POST("/demo/reset", demoHandler.Reset)
 			}
 
 			// Export / Import

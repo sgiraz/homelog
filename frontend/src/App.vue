@@ -9,6 +9,8 @@
       {{ $t('nav.skipToContent') }}
     </a>
 
+    <DemoBanner />
+
     <Navbar v-if="authStore.isAuthenticated" />
 
     <main
@@ -33,14 +35,19 @@
 import { watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
+import { useDemoMode } from '@/composables/useDemoMode'
 import { setI18nLocale } from '@/i18n'
 import Navbar from '@/components/layout/Navbar.vue'
 import Toast from '@/components/common/Toast.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import PwaUpdatePrompt from '@/components/common/PwaUpdatePrompt.vue'
+import DemoBanner from '@/components/common/DemoBanner.vue'
 
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
+
+// Detect demo instance once at startup (public endpoint, pre-auth safe).
+useDemoMode().initDemoMode()
 
 // Cache main views to avoid re-mount flicker on navigation
 const cachedViews = ['DashboardView', 'ExpensesView', 'UtilitiesView', 'ProjectsView', 'SettingsView']

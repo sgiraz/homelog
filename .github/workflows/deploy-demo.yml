@@ -1,0 +1,33 @@
+name: Deploy Demo
+
+# Keeps the public demo (on Render) tracking the latest released image. Runs
+# after "Build and Push Docker Image" finishes so the sgira/homelog:latest tag
+# is guaranteed to exist before we trigger a redeploy. The demo is fully
+# independent from how end users self-host HomeLog — this only pokes a Render
+# deploy hook, never the DockerHub image or the Pi deployment path.
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Image"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  redeploy:
+    # Skip if the upstream image build failed; manual dispatch always runs.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy (re-pulls :latest)
+        run: |
+          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK_URL secret is not set — see demo/README.md"
+            exit 1
+          fi
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+
+      - name: Summary
+        run: |
+          echo "## Demo redeploy triggered" >> $GITHUB_STEP_SUMMARY
+          echo "- Service: Render (homelog-demo)" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: \`sgira/homelog:latest\`" >> $GITHUB_STEP_SUMMARY

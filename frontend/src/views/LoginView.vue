@@ -6,6 +6,22 @@
         <p class="text-gray-600 dark:text-gray-400">{{ t('auth.appTagline') }}</p>
       </div>
 
+      <!-- ── Demo banner (only on demo instances) ── -->
+      <div
+        v-if="isDemoMode && mode === 'login'"
+        class="mb-6 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 space-y-3 text-center"
+      >
+        <p class="text-sm font-semibold text-indigo-800 dark:text-indigo-300">
+          🎭 {{ t('demo.login.title') }}
+        </p>
+        <p class="text-xs text-indigo-700 dark:text-indigo-400">
+          {{ t('demo.login.description') }}
+        </p>
+        <Button class="w-full" :disabled="loading" @click="enterDemo">
+          {{ t('demo.login.button') }}
+        </Button>
+      </div>
+
       <!-- ── Login / Register ── -->
       <form v-if="mode === 'login' || mode === 'register'" @submit.prevent="handleSubmit" class="space-y-4">
         <Input
@@ -197,6 +213,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { authAPI } from '@/api/client'
+import { useDemoMode, DEMO_EMAIL, DEMO_PASSWORD } from '@/composables/useDemoMode'
 import Card from '@/components/common/Card.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -204,6 +221,7 @@ import Button from '@/components/common/Button.vue'
 const router = useRouter()
 const { t } = useI18n()
 const authStore = useAuthStore()
+const { isDemoMode } = useDemoMode()
 
 // mode: 'login' | 'register' | 'forgot' | 'reset'
 const mode = ref('login')
@@ -234,6 +252,13 @@ async function handleSubmit() {
   } finally {
     loading.value = false
   }
+}
+
+// Prefill the shared demo credentials and sign in immediately.
+async function enterDemo() {
+  form.value.email = DEMO_EMAIL
+  form.value.password = DEMO_PASSWORD
+  await handleSubmit()
 }
 
 async function handleForgotPassword() {

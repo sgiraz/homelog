@@ -1,0 +1,18 @@
+{
+  "banner": {
+    "label": "Demo mode",
+    "description": "Sample data resets every hour — any changes you make are temporary.",
+    "reset": "Reset demo data",
+    "resetting": "Resetting…"
+  },
+  "reset": {
+    "confirmTitle": "Reset demo data?",
+    "confirmMessage": "This restores the sample dataset to its original state. Any changes will be lost.",
+    "confirmButton": "Reset now"
+  },
+  "login": {
+    "title": "Try the live demo",
+    "description": "Explore HomeLog with realistic sample data — no signup required.",
+    "button": "Enter demo"
+  }
+}

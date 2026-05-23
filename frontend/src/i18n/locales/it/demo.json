@@ -1,0 +1,18 @@
+{
+  "banner": {
+    "label": "Modalità demo",
+    "description": "I dati di esempio si resettano ogni ora — le modifiche che fai sono temporanee.",
+    "reset": "Reset dati demo",
+    "resetting": "Reset in corso…"
+  },
+  "reset": {
+    "confirmTitle": "Resettare i dati demo?",
+    "confirmMessage": "Ripristina il set di dati di esempio allo stato originale. Tutte le modifiche andranno perse.",
+    "confirmButton": "Resetta ora"
+  },
+  "login": {
+    "title": "Prova la demo live",
+    "description": "Esplora HomeLog con dati di esempio realistici — nessuna registrazione necessaria.",
+    "button": "Entra nella demo"
+  }
+}

@@ -286,6 +286,11 @@ export const versionAPI = {
   check: () => apiClient.get('/version'),
 }
 
+export const demoAPI = {
+  // Rebuild the demo dataset (only available when the server runs in demo mode)
+  reset: () => apiClient.post('/demo/reset'),
+}
+
 export const joinRequestAPI = {
   list: () => apiClient.get('/join-requests'),
   create: (propertyId) => apiClient.post('/join-requests', { property_id: propertyId }),
