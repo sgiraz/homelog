@@ -125,12 +125,12 @@
       <!-- Language selector -->
       <label class="relative inline-flex items-center">
         <span class="sr-only" data-i18n="nav.language">Language</span>
-        <select id="lang-select" aria-label="Language"
+        <select id="lang-select"
                 class="lang-select bg-transparent border border-ink/20 hover:border-ink/60 rounded-full pl-3 pr-7 py-1.5 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-ember/40">
           <option value="en">EN</option>
           <option value="it">IT</option>
         </select>
-        <span class="pointer-events-none absolute right-2.5 text-ink-soft text-[10px]">▼</span>
+        <span class="pointer-events-none absolute right-2.5 text-ink-soft text-[10px]" aria-hidden="true">▼</span>
       </label>
 
       <a href="https://demo.homelog.dev" class="inline-flex items-center gap-1.5 rounded-full bg-ink text-paper px-4 py-2 hover:bg-ember transition-colors">
@@ -474,16 +474,24 @@
       if (sel) sel.value = lang;
     }
 
+    // Storage access can throw (Safari private mode, blocked storage) — never
+    // let that break the language switcher; just fall back to no persistence.
+    function storedLang() {
+      try { return localStorage.getItem('homelog-lang'); } catch (e) { return null; }
+    }
+    function saveLang(l) {
+      try { localStorage.setItem('homelog-lang', l); } catch (e) { /* storage unavailable */ }
+    }
+
     (function () {
-      const stored = localStorage.getItem('homelog-lang');
       const browser = (navigator.language || 'en').toLowerCase().indexOf('it') === 0 ? 'it' : 'en';
-      applyLang(stored || browser);
+      applyLang(storedLang() || browser);
 
       const sel = document.getElementById('lang-select');
       if (sel) {
         sel.addEventListener('change', function (e) {
           const l = e.target.value;
-          localStorage.setItem('homelog-lang', l);
+          saveLang(l);
           applyLang(l);
         });
       }
