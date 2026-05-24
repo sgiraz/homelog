@@ -1,17 +1,44 @@
 <script setup>
 import DefaultTheme from 'vitepress/theme'
 import { useData } from 'vitepress'
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 const { Layout } = DefaultTheme
 const { lang } = useData()
 const isIt = computed(() => (lang.value || '').toLowerCase().startsWith('it'))
+
+// The banner is position:fixed (out of flow). VitePress offsets the nav, sidebar
+// and content by --vp-layout-top-height, so we keep that variable in sync with
+// the banner's *actual* rendered height. This way a message that wraps to two or
+// three lines (narrow phones, longer locales) never overlaps the nav below it.
+const banner = ref(null)
+let ro = null
+function syncHeight() {
+  if (!banner.value) return
+  const h = Math.ceil(banner.value.getBoundingClientRect().height)
+  document.documentElement.style.setProperty('--vp-layout-top-height', h + 'px')
+}
+onMounted(() => {
+  syncHeight()
+  if (typeof ResizeObserver !== 'undefined') {
+    ro = new ResizeObserver(syncHeight)
+    ro.observe(banner.value)
+  } else {
+    window.addEventListener('resize', syncHeight)
+  }
+})
+// Switching language changes the text length — remeasure after the DOM updates.
+watch(lang, () => requestAnimationFrame(syncHeight))
+onUnmounted(() => {
+  if (ro) ro.disconnect()
+  else window.removeEventListener('resize', syncHeight)
+})
 </script>
 
 <template>
   <Layout>
     <template #layout-top>
-      <div class="wip-banner">
+      <div ref="banner" class="wip-banner">
         <template v-if="isIt">
           🚧 <strong>Lavori in corso</strong> — questa documentazione è ancora in fase di scrittura.
           <a href="https://github.com/sgiraz/homelog" target="_blank" rel="noopener">Contribuisci su GitHub →</a>
@@ -28,11 +55,12 @@ const isIt = computed(() => (lang.value || '').toLowerCase().startsWith('it'))
 <!--
   Unscoped on purpose: the banner reserves layout space through VitePress's
   --vp-layout-top-height variable, which the fixed nav, sidebar and content all
-  read to offset themselves. Without it the nav sits at top:0 over the banner.
+  read to offset themselves. The exact value is set from JS (see syncHeight); the
+  CSS defaults below just avoid a flash before hydration.
 -->
 <style>
 :root {
-  --vp-layout-top-height: 36px;
+  --vp-layout-top-height: 40px;
 }
 .wip-banner {
   position: fixed;
@@ -40,17 +68,15 @@ const isIt = computed(() => (lang.value || '').toLowerCase().startsWith('it'))
   left: 0;
   right: 0;
   z-index: var(--vp-z-index-layout-top);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4em;
-  height: var(--vp-layout-top-height);
-  padding: 0 16px;
+  padding: 7px 16px;
   font-size: 13px;
-  line-height: 1.25;
+  line-height: 1.3;
   text-align: center;
   color: #fbf6ec;
   background: linear-gradient(90deg, #d9531e, #b23f12);
+}
+.wip-banner strong {
+  font-weight: 700;
 }
 .wip-banner a {
   color: #fbf6ec;
@@ -59,13 +85,14 @@ const isIt = computed(() => (lang.value || '').toLowerCase().startsWith('it'))
   text-underline-offset: 2px;
   white-space: nowrap;
 }
-/* On phones the message wraps to two lines — give it the room it needs. */
+/* Pre-hydration fallback for the taller wrapped message on phones. */
 @media (max-width: 768px) {
   :root {
-    --vp-layout-top-height: 56px;
+    --vp-layout-top-height: 60px;
   }
   .wip-banner {
     font-size: 12px;
+    padding: 6px 12px;
   }
 }
 </style>

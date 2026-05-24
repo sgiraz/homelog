@@ -12,13 +12,13 @@ export default defineConfig({
   head: [
     ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
     ['meta', { name: 'theme-color', content: '#D9531E' }],
-    // Shared type with homelog.dev: Fraunces (display), Hanken Grotesk (body),
-    // Space Mono (numerals). Keeps the two sites visually aligned.
+    // Shared type with homelog.dev: Apple system stack for body/UI, Fraunces
+    // (display serif) for headings. Only Fraunces needs loading.
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
     ['link', {
       rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap',
+      href: 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&display=swap',
     }],
     // First-visit default to the browser language: only on the English home,
     // once per session (so manually switching back to English doesn't loop).

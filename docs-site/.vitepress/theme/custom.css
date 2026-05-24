@@ -3,10 +3,10 @@
    product. Fonts (Fraunces / Hanken Grotesk / Space Mono) are loaded from the
    config head; here we just wire them in and recolour VitePress's tokens. */
 
-/* ── Typography ───────────────────────────────────────────── */
+/* ── Typography — Apple system stack for body, Fraunces for headings ── */
 :root {
-  --vp-font-family-base: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system,
-    'Segoe UI', Roboto, sans-serif;
+  --vp-font-family-base: -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+    'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 .VPHero .name,
 .VPHero .text,

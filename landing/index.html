@@ -14,10 +14,11 @@
 
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 
-  <!-- Fonts: Fraunces (display serif), Hanken Grotesk (body), Space Mono (numerals) -->
+  <!-- Body/UI uses the Apple system stack (SF Pro); web fonts only for the
+       Fraunces display serif (headlines) and Space Mono (ledger numerals). -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -26,9 +27,9 @@
       theme: {
         extend: {
           fontFamily: {
-            display: ['Fraunces', 'serif'],
-            sans: ['"Hanken Grotesk"', 'system-ui', 'sans-serif'],
-            mono: ['"Space Mono"', 'monospace'],
+            display: ['Fraunces', 'Georgia', 'serif'],
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Display"', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+            mono: ['"Space Mono"', 'ui-monospace', 'monospace'],
           },
           colors: {
             // Semantic tokens are CSS-variable backed (R G B channels) so the
@@ -85,8 +86,19 @@
     body {
       background: rgb(var(--c-paper));
       color: rgb(var(--c-ink));
-      font-family: 'Hanken Grotesk', system-ui, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.011em; /* SF-style optical tightening */
       transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Apple-style frosted nav: translucent + blur, hairline appears on scroll. */
+    #site-header.is-stuck {
+      background: rgb(var(--c-paper) / 0.72);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid rgb(var(--c-line) / 0.7);
     }
 
     /* Paper grain overlay */
@@ -123,9 +135,9 @@
     .reveal { opacity: 0; animation: fadeUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
     @media (prefers-reduced-motion: reduce) { .reveal { animation: none; opacity: 1; } }
 
-    /* Floating balance card */
-    @keyframes floaty { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-10px) rotate(-1.5deg); } }
-    .floaty { animation: floaty 7s ease-in-out infinite; }
+    /* Floating balance card — calm, restrained drift (Apple-style motion) */
+    @keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+    .floaty { animation: floaty 8s ease-in-out infinite; }
     @media (prefers-reduced-motion: reduce) { .floaty { animation: none; } }
 
     /* Work-in-progress diagonal ribbon */
@@ -141,8 +153,8 @@
     .link-underline { background-image: linear-gradient(currentColor, currentColor); background-size: 0% 1.5px; background-repeat: no-repeat; background-position: 0 100%; transition: background-size 0.3s ease; }
     .link-underline:hover { background-size: 100% 1.5px; }
 
-    .card-lift { transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s ease; }
-    .card-lift:hover { transform: translateY(-4px); box-shadow: 0 18px 40px -18px rgba(33,27,22,0.35); }
+    .card-lift { transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s ease; }
+    .card-lift:hover { transform: translateY(-4px); box-shadow: 0 24px 50px -22px rgba(33,27,22,0.20); }
 
     /* Rotate the language dropdown chevron when the menu is open. */
     .lang-open .lang-chevron { transform: rotate(180deg); }
@@ -156,11 +168,12 @@
     🚧 Work in progress — this site and the <a href="https://docs.homelog.dev" class="underline underline-offset-2 hover:text-cream/80 transition-colors">docs</a> are still being built.
   </div>
 
-  <!-- ░░ Nav ░░ -->
-  <header class="relative z-20 max-w-6xl mx-auto px-6 py-6 flex items-center justify-between gap-4">
+  <!-- ░░ Nav (sticky, frosted on scroll) ░░ -->
+  <header id="site-header" class="sticky top-0 z-30 transition-colors duration-300">
+    <div class="max-w-6xl mx-auto px-5 sm:px-6 py-3.5 flex items-center justify-between gap-3 sm:gap-4">
     <a href="/" class="flex items-center gap-2.5 group shrink-0">
       <span class="grid place-items-center w-9 h-9 rounded-xl bg-ink text-paper text-lg group-hover:bg-ember transition-colors">⌂</span>
-      <span class="font-display text-2xl font-semibold tracking-tight">HomeLog</span>
+      <span class="font-display text-xl sm:text-2xl font-semibold tracking-tight">HomeLog</span>
     </a>
     <nav class="flex items-center gap-3 sm:gap-5 text-sm font-medium">
       <a href="https://docs.homelog.dev" class="hidden sm:inline link-underline text-ink-soft hover:text-ink" data-i18n="nav.docs">Docs</a>
@@ -200,17 +213,20 @@
         </ul>
       </div>
 
-      <a href="https://demo.homelog.dev" class="inline-flex items-center gap-1.5 rounded-full bg-ink text-paper px-4 py-2 hover:bg-ember hover:text-cream transition-colors">
-        <span data-i18n="nav.demo">Live demo</span>
-        <span aria-hidden="true">→</span>
+      <a href="https://demo.homelog.dev" class="inline-flex items-center gap-1.5 rounded-full bg-ink text-paper px-3.5 sm:px-4 py-2 whitespace-nowrap hover:bg-ember hover:text-cream transition-colors">
+        <!-- Full label on ≥sm, compact "Demo" on phones to keep the nav on one row -->
+        <span data-i18n="nav.demo" class="hidden sm:inline">Live demo</span>
+        <span class="sm:hidden">Demo</span>
+        <span aria-hidden="true" class="hidden sm:inline">→</span>
       </a>
     </nav>
+    </div>
   </header>
 
   <!-- ░░ Hero ░░ -->
   <section class="relative overflow-hidden">
     <div class="hero-glow"></div>
-    <div class="relative z-10 max-w-6xl mx-auto px-6 pt-10 pb-20 sm:pt-16 sm:pb-28 grid lg:grid-cols-[1.05fr_0.95fr] gap-14 lg:gap-10 items-center">
+    <div class="relative z-10 max-w-6xl mx-auto px-6 pt-12 pb-24 sm:pt-20 sm:pb-32 grid lg:grid-cols-[1.05fr_0.95fr] gap-14 lg:gap-12 items-center">
 
       <!-- Copy -->
       <div>
@@ -295,42 +311,42 @@
 
   <!-- ░░ Features ░░ -->
   <section class="relative z-10 bg-paper-2 border-y border-line">
-    <div class="max-w-6xl mx-auto px-6 py-20 sm:py-24">
-      <div class="max-w-2xl mb-14">
+    <div class="max-w-6xl mx-auto px-6 py-24 sm:py-32">
+      <div class="max-w-2xl mb-16">
         <p class="font-mono text-xs tracking-[0.22em] uppercase text-ember-deep mb-3" data-i18n="features.kicker">What's inside</p>
         <h2 class="font-display text-3xl sm:text-4xl font-semibold tracking-tight" data-i18n="features.title">
           One app for the money that keeps a household running.
         </h2>
       </div>
 
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        <div class="card-lift bg-paper rounded-2xl border border-line p-6">
-          <div class="text-2xl mb-4">🤝</div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="card-lift bg-paper rounded-3xl border border-line p-7">
+          <div class="grid place-items-center w-12 h-12 rounded-2xl bg-paper-2 text-2xl mb-5">🤝</div>
           <h3 class="font-display text-xl font-semibold mb-2" data-i18n="feat1.title">Expense splitting</h3>
           <p class="text-ink-soft text-[15px] leading-relaxed" data-i18n="feat1.body">Split costs between household members, track balances, and settle up — no more "who paid for what".</p>
         </div>
-        <div class="card-lift bg-paper rounded-2xl border border-line p-6">
-          <div class="text-2xl mb-4">⚡</div>
+        <div class="card-lift bg-paper rounded-3xl border border-line p-7">
+          <div class="grid place-items-center w-12 h-12 rounded-2xl bg-paper-2 text-2xl mb-5">⚡</div>
           <h3 class="font-display text-xl font-semibold mb-2" data-i18n="feat2.title">Utilities &amp; bills</h3>
           <p class="text-ink-soft text-[15px] leading-relaxed" data-i18n="feat2.body">Electricity, gas and water — log meter readings, store bills, and watch consumption trends over time.</p>
         </div>
-        <div class="card-lift bg-paper rounded-2xl border border-line p-6">
-          <div class="text-2xl mb-4">📄</div>
+        <div class="card-lift bg-paper rounded-3xl border border-line p-7">
+          <div class="grid place-items-center w-12 h-12 rounded-2xl bg-paper-2 text-2xl mb-5">📄</div>
           <h3 class="font-display text-xl font-semibold mb-2" data-i18n="feat3.title">PDF bill templates</h3>
           <p class="text-ink-soft text-[15px] leading-relaxed" data-i18n="feat3.body">Teach HomeLog to read your provider's bills once with a drag-and-drop wizard; it auto-extracts every figure after that.</p>
         </div>
-        <div class="card-lift bg-paper rounded-2xl border border-line p-6">
-          <div class="text-2xl mb-4">📊</div>
+        <div class="card-lift bg-paper rounded-3xl border border-line p-7">
+          <div class="grid place-items-center w-12 h-12 rounded-2xl bg-paper-2 text-2xl mb-5">📊</div>
           <h3 class="font-display text-xl font-semibold mb-2" data-i18n="feat4.title">Consumption analysis</h3>
           <p class="text-ink-soft text-[15px] leading-relaxed" data-i18n="feat4.body">Compare billed vs. actual consumption, spot anomalies, and see exactly where your money goes each period.</p>
         </div>
-        <div class="card-lift bg-paper rounded-2xl border border-line p-6">
-          <div class="text-2xl mb-4">🌍</div>
+        <div class="card-lift bg-paper rounded-3xl border border-line p-7">
+          <div class="grid place-items-center w-12 h-12 rounded-2xl bg-paper-2 text-2xl mb-5">🌍</div>
           <h3 class="font-display text-xl font-semibold mb-2" data-i18n="feat5.title">Multi-currency &amp; language</h3>
           <p class="text-ink-soft text-[15px] leading-relaxed" data-i18n="feat5.body">Italian &amp; English UI with locale-aware numbers, dates and currencies — per expense and per service.</p>
         </div>
-        <div class="card-lift bg-paper rounded-2xl border border-line p-6">
-          <div class="text-2xl mb-4">🔒</div>
+        <div class="card-lift bg-paper rounded-3xl border border-line p-7">
+          <div class="grid place-items-center w-12 h-12 rounded-2xl bg-paper-2 text-2xl mb-5">🔒</div>
           <h3 class="font-display text-xl font-semibold mb-2" data-i18n="feat6.title">Yours, privately</h3>
           <p class="text-ink-soft text-[15px] leading-relaxed" data-i18n="feat6.body">Self-hosted in a single Docker container. Your family's finances never leave the hardware you control.</p>
         </div>
@@ -339,7 +355,7 @@
   </section>
 
   <!-- ░░ Positioning ░░ -->
-  <section class="relative z-10 max-w-6xl mx-auto px-6 py-20 sm:py-28">
+  <section class="relative z-10 max-w-6xl mx-auto px-6 py-24 sm:py-32">
     <div class="grid lg:grid-cols-[0.9fr_1.1fr] gap-12 items-center">
       <div>
         <p class="font-mono text-xs tracking-[0.22em] uppercase text-ember-deep mb-3" data-i18n="why.kicker">Why HomeLog</p>
@@ -360,19 +376,19 @@
       </div>
 
       <div class="grid sm:grid-cols-2 gap-4 font-mono text-sm">
-        <div class="bg-pine text-cream rounded-2xl p-6">
+        <div class="bg-pine text-cream rounded-3xl p-7">
           <div class="text-3xl font-bold">256<span class="text-base font-normal opacity-70"> MB</span></div>
           <p class="mt-2 text-cream/75 leading-snug" data-i18n="stat1.body">Runs comfortably in a single low-memory container.</p>
         </div>
-        <div class="bg-paper border border-line rounded-2xl p-6">
+        <div class="bg-paper border border-line rounded-3xl p-7">
           <div class="text-3xl font-bold text-ember">2</div>
           <p class="mt-2 text-ink-soft leading-snug" data-i18n="stat2.body">Languages today — Italian &amp; English, more welcome.</p>
         </div>
-        <div class="bg-paper border border-line rounded-2xl p-6">
+        <div class="bg-paper border border-line rounded-3xl p-7">
           <div class="text-3xl font-bold">1</div>
           <p class="mt-2 text-ink-soft leading-snug" data-i18n-html="stat3.body"><code>docker compose up</code> — one container, API + UI.</p>
         </div>
-        <div class="bg-ink text-paper rounded-2xl p-6">
+        <div class="bg-ink text-paper rounded-3xl p-7">
           <div class="text-3xl font-bold text-ember">∞</div>
           <p class="mt-2 text-paper/75 leading-snug" data-i18n="stat4.body">Households, members &amp; properties. No seats, no fees.</p>
         </div>
@@ -382,7 +398,7 @@
 
   <!-- ░░ CTA band ░░ -->
   <section class="relative z-10 overflow-hidden bg-ink text-paper">
-    <div class="max-w-6xl mx-auto px-6 py-20 sm:py-24 text-center">
+    <div class="max-w-6xl mx-auto px-6 py-24 sm:py-32 text-center">
       <h2 class="font-display text-3xl sm:text-5xl font-semibold tracking-tight" data-i18n="cta.title">
         Try it now. Host it forever.
       </h2>
@@ -616,6 +632,14 @@
           root.classList.toggle('dark', next === 'dark');
           try { localStorage.setItem('homelog-theme', next); } catch (e) { /* storage unavailable */ }
         });
+      }
+
+      // ── Frosted nav: add a hairline + blur once the page is scrolled ──
+      const header = document.getElementById('site-header');
+      if (header) {
+        const onScroll = function () { header.classList.toggle('is-stuck', window.scrollY > 8); };
+        onScroll();
+        window.addEventListener('scroll', onScroll, { passive: true });
       }
     })();
   </script>
