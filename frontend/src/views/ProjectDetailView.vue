@@ -4,25 +4,25 @@
     <div class="flex items-center gap-3">
       <button
         @click="goBack"
-        class="p-2 -ml-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        class="p-2 -ml-2 rounded-lg hover:bg-surface-2 transition-colors"
         :aria-label="t('projects.detail.backAria')"
       >
-        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 text-ink-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
       </button>
       <div v-if="project" class="flex items-center gap-3 flex-1 min-w-0">
         <div class="text-3xl flex-shrink-0">{{ project.icon || '🏗️' }}</div>
         <div class="min-w-0">
-          <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">{{ project.name }}</h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ formatDateRange(project.start_date, project.end_date) }}</p>
+          <h1 class="text-xl sm:text-2xl font-bold text-ink truncate">{{ project.name }}</h1>
+          <p class="text-sm text-ink-muted">{{ formatDateRange(project.start_date, project.end_date) }}</p>
         </div>
       </div>
       <!-- Actions -->
       <div v-if="project && canManage" class="flex items-center gap-1 flex-shrink-0">
         <button
           @click="showEditModal = true"
-          class="p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+          class="p-2.5 rounded-lg hover:bg-surface-2 text-ink-muted"
           :title="t('projects.detail.editTooltip')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,21 +57,21 @@
       <!-- KPI Cards -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card class="p-4">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('projects.detail.kpiBudget') }}</div>
-          <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
+          <div class="text-xs sm:text-sm text-ink-soft mb-1">{{ t('projects.detail.kpiBudget') }}</div>
+          <div class="text-lg sm:text-2xl font-bold text-ink">
             {{ formatCurrency(project.budget) }}
           </div>
         </Card>
 
         <Card class="p-4">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('projects.detail.kpiSpent') }}</div>
+          <div class="text-xs sm:text-sm text-ink-soft mb-1">{{ t('projects.detail.kpiSpent') }}</div>
           <div class="text-lg sm:text-2xl font-bold text-blue-600">
             {{ formatCurrency(stats.total_spent) }}
           </div>
         </Card>
 
         <Card class="p-4">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('projects.detail.kpiRemaining') }}</div>
+          <div class="text-xs sm:text-sm text-ink-soft mb-1">{{ t('projects.detail.kpiRemaining') }}</div>
           <div :class="[
             'text-lg sm:text-2xl font-bold',
             stats.remaining >= 0 ? 'text-green-600' : 'text-red-600'
@@ -81,7 +81,7 @@
         </Card>
 
         <Card class="p-4">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('projects.detail.kpiCompletion') }}</div>
+          <div class="text-xs sm:text-sm text-ink-soft mb-1">{{ t('projects.detail.kpiCompletion') }}</div>
           <div class="text-lg sm:text-2xl font-bold text-purple-600">
             {{ stats.percentage_spent.toFixed(1) }}%
           </div>
@@ -91,15 +91,15 @@
       <!-- Progress Bar -->
       <div>
         <div class="flex justify-between text-sm mb-2">
-          <span class="text-gray-600 dark:text-gray-400">{{ t('projects.detail.progressLabel') }}</span>
+          <span class="text-ink-soft">{{ t('projects.detail.progressLabel') }}</span>
           <span :class="[
             'font-medium',
-            stats.percentage_spent > 100 ? 'text-red-600' : 'text-gray-900 dark:text-white'
+            stats.percentage_spent > 100 ? 'text-red-600' : 'text-ink'
           ]">
             {{ stats.percentage_spent.toFixed(1) }}%
           </span>
         </div>
-        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+        <div class="w-full bg-surface-3 rounded-full h-3">
           <div
             :class="[
               'h-3 rounded-full transition-all',
@@ -121,7 +121,7 @@
               'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
               activeTab === tab.value
                 ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                : 'text-ink-soft hover:bg-surface-2'
             ]"
           >
             <span>{{ tab.icon }}</span>
@@ -133,13 +133,13 @@
       <!-- Tab: Info -->
       <div v-if="activeTab === 'info'" class="space-y-4">
         <Card v-if="project.description" class="p-4">
-          <h4 class="font-medium text-gray-900 dark:text-white mb-2">{{ t('projects.detail.descriptionTitle') }}</h4>
-          <p class="text-gray-600 dark:text-gray-400">{{ project.description }}</p>
+          <h4 class="font-medium text-ink mb-2">{{ t('projects.detail.descriptionTitle') }}</h4>
+          <p class="text-ink-soft">{{ project.description }}</p>
         </Card>
 
         <Card class="p-4 space-y-3">
           <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('projects.detail.infoStatus') }}</span>
+            <span class="text-sm text-ink-soft">{{ t('projects.detail.infoStatus') }}</span>
             <span :class="[
               'px-2 py-1 text-xs rounded-full font-medium',
               getStatusColor(project.status)
@@ -148,14 +148,14 @@
             </span>
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('projects.detail.infoStart') }}</span>
-            <span class="text-sm font-medium text-gray-900 dark:text-white">
+            <span class="text-sm text-ink-soft">{{ t('projects.detail.infoStart') }}</span>
+            <span class="text-sm font-medium text-ink">
               {{ _formatDate(project.start_date, settingsStore.dateSettings) }}
             </span>
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('projects.detail.infoEnd') }}</span>
-            <span class="text-sm font-medium text-gray-900 dark:text-white">
+            <span class="text-sm text-ink-soft">{{ t('projects.detail.infoEnd') }}</span>
+            <span class="text-sm font-medium text-ink">
               {{ _formatDate(project.end_date, settingsStore.dateSettings) }}
             </span>
           </div>
@@ -163,7 +163,7 @@
 
         <!-- Members -->
         <Card v-if="project.members?.length > 0" class="p-4">
-          <h4 class="font-medium text-gray-900 dark:text-white mb-3">{{ t('projects.detail.membersTitle') }}</h4>
+          <h4 class="font-medium text-ink mb-3">{{ t('projects.detail.membersTitle') }}</h4>
           <div class="space-y-2">
             <div
               v-for="member in project.members"
@@ -173,12 +173,12 @@
               <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-xs font-medium text-purple-700 dark:text-purple-300">
                 {{ member.name?.[0]?.toUpperCase() }}
               </div>
-              <span class="text-sm text-gray-900 dark:text-white flex-1">{{ member.name }}</span>
+              <span class="text-sm text-ink flex-1">{{ member.name }}</span>
               <span :class="[
                 'text-xs px-2 py-0.5 rounded-full',
                 member.role === 'creator' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' :
                 member.role === 'owner' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' :
-                'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                'bg-surface-2 text-ink-soft'
               ]">
                 {{ member.role === 'creator' ? t('projects.detail.roleCreator') : member.role === 'owner' ? t('projects.detail.roleCoOwner') : t('projects.detail.roleMember') }}
               </span>
@@ -193,34 +193,34 @@
         <Card v-if="project.expenses?.length > 0" class="p-4 space-y-4">
           <div class="grid grid-cols-4 gap-3 text-center">
             <div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('projects.detail.statAverage') }}</div>
-              <div class="text-sm font-semibold text-gray-900 dark:text-white">
+              <div class="text-xs text-ink-muted mb-1">{{ t('projects.detail.statAverage') }}</div>
+              <div class="text-sm font-semibold text-ink">
                 {{ formatCurrency(stats.expense_count > 0 ? stats.total_spent / stats.expense_count : 0) }}
               </div>
             </div>
             <div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('projects.detail.statDailyBudget') }}</div>
-              <div class="text-sm font-semibold text-gray-900 dark:text-white">
+              <div class="text-xs text-ink-muted mb-1">{{ t('projects.detail.statDailyBudget') }}</div>
+              <div class="text-sm font-semibold text-ink">
                 {{ formatCurrency(dailyBudget) }}
               </div>
             </div>
             <div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('projects.detail.statDaysRemaining') }}</div>
-              <div class="text-sm font-semibold text-gray-900 dark:text-white">
+              <div class="text-xs text-ink-muted mb-1">{{ t('projects.detail.statDaysRemaining') }}</div>
+              <div class="text-sm font-semibold text-ink">
                 {{ daysRemaining >= 0 ? daysRemaining : 0 }}
               </div>
             </div>
             <div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('projects.detail.statExpenseCount') }}</div>
-              <div class="text-sm font-semibold text-gray-900 dark:text-white">
+              <div class="text-xs text-ink-muted mb-1">{{ t('projects.detail.statExpenseCount') }}</div>
+              <div class="text-sm font-semibold text-ink">
                 {{ stats.expense_count }}
               </div>
             </div>
           </div>
           <template v-if="categoryBreakdown.length > 1">
-            <div class="border-t border-gray-200 dark:border-gray-700"></div>
+            <div class="border-t border-line"></div>
             <div>
-              <h4 class="font-medium text-gray-900 dark:text-white mb-3">{{ t('projects.detail.categoryChartTitle') }}</h4>
+              <h4 class="font-medium text-ink mb-3">{{ t('projects.detail.categoryChartTitle') }}</h4>
               <PieChart :chartData="categoryChartData" />
             </div>
           </template>
@@ -228,7 +228,7 @@
 
         <!-- Expense List Header -->
         <div class="flex items-center justify-between">
-          <h4 class="font-medium text-gray-900 dark:text-white">{{ t('projects.detail.expenseListTitle') }}</h4>
+          <h4 class="font-medium text-ink">{{ t('projects.detail.expenseListTitle') }}</h4>
           <Button size="sm" @click="showAddExpense = true">
             <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -245,15 +245,15 @@
           >
             <div class="flex justify-between items-start">
               <div class="min-w-0 flex-1">
-                <div class="font-medium text-gray-900 dark:text-white truncate">
+                <div class="font-medium text-ink truncate">
                   {{ expense.description }}
                 </div>
-                <div class="text-sm text-gray-600 dark:text-gray-400">
+                <div class="text-sm text-ink-soft">
                   {{ _formatDate(expense.date, settingsStore.dateSettings) }}
                   <span v-if="expense.category"> · {{ expense.category.name }}</span>
                 </div>
               </div>
-              <div class="text-lg font-bold text-gray-900 dark:text-white ml-3 flex-shrink-0">
+              <div class="text-lg font-bold text-ink ml-3 flex-shrink-0">
                 {{ formatCurrency(expense.amount) }}
               </div>
             </div>
@@ -261,7 +261,7 @@
         </div>
         <div v-else class="text-center py-8">
           <div class="text-4xl mb-3">📋</div>
-          <p class="text-gray-600 dark:text-gray-400 mb-4">{{ t('projects.detail.noExpenses') }}</p>
+          <p class="text-ink-soft mb-4">{{ t('projects.detail.noExpenses') }}</p>
         </div>
       </div>
     </template>

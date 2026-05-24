@@ -1,7 +1,7 @@
 <template>
   <!-- Individual Comparisons (Accordion) -->
   <div class="space-y-3">
-    <h4 class="font-semibold text-gray-900 dark:text-white">{{ t('utilities.comparisonAccordion.title') }}</h4>
+    <h4 class="font-semibold text-ink">{{ t('utilities.comparisonAccordion.title') }}</h4>
     <div
       v-for="comparison in comparisons"
       :key="comparison.bill_id"
@@ -21,10 +21,10 @@
             <span>{{ getStatusLabel(comparison.status) }}</span>
           </div>
           <div class="min-w-0">
-            <span class="text-sm font-medium text-gray-900 dark:text-white">
+            <span class="text-sm font-medium text-ink">
               {{ comparison.bill_number || '#' + comparison.bill_id }}
             </span>
-            <span class="text-xs text-gray-400 dark:text-gray-500 ml-1.5">
+            <span class="text-xs text-ink-faint ml-1.5">
               {{ formatDate(comparison.period_end) }}
             </span>
           </div>
@@ -70,16 +70,16 @@
 
         <!-- Gas/Water comparison (single value) -->
         <div v-else class="grid grid-cols-2 gap-3">
-          <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.comparisonAccordion.providerLabel') }}</p>
-            <p class="text-base font-semibold text-gray-900 dark:text-white">
+          <div class="text-center p-3 bg-surface rounded-lg">
+            <p class="text-xs text-ink-muted mb-1">{{ t('utilities.comparisonAccordion.providerLabel') }}</p>
+            <p class="text-base font-semibold text-ink">
               {{ comparison.provider_reading != null ? fmtNum(comparison.provider_reading) : '-' }}
               <span class="text-xs font-normal text-gray-500">{{ getUnit() }}</span>
             </p>
           </div>
-          <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.comparisonAccordion.selfLabel') }}</p>
-            <p class="text-base font-semibold text-gray-900 dark:text-white">
+          <div class="text-center p-3 bg-surface rounded-lg">
+            <p class="text-xs text-ink-muted mb-1">{{ t('utilities.comparisonAccordion.selfLabel') }}</p>
+            <p class="text-base font-semibold text-ink">
               {{ comparison.user_reading != null ? fmtNum(comparison.user_reading) : '-' }}
               <span class="text-xs font-normal text-gray-500">{{ getUnit() }}</span>
             </p>
@@ -96,7 +96,7 @@
         </div>
 
         <!-- Reading type indicator -->
-        <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+        <div class="flex items-center gap-2 text-xs text-ink-muted">
           <span :class="[
             'px-2 py-0.5 rounded',
             comparison.reading_type === 'actual' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
@@ -161,7 +161,7 @@ function getStatusClasses(status) {
     case 'warning':
       return 'border-yellow-300 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900/20'
     case 'no_data':
-      return 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
+      return 'border-line bg-surface'
     default:
       return 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20'
   }
@@ -174,7 +174,7 @@ function getStatusBadgeClasses(status) {
     case 'warning':
       return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300'
     case 'no_data':
-      return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+      return 'bg-surface-2 text-ink-soft'
     default:
       return 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
   }
@@ -249,11 +249,11 @@ const ReadingBandComparison = {
       return 'text-green-600'
     }
 
-    return () => h('div', { class: 'text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg' }, [
+    return () => h('div', { class: 'text-center p-2 bg-surface rounded-lg' }, [
       h('p', { class: ['text-xs font-medium mb-1', getBandColor()] }, props.band),
-      h('div', { class: 'text-xs text-gray-500 dark:text-gray-400' }, [
-        h('p', {}, [bt('utilities.comparisonAccordion.providerLabel') + ': ', h('span', { class: 'font-medium text-gray-700 dark:text-gray-300' }, formatNum(props.providerValue))]),
-        h('p', {}, [bt('utilities.comparisonAccordion.yourLabel') + ' ', h('span', { class: 'font-medium text-gray-700 dark:text-gray-300' }, formatNum(props.userValue))]),
+      h('div', { class: 'text-xs text-ink-muted' }, [
+        h('p', {}, [bt('utilities.comparisonAccordion.providerLabel') + ': ', h('span', { class: 'font-medium text-ink-soft' }, formatNum(props.providerValue))]),
+        h('p', {}, [bt('utilities.comparisonAccordion.yourLabel') + ' ', h('span', { class: 'font-medium text-ink-soft' }, formatNum(props.userValue))]),
         props.difference != null && h('p', { class: getDiffColor() },
           (props.difference > 0 ? '+' : '') + formatNum(props.difference) + ' ' + props.unit
         )

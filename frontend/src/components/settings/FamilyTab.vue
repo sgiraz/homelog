@@ -2,7 +2,7 @@
   <div class="space-y-4">
     <!-- Pending Join Requests (admin only) -->
     <Card v-if="isAdmin && pendingRequests.length > 0" class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.family.joinRequestsTitle') }}</h2>
+      <h2 class="text-xl font-bold text-ink mb-4">{{ t('settings.family.joinRequestsTitle') }}</h2>
       <div class="space-y-3">
         <div
           v-for="req in pendingRequests"
@@ -14,8 +14,8 @@
               {{ getInitials(req.user?.name || '?') }}
             </div>
             <div class="min-w-0">
-              <div class="font-medium text-gray-900 dark:text-white truncate">{{ req.user?.name }}</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400">{{ req.user?.email }}</div>
+              <div class="font-medium text-ink truncate">{{ req.user?.name }}</div>
+              <div class="text-xs text-ink-muted">{{ req.user?.email }}</div>
             </div>
           </div>
           <div class="flex gap-2 flex-shrink-0">
@@ -31,14 +31,14 @@
     </Card>
 
     <Card class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.family.settingsTitle') }}</h2>
+      <h2 class="text-xl font-bold text-ink mb-4">{{ t('settings.family.settingsTitle') }}</h2>
 
       <div class="space-y-4">
         <!-- Split Mode Toggle -->
-        <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+        <div class="flex items-center justify-between p-4 bg-surface-2/50 rounded-xl">
           <div class="flex-1">
-            <div class="font-medium text-gray-900 dark:text-white">{{ t('settings.family.splitMode') }}</div>
-            <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <div class="font-medium text-ink">{{ t('settings.family.splitMode') }}</div>
+            <div class="text-sm text-ink-soft mt-1">
               {{ t('settings.family.splitModeDescription') }}
             </div>
           </div>
@@ -49,13 +49,13 @@
               @change="updateSplitMode"
               class="sr-only peer"
             />
-            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4
+            <div class="w-11 h-6 bg-surface-3 peer-focus:outline-none peer-focus:ring-4
                         peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer
-                        dark:bg-gray-600 peer-checked:after:translate-x-full
+                        peer-checked:after:translate-x-full
                         peer-checked:after:border-white after:content-[''] after:absolute
                         after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300
                         after:border after:rounded-full after:h-5 after:w-5 after:transition-all
-                        dark:border-gray-500 peer-checked:bg-blue-600">
+                        peer-checked:bg-blue-600">
             </div>
           </label>
           <span v-else class="ml-4 text-sm font-medium" :class="splitMode ? 'text-green-600 dark:text-green-400' : 'text-gray-400'">
@@ -66,7 +66,7 @@
         <!-- Split Settings -->
         <div v-if="splitMode" class="pl-6 space-y-4 border-l-2 border-blue-200 dark:border-blue-800">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            <label class="block text-sm font-medium text-ink-soft mb-3">
               {{ t('settings.family.splitWith') }}
             </label>
 
@@ -74,9 +74,8 @@
               <div
                 v-for="member in householdMembers"
                 :key="member.id"
-                class="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg
-                       border border-gray-200 dark:border-gray-600 hover:bg-gray-50
-                       dark:hover:bg-gray-700 transition-colors"
+                class="flex items-center gap-3 p-3 bg-surface rounded-lg
+                       border border-line hover:bg-surface-2 transition-colors"
               >
                 <input
                   type="checkbox"
@@ -100,8 +99,8 @@
                   >
                     {{ getInitials(member.name) }}
                   </div>
-                  <span class="text-gray-900 dark:text-white truncate">{{ member.name }}</span>
-                  <span v-if="member.is_virtual" class="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">{{ t('settings.family.memberVirtual') }}</span>
+                  <span class="text-ink truncate">{{ member.name }}</span>
+                  <span v-if="member.is_virtual" class="text-xs text-ink-muted flex-shrink-0">{{ t('settings.family.memberVirtual') }}</span>
                   <span v-if="member.user_role === 'admin'" class="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium flex-shrink-0">{{ t('settings.family.memberAdminBadge') }}</span>
                 </div>
                 <div class="flex items-center gap-1 flex-shrink-0">
@@ -144,19 +143,19 @@
               </div>
             </div>
 
-            <div v-if="householdMembers.length === 0" class="text-sm text-gray-600 dark:text-gray-400 italic p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div v-if="householdMembers.length === 0" class="text-sm text-ink-soft italic p-3 bg-surface-2 rounded-lg">
               {{ t('settings.family.noMembers') }}
             </div>
 
             <!-- Add new member (admin only) -->
-            <div v-if="isAdmin" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div v-if="isAdmin" class="mt-4 pt-4 border-t border-line">
               <div class="flex flex-col sm:flex-row gap-2">
                 <input
                   v-model="newMemberName"
                   type="text"
                   :placeholder="t('settings.family.newMemberPlaceholder')"
-                  class="flex-1 px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                  class="flex-1 px-3 py-3 border border-line rounded-lg
+                         bg-surface text-ink text-base
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
                   @keyup.enter="addMember"
                 />
@@ -166,16 +165,16 @@
               </div>
             </div>
 
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
+            <p class="text-xs text-ink-muted mt-3">
               {{ t('settings.family.splitHint') }}
             </p>
           </div>
         </div>
 
         <div v-if="splitMode" class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <div class="text-sm text-gray-700 dark:text-gray-300">
+          <div class="text-sm text-ink-soft">
             <div class="font-medium mb-2">{{ t('settings.family.splitSummaryTitle') }}</div>
-            <ul class="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
+            <ul class="list-disc list-inside space-y-1 text-ink-soft">
               <li>{{ t('settings.family.splitSummaryItem1') }}</li>
               <li>{{ t('settings.family.splitSummaryItem2') }}</li>
               <li>{{ t('settings.family.splitSummaryItem3') }}</li>

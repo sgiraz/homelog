@@ -2,13 +2,13 @@
   <div>
     <!-- Template Selector -->
     <div v-if="availableTemplates.length > 0" class="mb-4">
-      <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+      <label class="block text-sm text-ink-soft mb-1">
         {{ t('utilities.pdfUploadZone.templateLabel') }}
       </label>
       <select
         v-model="selectedTemplateId"
-        class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-               bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+        class="w-full px-3 py-2 border border-line rounded-lg
+               bg-surface text-ink
                focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
       >
         <option :value="null">{{ t('utilities.pdfUploadZone.templateAuto') }}</option>
@@ -20,7 +20,7 @@
           {{ tpl.name }}{{ tpl.is_default ? t('utilities.pdfUploadZone.templateDefault') : '' }}
         </option>
       </select>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+      <p class="text-xs text-ink-muted mt-1">
         {{ t('utilities.pdfUploadZone.templateHint') }}
       </p>
     </div>
@@ -32,7 +32,7 @@
           'border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer',
           isDragging
             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500',
+            : 'border-line hover:border-ink-faint',
           processing ? 'opacity-50 pointer-events-none' : ''
         ]"
         @dragover.prevent="isDragging = true"
@@ -53,7 +53,7 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('utilities.pdfUploadZone.extracting') }}</span>
+          <span class="text-sm text-ink-soft">{{ t('utilities.pdfUploadZone.extracting') }}</span>
         </div>
 
         <div v-else-if="uploadedFile" class="flex items-center justify-center gap-3">
@@ -61,13 +61,13 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div class="text-left">
-            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ uploadedFile.name }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.pdfUploadZone.extractedAuto') }}</p>
+            <p class="text-sm font-medium text-ink">{{ uploadedFile.name }}</p>
+            <p class="text-xs text-ink-muted">{{ t('utilities.pdfUploadZone.extractedAuto') }}</p>
           </div>
           <button
             type="button"
             @click.stop="clearUploadedFile"
-            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            class="text-ink-faint hover:text-ink-soft"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -80,10 +80,10 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
           <div>
-            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <p class="text-sm font-medium text-ink-soft">
               {{ isMetered ? t('utilities.pdfUploadZone.dropPromptBill') : t('utilities.pdfUploadZone.dropPromptInvoice') }}
             </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p class="text-xs text-ink-muted mt-1">
               {{ t('utilities.pdfUploadZone.dropSubtitle') }}
             </p>
           </div>

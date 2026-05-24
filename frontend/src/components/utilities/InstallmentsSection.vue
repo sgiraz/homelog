@@ -6,12 +6,12 @@
         {{ t('utilities.installments.addInstallment') }}
       </button>
     </div>
-    <p class="text-xs text-gray-500 dark:text-gray-400">
+    <p class="text-xs text-ink-muted">
       {{ t('utilities.installments.totalSummary', { sum: fmt(installmentsSum), total: fmt(amountTotal) }) }}
     </p>
     <div v-for="(inst, idx) in installments" :key="inst.id || idx"
       class="grid gap-2 items-end grid-cols-[auto_1fr_1fr_auto]">
-      <div v-if="!isEditing" class="text-xs text-gray-500 dark:text-gray-400 pb-2 w-6 text-center">#{{ inst.number }}</div>
+      <div v-if="!isEditing" class="text-xs text-ink-muted pb-2 w-6 text-center">#{{ inst.number }}</div>
       <div v-else class="pb-2 w-8 flex items-center justify-center">
         <input
           type="checkbox"
@@ -23,14 +23,14 @@
         />
       </div>
       <div>
-        <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ isEditing ? t('utilities.installments.editingDueLabel', { n: inst.number }) : t('utilities.installments.dueLabel') }}</label>
+        <label class="block text-xs text-ink-soft mb-1">{{ isEditing ? t('utilities.installments.editingDueLabel', { n: inst.number }) : t('utilities.installments.dueLabel') }}</label>
         <input v-model="inst.due_date" type="date" :disabled="isEditing"
-          class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-70" />
+          class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-70" />
       </div>
       <div>
-        <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.installments.amountLabel') }}</label>
+        <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.installments.amountLabel') }}</label>
         <input v-model="inst.amount" type="number" step="0.01" placeholder="0.00" :disabled="isEditing"
-          class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-70" />
+          class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-70" />
       </div>
       <button v-if="!isEditing" type="button" @click="removeInstallment(idx)"
         class="text-red-600 dark:text-red-400 text-xs pb-2 px-1 hover:underline"
@@ -42,7 +42,7 @@
     <div v-if="!isEditing && amountMismatch" class="text-xs text-red-600 dark:text-red-400">
       {{ t('utilities.installments.mismatch') }}
     </div>
-    <p v-if="isEditing" class="text-xs text-gray-400 dark:text-gray-500">
+    <p v-if="isEditing" class="text-xs text-ink-faint">
       {{ t('utilities.installments.editHint') }}
     </p>
   </div>

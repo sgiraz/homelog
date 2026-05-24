@@ -1,7 +1,7 @@
 <template>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <Card class="p-6">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ categoryChartTitle }}</h3>
+      <h3 class="text-lg font-semibold text-ink mb-4">{{ categoryChartTitle }}</h3>
       <PieChart
         v-if="hasCategoryData"
         :chartData="categoryChartData"
@@ -16,15 +16,15 @@
 
     <Card class="p-6">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ trendChartTitle }}</h3>
-        <div class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
+        <h3 class="text-lg font-semibold text-ink">{{ trendChartTitle }}</h3>
+        <div class="flex items-center bg-surface-2 rounded-lg p-0.5">
           <button
             @click="emit('update:trendChartType', 'line')"
             :class="[
               'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
               trendChartType === 'line'
-                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                ? 'bg-surface text-ink shadow-sm'
+                : 'text-ink-soft hover:text-gray-900 dark:hover:text-white'
             ]"
             :title="t('dashboard.charts.lineTooltip')"
           >
@@ -37,8 +37,8 @@
             :class="[
               'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
               trendChartType === 'bar'
-                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                ? 'bg-surface text-ink shadow-sm'
+                : 'text-ink-soft hover:text-gray-900 dark:hover:text-white'
             ]"
             :title="t('dashboard.charts.barTooltip')"
           >

@@ -14,24 +14,24 @@
         <!-- Positioning: bottom on mobile, centered on desktop -->
         <div class="relative h-full flex items-end sm:items-center sm:justify-center sm:p-4">
           <div
-            class="modal-content relative bg-white dark:bg-gray-800 w-full
+            class="modal-content relative bg-surface w-full
                    rounded-t-2xl sm:rounded-2xl sm:shadow-xl
                    max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden
                    sm:pb-0"
             :class="size === '2xl' ? 'sm:max-w-2xl' : 'sm:max-w-md'"
           >
             <!-- Drag handle (mobile only) -->
-            <div class="sm:hidden flex justify-center pt-3 pb-1 sticky top-0 bg-white dark:bg-gray-800 z-10">
-              <div class="w-10 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full" />
+            <div class="sm:hidden flex justify-center pt-3 pb-1 sticky top-0 bg-surface z-10">
+              <div class="w-10 h-1.5 bg-surface-3 rounded-full" />
             </div>
 
             <!-- Header -->
             <div class="flex items-center justify-between px-6 pt-4 pb-4">
-              <h3 class="text-xl font-bold text-gray-900 dark:text-white">{{ title }}</h3>
+              <h3 class="text-xl font-bold text-ink">{{ title }}</h3>
               <button
                 @click="$emit('close')"
-                class="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300
-                       rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                class="p-2 text-ink-muted hover:text-ink
+                       rounded-lg hover:bg-surface-2 transition-colors"
                 :aria-label="t('common.actions.close')"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

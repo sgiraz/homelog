@@ -1,16 +1,16 @@
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-900 pb-safe">
+  <div class="min-h-screen bg-canvas pb-safe">
     <!-- Header: back + search input (Apple HIG pattern) -->
     <div
-      class="sticky top-0 z-20 bg-white/85 dark:bg-gray-800/85 backdrop-blur-xl
-             border-b border-gray-200 dark:border-gray-700"
+      class="sticky top-0 z-20 bg-surface/85 backdrop-blur-xl
+             border-b border-line"
       style="padding-top: env(safe-area-inset-top)"
     >
       <div class="max-w-3xl mx-auto flex items-center gap-2 px-3 py-2.5">
         <button
           @click="goBack"
-          class="p-2 -ml-1 rounded-lg text-gray-600 dark:text-gray-300
-                 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          class="p-2 -ml-1 rounded-lg text-ink-soft
+                 hover:bg-surface-2 transition-colors"
           :aria-label="t('search.back')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -37,16 +37,16 @@
             spellcheck="false"
             :placeholder="t('search.placeholder')"
             class="w-full pl-9 pr-9 py-3 rounded-xl text-base
-                   bg-gray-100 dark:bg-gray-700/60 text-gray-900 dark:text-white
-                   placeholder-gray-400 dark:placeholder-gray-400
+                   bg-surface-2/60 text-ink
+                   placeholder-gray-400
                    border border-transparent
-                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-700"
+                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-surface"
           />
           <button
             v-if="q.length > 0"
             type="button"
             @click="clearQuery"
-            class="absolute inset-y-0 right-2 flex items-center px-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            class="absolute inset-y-0 right-2 flex items-center px-1.5 text-ink-faint hover:text-ink-soft"
             :aria-label="t('search.clear')"
           >
             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -60,8 +60,8 @@
     <!-- Body -->
     <div class="max-w-3xl mx-auto px-3 py-4">
       <!-- Empty prompt (nothing typed) -->
-      <div v-if="!q.trim()" class="text-center py-16 text-gray-500 dark:text-gray-400">
-        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div v-if="!q.trim()" class="text-center py-16 text-ink-muted">
+        <svg class="w-12 h-12 mx-auto mb-3 text-ink-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
             d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
         </svg>
@@ -77,7 +77,7 @@
       <!-- No results -->
       <div
         v-else-if="!loading && hits.length === 0 && q.trim().length >= 1"
-        class="text-center py-16 text-gray-500 dark:text-gray-400"
+        class="text-center py-16 text-ink-muted"
       >
         <p class="text-sm">{{ t('search.noResults', { query: q.trim() }) }}</p>
       </div>
@@ -85,15 +85,15 @@
       <!-- Results grouped by entity type -->
       <div v-else class="space-y-5">
         <section v-for="group in groupedHits" :key="group.type">
-          <h2 class="px-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+          <h2 class="px-2 text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
             {{ group.label }}
             <span class="ml-1 text-gray-400">({{ group.hits.length }})</span>
           </h2>
-          <ul class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700 shadow-sm">
+          <ul class="bg-surface rounded-2xl overflow-hidden divide-y divide-line shadow-sm">
             <li v-for="hit in group.hits" :key="`${hit.entity_type}-${hit.entity_id}`">
               <button
                 type="button"
-                class="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/40 active:bg-gray-100 dark:active:bg-gray-700 transition-colors"
+                class="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-surface-2 active:bg-surface-2 transition-colors"
                 @click="openHit(hit)"
               >
                 <div :class="['flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center', iconBgClass(hit.entity_type), iconTextClass(hit.entity_type)]">
@@ -117,16 +117,16 @@
                   </svg>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                  <p class="text-sm font-medium text-ink truncate">
                     {{ hit.title || t('search.untitled') }}
                   </p>
                   <p
                     v-if="hit.snippet"
-                    class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2"
+                    class="text-xs text-ink-muted mt-0.5 line-clamp-2"
                     v-html="renderSnippet(hit.snippet)"
                   />
                 </div>
-                <svg class="flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="flex-shrink-0 w-4 h-4 text-ink-faint mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -182,11 +182,11 @@ const groupedHits = computed(() => {
 })
 
 function iconBgClass(type) {
-  return ICON_BG[type] || 'bg-gray-100 dark:bg-gray-700'
+  return ICON_BG[type] || 'bg-surface-2'
 }
 
 function iconTextClass(type) {
-  return ICON_TEXT[type] || 'text-gray-500 dark:text-gray-300'
+  return ICON_TEXT[type] || 'text-ink-muted'
 }
 
 function escapeHtml(s) {

@@ -21,36 +21,36 @@
     <!-- Collapsed view when readings exist -->
     <div v-show="hasReadings && !isEditing">
       <div v-if="utilityType === 'electricity'" class="grid grid-cols-3 gap-2 text-center">
-        <div class="bg-white dark:bg-gray-800 rounded p-2">
+        <div class="bg-surface rounded p-2">
           <p class="text-xs text-red-600 dark:text-red-400 font-medium">F1</p>
-          <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ fmt(f1) }}</p>
+          <p class="text-sm font-semibold text-ink">{{ fmt(f1) }}</p>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded p-2">
+        <div class="bg-surface rounded p-2">
           <p class="text-xs text-yellow-600 dark:text-yellow-400 font-medium">F2</p>
-          <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ fmt(f2) }}</p>
+          <p class="text-sm font-semibold text-ink">{{ fmt(f2) }}</p>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded p-2">
+        <div class="bg-surface rounded p-2">
           <p class="text-xs text-green-600 dark:text-green-400 font-medium">F3</p>
-          <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ fmt(f3) }}</p>
+          <p class="text-sm font-semibold text-ink">{{ fmt(f3) }}</p>
         </div>
       </div>
       <div v-else-if="utilityType === 'gas'" class="space-y-1">
-        <div class="text-center bg-white dark:bg-gray-800 rounded p-2">
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.providerReadings.readingLabel') }}</p>
-          <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ fmt(reading) }} mc</p>
+        <div class="text-center bg-surface rounded p-2">
+          <p class="text-xs text-ink-muted">{{ t('utilities.providerReadings.readingLabel') }}</p>
+          <p class="text-sm font-semibold text-ink">{{ fmt(reading) }} mc</p>
         </div>
-        <div v-if="conversionCoefficient" class="text-center bg-white dark:bg-gray-800 rounded p-2">
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.providerReadings.coefficientLabel', { value: conversionCoefficient }) }}</p>
+        <div v-if="conversionCoefficient" class="text-center bg-surface rounded p-2">
+          <p class="text-xs text-ink-muted">{{ t('utilities.providerReadings.coefficientLabel', { value: conversionCoefficient }) }}</p>
         </div>
       </div>
-      <div v-else class="text-center bg-white dark:bg-gray-800 rounded p-2">
-        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ fmt(reading) }} mc</p>
+      <div v-else class="text-center bg-surface rounded p-2">
+        <p class="text-sm font-semibold text-ink">{{ fmt(reading) }} mc</p>
       </div>
     </div>
 
     <!-- Expanded form for manual entry -->
     <div v-show="isEditing" class="space-y-3">
-      <p class="text-xs text-gray-500 dark:text-gray-400">
+      <p class="text-xs text-ink-muted">
         {{ t('utilities.providerReadings.instructions') }}
       </p>
 
@@ -59,52 +59,52 @@
         <div>
           <label class="block text-xs text-red-600 dark:text-red-400 mb-1 font-medium">{{ t('utilities.providerReadings.f1Label') }}</label>
           <input v-model="f1" type="number" step="0.001" placeholder="0"
-            class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div>
           <label class="block text-xs text-yellow-600 dark:text-yellow-400 mb-1 font-medium">{{ t('utilities.providerReadings.f2Label') }}</label>
           <input v-model="f2" type="number" step="0.001" placeholder="0"
-            class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div>
           <label class="block text-xs text-green-600 dark:text-green-400 mb-1 font-medium">{{ t('utilities.providerReadings.f3Label') }}</label>
           <input v-model="f3" type="number" step="0.001" placeholder="0"
-            class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
       </div>
 
       <!-- Gas: reading + conversion coefficient -->
       <div v-else-if="utilityType === 'gas'" class="space-y-3">
         <div>
-          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.providerReadings.meterGas') }}</label>
+          <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.providerReadings.meterGas') }}</label>
           <input v-model="reading" type="number" step="0.001" placeholder="0"
-            class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div>
-          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.providerReadings.conversionCoeff') }}</label>
+          <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.providerReadings.conversionCoeff') }}</label>
           <input v-model="conversionCoefficient" type="number" step="0.00000001" min="0" placeholder="1.00000000"
-            class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div v-if="previousBillHasEstimate && !previousBill?.estimated_reading">
-          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.providerReadings.previousEstimatedSmc') }}</label>
+          <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.providerReadings.previousEstimatedSmc') }}</label>
           <input v-model="previousEstimatedConsumption" type="number" step="0.000001" placeholder="0"
-            class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-          <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ t('utilities.providerReadings.previousEstimateHintSmc', { value: fmt(previousBill.estimated_consumption) }) }}</p>
+            class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          <p class="text-xs text-ink-faint mt-0.5">{{ t('utilities.providerReadings.previousEstimateHintSmc', { value: fmt(previousBill.estimated_consumption) }) }}</p>
         </div>
       </div>
 
       <!-- Water single reading -->
       <div v-else-if="utilityType === 'water'" class="space-y-3">
         <div>
-          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.providerReadings.meterWater') }}</label>
+          <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.providerReadings.meterWater') }}</label>
           <input v-model="reading" type="number" step="0.001" placeholder="0"
-            class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div v-if="previousBillHasEstimate && !previousBill?.estimated_reading">
-          <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.providerReadings.previousEstimatedMc') }}</label>
+          <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.providerReadings.previousEstimatedMc') }}</label>
           <input v-model="previousEstimatedConsumption" type="number" step="0.001" placeholder="0"
-            class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-          <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ t('utilities.providerReadings.previousEstimateHintMc', { value: fmt(previousBill.estimated_consumption) }) }}</p>
+            class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          <p class="text-xs text-ink-faint mt-0.5">{{ t('utilities.providerReadings.previousEstimateHintMc', { value: fmt(previousBill.estimated_consumption) }) }}</p>
         </div>
       </div>
     </div>

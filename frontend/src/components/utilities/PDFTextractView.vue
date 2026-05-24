@@ -1,26 +1,26 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Toolbar -->
-    <div class="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 rounded-t-lg">
+    <div class="flex items-center justify-between px-3 py-2 bg-surface-2 border-b border-line rounded-t-lg">
       <!-- Page navigation -->
       <div class="flex items-center gap-2">
         <button
           @click="prevPage"
           :disabled="currentPage <= 1"
-          class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          class="p-1.5 rounded hover:bg-surface-3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           :title="t('utilities.pdfTextract.prevPage')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[80px] text-center">
+        <span class="text-sm font-medium text-ink-soft min-w-[80px] text-center">
           {{ currentPage }} / {{ totalPages }}
         </span>
         <button
           @click="nextPage"
           :disabled="currentPage >= totalPages"
-          class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          class="p-1.5 rounded hover:bg-surface-3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           :title="t('utilities.pdfTextract.nextPage')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,20 +34,20 @@
         <button
           @click="zoomOut"
           :disabled="zoom <= 0.5"
-          class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          class="p-1.5 rounded hover:bg-surface-3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           :title="t('utilities.pdfTextract.zoomOut')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
           </svg>
         </button>
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[50px] text-center">
+        <span class="text-sm font-medium text-ink-soft min-w-[50px] text-center">
           {{ Math.round(zoom * 100) }}%
         </span>
         <button
           @click="zoomIn"
           :disabled="zoom >= 2"
-          class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          class="p-1.5 rounded hover:bg-surface-3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           :title="t('utilities.pdfTextract.zoomIn')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,7 +56,7 @@
         </button>
         <button
           @click="resetZoom"
-          class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-xs font-medium text-gray-600 dark:text-gray-400"
+          class="p-1.5 rounded hover:bg-surface-3 transition-colors text-xs font-medium text-ink-soft"
           :title="t('utilities.pdfTextract.resetZoom')"
         >
           {{ t('utilities.pdfTextract.fitButton') }}
@@ -87,7 +87,7 @@
     <!-- PDF View Container -->
     <div
       ref="containerRef"
-      class="flex-1 overflow-auto bg-gray-200 dark:bg-gray-900 p-4"
+      class="flex-1 overflow-auto bg-surface-3 p-4"
       @wheel.ctrl.prevent="handleWheel"
     >
       <div
@@ -176,7 +176,7 @@
       </div>
 
       <!-- No data state -->
-      <div v-if="!loading && !currentPageData" class="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
+      <div v-if="!loading && !currentPageData" class="flex flex-col items-center justify-center h-64 text-ink-muted">
         <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
@@ -365,7 +365,7 @@ function getWordColorClass(type) {
     case TokenType.PDR:
       return 'bg-orange-400/60 border-orange-500 text-orange-900 dark:text-orange-100'
     default:
-      return 'bg-gray-300/60 border-gray-400 text-gray-800 dark:text-gray-200'
+      return 'bg-gray-300/60 border-gray-400 text-ink'
   }
 }
 

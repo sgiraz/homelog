@@ -3,7 +3,7 @@
     <!-- Period Filter -->
     <Card class="p-4">
       <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('utilities.analysisTab.periodLabel') }}</span>
+        <span class="text-sm font-medium text-ink-soft">{{ t('utilities.analysisTab.periodLabel') }}</span>
         <div class="flex gap-2 flex-wrap">
           <button
             v-for="preset in periodPresets"
@@ -13,7 +13,7 @@
               'px-3 py-2 text-sm rounded-lg transition-colors',
               analysisPeriod === preset.id
                 ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-medium'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                : 'text-ink-soft hover:bg-surface-2'
             ]"
           >
             {{ preset.label }}
@@ -21,24 +21,24 @@
         </div>
       </div>
       <div v-if="analysisPeriod === 'custom'" class="flex gap-2 mt-3">
-        <input v-model="analysisFrom" type="date" class="px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <input v-model="analysisTo" type="date" class="px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <input v-model="analysisFrom" type="date" class="px-3 py-2.5 border border-line rounded-lg bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <input v-model="analysisTo" type="date" class="px-3 py-2.5 border border-line rounded-lg bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
     </Card>
 
     <!-- Analysis KPIs -->
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
       <Card class="p-4 text-center">
-        <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(analysisData.totalSpent) }}</div>
-        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ t('utilities.analysisTab.kpi.totalSpent') }}</div>
+        <div class="text-2xl font-bold text-ink">{{ formatCurrency(analysisData.totalSpent) }}</div>
+        <div class="text-xs text-ink-muted mt-1">{{ t('utilities.analysisTab.kpi.totalSpent') }}</div>
       </Card>
       <Card class="p-4 text-center">
-        <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatConsumption(analysisData.totalConsumption) }}</div>
-        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ t('utilities.analysisTab.kpi.totalConsumption', { unit: consumptionUnit }) }}</div>
+        <div class="text-2xl font-bold text-ink">{{ formatConsumption(analysisData.totalConsumption) }}</div>
+        <div class="text-xs text-ink-muted mt-1">{{ t('utilities.analysisTab.kpi.totalConsumption', { unit: consumptionUnit }) }}</div>
       </Card>
       <Card class="p-4 text-center col-span-2 sm:col-span-1">
-        <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ analysisData.billCount }}</div>
-        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ t('utilities.analysisTab.kpi.billCount') }}</div>
+        <div class="text-2xl font-bold text-ink">{{ analysisData.billCount }}</div>
+        <div class="text-xs text-ink-muted mt-1">{{ t('utilities.analysisTab.kpi.billCount') }}</div>
       </Card>
     </div>
 
@@ -48,7 +48,7 @@
       <Card class="p-4">
         <button
           @click="showThresholdSettings = !showThresholdSettings"
-          class="flex items-center justify-between w-full text-sm font-medium text-gray-700 dark:text-gray-300"
+          class="flex items-center justify-between w-full text-sm font-medium text-ink-soft"
         >
           <span>{{ t('utilities.analysisTab.thresholdSettings') }}</span>
           <svg :class="['w-4 h-4 transition-transform', showThresholdSettings ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,23 +59,23 @@
         <div v-if="showThresholdSettings" class="mt-3 space-y-3">
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-sm text-gray-600 dark:text-gray-400">{{ t('utilities.analysisTab.baseThreshold') }}</div>
+              <div class="text-sm text-ink-soft">{{ t('utilities.analysisTab.baseThreshold') }}</div>
               <div class="text-xs text-gray-400">{{ t('utilities.analysisTab.baseThresholdHint') }}</div>
             </div>
             <div class="flex items-center gap-2">
               <input v-model.number="thresholdValue" type="number" min="0.5" max="50" step="0.5"
-                class="w-16 px-2 py-2 text-sm text-center border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                class="w-16 px-2 py-2 text-sm text-center border border-line rounded-lg bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
               <span class="text-xs text-gray-400">{{ consumptionUnit }}</span>
             </div>
           </div>
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-sm text-gray-600 dark:text-gray-400">{{ t('utilities.analysisTab.perDayThreshold') }}</div>
+              <div class="text-sm text-ink-soft">{{ t('utilities.analysisTab.perDayThreshold') }}</div>
               <div class="text-xs text-gray-400">{{ t('utilities.analysisTab.perDayThresholdHint') }}</div>
             </div>
             <div class="flex items-center gap-2">
               <input v-model.number="thresholdPerDayValue" type="number" min="0.1" max="10" step="0.1"
-                class="w-16 px-2 py-2 text-sm text-center border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                class="w-16 px-2 py-2 text-sm text-center border border-line rounded-lg bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
               <span class="text-xs text-gray-400">{{ t('utilities.analysisTab.perDayUnit', { unit: consumptionUnit }) }}</span>
             </div>
           </div>

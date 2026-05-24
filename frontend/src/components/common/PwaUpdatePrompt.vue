@@ -12,14 +12,14 @@
       role="alert"
       aria-live="polite"
       class="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm
-             bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700
+             bg-surface border border-line
              rounded-xl shadow-lg p-4 z-40 flex items-start gap-3"
     >
       <div class="flex-1 min-w-0">
-        <p class="text-sm font-medium text-gray-900 dark:text-white">
+        <p class="text-sm font-medium text-ink">
           {{ $t('common.pwa.updateAvailable') }}
         </p>
-        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+        <p class="mt-1 text-xs text-ink-soft">
           {{ $t('common.pwa.updateHint') }}
         </p>
       </div>
@@ -33,7 +33,7 @@
         </button>
         <button
           type="button"
-          class="px-3 py-1.5 rounded-lg text-gray-600 dark:text-gray-400 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+          class="px-3 py-1.5 rounded-lg text-ink-soft text-sm hover:bg-surface-2"
           @click="dismiss"
         >
           {{ $t('common.pwa.later') }}

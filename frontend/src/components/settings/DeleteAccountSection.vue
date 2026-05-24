@@ -1,7 +1,7 @@
 <template>
   <Card class="p-6 border-red-200 dark:border-red-800">
     <h2 class="text-xl font-bold text-red-600 dark:text-red-400 mb-2">{{ t('settings.deleteAccount.title') }}</h2>
-    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+    <p class="text-sm text-ink-soft mb-4">
       {{ t('settings.deleteAccount.description') }}
     </p>
 
@@ -26,13 +26,13 @@
       </div>
 
       <div v-for="bp in deleteCheckResult.blocking_properties" :key="bp.property_id"
-           class="p-3 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
-        <div class="font-medium text-gray-900 dark:text-white">{{ bp.property_name }}</div>
+           class="p-3 border border-line rounded-lg space-y-2">
+        <div class="font-medium text-ink">{{ bp.property_name }}</div>
         <div class="flex items-center gap-2">
           <select
             v-model="adminNominations[bp.property_id]"
-            class="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+            class="flex-1 px-3 py-2 border border-line rounded-lg
+                   bg-surface text-ink text-sm
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option :value="null" disabled>{{ t('settings.deleteAccount.selectMember') }}</option>
@@ -76,8 +76,8 @@
       />
 
       <label class="flex items-start gap-2 cursor-pointer">
-        <input v-model="deleteConfirmed" type="checkbox" class="mt-1 rounded border-gray-300 dark:border-gray-600" />
-        <span class="text-sm text-gray-700 dark:text-gray-300">
+        <input v-model="deleteConfirmed" type="checkbox" class="mt-1 rounded border-line" />
+        <span class="text-sm text-ink-soft">
           {{ t('settings.deleteAccount.confirmCheckbox') }}
         </span>
       </label>

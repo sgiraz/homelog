@@ -40,8 +40,8 @@
   </div>
 
   <!-- Consumption Summary Card -->
-  <div v-if="consumptionSummary && (consumptionSummary.total_user > 0 || consumptionSummary.total_provider > 0)" class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-    <h4 class="font-semibold text-gray-900 dark:text-white mb-3">{{ t('utilities.consumptionSummary.title') }}</h4>
+  <div v-if="consumptionSummary && (consumptionSummary.total_user > 0 || consumptionSummary.total_provider > 0)" class="p-4 bg-surface rounded-lg">
+    <h4 class="font-semibold text-ink mb-3">{{ t('utilities.consumptionSummary.title') }}</h4>
 
     <div v-if="utilityType === 'electricity'" class="space-y-3">
       <div class="grid grid-cols-4 gap-2 sm:gap-3 text-sm">
@@ -50,17 +50,17 @@
         <div class="text-center font-medium text-yellow-600 dark:text-yellow-400">F2</div>
         <div class="text-center font-medium text-green-600 dark:text-green-400">F3</div>
 
-        <div class="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">{{ t('utilities.consumptionSummary.selfReadings') }}</div>
-        <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_user_f1) }}</div>
-        <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_user_f2) }}</div>
-        <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_user_f3) }}</div>
+        <div class="text-ink-soft text-xs sm:text-sm">{{ t('utilities.consumptionSummary.selfReadings') }}</div>
+        <div class="text-center text-ink text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_user_f1) }}</div>
+        <div class="text-center text-ink text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_user_f2) }}</div>
+        <div class="text-center text-ink text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_user_f3) }}</div>
 
-        <div class="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">{{ t('utilities.consumptionSummary.provider') }}</div>
-        <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_provider_f1) }}</div>
-        <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_provider_f2) }}</div>
-        <div class="text-center text-gray-900 dark:text-white text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_provider_f3) }}</div>
+        <div class="text-ink-soft text-xs sm:text-sm">{{ t('utilities.consumptionSummary.provider') }}</div>
+        <div class="text-center text-ink text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_provider_f1) }}</div>
+        <div class="text-center text-ink text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_provider_f2) }}</div>
+        <div class="text-center text-ink text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_provider_f3) }}</div>
 
-        <div class="text-gray-600 dark:text-gray-400 font-medium text-xs sm:text-sm">{{ t('utilities.consumptionSummary.difference') }}</div>
+        <div class="text-ink-soft font-medium text-xs sm:text-sm">{{ t('utilities.consumptionSummary.difference') }}</div>
         <div :class="['text-center font-medium text-xs sm:text-sm', getDiffClass(consumptionSummary.cumulative_difference_f1)]">
           {{ fmtDiff(consumptionSummary.cumulative_difference_f1) }}
         </div>
@@ -74,13 +74,13 @@
 
       <div :class="[
         'p-3 rounded grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm',
-        consumptionSummary.cumulative_difference > 1 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-white dark:bg-gray-700'
+        consumptionSummary.cumulative_difference > 1 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-surface'
       ]">
-        <div class="text-gray-600 dark:text-gray-400 text-xs sm:text-sm sm:text-center">{{ t('utilities.consumptionSummary.total') }}</div>
-        <i18n-t keypath="utilities.consumptionSummary.totalSelfWithUnit" tag="div" class="text-gray-900 dark:text-white text-xs sm:text-sm sm:text-center">
+        <div class="text-ink-soft text-xs sm:text-sm sm:text-center">{{ t('utilities.consumptionSummary.total') }}</div>
+        <i18n-t keypath="utilities.consumptionSummary.totalSelfWithUnit" tag="div" class="text-ink text-xs sm:text-sm sm:text-center">
           <template #value><strong>{{ fmtNum(consumptionSummary?.total_user) }}</strong></template>
         </i18n-t>
-        <i18n-t keypath="utilities.consumptionSummary.totalProviderWithUnit" tag="div" class="text-gray-900 dark:text-white text-xs sm:text-sm sm:text-center">
+        <i18n-t keypath="utilities.consumptionSummary.totalProviderWithUnit" tag="div" class="text-ink text-xs sm:text-sm sm:text-center">
           <template #value><strong>{{ fmtNum(consumptionSummary?.total_provider) }}</strong></template>
         </i18n-t>
         <div :class="['font-semibold text-xs sm:text-sm sm:text-center', getDiffClass(consumptionSummary.cumulative_difference)]">
@@ -90,19 +90,19 @@
     </div>
 
     <div v-else class="grid grid-cols-3 gap-3 text-sm">
-      <div class="text-center p-3 bg-white dark:bg-gray-700 rounded">
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.consumptionSummary.selfReadings') }}</p>
-        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ fmtNum(consumptionSummary.total_user) }} {{ getUnit() }}</p>
+      <div class="text-center p-3 bg-surface rounded">
+        <p class="text-xs text-ink-muted mb-1">{{ t('utilities.consumptionSummary.selfReadings') }}</p>
+        <p class="text-lg font-semibold text-ink">{{ fmtNum(consumptionSummary.total_user) }} {{ getUnit() }}</p>
       </div>
-      <div class="text-center p-3 bg-white dark:bg-gray-700 rounded">
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.consumptionSummary.billed') }}</p>
-        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ fmtNum(consumptionSummary.total_provider) }} {{ getUnit() }}</p>
+      <div class="text-center p-3 bg-surface rounded">
+        <p class="text-xs text-ink-muted mb-1">{{ t('utilities.consumptionSummary.billed') }}</p>
+        <p class="text-lg font-semibold text-ink">{{ fmtNum(consumptionSummary.total_provider) }} {{ getUnit() }}</p>
       </div>
       <div :class="[
         'text-center p-3 rounded',
-        consumptionSummary.cumulative_difference > 1 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-white dark:bg-gray-700'
+        consumptionSummary.cumulative_difference > 1 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-surface'
       ]">
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+        <p class="text-xs text-ink-muted mb-1">
           {{ consumptionSummary.cumulative_difference > 0 ? t('utilities.consumptionSummary.overchargeShort') : t('utilities.consumptionSummary.difference') }}
         </p>
         <p :class="['text-lg font-semibold', getDiffClass(consumptionSummary.cumulative_difference)]">
@@ -111,7 +111,7 @@
       </div>
     </div>
 
-    <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
+    <p class="text-xs text-ink-muted mt-3">
       {{ t('utilities.consumptionSummary.period', { start: formatDate(consumptionSummary.first_period), end: formatDate(consumptionSummary.last_period) }) }}
     </p>
   </div>

@@ -11,7 +11,7 @@
 
       <!-- Icon -->
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">
+        <label class="block text-sm text-ink-soft mb-2">
           {{ t('projects.modal.iconLabel') }}
         </label>
         <div class="flex gap-2 flex-wrap">
@@ -24,7 +24,7 @@
               'w-12 h-12 rounded-lg text-2xl flex items-center justify-center transition-all',
               form.icon === icon
                 ? 'bg-blue-100 dark:bg-blue-900 ring-2 ring-blue-500'
-                : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
+                : 'bg-surface-2 hover:bg-surface-3'
             ]"
           >
             {{ icon }}
@@ -34,7 +34,7 @@
 
       <!-- Description -->
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('projects.modal.descriptionLabel') }}
         </label>
         <textarea
@@ -42,8 +42,8 @@
           rows="3"
           :placeholder="t('projects.modal.descriptionPlaceholder')"
           autocorrect="off"
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -78,14 +78,14 @@
 
       <!-- Status -->
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('projects.modal.statusLabel') }}
         </label>
         <select
           v-model="form.status"
           required
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="planned">{{ t('projects.status.planned') }}</option>
@@ -96,15 +96,15 @@
       </div>
 
       <!-- Share with household members -->
-      <div v-if="otherMembers.length > 0" class="border-t border-gray-200 dark:border-gray-700 pt-4">
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+      <div v-if="otherMembers.length > 0" class="border-t border-line pt-4">
+        <label class="block text-sm font-medium text-ink-soft mb-2">
           {{ t('projects.modal.shareWithLabel') }}
         </label>
         <div class="space-y-2">
           <div
             v-for="member in otherMembers"
             :key="member.id"
-            class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+            class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-2"
           >
             <label class="flex items-center gap-3 cursor-pointer flex-1 min-w-0">
               <input
@@ -116,21 +116,21 @@
               <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-xs font-medium text-purple-700 dark:text-purple-300 flex-shrink-0">
                 {{ getInitials(member.name) }}
               </div>
-              <span class="text-sm text-gray-900 dark:text-white truncate">{{ member.name }}</span>
+              <span class="text-sm text-ink truncate">{{ member.name }}</span>
             </label>
             <select
               v-if="isMemberSelected(member.user_id)"
               :value="getMemberRole(member.user_id)"
               @change="setMemberRole(member.user_id, $event.target.value)"
-              class="text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-600
-                     bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex-shrink-0"
+              class="text-xs px-2 py-1 rounded border border-line
+                     bg-surface text-ink-soft flex-shrink-0"
             >
               <option value="member">{{ t('projects.modal.roleMember') }}</option>
               <option value="owner">{{ t('projects.modal.roleCoOwner') }}</option>
             </select>
           </div>
         </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+        <p class="text-xs text-ink-muted mt-2">
           {{ t('projects.modal.shareHint') }}
         </p>
       </div>

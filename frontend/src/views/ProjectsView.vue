@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center justify-between">
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ t('projects.title') }}</h1>
+      <h1 class="text-3xl font-bold text-ink">{{ t('projects.title') }}</h1>
       <Button @click="showAddModal = true">
         <svg class="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -22,7 +22,7 @@
             'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
             selectedStatus === status.value
               ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              : 'text-ink-soft hover:bg-surface-2'
           ]"
         >
           <span>{{ status.icon }}</span>
@@ -65,10 +65,10 @@
           <div class="flex items-center gap-3">
             <div class="text-3xl">{{ project.icon || '🏗️' }}</div>
             <div>
-              <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+              <h3 class="text-lg font-bold text-ink">
                 {{ project.name }}
               </h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400">
+              <p class="text-sm text-ink-soft">
                 {{ formatDateRange(project.start_date, project.end_date) }}
               </p>
             </div>
@@ -89,29 +89,29 @@
         </div>
 
         <!-- Description -->
-        <p v-if="project.description" class="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+        <p v-if="project.description" class="text-sm text-ink-soft mb-4 line-clamp-2">
           {{ project.description }}
         </p>
 
         <!-- Budget Progress -->
         <div class="space-y-2">
           <div class="flex justify-between text-sm">
-            <span class="text-gray-600 dark:text-gray-400">{{ t('projects.card.budget') }}</span>
+            <span class="text-ink-soft">{{ t('projects.card.budget') }}</span>
             <span class="font-medium">{{ formatCurrency(project.budget) }}</span>
           </div>
 
           <div class="flex justify-between text-sm">
-            <span class="text-gray-600 dark:text-gray-400">{{ t('projects.card.spent') }}</span>
+            <span class="text-ink-soft">{{ t('projects.card.spent') }}</span>
             <span :class="[
               'font-medium',
-              (project.stats?.total_spent || 0) > project.budget ? 'text-red-600' : 'text-gray-900 dark:text-white'
+              (project.stats?.total_spent || 0) > project.budget ? 'text-red-600' : 'text-ink'
             ]">
               {{ formatCurrency(project.stats?.total_spent || 0) }}
             </span>
           </div>
 
           <!-- Progress Bar -->
-          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+          <div class="w-full bg-surface-3 rounded-full h-2.5">
             <div
               :class="[
                 'h-2.5 rounded-full transition-all',
@@ -121,7 +121,7 @@
             ></div>
           </div>
 
-          <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400">
+          <div class="flex justify-between text-xs text-ink-soft">
             <span>{{ t('projects.card.percentUsed', { percent: (project.stats?.percentage_spent || 0).toFixed(1) }) }}</span>
             <span>
               {{ (project.stats?.remaining ?? 0) >= 0 ? t('projects.card.remaining') : t('projects.card.overrun') }}
@@ -131,8 +131,8 @@
         </div>
 
         <!-- Footer Stats -->
-        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center text-sm">
-          <span class="text-gray-600 dark:text-gray-400">
+        <div class="mt-4 pt-4 border-t border-line flex justify-between items-center text-sm">
+          <span class="text-ink-soft">
             {{ t(`projects.card.${(project.stats?.expense_count || 0) === 1 ? 'expenseCount_one' : 'expenseCount_other'}`, { n: project.stats?.expense_count || 0 }) }}
           </span>
           <div class="flex items-center gap-2">
@@ -141,12 +141,12 @@
               <div
                 v-for="user in project.shared_with.slice(0, 3)"
                 :key="user.id"
-                class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900 border-2 border-white dark:border-gray-800 flex items-center justify-center text-xs font-medium text-purple-700 dark:text-purple-300"
+                class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900 border-2 border-surface flex items-center justify-center text-xs font-medium text-purple-700 dark:text-purple-300"
                 :title="user.name"
               >
                 {{ user.name?.[0]?.toUpperCase() }}
               </div>
-              <div v-if="project.shared_with.length > 3" class="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600 border-2 border-white dark:border-gray-800 flex items-center justify-center text-xs text-gray-600 dark:text-gray-300">
+              <div v-if="project.shared_with.length > 3" class="w-6 h-6 rounded-full bg-surface-3 border-2 border-surface flex items-center justify-center text-xs text-ink-soft">
                 +{{ project.shared_with.length - 3 }}
               </div>
             </div>

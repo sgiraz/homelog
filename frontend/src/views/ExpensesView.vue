@@ -2,7 +2,7 @@
   <div class="space-y-4">
     <!-- Header -->
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{{ t('expenses.title') }}</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold text-ink">{{ t('expenses.title') }}</h1>
       <Button v-if="activeTab === 'lista'" @click="showAddExpense = true">
         <svg class="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -21,7 +21,7 @@
           'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
           activeTab === tab.id
             ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
-            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+            : 'text-ink-soft hover:bg-surface-2'
         ]"
       >
         <span>{{ tab.icon }}</span>
@@ -42,7 +42,7 @@
         <div class="flex items-center justify-between">
           <button
             @click="filtersOpen = !filtersOpen"
-            class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+            class="flex items-center gap-2 text-sm font-medium text-ink-soft"
             :aria-expanded="filtersOpen"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,7 +57,7 @@
             </span>
           </button>
           <div class="flex items-center gap-2">
-            <span class="text-xs text-gray-500 dark:text-gray-400">
+            <span class="text-xs text-ink-muted">
               {{ expensesStore.total > 0 ? `${expensesStore.expenses.length} / ${expensesStore.total}` : '' }}
             </span>
             <Button v-if="hasActiveFilters" @click="resetFilters" variant="secondary" size="sm">
@@ -68,7 +68,7 @@
 
         <!-- Collapsible filter panel (mobile) -->
         <Transition name="filter-expand">
-          <div v-if="filtersOpen" class="mt-3 space-y-3 border-t border-gray-100 dark:border-gray-700 pt-3">
+          <div v-if="filtersOpen" class="mt-3 space-y-3 border-t border-line pt-3">
             <!-- Search -->
             <div class="relative">
               <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,8 +79,8 @@
                 @input="onFiltersChanged"
                 type="search"
                 :placeholder="t('expenses.filters.searchPlaceholderShort')"
-                class="w-full pl-9 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                class="w-full pl-9 pr-4 py-2 border border-line rounded-lg
+                       bg-surface text-ink text-base
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -88,8 +88,8 @@
               <select
                 v-model="filters.categoryId"
                 @change="onFiltersChanged"
-                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                class="px-3 py-2 border border-line rounded-lg
+                       bg-surface text-ink text-base
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">{{ t('expenses.filters.allCategoriesLong') }}</option>
@@ -98,8 +98,8 @@
               <select
                 v-model="filters.projectId"
                 @change="onFiltersChanged"
-                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                class="px-3 py-2 border border-line rounded-lg
+                       bg-surface text-ink text-base
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">{{ t('expenses.filters.allProjectsLong') }}</option>
@@ -109,23 +109,23 @@
                 v-model="filters.from"
                 @change="onFiltersChanged"
                 type="date"
-                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                class="px-3 py-2 border border-line rounded-lg
+                       bg-surface text-ink text-base
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <input
                 v-model="filters.to"
                 @change="onFiltersChanged"
                 type="date"
-                class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                class="px-3 py-2 border border-line rounded-lg
+                       bg-surface text-ink text-base
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <select
               v-model="sortOption"
-              class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+              class="w-full px-3 py-2 border border-line rounded-lg
+                     bg-surface text-ink text-base
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="date_desc">{{ t('expenses.sort.dateDesc') }}</option>
@@ -142,7 +142,7 @@
                 'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
                 filters.unsettledOnly
                   ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  : 'text-ink-soft hover:bg-surface-2'
               ]"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -165,20 +165,20 @@
             @input="onFiltersChanged"
             type="text"
             :placeholder="t('expenses.filters.searchPlaceholderLong')"
-            class="w-full pl-9 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+            class="w-full pl-9 pr-4 py-2 border border-line rounded-lg
+                   bg-surface text-ink text-sm
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ t('expenses.filters.categoryLabel') }}</label>
+            <label class="text-sm text-ink-soft whitespace-nowrap">{{ t('expenses.filters.categoryLabel') }}</label>
             <select
               v-model="filters.categoryId"
               @change="onFiltersChanged"
-              class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+              class="px-3 py-2 border border-line rounded-lg
+                     bg-surface text-ink text-sm
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">{{ t('expenses.filters.allCategoriesShort') }}</option>
@@ -187,12 +187,12 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ t('expenses.filters.projectLabel') }}</label>
+            <label class="text-sm text-ink-soft whitespace-nowrap">{{ t('expenses.filters.projectLabel') }}</label>
             <select
               v-model="filters.projectId"
               @change="onFiltersChanged"
-              class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+              class="px-3 py-2 border border-line rounded-lg
+                     bg-surface text-ink text-sm
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">{{ t('expenses.filters.allProjectsShort') }}</option>
@@ -201,35 +201,35 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600 dark:text-gray-400">{{ t('expenses.filters.fromLabel') }}</label>
+            <label class="text-sm text-ink-soft">{{ t('expenses.filters.fromLabel') }}</label>
             <input
               v-model="filters.from"
               @change="onFiltersChanged"
               type="date"
-              class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+              class="px-3 py-2 border border-line rounded-lg
+                     bg-surface text-ink text-sm
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600 dark:text-gray-400">{{ t('expenses.filters.toLabel') }}</label>
+            <label class="text-sm text-ink-soft">{{ t('expenses.filters.toLabel') }}</label>
             <input
               v-model="filters.to"
               @change="onFiltersChanged"
               type="date"
-              class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+              class="px-3 py-2 border border-line rounded-lg
+                     bg-surface text-ink text-sm
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div class="flex items-center gap-2 ml-auto">
-            <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ t('expenses.filters.sortLabel') }}</label>
+            <label class="text-sm text-ink-soft whitespace-nowrap">{{ t('expenses.filters.sortLabel') }}</label>
             <select
               v-model="sortOption"
-              class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+              class="px-3 py-2 border border-line rounded-lg
+                     bg-surface text-ink text-sm
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="date_desc">{{ t('expenses.sort.dateDesc') }}</option>
@@ -246,7 +246,7 @@
               'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
               filters.unsettledOnly
                 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                : 'text-ink-soft hover:bg-surface-2'
             ]"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -260,7 +260,7 @@
           </Button>
         </div>
 
-        <div v-if="hasActiveFilters || expensesStore.total > 0" class="text-xs text-gray-500 dark:text-gray-400">
+        <div v-if="hasActiveFilters || expensesStore.total > 0" class="text-xs text-ink-muted">
           {{ t('expenses.list.shownCount', { n: expensesStore.expenses.length }) }}
           <span v-if="expensesStore.total > 0"> {{ t('expenses.list.ofTotal', { n: expensesStore.total }) }}</span>
           <span v-if="filters.projectId"> {{ t('expenses.list.filterProjectInfo', { name: selectedProjectName }) }}</span>
@@ -271,11 +271,11 @@
 
     <!-- Lista spese -->
     <Card class="p-4 sm:p-6">
-      <div v-if="expensesStore.loading && expensesStore.expenses.length === 0" class="text-center py-8 text-gray-600 dark:text-gray-400">
+      <div v-if="expensesStore.loading && expensesStore.expenses.length === 0" class="text-center py-8 text-ink-soft">
         {{ t('expenses.list.loading') }}
       </div>
 
-      <div v-else-if="expensesStore.expenses.length === 0" class="text-center py-8 text-gray-600 dark:text-gray-400">
+      <div v-else-if="expensesStore.expenses.length === 0" class="text-center py-8 text-ink-soft">
         <span v-if="hasActiveFilters">{{ t('expenses.list.emptyFiltered') }}</span>
         <span v-else>{{ t('expenses.list.empty') }}</span>
       </div>
@@ -285,14 +285,14 @@
           v-for="expense in expensesStore.expenses"
           :key="expense.id"
           :ref="(el) => registerRow(expense.id, el)"
-          class="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg
-                 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
+          class="p-3 sm:p-4 border border-line rounded-lg
+                 hover:bg-surface-2 transition-colors group"
           :class="{ 'search-flash': isHighlighted(expense.id) }"
         >
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-medium text-gray-900 dark:text-white line-clamp-2">
+                <span class="font-medium text-ink line-clamp-2">
                   {{ expense.description || t('expenses.noDescription') }}
                 </span>
                 <span
@@ -313,11 +313,11 @@
                   {{ isExpenseSettled(expense) ? t('expenses.settled') : t('expenses.unsettled') }}
                 </span>
               </div>
-              <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex flex-wrap items-center gap-2">
+              <div class="text-sm text-ink-soft mt-1 flex flex-wrap items-center gap-2">
                 <span>{{ formatDate(expense.date) }}</span>
                 <span
                   v-if="expense.category"
-                  class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs"
+                  class="px-2 py-0.5 bg-surface-2 rounded text-xs"
                 >
                   {{ expense.category.name }}
                 </span>
@@ -341,10 +341,10 @@
               <div class="text-xl font-bold text-blue-600 dark:text-blue-400">
                 {{ formatCurrency(expense.amount) }}
               </div>
-              <div v-if="expense.original_currency" class="text-xs text-gray-400 dark:text-gray-500">
+              <div v-if="expense.original_currency" class="text-xs text-ink-faint">
                 ({{ formatOriginalCurrency(expense.original_amount, expense.original_currency) }})
               </div>
-              <div v-if="expense.is_split && expense.splits?.length" class="text-xs text-gray-500 dark:text-gray-400">
+              <div v-if="expense.is_split && expense.splits?.length" class="text-xs text-ink-muted">
                 {{ t('expenses.shareEach', { amount: formatCurrency(expense.splits[0]?.amount || 0) }) }}
               </div>
               <div v-if="expense.bill_id" class="text-xs text-orange-600 dark:text-orange-400 mt-1">
@@ -391,7 +391,7 @@
           </svg>
           <span
             v-else-if="!expensesStore.hasMore && expensesStore.expenses.length > 0 && expensesStore.total > 0"
-            class="text-xs text-gray-400 dark:text-gray-500"
+            class="text-xs text-ink-faint"
           >
             {{ t('expenses.list.allShown', { n: expensesStore.total }) }}
           </span>

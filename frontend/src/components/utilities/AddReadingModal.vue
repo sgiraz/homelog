@@ -10,7 +10,7 @@
 
         <!-- Electricity readings (F1/F2/F3) -->
         <div v-if="utility.type === 'electricity'" class="space-y-4">
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('utilities.addReadingModal.tariffsLabel') }}</p>
+          <p class="text-sm text-ink-muted">{{ t('utilities.addReadingModal.tariffsLabel') }}</p>
           <div class="grid grid-cols-3 gap-3">
             <div>
               <label class="block text-xs text-red-600 dark:text-red-400 mb-1 font-medium">{{ t('utilities.addReadingModal.f1Label') }}</label>
@@ -59,7 +59,7 @@
             placeholder="0"
             required
           />
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p class="text-xs text-ink-muted mt-1">
             {{ t('utilities.addReadingModal.meterHint') }}
           </p>
         </div>
@@ -72,22 +72,22 @@
             v-model="form.is_submitted"
             class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
-          <label for="is-submitted" class="text-sm text-gray-900 dark:text-white cursor-pointer">
+          <label for="is-submitted" class="text-sm text-ink cursor-pointer">
             {{ t('utilities.addReadingModal.submittedLabel') }}
           </label>
         </div>
 
         <!-- Note -->
         <div>
-          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+          <label class="block text-sm text-ink-soft mb-1">
             {{ t('utilities.addReadingModal.notesLabel') }}
           </label>
           <textarea
             v-model="form.notes"
             rows="2"
             :placeholder="t('utilities.addReadingModal.notesPlaceholder')"
-            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+            class="w-full px-3 py-2 border border-line rounded-lg
+                   bg-surface text-ink
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>

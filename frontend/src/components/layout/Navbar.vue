@@ -1,10 +1,10 @@
 <template>
   <!-- Top nav -->
-  <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-4 sticky top-0 z-30">
+  <nav class="bg-surface border-b border-line px-4 lg:px-6 py-4 sticky top-0 z-30">
     <div class="flex items-center justify-between max-w-7xl mx-auto">
       <!-- Left: Logo + Desktop nav -->
       <div class="flex items-center gap-8">
-        <router-link to="/" class="text-xl font-bold text-gray-900 dark:text-white">
+        <router-link to="/" class="text-xl font-bold text-ink">
           HomeLog
         </router-link>
 
@@ -17,7 +17,7 @@
             class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
             :class="isActive(link.path)
               ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
-              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
+              : 'text-ink-soft hover:bg-surface-2'"
             :aria-current="isActive(link.path) ? 'page' : undefined"
           >
             {{ link.label }}
@@ -30,7 +30,7 @@
         <!-- Search -->
         <router-link
           to="/search"
-          class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          class="p-2 rounded-lg text-ink-muted hover:bg-surface-2 transition-colors"
           :aria-label="t('nav.search')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,7 +42,7 @@
         <!-- Dark mode toggle -->
         <button
           @click="handleToggleDarkMode"
-          class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          class="p-2 rounded-lg text-ink-muted hover:bg-surface-2 transition-colors"
           :aria-label="isDark ? t('nav.themeToggleToLight') : t('nav.themeToggleToDark')"
         >
           <svg v-if="isDark" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,7 +59,7 @@
         <div class="relative">
           <button
             @click="toggleNotifications"
-            class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
+            class="p-2 rounded-lg text-ink-muted hover:bg-surface-2 transition-colors relative"
             :aria-label="t('nav.notifications.title')"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,11 +87,11 @@
           >
             <div
               v-if="showNotifications"
-              class="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-gray-800 rounded-xl shadow-xl
-                     border border-gray-200 dark:border-gray-700 overflow-hidden z-50"
+              class="absolute right-0 mt-2 w-80 sm:w-96 bg-surface rounded-xl shadow-xl
+                     border border-line overflow-hidden z-50"
             >
-              <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('nav.notifications.title') }}</span>
+              <div class="flex items-center justify-between px-4 py-3 border-b border-line">
+                <span class="text-sm font-semibold text-ink">{{ t('nav.notifications.title') }}</span>
                 <button
                   v-if="notifications.length > 0"
                   @click="markAllRead"
@@ -106,17 +106,17 @@
                   {{ t('nav.notifications.loading') }}
                 </div>
                 <div v-else-if="notifications.length === 0" class="py-8 text-center">
-                  <svg class="w-8 h-8 mx-auto text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-8 h-8 mx-auto text-ink-faint mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
-                  <p class="text-sm text-gray-400 dark:text-gray-500">{{ t('nav.notifications.empty') }}</p>
+                  <p class="text-sm text-ink-faint">{{ t('nav.notifications.empty') }}</p>
                 </div>
                 <template v-else>
                   <button
                     v-for="notif in notifications"
                     :key="`${notif._source}-${notif.id}`"
                     @click="openNotification(notif)"
-                    class="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-50 dark:border-gray-700/50 last:border-0"
+                    class="w-full text-left px-4 py-3 hover:bg-surface-2 transition-colors border-b border-line/50 last:border-0"
                     :class="{ 'bg-blue-50/50 dark:bg-blue-900/10': !notif.is_read }"
                   >
                     <div class="flex items-start gap-3">
@@ -125,7 +125,7 @@
                       </div>
                       <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                          <span class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          <span class="text-sm font-medium text-ink truncate">
                             {{ getNotifLabel(notif) }}
                           </span>
                           <span
@@ -133,7 +133,7 @@
                             class="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"
                           />
                         </div>
-                        <p class="text-xs text-gray-600 dark:text-gray-300 mt-0.5 line-clamp-2">{{ notif.content || notif.title }}</p>
+                        <p class="text-xs text-ink-soft mt-0.5 line-clamp-2">{{ notif.content || notif.title }}</p>
                         <span class="text-[10px] text-gray-400 mt-1 block">{{ formatTimeAgo(notif.created_at) }}</span>
                       </div>
                     </div>
@@ -146,8 +146,8 @@
                 to="/notifications"
                 @click="closeDropdowns"
                 class="block text-center px-4 py-2.5 text-sm font-medium text-blue-600 dark:text-blue-400
-                       hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
-                       border-t border-gray-100 dark:border-gray-700"
+                       hover:bg-surface-2 transition-colors
+                       border-t border-line"
               >
                 {{ t('nav.notifications.viewAll') }}
               </router-link>
@@ -161,7 +161,7 @@
           <router-link
             to="/settings"
             class="md:hidden flex items-center rounded-full transition-all"
-            :class="$route.path === '/settings' ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-800' : ''"
+            :class="$route.path === '/settings' ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-surface' : ''"
             :aria-label="t('nav.settings')"
           >
             <img
@@ -181,8 +181,8 @@
           <!-- Desktop: dropdown trigger -->
           <button
             @click="toggleUserMenu"
-            class="hidden md:flex items-center gap-2 rounded-xl pl-1 pr-2 py-1 transition-all hover:bg-gray-100 dark:hover:bg-gray-700"
-            :class="showUserMenu ? 'bg-gray-100 dark:bg-gray-700' : ''"
+            class="hidden md:flex items-center gap-2 rounded-xl pl-1 pr-2 py-1 transition-all hover:bg-surface-2"
+            :class="showUserMenu ? 'bg-surface-2' : ''"
           >
             <img
               v-if="authStore.avatarUrl"
@@ -196,7 +196,7 @@
             >
               {{ userInitials }}
             </div>
-            <span class="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300">
+            <span class="flex items-center gap-1 text-sm text-ink-soft">
               {{ authStore.user?.name?.split(' ')[0] }}
               <svg class="w-3.5 h-3.5 text-gray-400 transition-transform" :class="{ 'rotate-180': showUserMenu }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -215,13 +215,13 @@
           >
             <div
               v-if="showUserMenu"
-              class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl
-                     border border-gray-200 dark:border-gray-700 py-1 z-50"
+              class="absolute right-0 mt-2 w-48 bg-surface rounded-xl shadow-xl
+                     border border-line py-1 z-50"
             >
               <router-link
                 to="/settings"
                 @click="showUserMenu = false"
-                class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                class="flex items-center gap-3 px-4 py-2.5 text-sm text-ink-soft hover:bg-surface-2 transition-colors"
               >
                 <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -229,7 +229,7 @@
                 </svg>
                 {{ t('nav.settings') }}
               </router-link>
-              <div class="border-t border-gray-100 dark:border-gray-700 my-1" />
+              <div class="border-t border-line my-1" />
               <button
                 @click="handleLogout"
                 class="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors w-full text-left"
@@ -268,7 +268,7 @@
           class="tab-item flex-1 flex flex-col items-center justify-center py-3.5 gap-1 relative transition-colors"
           :class="isActive(link.path)
             ? 'text-blue-500 dark:text-blue-400'
-            : 'text-gray-500 dark:text-gray-400 active:text-gray-700 dark:active:text-gray-200'"
+            : 'text-ink-muted active:text-ink'"
           :aria-selected="isActive(link.path)"
           :aria-label="link.label"
         >
@@ -377,7 +377,7 @@ function getUtilityBgClass(type) {
     affitto: 'bg-purple-100 dark:bg-purple-900/30',
     mutuo: 'bg-sky-100 dark:bg-sky-900/30',
   }
-  return classes[type] || 'bg-gray-100 dark:bg-gray-700'
+  return classes[type] || 'bg-surface-2'
 }
 
 function getNotifIcon(notif) {
@@ -393,7 +393,7 @@ function getNotifBgClass(notif) {
   if (notif._source === 'notification') {
     if (notif.type === 'join_request') return 'bg-violet-100 dark:bg-violet-900/30'
     if (notif.type === 'expense_shared') return 'bg-emerald-100 dark:bg-emerald-900/30'
-    return 'bg-gray-100 dark:bg-gray-700'
+    return 'bg-surface-2'
   }
   return getUtilityBgClass(notif.utility?.type)
 }
@@ -560,7 +560,7 @@ onUnmounted(() => {
 
 /* ─── Dark mode ─── */
 .dark .tab-bar-pill {
-  background: rgba(28, 28, 32, 0.55);
+  background: rgba(34, 29, 24, 0.6);
   box-shadow:
     0 0 0 0.5px rgba(255, 255, 255, 0.1),
     0 4px 24px rgba(0, 0, 0, 0.35),

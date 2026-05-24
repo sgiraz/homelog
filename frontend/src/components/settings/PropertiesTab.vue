@@ -3,8 +3,8 @@
     <Card class="p-6">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ t('settings.properties.title') }}</h2>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ t('settings.properties.subtitle') }}</p>
+          <h2 class="text-xl font-bold text-ink">{{ t('settings.properties.title') }}</h2>
+          <p class="text-sm text-ink-soft mt-1">{{ t('settings.properties.subtitle') }}</p>
         </div>
         <Button @click="showAddPropertyForm = !showAddPropertyForm" :variant="showAddPropertyForm ? 'secondary' : 'primary'" size="sm">
           <svg v-if="!showAddPropertyForm" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -20,26 +20,26 @@
         <div
           v-for="prop in allProperties"
           :key="prop.id"
-          class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+          class="flex items-center gap-3 p-3 rounded-xl border border-line bg-surface"
         >
           <span class="text-2xl">🏠</span>
           <div class="flex-1 min-w-0">
-            <div class="font-medium text-gray-900 dark:text-white">{{ prop.name }}</div>
-            <div v-if="prop.address" class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ prop.address }}</div>
+            <div class="font-medium text-ink">{{ prop.name }}</div>
+            <div v-if="prop.address" class="text-xs text-ink-muted truncate">{{ prop.address }}</div>
           </div>
           <span v-if="prop.is_current" class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 font-medium">{{ t('settings.properties.principalBadge') }}</span>
         </div>
       </div>
 
       <div v-if="showAddPropertyForm" class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 space-y-3">
-        <h3 class="text-sm font-medium text-gray-900 dark:text-white">{{ t('settings.properties.newTitle') }}</h3>
+        <h3 class="text-sm font-medium text-ink">{{ t('settings.properties.newTitle') }}</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input
             v-model="newProperty.name"
             type="text"
             :placeholder="t('settings.properties.namePlaceholder')"
-            class="px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+            class="px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <input
@@ -47,14 +47,14 @@
             type="text"
             :placeholder="t('settings.properties.addressPlaceholder')"
             autocomplete="street-address"
-            class="px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+            class="px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <select
             v-model="newProperty.type"
-            class="px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+            class="px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="owned">{{ t('settings.properties.typeOwned') }}</option>
@@ -67,7 +67,7 @@
               v-model="newProperty.is_current"
               class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
             />
-            <label for="prop-is-current" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+            <label for="prop-is-current" class="text-sm text-ink-soft cursor-pointer">
               {{ t('settings.properties.setAsPrincipal') }}
             </label>
           </div>

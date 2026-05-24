@@ -1,6 +1,6 @@
 <template>
   <div class="min-w-0 w-full">
-    <label v-if="label" :for="id" class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+    <label v-if="label" :for="id" class="block text-sm text-ink-soft mb-1">
       {{ label }}
     </label>
     <input
@@ -16,10 +16,10 @@
       :disabled="disabled"
       :pattern="isDecimal ? '[0-9]*[.,]?[0-9]*' : undefined"
       @input="handleInput"
-      class="w-full min-w-0 max-w-full box-border px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-             bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+      class="w-full min-w-0 max-w-full box-border px-3 py-3 border border-line rounded-lg
+             bg-surface text-ink text-base
              focus:outline-none focus:ring-2 focus:ring-blue-500
-             disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700"
+             disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-2"
     />
   </div>
 </template>

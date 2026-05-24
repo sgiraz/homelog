@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">
+    <p class="text-ink-soft text-sm mb-4">
       {{ t('utilities.wizardStepInfo.intro') }}
     </p>
 
@@ -22,14 +22,14 @@
     />
 
     <div>
-      <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+      <label class="block text-sm text-ink-soft mb-1">
         {{ t('utilities.wizardStepInfo.typeLabel') }}
       </label>
       <select
         :value="template.utility_type"
         @change="emit('update:template', { ...template, utility_type: $event.target.value })"
-        class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-               bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+        class="w-full px-3 py-2 border border-line rounded-lg
+               bg-surface text-ink
                focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <option value="electricity">{{ t('utilities.utilityTypes.electricity') }}</option>
@@ -60,7 +60,7 @@
         'border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer',
         isDraggingFile
           ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500',
+          : 'border-line hover:border-ink-faint',
         extracting ? 'opacity-50 pointer-events-none' : ''
       ]"
       @dragover.prevent="isDraggingFile = true"
@@ -75,15 +75,15 @@
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('utilities.wizardStepInfo.analyzing') }}</span>
+        <span class="text-sm text-ink-soft">{{ t('utilities.wizardStepInfo.analyzing') }}</span>
       </div>
 
       <div v-else-if="pdfFile" class="flex flex-col items-center gap-2">
         <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ pdfFile.name }}</p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">
+        <p class="text-sm font-medium text-ink">{{ pdfFile.name }}</p>
+        <p class="text-xs text-ink-muted">
           {{ t('utilities.wizardStepInfo.pageCount', { n: pdfAnalysis?.page_count || 0 }) }}
         </p>
       </div>
@@ -92,10 +92,10 @@
         <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
-        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <p class="text-sm font-medium text-ink-soft">
           {{ t('utilities.wizardStepInfo.dropTitle') }}
         </p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.wizardStepInfo.dropSubtitle') }}</p>
+        <p class="text-xs text-ink-muted">{{ t('utilities.wizardStepInfo.dropSubtitle') }}</p>
       </div>
     </div>
 

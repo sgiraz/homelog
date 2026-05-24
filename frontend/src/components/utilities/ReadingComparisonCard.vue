@@ -1,7 +1,7 @@
 <template>
   <Card class="p-4">
     <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+      <h3 class="text-lg font-semibold text-ink">
         {{ t('utilities.comparisonCard.title') }}
       </h3>
       <button
@@ -24,10 +24,10 @@
       <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
       </svg>
-      <p class="text-gray-700 dark:text-gray-300 font-medium">{{ t('utilities.comparisonCard.empty') }}</p>
+      <p class="text-ink-soft font-medium">{{ t('utilities.comparisonCard.empty') }}</p>
       <div class="text-sm mt-3 text-left max-w-xs mx-auto space-y-2">
-        <p class="text-gray-500 dark:text-gray-400">{{ t('utilities.comparisonCard.emptyHint') }}</p>
-        <ol class="list-decimal list-inside text-gray-500 dark:text-gray-400 space-y-1">
+        <p class="text-ink-muted">{{ t('utilities.comparisonCard.emptyHint') }}</p>
+        <ol class="list-decimal list-inside text-ink-muted space-y-1">
           <li>{{ t('utilities.comparisonCard.step1') }} <strong>{{ t('utilities.comparisonCard.step1bold') }}</strong> {{ t('utilities.comparisonCard.step1cont') }}</li>
           <li>{{ t('utilities.comparisonCard.step2') }} <strong>{{ t('utilities.comparisonCard.step2bold') }}</strong> {{ t('utilities.comparisonCard.step2cont') }}</li>
           <li>{{ t('utilities.comparisonCard.step3') }} <strong>{{ t('utilities.comparisonCard.step3bold') }}</strong> {{ t('utilities.comparisonCard.step3cont') }}</li>

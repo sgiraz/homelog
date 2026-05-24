@@ -7,7 +7,7 @@
           'border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer',
           isDragging
             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500',
+            : 'border-line hover:border-ink-faint',
           pdfProcessing ? 'opacity-50 pointer-events-none' : ''
         ]"
         @dragover.prevent="isDragging = true"
@@ -28,7 +28,7 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('utilities.addUtilityModal.extracting') }}</span>
+          <span class="text-sm text-ink-soft">{{ t('utilities.addUtilityModal.extracting') }}</span>
         </div>
 
         <div v-else-if="uploadedFile" class="flex items-center justify-center gap-3">
@@ -36,13 +36,13 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div class="text-left">
-            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ uploadedFile.name }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.addUtilityModal.extractedFromContract') }}</p>
+            <p class="text-sm font-medium text-ink">{{ uploadedFile.name }}</p>
+            <p class="text-xs text-ink-muted">{{ t('utilities.addUtilityModal.extractedFromContract') }}</p>
           </div>
           <button
             type="button"
             @click.stop="clearUploadedFile"
-            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            class="text-ink-faint hover:text-ink-soft"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -55,10 +55,10 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           <div>
-            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <p class="text-sm font-medium text-ink-soft">
               {{ t('utilities.addUtilityModal.dropZoneTitle') }}
             </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p class="text-xs text-ink-muted mt-1">
               {{ t('utilities.addUtilityModal.dropZoneSubtitle') }}
             </p>
           </div>
@@ -73,10 +73,10 @@
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <!-- Tipo Servizio -->
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">
+        <label class="block text-sm text-ink-soft mb-2">
           {{ t('utilities.addUtilityModal.typeLabel') }}
         </label>
-        <div class="text-xs text-gray-400 dark:text-gray-500 mb-1.5 font-medium uppercase tracking-wider">{{ t('utilities.addUtilityModal.categoryMetered') }}</div>
+        <div class="text-xs text-ink-faint mb-1.5 font-medium uppercase tracking-wider">{{ t('utilities.addUtilityModal.categoryMetered') }}</div>
         <div class="grid grid-cols-2 gap-2 mb-3">
           <button
             v-for="type in meteredTypes"
@@ -87,14 +87,14 @@
               'p-3 rounded-lg border-2 transition-colors flex flex-col items-center gap-2',
               form.type === type.value
                 ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
-                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                : 'border-line hover:border-line'
             ]"
           >
             <span :class="['text-2xl', type.iconClass]">{{ type.icon }}</span>
-            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ type.label }}</span>
+            <span class="text-sm font-medium text-ink">{{ type.label }}</span>
           </button>
         </div>
-        <div class="text-xs text-gray-400 dark:text-gray-500 mb-1.5 font-medium uppercase tracking-wider">{{ t('utilities.addUtilityModal.categoryFixed') }}</div>
+        <div class="text-xs text-ink-faint mb-1.5 font-medium uppercase tracking-wider">{{ t('utilities.addUtilityModal.categoryFixed') }}</div>
         <div class="grid grid-cols-2 gap-2">
           <button
             v-for="type in fixedTypes"
@@ -105,11 +105,11 @@
               'p-3 rounded-lg border-2 transition-colors flex flex-col items-center gap-2',
               form.type === type.value
                 ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
-                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                : 'border-line hover:border-line'
             ]"
           >
             <span :class="['text-2xl', type.iconClass]">{{ type.icon }}</span>
-            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ type.label }}</span>
+            <span class="text-sm font-medium text-ink">{{ type.label }}</span>
           </button>
         </div>
       </div>
@@ -151,7 +151,7 @@
 
       <!-- Billing Frequency -->
       <div v-if="!isMetered">
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('utilities.addUtilityModal.billingFrequencyLabel') }}
         </label>
         <div class="flex gap-2">
@@ -161,14 +161,14 @@
             min="1"
             max="365"
             inputmode="numeric"
-            class="w-20 px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base text-center
+            class="w-20 px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base text-center
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <select
             v-model="form.billing_unit"
-            class="flex-1 px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+            class="flex-1 px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="day">{{ frequencyUnitLabel('day') }}</option>
@@ -177,7 +177,7 @@
             <option value="year">{{ frequencyUnitLabel('year') }}</option>
           </select>
         </div>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ frequencyPreview }}</p>
+        <p class="text-xs text-ink-faint mt-1">{{ frequencyPreview }}</p>
       </div>
 
       <!-- Address -->
@@ -216,7 +216,7 @@
       />
 
       <!-- Allows Self Reading -->
-      <div v-if="isMetered && form.type !== 'waste'" class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+      <div v-if="isMetered && form.type !== 'waste'" class="flex items-center gap-3 p-3 bg-surface rounded-lg">
         <input
           type="checkbox"
           id="allows-self-reading"
@@ -224,23 +224,23 @@
           class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
         />
         <div>
-          <label for="allows-self-reading" class="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+          <label for="allows-self-reading" class="text-sm font-medium text-ink cursor-pointer">
             {{ t('utilities.addUtilityModal.allowsSelfReadingLabel') }}
           </label>
-          <p class="text-xs text-gray-500 dark:text-gray-400">
+          <p class="text-xs text-ink-muted">
             {{ t('utilities.addUtilityModal.allowsSelfReadingHint') }}
           </p>
         </div>
       </div>
 
       <!-- Comparison Threshold -->
-      <div v-if="isMetered && form.type !== 'waste'" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+      <div v-if="isMetered && form.type !== 'waste'" class="p-3 bg-surface rounded-lg">
         <div class="flex items-center justify-between">
           <div>
-            <label for="comparison-threshold" class="text-sm font-medium text-gray-900 dark:text-white">
+            <label for="comparison-threshold" class="text-sm font-medium text-ink">
               {{ t('utilities.addUtilityModal.thresholdLabel') }}
             </label>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+            <p class="text-xs text-ink-muted">
               {{ t('utilities.addUtilityModal.thresholdHint') }}
             </p>
           </div>
@@ -253,24 +253,24 @@
               max="50"
               step="0.01"
               inputmode="decimal"
-              class="w-16 px-2 py-1 text-sm text-center border border-gray-300 dark:border-gray-600 rounded
-                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+              class="w-16 px-2 py-1 text-sm text-center border border-line rounded
+                     bg-surface text-ink
                      focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
-            <span class="text-sm text-gray-500 dark:text-gray-400">{{ consumptionUnitLabel }}</span>
+            <span class="text-sm text-ink-muted">{{ consumptionUnitLabel }}</span>
           </div>
         </div>
       </div>
 
       <!-- Chi paga -->
       <div v-if="members.length > 1">
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('utilities.addUtilityModal.paidByLabel') }}
         </label>
         <select
           v-model="form.paid_by_member_id"
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option :value="null">{{ t('utilities.addUtilityModal.notSpecified') }}</option>
@@ -282,32 +282,32 @@
             {{ member.name }}{{ member.role ? ` (${member.role})` : '' }}
           </option>
         </select>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ t('utilities.addUtilityModal.paidByHint') }}</p>
+        <p class="text-xs text-ink-faint mt-1">{{ t('utilities.addUtilityModal.paidByHint') }}</p>
       </div>
 
       <!-- Split Override -->
-      <div v-if="members.length > 1" class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
+      <div v-if="members.length > 1" class="p-4 bg-surface rounded-lg space-y-3">
         <div>
-          <label class="block text-sm font-medium text-gray-900 dark:text-white mb-1">
+          <label class="block text-sm font-medium text-ink mb-1">
             {{ t('utilities.addUtilityModal.splitOverrideLabel') }}
           </label>
           <select
             v-model="form.split_override"
-            class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+            class="w-full px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">{{ t('utilities.addUtilityModal.splitOverrideGlobal') }}</option>
             <option value="no_split">{{ t('utilities.addUtilityModal.splitOverrideNoSplit') }}</option>
             <option value="custom">{{ t('utilities.addUtilityModal.splitOverrideCustom') }}</option>
           </select>
-          <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+          <p class="text-xs text-ink-faint mt-1">
             {{ splitOverrideHint }}
           </p>
         </div>
 
         <div v-if="form.split_override === 'custom'" class="space-y-2">
-          <label class="block text-sm text-gray-600 dark:text-gray-400">
+          <label class="block text-sm text-ink-soft">
             {{ t('utilities.addUtilityModal.splitWithLabel') }}
           </label>
           <div
@@ -322,7 +322,7 @@
               v-model="splitMemberIds"
               class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
             />
-            <label :for="'add-split-member-' + member.id" class="text-sm text-gray-900 dark:text-white cursor-pointer">
+            <label :for="'add-split-member-' + member.id" class="text-sm text-ink cursor-pointer">
               {{ member.name }}{{ member.role ? ` (${member.role})` : '' }}
             </label>
           </div>
@@ -338,8 +338,8 @@
             class="mt-0.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
           <div>
-            <div class="text-sm text-gray-900 dark:text-white">{{ t('utilities.addUtilityModal.domiciledLabel') }}</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.addUtilityModal.domiciledHint') }}</div>
+            <div class="text-sm text-ink">{{ t('utilities.addUtilityModal.domiciledLabel') }}</div>
+            <div class="text-xs text-ink-muted">{{ t('utilities.addUtilityModal.domiciledHint') }}</div>
           </div>
         </label>
         <label class="flex items-start gap-3 cursor-pointer">
@@ -349,35 +349,35 @@
             class="mt-0.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
           <div>
-            <div class="text-sm text-gray-900 dark:text-white">{{ t('utilities.addUtilityModal.installmentsLabel') }}</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">{{ t('utilities.addUtilityModal.installmentsHint') }}</div>
+            <div class="text-sm text-ink">{{ t('utilities.addUtilityModal.installmentsLabel') }}</div>
+            <div class="text-xs text-ink-muted">{{ t('utilities.addUtilityModal.installmentsHint') }}</div>
           </div>
         </label>
       </div>
 
       <!-- Currency -->
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('utilities.addUtilityModal.currencyLabel') }}
         </label>
         <select
           v-model="form.currency"
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option v-for="opt in currencyOptions" :key="opt.value" :value="opt.value">
             {{ opt.label }}
           </option>
         </select>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <p class="text-xs text-ink-muted mt-1">
           {{ t('utilities.addUtilityModal.currencyLockNotice') }}
         </p>
       </div>
 
       <!-- Notes -->
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('utilities.addUtilityModal.notesLabel') }}
         </label>
         <textarea
@@ -385,8 +385,8 @@
           rows="2"
           :placeholder="t('utilities.addUtilityModal.notesPlaceholder')"
           autocorrect="off"
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>

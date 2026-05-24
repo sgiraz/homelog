@@ -1,7 +1,7 @@
 <template>
   <Card class="p-6">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ t('dashboard.recent.title') }}</h2>
+      <h2 class="text-xl font-bold text-ink">{{ t('dashboard.recent.title') }}</h2>
       <router-link
         v-if="expenses.length > 3"
         to="/expenses"
@@ -11,7 +11,7 @@
       </router-link>
     </div>
 
-    <div v-if="loading" class="text-center py-8 text-gray-600 dark:text-gray-400">
+    <div v-if="loading" class="text-center py-8 text-ink-soft">
       <svg class="animate-spin h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
@@ -23,7 +23,7 @@
       <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
       </svg>
-      <p class="text-gray-600 dark:text-gray-400">{{ t('dashboard.recent.empty') }}</p>
+      <p class="text-ink-soft">{{ t('dashboard.recent.empty') }}</p>
       <Button @click="emit('add')" class="mt-4">
         {{ t('dashboard.recent.addFirst') }}
       </Button>
@@ -33,13 +33,13 @@
       <div
         v-for="expense in expenses.slice(0, 3)"
         :key="expense.id"
-        class="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg
-               hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
+        class="p-3 sm:p-4 border border-line rounded-lg
+               hover:bg-surface-2 transition-colors group"
       >
         <div class="flex items-start justify-between gap-2">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="font-medium text-gray-900 dark:text-white line-clamp-2">
+              <span class="font-medium text-ink line-clamp-2">
                 {{ expense.description || t('expenses.noDescription') }}
               </span>
               <!-- Badge Split -->
@@ -62,11 +62,11 @@
                 {{ isExpenseSettled(expense) ? t('expenses.settled') : t('expenses.unsettled') }}
               </span>
             </div>
-            <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex flex-wrap items-center gap-2">
+            <div class="text-sm text-ink-soft mt-1 flex flex-wrap items-center gap-2">
               <span>{{ formatDate(expense.date) }}</span>
               <span
                 v-if="expense.category"
-                class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs"
+                class="px-2 py-0.5 bg-surface-2 rounded text-xs"
               >
                 {{ expense.category.name }}
               </span>
@@ -85,7 +85,7 @@
               {{ formatCurrency(expense.amount) }}
             </div>
             <!-- Mostra quota se split -->
-            <div v-if="expense.is_split && expense.splits?.length" class="text-xs text-gray-500 dark:text-gray-400">
+            <div v-if="expense.is_split && expense.splits?.length" class="text-xs text-ink-muted">
               {{ t('expenses.shareEach', { amount: formatCurrency(expense.splits[0]?.amount || 0) }) }}
             </div>
             <!-- Bill-linked indicator -->

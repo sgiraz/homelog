@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-paper dark:bg-gray-900">
+  <div class="min-h-screen bg-canvas">
     <!-- Skip to main content (accessibility) -->
     <a
       href="#main-content"

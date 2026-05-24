@@ -1,10 +1,10 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+  <div class="min-h-screen flex items-center justify-center bg-canvas p-4">
     <div class="w-full max-w-2xl">
       <!-- Header -->
       <div class="text-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">HomeLog</h1>
-        <p class="text-gray-500 dark:text-gray-400 mt-1">{{ t('onboarding.stepIndicator', { current: currentStep, total: totalSteps }) }}</p>
+        <h1 class="text-3xl font-bold text-ink">HomeLog</h1>
+        <p class="text-ink-muted mt-1">{{ t('onboarding.stepIndicator', { current: currentStep, total: totalSteps }) }}</p>
       </div>
 
       <!-- Step indicator -->
@@ -19,7 +19,7 @@
                   ? 'bg-green-500 text-white'
                   : currentStep === step.id
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                    : 'bg-surface-3 text-ink-muted'
               ]"
             >
               <svg v-if="currentStep > step.id" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -27,14 +27,14 @@
               </svg>
               <span v-else>{{ step.id }}</span>
             </div>
-            <span class="text-xs mt-1 text-gray-500 dark:text-gray-400 hidden sm:block">{{ step.label }}</span>
+            <span class="text-xs mt-1 text-ink-muted hidden sm:block">{{ step.label }}</span>
           </div>
           <!-- Connector line -->
           <div
             v-if="index < steps.length - 1"
             :class="[
               'flex-1 h-0.5 mx-2 transition-colors',
-              currentStep > step.id ? 'bg-green-400' : 'bg-gray-200 dark:bg-gray-700'
+              currentStep > step.id ? 'bg-green-400' : 'bg-surface-3'
             ]"
           />
         </template>
@@ -47,8 +47,8 @@
         <div v-if="currentStep === 1">
           <div class="text-center mb-6">
             <div class="text-5xl mb-3">🏠</div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('onboarding.step1.title') }}</h2>
-            <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm leading-relaxed">
+            <h2 class="text-2xl font-bold text-ink">{{ t('onboarding.step1.title') }}</h2>
+            <p class="text-ink-soft mt-2 text-sm leading-relaxed">
               {{ t('onboarding.step1.subtitle') }}
             </p>
           </div>
@@ -61,7 +61,7 @@
                 'flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-colors text-left',
                 path === 'create'
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                  : 'border-line hover:border-blue-300 dark:hover:border-blue-600 hover:bg-surface-2'
               ]"
             >
               <div class="flex items-center justify-center w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-900/50">
@@ -70,8 +70,8 @@
                 </svg>
               </div>
               <div>
-                <p class="font-semibold text-gray-900 dark:text-white text-center">{{ t('onboarding.step1.createTitle') }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">{{ t('onboarding.step1.createDescription') }}</p>
+                <p class="font-semibold text-ink text-center">{{ t('onboarding.step1.createTitle') }}</p>
+                <p class="text-xs text-ink-muted mt-1 text-center">{{ t('onboarding.step1.createDescription') }}</p>
               </div>
             </button>
 
@@ -82,7 +82,7 @@
                 'flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-colors text-left',
                 path === 'join'
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                  : 'border-line hover:border-blue-300 dark:hover:border-blue-600 hover:bg-surface-2'
               ]"
             >
               <div class="flex items-center justify-center w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/50">
@@ -91,8 +91,8 @@
                 </svg>
               </div>
               <div>
-                <p class="font-semibold text-gray-900 dark:text-white text-center">{{ t('onboarding.step1.joinTitle') }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">{{ t('onboarding.step1.joinDescription') }}</p>
+                <p class="font-semibold text-ink text-center">{{ t('onboarding.step1.joinTitle') }}</p>
+                <p class="text-xs text-ink-muted mt-1 text-center">{{ t('onboarding.step1.joinDescription') }}</p>
               </div>
             </button>
           </div>
@@ -108,8 +108,8 @@
         <div v-else-if="currentStep === 2 && path === 'create'">
           <div class="text-center mb-6">
             <div class="text-5xl mb-3">🏠</div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('onboarding.step2Create.title') }}</h2>
-            <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm">
+            <h2 class="text-2xl font-bold text-ink">{{ t('onboarding.step2Create.title') }}</h2>
+            <p class="text-ink-soft mt-2 text-sm">
               {{ t('onboarding.step2Create.subtitle') }}
             </p>
           </div>
@@ -147,8 +147,8 @@
         <div v-else-if="currentStep === 2 && path === 'join'">
           <div class="text-center mb-6">
             <div class="text-5xl mb-3">👥</div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('onboarding.step2Join.title') }}</h2>
-            <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm">
+            <h2 class="text-2xl font-bold text-ink">{{ t('onboarding.step2Join.title') }}</h2>
+            <p class="text-ink-soft mt-2 text-sm">
               {{ t('onboarding.step2Join.subtitle') }}
             </p>
           </div>
@@ -156,13 +156,13 @@
           <!-- Loading -->
           <div v-if="loadingJoinable" class="py-8 text-center">
             <div class="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ t('onboarding.step2Join.loading') }}</p>
+            <p class="mt-2 text-sm text-ink-muted">{{ t('onboarding.step2Join.loading') }}</p>
           </div>
 
           <!-- No properties available -->
           <div v-else-if="joinableProperties.length === 0" class="py-6 text-center space-y-4">
             <div class="text-4xl">🔍</div>
-            <p class="text-gray-600 dark:text-gray-400 text-sm">
+            <p class="text-ink-soft text-sm">
               {{ t('onboarding.step2Join.noProperties') }}
             </p>
             <Button @click="switchToCreate">{{ t('onboarding.step2Join.createMine') }}</Button>
@@ -178,14 +178,14 @@
                 'w-full text-left p-4 rounded-xl border-2 transition-colors',
                 selectedPropertyId === prop.id
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                  : 'border-line hover:border-blue-300 dark:hover:border-blue-600 hover:bg-surface-2'
               ]"
             >
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="font-semibold text-gray-900 dark:text-white">{{ prop.name }}</p>
-                  <p v-if="prop.address" class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ prop.address }}</p>
-                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  <p class="font-semibold text-ink">{{ prop.name }}</p>
+                  <p v-if="prop.address" class="text-sm text-ink-muted mt-0.5">{{ prop.address }}</p>
+                  <p class="text-xs text-ink-faint mt-1">
                     {{ t(`onboarding.step2Join.${(prop.residents ?? 1) === 1 ? 'memberCount_one' : 'memberCount_other'}`, { n: prop.residents ?? 1 }) }}
                   </p>
                 </div>
@@ -194,7 +194,7 @@
                     'w-5 h-5 rounded-full border-2 transition-colors flex-shrink-0',
                     selectedPropertyId === prop.id
                       ? 'border-blue-500 bg-blue-500'
-                      : 'border-gray-300 dark:border-gray-600'
+                      : 'border-line'
                   ]"
                 >
                   <svg v-if="selectedPropertyId === prop.id" class="w-full h-full text-white p-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -241,8 +241,8 @@
         <div v-else-if="currentStep === 3">
           <div class="text-center mb-6">
             <div class="text-5xl mb-3">⚙️</div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('onboarding.step3.title') }}</h2>
-            <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm">
+            <h2 class="text-2xl font-bold text-ink">{{ t('onboarding.step3.title') }}</h2>
+            <p class="text-ink-soft mt-2 text-sm">
               {{ t('onboarding.step3.subtitle') }}
             </p>
           </div>
@@ -250,11 +250,11 @@
           <div class="space-y-5">
             <!-- Currency -->
             <div>
-              <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">{{ t('onboarding.step3.currencyLabel') }}</label>
+              <label class="block text-sm text-ink-soft mb-2">{{ t('onboarding.step3.currencyLabel') }}</label>
               <select
                 v-model="preferences.currency"
-                class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+                class="w-full px-3 py-3 border border-line rounded-lg
+                       bg-surface text-ink text-base
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option v-for="c in currencies" :key="c.value" :value="c.value">
@@ -265,7 +265,7 @@
 
             <!-- Language -->
             <div>
-              <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">{{ t('onboarding.step3.languageLabel') }}</label>
+              <label class="block text-sm text-ink-soft mb-2">{{ t('onboarding.step3.languageLabel') }}</label>
               <div class="grid grid-cols-2 gap-2">
                 <button
                   v-for="l in languages"
@@ -275,7 +275,7 @@
                     'px-3 py-2 rounded-lg text-sm font-medium border transition-colors',
                     preferences.language === l.value
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      : 'border-line text-ink-soft hover:bg-surface-2'
                   ]"
                 >
                   {{ l.label }}
@@ -285,7 +285,7 @@
 
             <!-- Theme -->
             <div>
-              <label class="block text-sm text-gray-600 dark:text-gray-400 mb-2">{{ t('onboarding.step3.themeLabel') }}</label>
+              <label class="block text-sm text-ink-soft mb-2">{{ t('onboarding.step3.themeLabel') }}</label>
               <div class="grid grid-cols-3 gap-2">
                 <button
                   v-for="th in themes"
@@ -295,7 +295,7 @@
                     'px-3 py-2 rounded-lg text-sm font-medium border transition-colors',
                     preferences.theme === th.value
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      : 'border-line text-ink-soft hover:bg-surface-2'
                   ]"
                 >
                   {{ th.icon }} {{ th.label }}
@@ -322,8 +322,8 @@
         <div v-else-if="currentStep === 4">
           <div class="text-center mb-6">
             <div class="text-5xl mb-3">✨</div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('onboarding.step4.title') }}</h2>
-            <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm">
+            <h2 class="text-2xl font-bold text-ink">{{ t('onboarding.step4.title') }}</h2>
+            <p class="text-ink-soft mt-2 text-sm">
               {{ t('onboarding.step4.subtitle') }}
             </p>
           </div>
@@ -332,11 +332,11 @@
             <div
               v-for="feature in features"
               :key="feature.key"
-              class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-700"
+              class="p-4 bg-surface-2/50 rounded-xl border border-line"
             >
               <div class="text-2xl mb-2">{{ feature.icon }}</div>
-              <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">{{ t(`onboarding.step4.features.${feature.key}.title`) }}</h3>
-              <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{{ t(`onboarding.step4.features.${feature.key}.description`) }}</p>
+              <h3 class="text-sm font-semibold text-ink mb-1">{{ t(`onboarding.step4.features.${feature.key}.title`) }}</h3>
+              <p class="text-xs text-ink-muted leading-relaxed">{{ t(`onboarding.step4.features.${feature.key}.description`) }}</p>
             </div>
           </div>
 
@@ -354,7 +354,7 @@
       <div v-if="currentStep > 1" class="text-center mt-4">
         <button
           @click="currentStep--"
-          class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          class="text-sm text-ink-muted hover:text-ink-soft"
         >
           {{ t('onboarding.back') }}
         </button>

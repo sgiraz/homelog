@@ -27,10 +27,11 @@ export default {
           water: '#06B6D4',
           waste: '#10B981',
         },
-        // Warm "paper" accent tokens — shared with the landing/docs design
-        // system so the product feels like the same brand. Used with
+        // Warm brand accents — shared with the landing/docs. Used with
         // moderation: ember for primary CTAs, pine for positive/settled
-        // states, paper for warm surfaces. Blue stays for nav/links/tabs.
+        // states. Blue stays for nav/links/tabs. The neutral surface/text/
+        // border palette lives in main.css as semantic CSS-var tokens
+        // (canvas/surface/ink/line…), NOT here.
         ember: {
           light: '#E8895A',
           DEFAULT: '#D9531E',
@@ -40,12 +41,6 @@ export default {
           light: '#3E7D5C',
           DEFAULT: '#234E3A',
           deep: '#1A3B2C',
-        },
-        paper: {
-          DEFAULT: '#FBF6EC',
-          100: '#F4ECDC',
-          dark: '#1A1612',
-          'dark-2': '#221D18',
         },
       },
       fontFamily: {

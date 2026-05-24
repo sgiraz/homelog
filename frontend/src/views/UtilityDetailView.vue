@@ -4,10 +4,10 @@
     <div class="flex items-center gap-3">
       <button
         @click="goBack"
-        class="p-2 -ml-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        class="p-2 -ml-2 rounded-lg hover:bg-surface-2 transition-colors"
         :aria-label="t('utilities.detail.back')"
       >
-        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 text-ink-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
       </button>
@@ -16,8 +16,8 @@
           <span class="text-xl">{{ utilityIcon }}</span>
         </div>
         <div class="min-w-0">
-          <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">{{ utility.provider }}</h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ utilityTypeLabel }}</p>
+          <h1 class="text-xl sm:text-2xl font-bold text-ink truncate">{{ utility.provider }}</h1>
+          <p class="text-sm text-ink-muted">{{ utilityTypeLabel }}</p>
         </div>
       </div>
       <!-- Actions -->
@@ -27,7 +27,7 @@
           :href="utility.customer_portal"
           target="_blank"
           rel="noopener noreferrer"
-          class="p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+          class="p-2.5 rounded-lg hover:bg-surface-2 text-ink-muted"
           :title="t('utilities.detail.openPortal')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -37,7 +37,7 @@
         <button
           v-if="settingsStore.isPropertyAdmin"
           @click="showEditModal = true"
-          class="p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+          class="p-2.5 rounded-lg hover:bg-surface-2 text-ink-muted"
           :title="t('utilities.detail.editService')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,7 +58,7 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="text-center py-12 text-gray-500 dark:text-gray-400">
+    <div v-if="loading" class="text-center py-12 text-ink-muted">
       <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
       {{ t('utilities.loading') }}
     </div>
@@ -66,25 +66,25 @@
     <template v-else-if="utility">
       <!-- Info Cards -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div v-if="utility.service_code" class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ serviceCodeLabel }}</div>
-          <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ utility.service_code }}</div>
+        <div v-if="utility.service_code" class="p-3 bg-surface rounded-xl border border-line">
+          <div class="text-xs text-ink-muted mb-1">{{ serviceCodeLabel }}</div>
+          <div class="text-sm font-medium text-ink truncate">{{ utility.service_code }}</div>
         </div>
-        <div v-if="utility.customer_code" class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ isMetered ? t('utilities.detail.infoCustomer') : t('utilities.detail.infoContract') }}</div>
-          <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ utility.customer_code }}</div>
+        <div v-if="utility.customer_code" class="p-3 bg-surface rounded-xl border border-line">
+          <div class="text-xs text-ink-muted mb-1">{{ isMetered ? t('utilities.detail.infoCustomer') : t('utilities.detail.infoContract') }}</div>
+          <div class="text-sm font-medium text-ink truncate">{{ utility.customer_code }}</div>
         </div>
-        <div v-if="utility.power_capacity" class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.detail.infoPower') }}</div>
-          <div class="text-sm font-medium text-gray-900 dark:text-white">{{ utility.power_capacity }} kW</div>
+        <div v-if="utility.power_capacity" class="p-3 bg-surface rounded-xl border border-line">
+          <div class="text-xs text-ink-muted mb-1">{{ t('utilities.detail.infoPower') }}</div>
+          <div class="text-sm font-medium text-ink">{{ utility.power_capacity }} kW</div>
         </div>
-        <div v-if="utility.recurring_amount" class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.detail.infoFee') }}</div>
-          <div class="text-sm font-medium text-gray-900 dark:text-white">{{ t('utilities.detail.infoFeePerUnit', { amount: formatCurrency(utility.recurring_amount), unit: billingFrequencyLabel }) }}</div>
+        <div v-if="utility.recurring_amount" class="p-3 bg-surface rounded-xl border border-line">
+          <div class="text-xs text-ink-muted mb-1">{{ t('utilities.detail.infoFee') }}</div>
+          <div class="text-sm font-medium text-ink">{{ t('utilities.detail.infoFeePerUnit', { amount: formatCurrency(utility.recurring_amount), unit: billingFrequencyLabel }) }}</div>
         </div>
-        <div v-if="utility.paid_by_member?.name" class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.detail.infoPaidBy') }}</div>
-          <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ utility.paid_by_member.name }}</div>
+        <div v-if="utility.paid_by_member?.name" class="p-3 bg-surface rounded-xl border border-line">
+          <div class="text-xs text-ink-muted mb-1">{{ t('utilities.detail.infoPaidBy') }}</div>
+          <div class="text-sm font-medium text-ink truncate">{{ utility.paid_by_member.name }}</div>
         </div>
       </div>
 
@@ -99,7 +99,7 @@
               'flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
               activeTab === tab.id
                 ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                : 'text-ink-soft hover:bg-surface-2'
             ]"
           >
             <span>{{ tab.icon }}</span>

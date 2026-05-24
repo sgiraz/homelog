@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="flex justify-between items-center mb-4">
-      <span class="text-sm text-gray-500 dark:text-gray-400">
+      <span class="text-sm text-ink-muted">
         {{ t('utilities.readingsTab.count', { n: utility.readings?.length || 0 }) }}
       </span>
       <Button size="sm" @click="openAddReading">
@@ -13,7 +13,7 @@
     </div>
 
     <div v-if="!utility.readings?.length" class="text-center py-8">
-      <p class="text-gray-500 dark:text-gray-400 mb-3">{{ t('utilities.readingsTab.empty') }}</p>
+      <p class="text-ink-muted mb-3">{{ t('utilities.readingsTab.empty') }}</p>
       <Button size="sm" @click="openAddReading">{{ t('utilities.readingsTab.addReadingButton') }}</Button>
     </div>
 
@@ -27,16 +27,16 @@
         <!-- Timeline line -->
         <div class="flex flex-col items-center w-6 flex-shrink-0">
           <div class="w-3 h-3 rounded-full mt-4"
-            :class="idx === 0 ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
+            :class="idx === 0 ? 'bg-blue-500' : 'bg-surface-3'"
           />
-          <div v-if="idx < utility.readings.length - 1" class="w-px flex-1 bg-gray-200 dark:bg-gray-700" />
+          <div v-if="idx < utility.readings.length - 1" class="w-px flex-1 bg-surface-3" />
         </div>
         <!-- Content -->
         <div class="flex-1 pb-4 min-w-0">
-          <div class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div class="p-3 bg-surface rounded-xl border border-line">
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
-                <div class="font-medium text-gray-900 dark:text-white">
+                <div class="font-medium text-ink">
                   <template v-if="utility.type === 'electricity'">
                     <span v-if="reading.value_f1" class="mr-2">F1: {{ reading.value_f1 }}</span>
                     <span v-if="reading.value_f2" class="mr-2">F2: {{ reading.value_f2 }}</span>
@@ -47,7 +47,7 @@
                     {{ reading.value || '-' }} {{ consumptionUnit }}
                   </template>
                 </div>
-                <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-0.5 flex-wrap">
+                <div class="flex items-center gap-2 text-sm text-ink-muted mt-0.5 flex-wrap">
                   <span>{{ formatDate(reading.reading_date) }}</span>
                   <span v-if="reading.source === 'submitted'" class="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 text-xs rounded">
                     {{ t('utilities.readingsTab.submittedBadge') }}

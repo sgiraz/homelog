@@ -9,6 +9,48 @@
    `dark:` utility still resolves under the class-based toggle. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ───────────────────────────────────────────────────────────────────────────
+   Semantic color tokens — single source of truth for the neutral palette.
+   Components use ONE class (bg-surface, text-ink, border-line, …) with NO
+   `dark:` variant; the value flips automatically when `.dark` is on <html>.
+   Re-theming any tone (light or dark) is a one-line edit here. Channels are
+   stored as "R G B" so Tailwind's /opacity modifiers keep working via the
+   `<alpha-value>` placeholder below.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --c-canvas:    251 246 236; /* page background (warm paper) */
+  --c-surface:   255 255 255; /* cards, modals, inputs */
+  --c-surface-2: 243 244 246; /* subtle fills, hovers, chips */
+  --c-surface-3: 229 231 235; /* secondary buttons, stronger fills */
+  --c-ink:        17  24  39; /* primary text */
+  --c-ink-soft:   75  85  99; /* secondary text, labels */
+  --c-ink-muted: 107 114 128; /* tertiary text */
+  --c-ink-faint: 156 163 175; /* faint text, icons, placeholders */
+  --c-line:      229 231 235; /* borders, dividers */
+}
+.dark {
+  --c-canvas:     26  22  18; /* warm paper-dark, shared with the landing */
+  --c-surface:    34  29  24;
+  --c-surface-2:  49  42  36;
+  --c-surface-3:  60  52  44;
+  --c-ink:       255 255 255;
+  --c-ink-soft:  156 163 175;
+  --c-ink-muted: 156 163 175;
+  --c-ink-faint: 107 114 128;
+  --c-line:       58  50  42;
+}
+@theme inline {
+  --color-canvas:    rgb(var(--c-canvas));
+  --color-surface:   rgb(var(--c-surface));
+  --color-surface-2: rgb(var(--c-surface-2));
+  --color-surface-3: rgb(var(--c-surface-3));
+  --color-ink:       rgb(var(--c-ink));
+  --color-ink-soft:  rgb(var(--c-ink-soft));
+  --color-ink-muted: rgb(var(--c-ink-muted));
+  --color-ink-faint: rgb(var(--c-ink-faint));
+  --color-line:      rgb(var(--c-line));
+}
+
 @layer base {
   /* Tailwind v4 changed the default border/divide color from `gray-200` to
      `currentColor`. Preserve v3 behaviour so bare `border` / `divide-*`
@@ -24,11 +66,7 @@
 
   /* Visible focus ring for keyboard navigation */
   :focus-visible {
-    @apply outline-none ring-2 ring-blue-500 ring-offset-2;
-  }
-
-  .dark :focus-visible {
-    @apply ring-offset-gray-900;
+    @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-canvas;
   }
 
   /* Custom scrollbar */
@@ -40,10 +78,10 @@
     @apply bg-transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+    @apply bg-ink-faint rounded-full;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400 dark:bg-gray-500;
+    @apply bg-ink-muted;
   }
 }
 
