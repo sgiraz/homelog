@@ -156,7 +156,7 @@ Contributions are welcome! Here's how:
 If HomeLog is useful to you, consider supporting its development:
 
 - ⭐ Star this repository
-- ❤️ Donate via [Ko-fi](https://ko-fi.com/sgiraz) or [GitHub Sponsors](https://github.com/sponsors/sgiraz)
+- ❤️ Donate via [Ko-fi](https://ko-fi.com/sgiraz)
 - [Report bugs or suggest features](https://github.com/sgiraz/homelog/issues)
 - [Join the discussion](https://github.com/sgiraz/homelog/discussions)
 - Contribute code, translations, or documentation

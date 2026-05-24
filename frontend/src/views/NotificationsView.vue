@@ -165,6 +165,7 @@ import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { communicationsAPI, notificationsAPI, utilitiesAPI } from '@/api/client'
 import { useConfirm } from '@/composables/useConfirm'
+import { formatDate } from '@/utils/dateFormatter'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 
 const router = useRouter()
@@ -243,7 +244,7 @@ function formatTimeAgo(dateStr) {
   if (diff < 3600) return t('nav.notifications.timeAgo.minutes', { n: Math.floor(diff / 60) })
   if (diff < 86400) return t('nav.notifications.timeAgo.hours', { n: Math.floor(diff / 3600) })
   if (diff < 604800) return t('nav.notifications.timeAgo.days', { n: Math.floor(diff / 86400) })
-  return d.toLocaleDateString(settingsStore.language === 'en' ? 'en-US' : 'it-IT', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatDate(d, settingsStore.formatSettings)
 }
 
 async function fetchNotifications() {

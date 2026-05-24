@@ -59,6 +59,7 @@
             v-for="band in ['F1', 'F2', 'F3']"
             :key="band"
             :band="band"
+            :fmtNum="fmtNum"
             :providerValue="comparison['provider_' + band.toLowerCase()]"
             :userValue="comparison['user_' + band.toLowerCase()]"
             :difference="comparison['difference_' + band.toLowerCase()]"
@@ -224,10 +225,11 @@ function getStatusIcon(status) {
 
 // Sub-component for electricity band comparison
 const ReadingBandComparison = {
-  props: ['band', 'providerValue', 'userValue', 'difference', 'unit', 'threshold'],
+  props: ['band', 'providerValue', 'userValue', 'difference', 'unit', 'threshold', 'fmtNum'],
   setup(props) {
     const { t: bt } = useI18n()
-    const formatNum = (v) => v != null ? v.toLocaleString(undefined, { maximumFractionDigits: 3 }) : '-'
+    // Route through the locale-aware formatter passed down from the parent.
+    const formatNum = (v) => v != null ? props.fmtNum(v) : '-'
 
     const getBandColor = () => {
       switch (props.band) {
