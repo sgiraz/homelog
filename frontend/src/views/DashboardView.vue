@@ -128,7 +128,7 @@
 <script setup>
 defineOptions({ name: 'DashboardView' })
 
-import { ref, computed, onMounted, onActivated } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
@@ -291,20 +291,23 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000
 const METERED_TYPES = ['electricity', 'gas', 'water', 'waste']
 
 async function fetchActionables() {
+  // The brief is scoped to the current property. householdPropertyId is
+  // populated asynchronously at startup, so bail out until it's known rather
+  // than calling /utilities unscoped (which would return cross-property data
+  // and skip the balance). The watcher below re-runs us once it's set.
   const propertyId = settingsStore.householdPropertyId
+  if (!propertyId) return
   try {
-    const { data } = await utilitiesAPI.list(propertyId ? { property_id: propertyId } : {})
+    const { data } = await utilitiesAPI.list({ property_id: propertyId })
     utilities.value = data || []
   } catch {
     utilities.value = []
   }
-  if (propertyId) {
-    try {
-      const { data } = await balanceAPI.get(propertyId)
-      balanceInfo.value = data
-    } catch {
-      balanceInfo.value = null
-    }
+  try {
+    const { data } = await balanceAPI.get(propertyId)
+    balanceInfo.value = data
+  } catch {
+    balanceInfo.value = null
   }
 }
 
@@ -568,14 +571,21 @@ async function deleteExpenseConfirm(id) {
 onMounted(() => {
   fetchFiltersData()
   applyFilters()
-  fetchActionables()
 })
 
-// keep-alive caches this view, so onMounted won't re-run on return. Refresh
-// the "Da gestire" data on re-activation so paid bills / new readings /
-// settled balances disappear from the panel without a hard reload.
+// "Casa oggi" is scoped to the current property, whose id arrives
+// asynchronously after mount. Fetch as soon as it's known (covers first load),
+// and re-fetch whenever it changes.
+watch(
+  () => settingsStore.householdPropertyId,
+  (id) => { if (id) fetchActionables() }
+)
+
+// keep-alive caches this view, so onMounted won't re-run on return. Refresh on
+// re-activation (and on initial mount, when the id is already known) so paid
+// bills / new readings / settled balances drop off without a hard reload.
 onActivated(() => {
-  fetchActionables()
+  if (settingsStore.householdPropertyId) fetchActionables()
 })
 </script>
 
