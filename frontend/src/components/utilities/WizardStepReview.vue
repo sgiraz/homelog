@@ -51,7 +51,7 @@
         id="is-default"
         :checked="template.is_default"
         @change="emit('update:template', { ...template, is_default: $event.target.checked })"
-        class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+        class="w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500"
       />
       <label for="is-default" class="text-sm text-ink cursor-pointer">
         {{ t('utilities.wizardStepReview.useAsDefault', { provider: template.provider }) }}

@@ -41,7 +41,7 @@
                     <span v-if="reading.value_f1" class="mr-2">F1: {{ reading.value_f1 }}</span>
                     <span v-if="reading.value_f2" class="mr-2">F2: {{ reading.value_f2 }}</span>
                     <span v-if="reading.value_f3">F3: {{ reading.value_f3 }}</span>
-                    <span class="text-gray-400 text-sm ml-1">kWh</span>
+                    <span class="text-ink-faint text-sm ml-1">kWh</span>
                   </template>
                   <template v-else>
                     {{ reading.value || '-' }} {{ consumptionUnit }}
@@ -56,12 +56,12 @@
                     {{ t('utilities.readingsTab.billBadge', { number: readingBillMap[reading.id] }) }}
                   </span>
                 </div>
-                <div v-if="reading.notes" class="text-xs text-gray-400 mt-1">{{ reading.notes }}</div>
+                <div v-if="reading.notes" class="text-xs text-ink-faint mt-1">{{ reading.notes }}</div>
               </div>
               <div class="flex items-center gap-0.5 flex-shrink-0">
                 <button
                   @click="openEditReading(reading)"
-                  class="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                  class="p-2 rounded-lg text-ink-faint hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                   :title="t('utilities.readingsTab.editTitle')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,7 +70,7 @@
                 </button>
                 <button
                   @click="confirmDeleteReading(reading)"
-                  class="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  class="p-2 rounded-lg text-ink-faint hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                   :title="t('utilities.readingsTab.deleteTitle')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

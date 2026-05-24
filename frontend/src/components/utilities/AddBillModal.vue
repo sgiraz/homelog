@@ -33,19 +33,19 @@
             :disabled="isLocked"
           />
           <div class="mt-1.5">
-            <div v-if="rateLoading" class="text-xs text-gray-400">
+            <div v-if="rateLoading" class="text-xs text-ink-faint">
               {{ t('utilities.addBillModal.rateConverting') }}
             </div>
             <div v-else-if="form.original_amount && convertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
               {{ formatOriginal(form.original_amount, utility.currency) }} ≈ {{ formatCurrency(convertedAmount) }}
-              <span class="text-gray-400">{{ t('utilities.addBillModal.rateInfo', { rate: exchangeRate?.toFixed(6) }) }}</span>
+              <span class="text-ink-faint">{{ t('utilities.addBillModal.rateInfo', { rate: exchangeRate?.toFixed(6) }) }}</span>
             </div>
             <div v-else-if="rateError" class="space-y-1">
               <p class="text-xs text-amber-600 dark:text-amber-400">
                 {{ t('utilities.addBillModal.rateUnavailable') }}
               </p>
               <div class="flex items-center gap-2">
-                <span class="text-xs text-gray-500">{{ t('utilities.addBillModal.currencyEquals', { currency: utility.currency }) }}</span>
+                <span class="text-xs text-ink-muted">{{ t('utilities.addBillModal.currencyEquals', { currency: utility.currency }) }}</span>
                 <input
                   v-model.number="manualRate"
                   type="number"
@@ -57,7 +57,7 @@
                          bg-surface text-ink
                          focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
-                <span class="text-xs text-gray-500">{{ settingsStore.currency }}</span>
+                <span class="text-xs text-ink-muted">{{ settingsStore.currency }}</span>
               </div>
               <div v-if="form.original_amount && manualConvertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
                 {{ formatOriginal(form.original_amount, utility.currency) }} ≈ {{ formatCurrency(manualConvertedAmount) }}
@@ -195,7 +195,7 @@
           <div class="flex items-center gap-2">
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" v-model="form.has_estimated"
-                class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
+                class="w-4 h-4 text-amber-600 rounded border-line focus:ring-amber-500" />
               <span class="text-sm text-ink-soft">{{ t('utilities.addBillModal.estimatedToggle') }}</span>
             </label>
             <button type="button" @click="showEstimatedHelp = !showEstimatedHelp"
@@ -261,7 +261,7 @@
         <div v-if="!isInstallmentBased" class="flex items-center gap-3">
           <input type="checkbox" id="is-paid" v-model="form.is_paid"
             :disabled="isLocked"
-            class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+            class="w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
           <label for="is-paid" class="text-sm cursor-pointer"
             :class="isLocked ? 'text-ink-faint cursor-not-allowed' : 'text-ink'">
             {{ isLocked ? t('utilities.addBillModal.alreadyPaidLocked') : t('utilities.addBillModal.alreadyPaid') }}

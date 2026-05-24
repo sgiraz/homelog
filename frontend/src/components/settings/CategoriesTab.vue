@@ -43,7 +43,7 @@
             type="checkbox"
             id="cat-is-default"
             v-model="newCategory.is_default"
-            class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            class="w-4 h-4 text-blue-600 rounded border-line focus:ring-blue-500"
           />
           <label for="cat-is-default" class="text-sm text-ink-soft cursor-pointer">
             {{ t('settings.categories.isDefault') }}
@@ -102,7 +102,7 @@
                   </svg>
                 </button>
                 <svg
-                  :class="['w-4 h-4 ml-1 text-gray-400 transition-transform', expandedCategories.has(cat.id) ? 'rotate-180' : '']"
+                  :class="['w-4 h-4 ml-1 text-ink-faint transition-transform', expandedCategories.has(cat.id) ? 'rotate-180' : '']"
                   fill="none" stroke="currentColor" viewBox="0 0 24 24"
                 >
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -124,11 +124,11 @@
                     ref="subcategoryInput"
                   />
                   <button @click="saveSubcategory(cat.id)" class="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">{{ t('settings.categories.addSubcategoryButton') }}</button>
-                  <button @click="addSubcategoryForCat = null; newSubcategoryName = ''" class="px-3 py-2 text-sm text-ink-soft hover:text-gray-800">{{ t('settings.categories.cancel') }}</button>
+                  <button @click="addSubcategoryForCat = null; newSubcategoryName = ''" class="px-3 py-2 text-sm text-ink-soft hover:text-ink">{{ t('settings.categories.cancel') }}</button>
                 </div>
               </div>
 
-              <div v-if="!cat.subcategories?.length" class="px-4 py-2 text-sm text-gray-400 italic">
+              <div v-if="!cat.subcategories?.length" class="px-4 py-2 text-sm text-ink-faint italic">
                 {{ t('settings.categories.noSubcategories') }}
               </div>
               <div
@@ -136,7 +136,7 @@
                 :key="sub.id"
                 class="flex items-center gap-2 px-4 py-2 hover:bg-surface-2"
               >
-                <span class="w-4 h-4 text-gray-400">·</span>
+                <span class="w-4 h-4 text-ink-faint">·</span>
                 <span class="flex-1 text-sm text-ink-soft">{{ sub.name }}</span>
                 <button
                   v-if="isAdmin"
@@ -192,7 +192,7 @@
                   </svg>
                 </button>
                 <svg
-                  :class="['w-4 h-4 ml-1 text-gray-400 transition-transform', expandedCategories.has(cat.id) ? 'rotate-180' : '']"
+                  :class="['w-4 h-4 ml-1 text-ink-faint transition-transform', expandedCategories.has(cat.id) ? 'rotate-180' : '']"
                   fill="none" stroke="currentColor" viewBox="0 0 24 24"
                 >
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -213,11 +213,11 @@
                     @keyup.enter="saveSubcategory(cat.id)"
                   />
                   <button @click="saveSubcategory(cat.id)" class="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">{{ t('settings.categories.addSubcategoryButton') }}</button>
-                  <button @click="addSubcategoryForCat = null; newSubcategoryName = ''" class="px-3 py-2 text-sm text-ink-soft hover:text-gray-800">{{ t('settings.categories.cancel') }}</button>
+                  <button @click="addSubcategoryForCat = null; newSubcategoryName = ''" class="px-3 py-2 text-sm text-ink-soft hover:text-ink">{{ t('settings.categories.cancel') }}</button>
                 </div>
               </div>
 
-              <div v-if="!cat.subcategories?.length" class="px-4 py-2 text-sm text-gray-400 italic">
+              <div v-if="!cat.subcategories?.length" class="px-4 py-2 text-sm text-ink-faint italic">
                 {{ t('settings.categories.noSubcategories') }}
               </div>
               <div
@@ -225,7 +225,7 @@
                 :key="sub.id"
                 class="flex items-center gap-2 px-4 py-2 hover:bg-surface-2"
               >
-                <span class="w-4 h-4 text-gray-400">·</span>
+                <span class="w-4 h-4 text-ink-faint">·</span>
                 <span class="flex-1 text-sm text-ink-soft">{{ sub.name }}</span>
                 <button
                   @click="deleteSubcategory(cat, sub)"

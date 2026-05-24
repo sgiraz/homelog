@@ -27,21 +27,9 @@ export default {
           water: '#06B6D4',
           waste: '#10B981',
         },
-        // Warm brand accents — shared with the landing/docs. Used with
-        // moderation: ember for primary CTAs, pine for positive/settled
-        // states. Blue stays for nav/links/tabs. The neutral surface/text/
-        // border palette lives in main.css as semantic CSS-var tokens
-        // (canvas/surface/ink/line…), NOT here.
-        ember: {
-          light: '#E8895A',
-          DEFAULT: '#D9531E',
-          deep: '#B23F12',
-        },
-        pine: {
-          light: '#3E7D5C',
-          DEFAULT: '#234E3A',
-          deep: '#1A3B2C',
-        },
+        // Neutral + accent palette lives in main.css as semantic CSS-var
+        // tokens (canvas/surface/ink/line/accent/positive…), theme-able via
+        // [data-theme] — NOT here. Blue stays for nav/links/tabs.
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'system-ui', 'Arial', 'sans-serif'],

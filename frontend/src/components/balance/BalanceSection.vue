@@ -80,7 +80,7 @@
             </span>
           </h3>
           <svg
-            :class="['w-5 h-5 text-gray-400 transition-transform', unsettledOpen ? 'rotate-180' : '']"
+            :class="['w-5 h-5 text-ink-faint transition-transform', unsettledOpen ? 'rotate-180' : '']"
             fill="none" stroke="currentColor" viewBox="0 0 24 24"
           >
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -126,7 +126,7 @@
       <Card class="p-4 sm:p-6">
         <h3 class="text-lg font-semibold text-ink mb-4">{{ t('balance.history.title') }}</h3>
         <div v-if="balanceStore.settlements.length === 0" class="text-center py-8">
-          <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-16 h-16 mx-auto text-ink-faint mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
           <p class="text-ink-soft">{{ t('balance.history.empty') }}</p>
@@ -142,7 +142,7 @@
               <div class="flex-1 min-w-0">
                 <div class="font-medium text-ink flex items-center gap-2">
                   <span class="truncate">{{ settlement.from_member_name }}</span>
-                  <svg class="w-4 h-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4 shrink-0 text-ink-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
                   <span class="truncate">{{ settlement.to_member_name }}</span>

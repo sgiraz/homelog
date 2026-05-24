@@ -24,7 +24,7 @@
 
       <!-- Empty State -->
       <div v-else-if="templates.length === 0" class="text-center py-8">
-        <svg class="w-12 h-12 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-12 h-12 mx-auto text-ink-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
         <p class="mt-3 text-ink-soft">{{ t('utilities.templatesManager.empty') }}</p>
@@ -61,7 +61,7 @@
           <div class="flex items-center gap-2">
             <button
               @click="editTemplate(tpl)"
-              class="p-2 text-gray-400 hover:text-blue-500 transition-colors"
+              class="p-2 text-ink-faint hover:text-blue-500 transition-colors"
               :title="t('utilities.templatesManager.editTitle')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,7 +70,7 @@
             </button>
             <button
               @click="confirmDelete(tpl)"
-              class="p-2 text-gray-400 hover:text-red-500 transition-colors"
+              class="p-2 text-ink-faint hover:text-red-500 transition-colors"
               :title="t('utilities.templatesManager.deleteTitle')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

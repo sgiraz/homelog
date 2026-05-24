@@ -32,7 +32,7 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="projectsStore.loading" class="text-center py-12 text-gray-600">
+    <div v-if="projectsStore.loading" class="text-center py-12 text-ink-soft">
       {{ t('projects.loading') }}
     </div>
 
@@ -42,7 +42,7 @@
       <h3 class="text-xl font-semibold mb-2">
         {{ selectedStatus === '' ? t('projects.emptyAll') : t('projects.emptyFiltered', { filter: statuses.find(s => s.value === selectedStatus)?.label.toLowerCase() }) }}
       </h3>
-      <p class="text-gray-600 mb-6">
+      <p class="text-ink-soft mb-6">
         {{ t('projects.emptyDescription') }}
       </p>
       <Button @click="showAddModal = true">
@@ -254,10 +254,10 @@ function getStatusColor(status) {
   const map = {
     planned: 'bg-blue-100 text-blue-700',
     active: 'bg-green-100 text-green-700',
-    completed: 'bg-gray-100 text-gray-700',
+    completed: 'bg-surface-2 text-ink-soft',
     cancelled: 'bg-red-100 text-red-700'
   }
-  return map[status] || 'bg-gray-100 text-gray-700'
+  return map[status] || 'bg-surface-2 text-ink-soft'
 }
 
 function formatDateRange(start, end) {

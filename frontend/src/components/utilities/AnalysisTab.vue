@@ -60,23 +60,23 @@
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm text-ink-soft">{{ t('utilities.analysisTab.baseThreshold') }}</div>
-              <div class="text-xs text-gray-400">{{ t('utilities.analysisTab.baseThresholdHint') }}</div>
+              <div class="text-xs text-ink-faint">{{ t('utilities.analysisTab.baseThresholdHint') }}</div>
             </div>
             <div class="flex items-center gap-2">
               <input v-model.number="thresholdValue" type="number" min="0.5" max="50" step="0.5"
                 class="w-16 px-2 py-2 text-sm text-center border border-line rounded-lg bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              <span class="text-xs text-gray-400">{{ consumptionUnit }}</span>
+              <span class="text-xs text-ink-faint">{{ consumptionUnit }}</span>
             </div>
           </div>
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm text-ink-soft">{{ t('utilities.analysisTab.perDayThreshold') }}</div>
-              <div class="text-xs text-gray-400">{{ t('utilities.analysisTab.perDayThresholdHint') }}</div>
+              <div class="text-xs text-ink-faint">{{ t('utilities.analysisTab.perDayThresholdHint') }}</div>
             </div>
             <div class="flex items-center gap-2">
               <input v-model.number="thresholdPerDayValue" type="number" min="0.1" max="10" step="0.1"
                 class="w-16 px-2 py-2 text-sm text-center border border-line rounded-lg bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              <span class="text-xs text-gray-400">{{ t('utilities.analysisTab.perDayUnit', { unit: consumptionUnit }) }}</span>
+              <span class="text-xs text-ink-faint">{{ t('utilities.analysisTab.perDayUnit', { unit: consumptionUnit }) }}</span>
             </div>
           </div>
           <Button v-if="hasThresholdChanges" size="sm" @click="saveThreshold" :disabled="savingThreshold">

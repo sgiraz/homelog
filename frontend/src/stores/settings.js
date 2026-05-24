@@ -2,10 +2,12 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import apiClient from '@/api/client'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { useTheme } from '@/composables/useTheme'
 
 export const useSettingsStore = defineStore('settings', () => {
   // State
   const theme = ref('auto')
+  const colorTheme = ref('paper')
   const currency = ref('EUR')
   const language = ref('it')
   const dateFormat = ref('DD/MM/YYYY')
@@ -42,9 +44,11 @@ export const useSettingsStore = defineStore('settings', () => {
   // Actions
   async function loadSettings() {
     const { setTheme } = useDarkMode()
+    const { setColorTheme } = useTheme()
     try {
       const { data } = await apiClient.get('/settings')
       theme.value = data.theme || 'auto'
+      colorTheme.value = data.color_theme || 'paper'
       currency.value = data.currency || 'EUR'
       language.value = data.language || 'it'
       dateFormat.value = data.date_format || 'DD/MM/YYYY'
@@ -58,8 +62,9 @@ export const useSettingsStore = defineStore('settings', () => {
       isPropertyAdmin.value = data.is_property_admin ?? false
       pendingJoinRequest.value = data.pending_join_request ?? null
 
-      // Apply theme from server settings
+      // Apply theme + color theme from server settings
       setTheme(theme.value)
+      setColorTheme(colorTheme.value)
 
       if (data.default_split_with_member_ids) {
         try {
@@ -117,6 +122,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   async function updateSettings(updates) {
     const { setTheme } = useDarkMode()
+    const { setColorTheme } = useTheme()
     try {
       const payload = { ...updates }
 
@@ -124,6 +130,10 @@ export const useSettingsStore = defineStore('settings', () => {
       if (payload.theme !== undefined) {
         theme.value = payload.theme
         setTheme(payload.theme)
+      }
+      if (payload.color_theme !== undefined) {
+        colorTheme.value = payload.color_theme
+        setColorTheme(payload.color_theme)
       }
       if (payload.currency !== undefined) currency.value = payload.currency
       if (payload.language !== undefined) language.value = payload.language
@@ -146,6 +156,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function $reset() {
     theme.value = 'auto'
+    colorTheme.value = 'paper'
     currency.value = 'EUR'
     language.value = 'it'
     dateFormat.value = 'DD/MM/YYYY'
@@ -168,6 +179,7 @@ export const useSettingsStore = defineStore('settings', () => {
   return {
     // State
     theme,
+    colorTheme,
     currency,
     language,
     dateFormat,

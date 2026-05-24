@@ -153,7 +153,7 @@
           type="checkbox"
           id="edit-allows-self-reading"
           v-model="form.allows_self_reading"
-          class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+          class="w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500"
         />
         <div>
           <label for="edit-allows-self-reading" class="text-sm font-medium text-ink cursor-pointer">
@@ -280,7 +280,7 @@
               :id="'split-member-' + member.id"
               :value="member.id"
               v-model="splitMemberIds"
-              class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              class="w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500"
             />
             <label :for="'split-member-' + member.id" class="text-sm text-ink cursor-pointer">
               {{ member.name }}{{ member.role ? ` (${member.role})` : '' }}
@@ -295,7 +295,7 @@
           <input
             type="checkbox"
             v-model="form.is_domiciled"
-            class="mt-0.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            class="mt-0.5 w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500"
           />
           <div>
             <div class="text-sm text-ink">{{ t('utilities.addUtilityModal.domiciledLabel') }}</div>
@@ -306,7 +306,7 @@
           <input
             type="checkbox"
             v-model="form.is_installment_based"
-            class="mt-0.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            class="mt-0.5 w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500"
           />
           <div>
             <div class="text-sm text-ink">{{ t('utilities.addUtilityModal.installmentsLabel') }}</div>

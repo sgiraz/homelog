@@ -38,7 +38,7 @@ const sizeClasses = {
 }
 
 const variants = {
-  primary: 'bg-ember hover:bg-ember-deep text-white',
+  primary: 'bg-accent hover:bg-accent-deep text-white',
   secondary: 'bg-surface-3 hover:bg-surface-2 text-ink',
   danger: 'bg-red-600 hover:bg-red-700 text-white',
   success: 'bg-green-600 hover:bg-green-700 text-white'

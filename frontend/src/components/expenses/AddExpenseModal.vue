@@ -53,19 +53,19 @@
 
         <!-- Conversion preview -->
         <div v-if="isForeignCurrency && form.amount" class="mt-1.5">
-          <div v-if="rateLoading" class="text-xs text-gray-400">
+          <div v-if="rateLoading" class="text-xs text-ink-faint">
             {{ t('expenses.modal.rateLoading') }}
           </div>
           <div v-else-if="convertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
             {{ formatOriginal(form.amount, selectedCurrency) }} ≈ {{ formatCurrency(convertedAmount) }}
-            <span class="text-gray-400">{{ t('expenses.modal.rateInfo', { rate: exchangeRate?.toFixed(6) }) }}</span>
+            <span class="text-ink-faint">{{ t('expenses.modal.rateInfo', { rate: exchangeRate?.toFixed(6) }) }}</span>
           </div>
           <div v-else-if="rateError" class="space-y-1">
             <p class="text-xs text-amber-600 dark:text-amber-400">
               {{ t('expenses.modal.rateUnavailable') }}
             </p>
             <div class="flex items-center gap-2">
-              <span class="text-xs text-gray-500">1 {{ selectedCurrency }} =</span>
+              <span class="text-xs text-ink-muted">1 {{ selectedCurrency }} =</span>
               <input
                 v-model.number="manualRate"
                 type="number"
@@ -77,7 +77,7 @@
                        bg-surface text-ink
                        focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
-              <span class="text-xs text-gray-500">{{ settingsStore.currency }}</span>
+              <span class="text-xs text-ink-muted">{{ settingsStore.currency }}</span>
             </div>
             <div v-if="manualConvertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
               {{ formatOriginal(form.amount, selectedCurrency) }} ≈ {{ formatCurrency(manualConvertedAmount) }}
@@ -184,7 +184,7 @@
             type="checkbox"
             id="split-checkbox"
             v-model="form.is_split"
-            class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            class="w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500"
           />
           <label for="split-checkbox" class="text-sm font-medium text-ink cursor-pointer">
             {{ t('expenses.modal.splitToggle') }}
@@ -207,10 +207,10 @@
                   type="radio"
                   :value="user.id"
                   v-model="form.paid_by_member_id"
-                  class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  class="w-4 h-4 text-blue-600 border-line focus:ring-blue-500"
                 />
                 <span class="text-ink">{{ user.name }}</span>
-                <span v-if="user.user_id === authStore.user?.id" class="text-xs text-gray-500">{{ t('expenses.modal.paidByYou') }}</span>
+                <span v-if="user.user_id === authStore.user?.id" class="text-xs text-ink-muted">{{ t('expenses.modal.paidByYou') }}</span>
               </label>
             </div>
           </div>
@@ -230,7 +230,7 @@
                   type="checkbox"
                   :value="user.id"
                   v-model="form.split_with_member_ids"
-                  class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  class="w-4 h-4 text-blue-600 rounded border-line focus:ring-blue-500"
                 />
                 <span class="text-ink">{{ user.name }}</span>
               </label>

@@ -70,7 +70,7 @@
             type="checkbox"
             id="is-submitted"
             v-model="form.is_submitted"
-            class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            class="w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500"
           />
           <label for="is-submitted" class="text-sm text-ink cursor-pointer">
             {{ t('utilities.addReadingModal.submittedLabel') }}

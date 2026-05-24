@@ -97,7 +97,7 @@
                   :checked="inst.is_paid"
                   :disabled="inst.is_locked"
                   @change="toggleInstallmentPaid(bill, inst, $event.target.checked)"
-                  class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="w-4 h-4 text-purple-600 rounded border-line focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   :title="inst.is_locked ? lockedHint : ''"
                 />
                 <span class="text-ink-muted w-10">#{{ inst.number }}</span>
@@ -160,7 +160,7 @@
             </button>
             <button
               @click="openEditBill(bill)"
-              class="p-2.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              class="p-2.5 rounded-lg text-ink-faint hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
               :title="bill.is_locked ? t('utilities.billsTab.viewDetailsTitle') : t('utilities.billsTab.editTitle')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,7 +170,7 @@
             <button
               :disabled="bill.is_locked"
               @click="confirmDeleteBill(bill)"
-              class="p-2.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400"
+              class="p-2.5 rounded-lg text-ink-faint hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink-faint"
               :title="bill.is_locked ? lockedHint : t('utilities.billsTab.deleteTitle')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -53,12 +53,12 @@
                         peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer
                         peer-checked:after:translate-x-full
                         peer-checked:after:border-white after:content-[''] after:absolute
-                        after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300
+                        after:top-[2px] after:left-[2px] after:bg-white after:border-line
                         after:border after:rounded-full after:h-5 after:w-5 after:transition-all
                         peer-checked:bg-blue-600">
             </div>
           </label>
-          <span v-else class="ml-4 text-sm font-medium" :class="splitMode ? 'text-green-600 dark:text-green-400' : 'text-gray-400'">
+          <span v-else class="ml-4 text-sm font-medium" :class="splitMode ? 'text-green-600 dark:text-green-400' : 'text-ink-faint'">
             {{ splitMode ? t('settings.family.splitActive') : t('settings.family.splitInactive') }}
           </span>
         </div>
@@ -82,7 +82,7 @@
                   :value="member.id"
                   v-model="defaultSplitMemberIds"
                   @change="emitUpdateUserSettings"
-                  class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                  class="w-4 h-4 text-blue-600 rounded border-line focus:ring-blue-500 cursor-pointer"
                 />
                 <div class="flex items-center gap-2 flex-1 min-w-0">
                   <img
@@ -109,7 +109,7 @@
                     v-if="isAdmin && !member.is_virtual && member.user_id !== currentUserId"
                     @click="toggleAdminRole(member)"
                     class="p-2 transition-colors"
-                    :class="member.user_role === 'admin' ? 'text-amber-500 hover:text-amber-700' : 'text-gray-400 hover:text-amber-500'"
+                    :class="member.user_role === 'admin' ? 'text-amber-500 hover:text-amber-700' : 'text-ink-faint hover:text-amber-500'"
                     :title="member.user_role === 'admin' ? t('settings.family.demoteAdminTooltip') : t('settings.family.promoteAdminTooltip')"
                   >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -9,9 +9,9 @@
       <!-- ── Demo banner (only on demo instances) ── -->
       <div
         v-if="isDemoMode && mode === 'login'"
-        class="mb-6 p-4 rounded-xl bg-surface-2 border border-ember/20 dark:border-ember/30 space-y-3 text-center"
+        class="mb-6 p-4 rounded-xl bg-surface-2 border border-accent-soft/30 space-y-3 text-center"
       >
-        <p class="text-sm font-semibold text-ember-deep dark:text-ember-light">
+        <p class="text-sm font-semibold text-accent-soft">
           🎭 {{ t('demo.login.title') }}
         </p>
         <p class="text-xs text-ink-soft">
@@ -26,7 +26,7 @@
             :href="links.github"
             target="_blank"
             rel="noopener"
-            class="font-semibold underline hover:no-underline text-ember-deep dark:text-ember-light"
+            class="font-semibold underline hover:no-underline text-accent-soft"
           >
             {{ t('demo.login.selfHostLink') }}
           </a>

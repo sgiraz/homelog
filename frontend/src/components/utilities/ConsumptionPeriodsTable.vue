@@ -40,10 +40,10 @@
           <tr class="border-t-2 border-ink-faint font-semibold">
             <td class="py-2 px-1.5 text-ink">{{ t('utilities.consumptionPeriods.total') }}</td>
             <td class="py-2 px-1.5 text-right text-ink whitespace-nowrap tabular-nums">
-              {{ fmtNum(consumptionSummary?.total_user || 0) }} <span class="text-gray-400 font-normal">{{ getUnit() }}</span>
+              {{ fmtNum(consumptionSummary?.total_user || 0) }} <span class="text-ink-faint font-normal">{{ getUnit() }}</span>
             </td>
             <td class="py-2 px-1.5 text-right text-ink whitespace-nowrap tabular-nums">
-              {{ fmtNum(consumptionSummary?.total_provider || 0) }} <span class="text-gray-400 font-normal">{{ getUnit() }}</span>
+              {{ fmtNum(consumptionSummary?.total_provider || 0) }} <span class="text-ink-faint font-normal">{{ getUnit() }}</span>
             </td>
             <td :class="['py-2 px-1.5 text-right whitespace-nowrap tabular-nums', getDiffClass(consumptionSummary?.cumulative_difference)]">
               {{ fmtDiff(consumptionSummary?.cumulative_difference || 0) }}

@@ -13,7 +13,7 @@
     </div>
 
     <!-- Loading state -->
-    <div v-else-if="deleteStep === 'loading'" class="text-sm text-gray-500 py-4 text-center">
+    <div v-else-if="deleteStep === 'loading'" class="text-sm text-ink-muted py-4 text-center">
       {{ t('settings.deleteAccount.loading') }}
     </div>
 

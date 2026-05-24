@@ -31,7 +31,7 @@
         </button>
         <button
           @click="confirmDelete"
-          class="p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 dark:hover:text-red-400"
+          class="p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-ink-faint hover:text-red-500 dark:hover:text-red-400"
           :title="t('projects.detail.deleteTooltip')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,7 +42,7 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="text-center py-12 text-gray-600">
+    <div v-if="loading" class="text-center py-12 text-ink-soft">
       {{ t('projects.detail.loading') }}
     </div>
 
@@ -402,10 +402,10 @@ function getStatusColor(status) {
   const map = {
     planned: 'bg-blue-100 text-blue-700',
     active: 'bg-green-100 text-green-700',
-    completed: 'bg-gray-100 text-gray-700',
+    completed: 'bg-surface-2 text-ink-soft',
     cancelled: 'bg-red-100 text-red-700'
   }
-  return map[status] || 'bg-gray-100 text-gray-700'
+  return map[status] || 'bg-surface-2 text-ink-soft'
 }
 
 function goBack() {

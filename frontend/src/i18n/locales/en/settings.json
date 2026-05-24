@@ -33,6 +33,14 @@
     "themeLight": "Light",
     "themeDark": "Dark",
     "themeAuto": "Auto",
+    "colorTheme": "Color theme",
+    "themes": {
+      "paper": "Paper",
+      "slate": "Slate",
+      "forest": "Forest",
+      "ocean": "Ocean",
+      "plum": "Plum"
+    },
     "currency": "Currency",
     "language": "Language",
     "dateFormat": "Date Format",

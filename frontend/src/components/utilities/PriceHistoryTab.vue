@@ -37,7 +37,7 @@
                 <div class="text-sm text-ink-muted mt-0.5">
                   {{ t('utilities.priceHistoryTab.fromDate', { date: formatDate(change.effective_date) }) }}
                 </div>
-                <div v-if="change.reason" class="text-xs text-gray-400 mt-1">{{ change.reason }}</div>
+                <div v-if="change.reason" class="text-xs text-ink-faint mt-1">{{ change.reason }}</div>
                 <div v-if="change.cancellation_deadline" class="mt-1 px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs text-yellow-700 dark:text-yellow-300 inline-block">
                   {{ t('utilities.priceHistoryTab.cancellationDeadline', { date: formatDate(change.cancellation_deadline) }) }}
                 </div>
@@ -53,7 +53,7 @@
       <div class="text-center">
         <div class="text-xs text-ink-muted mb-1">{{ t('utilities.priceHistoryTab.currentAmount') }}</div>
         <div class="text-2xl font-bold text-ink">{{ formatCurrency(utility.recurring_amount) }}</div>
-        <div class="text-xs text-gray-400 mt-1">{{ t('utilities.priceHistoryTab.perMonth') }}</div>
+        <div class="text-xs text-ink-faint mt-1">{{ t('utilities.priceHistoryTab.perMonth') }}</div>
       </div>
     </Card>
   </div>

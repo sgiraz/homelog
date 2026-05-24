@@ -34,6 +34,7 @@ func NewSettingsHandler(db *gorm.DB) *SettingsHandler {
 // UserSettingsResponse represents the user settings response
 type UserSettingsResponse struct {
 	Theme                     string                  `json:"theme"`
+	ColorTheme                string                  `json:"color_theme"`
 	Currency                  string                  `json:"currency"`
 	Language                  string                  `json:"language"`
 	DateFormat                string                  `json:"date_format"`
@@ -59,6 +60,7 @@ type PendingJoinRequestInfo struct {
 // UpdateUserSettingsRequest represents the request for updating user settings
 type UpdateUserSettingsRequest struct {
 	Theme                     *string `json:"theme,omitempty"`
+	ColorTheme                *string `json:"color_theme,omitempty"`
 	Currency                  *string `json:"currency,omitempty"`
 	Language                  *string `json:"language,omitempty"`
 	DateFormat                *string `json:"date_format,omitempty"`
@@ -145,6 +147,7 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 
 	c.JSON(http.StatusOK, UserSettingsResponse{
 		Theme:                     settings.Theme,
+		ColorTheme:                settings.ColorTheme,
 		Currency:                  settings.Currency,
 		Language:                  settings.Language,
 		DateFormat:                dateFormat,
@@ -200,6 +203,9 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 	// Update fields if provided
 	if req.Theme != nil {
 		settings.Theme = *req.Theme
+	}
+	if req.ColorTheme != nil {
+		settings.ColorTheme = *req.ColorTheme
 	}
 	if req.Currency != nil {
 		settings.Currency = *req.Currency
@@ -264,6 +270,7 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 
 	c.JSON(http.StatusOK, UserSettingsResponse{
 		Theme:                     settings.Theme,
+		ColorTheme:                settings.ColorTheme,
 		Currency:                  settings.Currency,
 		Language:                  settings.Language,
 		DateFormat:                updateDateFormat,

@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="isDemoMode"
-    class="bg-gradient-to-r from-ember to-ember-deep text-white text-sm"
+    class="bg-gradient-to-r from-accent to-accent-deep text-white text-sm"
     role="status"
   >
     <div class="max-w-7xl mx-auto px-4 py-2 flex items-center gap-3">

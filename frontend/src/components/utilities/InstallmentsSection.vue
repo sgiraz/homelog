@@ -18,7 +18,7 @@
           :checked="!!inst.is_paid"
           :disabled="instUpdating === inst.id || !!inst.is_locked"
           @change="togglePaid(inst, $event.target.checked)"
-          class="w-5 h-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-5 h-5 text-purple-600 rounded border-line focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
           :title="inst.is_locked ? t('utilities.installments.lockedTitle') : (inst.is_paid ? t('utilities.installments.paidTitle') : t('utilities.installments.unpaidTitle'))"
         />
       </div>
@@ -35,7 +35,7 @@
       <button v-if="!isEditing" type="button" @click="removeInstallment(idx)"
         class="text-red-600 dark:text-red-400 text-xs pb-2 px-1 hover:underline"
         :disabled="installments.length <= 1">−</button>
-      <span v-else class="text-xs pb-2 px-1" :class="inst.is_paid ? 'text-green-600 dark:text-green-400' : 'text-gray-400'">
+      <span v-else class="text-xs pb-2 px-1" :class="inst.is_paid ? 'text-green-600 dark:text-green-400' : 'text-ink-faint'">
         {{ inst.is_paid ? '✓' : '—' }}
       </span>
     </div>

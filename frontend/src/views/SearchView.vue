@@ -20,7 +20,7 @@
 
         <!-- Search input -->
         <div class="flex-1 relative">
-          <span class="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">
+          <span class="absolute inset-y-0 left-3 flex items-center text-ink-faint pointer-events-none">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
@@ -66,7 +66,7 @@
             d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
         </svg>
         <p class="text-sm">{{ t('search.promptTitle') }}</p>
-        <p class="text-xs mt-1 text-gray-400">{{ t('search.promptHint') }}</p>
+        <p class="text-xs mt-1 text-ink-faint">{{ t('search.promptHint') }}</p>
       </div>
 
       <!-- Loading -->
@@ -87,7 +87,7 @@
         <section v-for="group in groupedHits" :key="group.type">
           <h2 class="px-2 text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
             {{ group.label }}
-            <span class="ml-1 text-gray-400">({{ group.hits.length }})</span>
+            <span class="ml-1 text-ink-faint">({{ group.hits.length }})</span>
           </h2>
           <ul class="bg-surface rounded-2xl overflow-hidden divide-y divide-line shadow-sm">
             <li v-for="hit in group.hits" :key="`${hit.entity_type}-${hit.entity_id}`">

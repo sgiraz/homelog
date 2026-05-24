@@ -20,6 +20,30 @@
         </div>
 
         <div>
+          <label class="block text-sm font-medium text-ink-soft mb-2">{{ t('settings.preferences.colorTheme') }}</label>
+          <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            <button
+              v-for="th in THEMES"
+              :key="th.id"
+              type="button"
+              @click="selectColorTheme(th.id)"
+              class="flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-colors"
+              :class="preferences.color_theme === th.id
+                ? 'border-accent ring-2 ring-accent/40'
+                : 'border-line hover:border-ink-faint'"
+              :aria-pressed="preferences.color_theme === th.id"
+            >
+              <span class="flex h-8 w-full overflow-hidden rounded-lg border border-line">
+                <span class="flex-1" :style="{ backgroundColor: th.swatch[0] }"></span>
+                <span class="flex-1" :style="{ backgroundColor: th.swatch[1] }"></span>
+                <span class="flex-1" :style="{ backgroundColor: th.swatch[2] }"></span>
+              </span>
+              <span class="text-xs font-medium text-ink">{{ t('settings.preferences.themes.' + th.id) }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
           <label class="block text-sm font-medium text-ink-soft mb-2">{{ t('settings.preferences.currency') }}</label>
           <select
             v-model="preferences.currency"
@@ -79,7 +103,7 @@
         </button>
       </div>
 
-      <div v-if="templatesLoading" class="text-sm text-gray-500 py-4 text-center">
+      <div v-if="templatesLoading" class="text-sm text-ink-muted py-4 text-center">
         {{ t('common.states.loading') }}
       </div>
 
@@ -104,7 +128,7 @@
           <button
             type="button"
             @click="editTemplate(tpl)"
-            class="p-1.5 rounded hover:bg-surface-3 text-gray-400 hover:text-blue-500"
+            class="p-1.5 rounded hover:bg-surface-3 text-ink-faint hover:text-blue-500"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -113,7 +137,7 @@
           <button
             type="button"
             @click="deleteTemplate(tpl)"
-            class="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500"
+            class="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-ink-faint hover:text-red-500"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -190,12 +214,12 @@
           <label class="flex items-center justify-between cursor-pointer">
             <span class="text-sm text-ink-soft">{{ t('settings.preferences.notifications.joinRequests') }}</span>
             <input type="checkbox" v-model="notifyJoinRequests" @change="updateNotificationPrefs"
-                   class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+                   class="w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500" />
           </label>
           <label class="flex items-center justify-between cursor-pointer">
             <span class="text-sm text-ink-soft">{{ t('settings.preferences.notifications.sharedExpenses') }}</span>
             <input type="checkbox" v-model="notifySharedExpenses" @change="updateNotificationPrefs"
-                   class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+                   class="w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500" />
           </label>
         </div>
         <div>
@@ -291,6 +315,8 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { useTheme } from '@/composables/useTheme'
+import { THEMES } from '@/config/themes'
 import { authAPI, expenseTemplatesAPI, categoriesAPI } from '@/api/client'
 import apiClient from '@/api/client'
 import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
@@ -304,9 +330,11 @@ const { t } = useI18n()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const { setTheme } = useDarkMode()
+const { setColorTheme } = useTheme()
 
 const preferences = ref({
   theme: 'auto',
+  color_theme: 'paper',
   currency: 'EUR',
   language: 'it',
   date_format: 'DD/MM/YYYY'
@@ -422,6 +450,7 @@ async function loadUserSettings() {
     const { data } = await apiClient.get('/settings')
     preferences.value = {
       theme: data.theme || 'auto',
+      color_theme: data.color_theme || 'paper',
       currency: data.currency || 'EUR',
       language: data.language || 'it',
       date_format: data.date_format || 'DD/MM/YYYY'
@@ -433,6 +462,17 @@ async function loadUserSettings() {
     setTheme(preferences.value.theme)
   } catch {
     console.log('Using default user settings')
+  }
+}
+
+async function selectColorTheme(id) {
+  preferences.value.color_theme = id
+  setColorTheme(id) // apply instantly; persist in the background
+  try {
+    await apiClient.put('/settings', { color_theme: id })
+    settingsStore.colorTheme = id
+  } catch (err) {
+    console.error('Error updating color theme:', err)
   }
 }
 

@@ -119,13 +119,13 @@
                 {{ notif.content }}
               </p>
               <div class="flex items-center gap-3 mt-2">
-                <span v-if="notif.utility?.provider" class="text-xs text-gray-400">
+                <span v-if="notif.utility?.provider" class="text-xs text-ink-faint">
                   {{ notif.utility.provider }}
                 </span>
-                <span v-else-if="notif.property?.name" class="text-xs text-gray-400">
+                <span v-else-if="notif.property?.name" class="text-xs text-ink-faint">
                   {{ notif.property.name }}
                 </span>
-                <span class="text-xs text-gray-400">
+                <span class="text-xs text-ink-faint">
                   {{ formatTimeAgo(notif.created_at) }}
                 </span>
                 <span
@@ -140,7 +140,7 @@
             <!-- Delete button -->
             <button
               @click.stop="handleDelete(notif)"
-              class="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
+              class="p-2 rounded-lg text-ink-faint hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
               :title="t('notifications.deleteAria')"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

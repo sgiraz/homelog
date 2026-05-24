@@ -41,7 +41,7 @@
 
             <span
               class="absolute -bottom-7 text-[10px] uppercase tracking-wider font-bold whitespace-nowrap"
-              :class="step === index + 1 ? 'text-blue-500' : 'text-gray-400'"
+              :class="step === index + 1 ? 'text-blue-500' : 'text-ink-faint'"
             >
               {{ stepInfo }}
             </span>

@@ -13,6 +13,19 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="HomeLog">
     <title>HomeLog - Gestione Spese</title>
+    <!-- Apply saved dark mode + color theme before first paint (no flash). -->
+    <script>
+      (function () {
+        try {
+          var m = localStorage.getItem('themeMode');
+          var dark = m === 'dark' || ((m === null || m === 'auto') &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+          var t = localStorage.getItem('colorTheme');
+          if (t) document.documentElement.dataset.theme = t;
+        } catch (e) { /* storage blocked — defaults apply */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>

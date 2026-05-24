@@ -31,7 +31,7 @@
         </div>
         <!-- Chevron -->
         <svg
-          :class="['w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ml-2', expandedCards.has(comparison.bill_id) ? 'rotate-180' : '']"
+          :class="['w-4 h-4 text-ink-faint transition-transform flex-shrink-0 ml-2', expandedCards.has(comparison.bill_id) ? 'rotate-180' : '']"
           fill="none" stroke="currentColor" viewBox="0 0 24 24"
         >
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -74,14 +74,14 @@
             <p class="text-xs text-ink-muted mb-1">{{ t('utilities.comparisonAccordion.providerLabel') }}</p>
             <p class="text-base font-semibold text-ink">
               {{ comparison.provider_reading != null ? fmtNum(comparison.provider_reading) : '-' }}
-              <span class="text-xs font-normal text-gray-500">{{ getUnit() }}</span>
+              <span class="text-xs font-normal text-ink-muted">{{ getUnit() }}</span>
             </p>
           </div>
           <div class="text-center p-3 bg-surface rounded-lg">
             <p class="text-xs text-ink-muted mb-1">{{ t('utilities.comparisonAccordion.selfLabel') }}</p>
             <p class="text-base font-semibold text-ink">
               {{ comparison.user_reading != null ? fmtNum(comparison.user_reading) : '-' }}
-              <span class="text-xs font-normal text-gray-500">{{ getUnit() }}</span>
+              <span class="text-xs font-normal text-ink-muted">{{ getUnit() }}</span>
             </p>
           </div>
           <div v-if="comparison.difference != null" class="col-span-2 text-center">
@@ -236,12 +236,12 @@ const ReadingBandComparison = {
         case 'F1': return 'text-red-600 dark:text-red-400'
         case 'F2': return 'text-yellow-600 dark:text-yellow-400'
         case 'F3': return 'text-green-600 dark:text-green-400'
-        default: return 'text-gray-600'
+        default: return 'text-ink-soft'
       }
     }
 
     const getDiffColor = () => {
-      if (props.difference == null) return 'text-gray-500'
+      if (props.difference == null) return 'text-ink-muted'
       const abs = Math.abs(props.difference)
       const threshold = props.threshold || 2
       if (abs > threshold * 2) return 'text-red-600'

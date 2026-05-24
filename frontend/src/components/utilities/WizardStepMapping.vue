@@ -43,7 +43,7 @@
               <button
                 v-if="mappings[field.key]"
                 @click="emit('clear-mapping', field.key)"
-                class="text-gray-400 hover:text-red-500 transition-colors"
+                class="text-ink-faint hover:text-red-500 transition-colors"
                 :title="t('utilities.wizardStepMapping.removeMapping')"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

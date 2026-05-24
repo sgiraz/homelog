@@ -50,7 +50,7 @@
     <!-- Empty State -->
     <div v-else-if="utilitiesStore.utilities.length === 0" class="text-center py-12">
       <Card class="p-8">
-        <svg class="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-16 h-16 mx-auto text-ink-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
         <h3 class="mt-4 text-lg font-medium text-ink">{{ t('utilities.empty.title') }}</h3>
@@ -131,7 +131,7 @@
                 <h3 class="font-bold text-ink truncate">{{ getUtilityName(utility.type) }}</h3>
                 <p class="text-sm text-ink-muted truncate">{{ utility.provider }}</p>
               </div>
-              <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5 text-ink-faint flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
             </div>

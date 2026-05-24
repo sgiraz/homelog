@@ -65,7 +65,7 @@
               type="checkbox"
               id="prop-is-current"
               v-model="newProperty.is_current"
-              class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              class="w-4 h-4 text-blue-600 rounded border-line focus:ring-blue-500"
             />
             <label for="prop-is-current" class="text-sm text-ink-soft cursor-pointer">
               {{ t('settings.properties.setAsPrincipal') }}

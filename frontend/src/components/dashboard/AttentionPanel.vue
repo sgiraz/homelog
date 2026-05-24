@@ -1,8 +1,8 @@
 <template>
-  <Card class="p-4 sm:p-5 border-l-4 border-l-ember">
+  <Card class="p-4 sm:p-5 border-l-4 border-l-accent">
     <!-- Header: warm "home brief" identity + dynamic subtitle -->
     <div class="flex items-center gap-3 pb-3 mb-3 border-b border-line/60">
-      <span class="w-9 h-9 rounded-xl grid place-items-center shrink-0 bg-ember/10 text-ember dark:bg-ember/20 dark:text-ember-light">
+      <span class="w-9 h-9 rounded-xl grid place-items-center shrink-0 bg-accent-soft/15 text-accent-soft">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
@@ -19,7 +19,7 @@
 
     <!-- Calm "all clear" state -->
     <div v-if="!items.length" class="flex items-start gap-3 py-1">
-      <span class="w-8 h-8 rounded-lg grid place-items-center shrink-0 bg-pine/10 text-pine dark:bg-pine/25 dark:text-pine-light">
+      <span class="w-8 h-8 rounded-lg grid place-items-center shrink-0 bg-positive/15 text-positive">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
         </svg>
@@ -102,8 +102,8 @@ const toneChip = {
   danger: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300',
   warn: 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300',
   info: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300',
-  positive: 'bg-pine/10 text-pine dark:bg-pine/25 dark:text-pine-light',
-  accent: 'bg-ember/10 text-ember dark:bg-ember/20 dark:text-ember-light',
+  positive: 'bg-positive/15 text-positive',
+  accent: 'bg-accent-soft/15 text-accent-soft',
 }
 
 // Small inline icon set keyed by item.icon
