@@ -25,21 +25,47 @@ const isIt = computed(() => (lang.value || '').toLowerCase().startsWith('it'))
   </Layout>
 </template>
 
-<style scoped>
+<!--
+  Unscoped on purpose: the banner reserves layout space through VitePress's
+  --vp-layout-top-height variable, which the fixed nav, sidebar and content all
+  read to offset themselves. Without it the nav sits at top:0 over the banner.
+-->
+<style>
+:root {
+  --vp-layout-top-height: 36px;
+}
 .wip-banner {
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 30;
-  text-align: center;
+  left: 0;
+  right: 0;
+  z-index: var(--vp-z-index-layout-top);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  height: var(--vp-layout-top-height);
+  padding: 0 16px;
   font-size: 13px;
-  padding: 6px 16px;
-  color: #fff;
-  background: linear-gradient(90deg, #D9531E, #B23F12);
+  line-height: 1.25;
+  text-align: center;
+  color: #fbf6ec;
+  background: linear-gradient(90deg, #d9531e, #b23f12);
 }
 .wip-banner a {
-  color: #fff;
+  color: #fbf6ec;
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
+  white-space: nowrap;
+}
+/* On phones the message wraps to two lines — give it the room it needs. */
+@media (max-width: 768px) {
+  :root {
+    --vp-layout-top-height: 56px;
+  }
+  .wip-banner {
+    font-size: 12px;
+  }
 }
 </style>

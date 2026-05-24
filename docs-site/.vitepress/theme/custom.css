@@ -1,15 +1,68 @@
-/* HomeLog docs — warm "ember" accent to match homelog.dev. */
-:root {
-  --vp-c-brand-1: #B23F12;
-  --vp-c-brand-2: #D9531E;
-  --vp-c-brand-3: #D9531E;
-  --vp-c-brand-soft: rgba(217, 83, 30, 0.14);
+/* HomeLog docs — warm "paper" identity shared with homelog.dev.
+   Palette and fonts mirror the landing page so the two sites feel like one
+   product. Fonts (Fraunces / Hanken Grotesk / Space Mono) are loaded from the
+   config head; here we just wire them in and recolour VitePress's tokens. */
 
-  --vp-home-hero-name-color: #D9531E;
+/* ── Typography ───────────────────────────────────────────── */
+:root {
+  --vp-font-family-base: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, sans-serif;
+}
+.VPHero .name,
+.VPHero .text,
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.vp-doc h4 {
+  font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+  letter-spacing: -0.01em;
 }
 
+/* ── Brand (ember accent, matches homelog.dev) ────────────── */
+:root {
+  --vp-c-brand-1: #b23f12;
+  --vp-c-brand-2: #d9531e;
+  --vp-c-brand-3: #d9531e;
+  --vp-c-brand-soft: rgba(217, 83, 30, 0.14);
+
+  --vp-home-hero-name-color: #d9531e;
+}
+
+/* ── Warm "paper" surfaces (light) ────────────────────────── */
+:root {
+  --vp-c-bg: #fbf6ec;
+  --vp-c-bg-alt: #f4ecdc;
+  --vp-c-bg-elv: #fbf6ec;
+  --vp-c-bg-soft: #f4ecdc;
+
+  --vp-c-text-1: #211b16;
+  --vp-c-text-2: #6b5f52;
+  --vp-c-text-3: #8a7c6c;
+
+  --vp-c-divider: #e3d7c3;
+  --vp-c-border: #e3d7c3;
+  --vp-c-gutter: #e3d7c3;
+}
+
+/* ── Warm dark canvas — mirrors the landing's .dark palette ── */
 .dark {
-  --vp-c-brand-1: #E2783F;
-  --vp-c-brand-2: #D9531E;
-  --vp-c-brand-3: #B23F12;
+  --vp-c-brand-1: #e2783f;
+  --vp-c-brand-2: #d9531e;
+  --vp-c-brand-3: #b23f12;
+  --vp-c-brand-soft: rgba(226, 120, 63, 0.16);
+
+  --vp-home-hero-name-color: #e2783f;
+
+  --vp-c-bg: #1a1612;
+  --vp-c-bg-alt: #141009;
+  --vp-c-bg-elv: #221d18;
+  --vp-c-bg-soft: #221d18;
+
+  --vp-c-text-1: #f4ecdc;
+  --vp-c-text-2: #b0a496;
+  --vp-c-text-3: #8a7c6c;
+
+  --vp-c-divider: #3a322a;
+  --vp-c-border: #3a322a;
+  --vp-c-gutter: #100d0a;
 }

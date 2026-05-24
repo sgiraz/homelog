@@ -22,6 +22,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           fontFamily: {
@@ -30,23 +31,63 @@
             mono: ['"Space Mono"', 'monospace'],
           },
           colors: {
-            paper: '#FBF6EC',
-            'paper-2': '#F4ECDC',
-            ink: '#211B16',
-            'ink-soft': '#6B5F52',
-            ember: '#D9531E',
-            'ember-deep': '#B23F12',
-            pine: '#234E3A',
-            line: '#E3D7C3',
+            // Semantic tokens are CSS-variable backed (R G B channels) so the
+            // whole page flips to a warm dark palette by toggling `.dark` on <html>.
+            paper: 'rgb(var(--c-paper) / <alpha-value>)',
+            'paper-2': 'rgb(var(--c-paper-2) / <alpha-value>)',
+            ink: 'rgb(var(--c-ink) / <alpha-value>)',
+            'ink-soft': 'rgb(var(--c-ink-soft) / <alpha-value>)',
+            ember: 'rgb(var(--c-ember) / <alpha-value>)',
+            'ember-deep': 'rgb(var(--c-ember-deep) / <alpha-value>)',
+            pine: 'rgb(var(--c-pine) / <alpha-value>)',
+            line: 'rgb(var(--c-line) / <alpha-value>)',
+            // Fixed cream that never flips — light text on coloured surfaces.
+            cream: '#FBF6EC',
           },
         },
       },
     }
   </script>
+  <script>
+    // Apply the saved/system theme before first paint to avoid a flash.
+    (function () {
+      try {
+        var t = localStorage.getItem('homelog-theme');
+        if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        if (t === 'dark') document.documentElement.classList.add('dark');
+      } catch (e) {}
+    })();
+  </script>
 
   <style>
-    :root { color-scheme: light; }
-    body { background: #FBF6EC; color: #211B16; font-family: 'Hanken Grotesk', system-ui, sans-serif; }
+    :root {
+      color-scheme: light;
+      --c-paper: 251 246 236;
+      --c-paper-2: 244 236 220;
+      --c-ink: 33 27 22;
+      --c-ink-soft: 107 95 82;
+      --c-ember: 217 83 30;
+      --c-ember-deep: 178 63 18;
+      --c-pine: 35 78 58;
+      --c-line: 227 215 195;
+    }
+    .dark {
+      color-scheme: dark;
+      --c-paper: 26 22 18;
+      --c-paper-2: 34 29 24;
+      --c-ink: 244 236 220;
+      --c-ink-soft: 176 164 150;
+      --c-ember: 226 120 63;
+      --c-ember-deep: 217 83 30;
+      --c-pine: 62 125 92;
+      --c-line: 58 50 42;
+    }
+    body {
+      background: rgb(var(--c-paper));
+      color: rgb(var(--c-ink));
+      font-family: 'Hanken Grotesk', system-ui, sans-serif;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
 
     /* Paper grain overlay */
     body::before {
@@ -59,6 +100,8 @@
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
       mix-blend-mode: multiply;
     }
+    /* Soften the grain on the dark canvas so it adds texture, not muck. */
+    .dark body::before { opacity: 0.16; mix-blend-mode: soft-light; }
 
     /* Warm radial glow behind the hero */
     .hero-glow {
@@ -73,7 +116,7 @@
     }
 
     /* Ledger hairlines */
-    .ledger-line { border-bottom: 1px solid #E3D7C3; }
+    .ledger-line { border-bottom: 1px solid rgb(var(--c-line)); }
 
     /* Staggered load reveal */
     @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
@@ -87,9 +130,9 @@
 
     /* Work-in-progress diagonal ribbon */
     .wip-ribbon {
-      position: absolute; top: 26px; right: -54px;
+      position: absolute; top: 26px; right: -54px; z-index: 10;
       transform: rotate(45deg);
-      background: #211B16; color: #FBF6EC;
+      background: rgb(var(--c-ink)); color: rgb(var(--c-paper));
       font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.18em;
       padding: 7px 64px; text-transform: uppercase;
       box-shadow: 0 6px 18px rgba(33, 27, 22, 0.25);
@@ -101,15 +144,16 @@
     .card-lift { transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s ease; }
     .card-lift:hover { transform: translateY(-4px); box-shadow: 0 18px 40px -18px rgba(33,27,22,0.35); }
 
-    .lang-select { appearance: none; -webkit-appearance: none; }
+    /* Rotate the language dropdown chevron when the menu is open. */
+    .lang-open .lang-chevron { transform: rotate(180deg); }
   </style>
 </head>
 
-<body class="font-sans antialiased text-ink selection:bg-ember selection:text-paper">
+<body class="font-sans antialiased text-ink selection:bg-ember selection:text-cream">
 
-  <!-- ░░ WIP notice bar ░░ -->
-  <div class="relative z-20 bg-ink text-paper text-center text-xs sm:text-sm font-mono tracking-wide py-2 px-4" data-i18n-html="wipbar">
-    🚧 Work in progress — this site and the <a href="https://docs.homelog.dev" class="underline underline-offset-2 hover:text-ember transition-colors">docs</a> are still being built.
+  <!-- ░░ WIP notice bar (ember gradient — matches docs.homelog.dev) ░░ -->
+  <div class="relative z-20 bg-gradient-to-r from-ember to-ember-deep text-cream text-center text-xs sm:text-sm font-mono tracking-wide py-2 px-4" data-i18n-html="wipbar">
+    🚧 Work in progress — this site and the <a href="https://docs.homelog.dev" class="underline underline-offset-2 hover:text-cream/80 transition-colors">docs</a> are still being built.
   </div>
 
   <!-- ░░ Nav ░░ -->
@@ -118,22 +162,45 @@
       <span class="grid place-items-center w-9 h-9 rounded-xl bg-ink text-paper text-lg group-hover:bg-ember transition-colors">⌂</span>
       <span class="font-display text-2xl font-semibold tracking-tight">HomeLog</span>
     </a>
-    <nav class="flex items-center gap-4 sm:gap-6 text-sm font-medium">
+    <nav class="flex items-center gap-3 sm:gap-5 text-sm font-medium">
       <a href="https://docs.homelog.dev" class="hidden sm:inline link-underline text-ink-soft hover:text-ink" data-i18n="nav.docs">Docs</a>
-      <a href="https://github.com/sgiraz/homelog" class="link-underline text-ink-soft hover:text-ink">GitHub</a>
+      <a href="https://github.com/sgiraz/homelog" class="hidden sm:inline link-underline text-ink-soft hover:text-ink">GitHub</a>
 
-      <!-- Language selector -->
-      <label class="relative inline-flex items-center">
-        <span class="sr-only" data-i18n="nav.language">Language</span>
-        <select id="lang-select"
-                class="lang-select bg-transparent border border-ink/20 hover:border-ink/60 rounded-full pl-3 pr-7 py-1.5 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-ember/40">
-          <option value="en">EN</option>
-          <option value="it">IT</option>
-        </select>
-        <span class="pointer-events-none absolute right-2.5 text-ink-soft text-[10px]" aria-hidden="true">▼</span>
-      </label>
+      <!-- Theme toggle -->
+      <button type="button" id="theme-toggle"
+              class="grid place-items-center w-9 h-9 rounded-full border border-ink/20 hover:border-ink/60 text-ink-soft hover:text-ink transition-colors focus:outline-none focus:ring-2 focus:ring-ember/40"
+              data-i18n-title="nav.theme" aria-label="Toggle theme" title="Toggle theme">
+        <!-- Moon: shown in light mode (click → dark) -->
+        <svg class="w-[18px] h-[18px] block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <!-- Sun: shown in dark mode (click → light) -->
+        <svg class="w-[18px] h-[18px] hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
 
-      <a href="https://demo.homelog.dev" class="inline-flex items-center gap-1.5 rounded-full bg-ink text-paper px-4 py-2 hover:bg-ember transition-colors">
+      <!-- Language selector (custom dropdown) -->
+      <div class="relative" id="lang-dropdown">
+        <button type="button" id="lang-trigger"
+                class="inline-flex items-center gap-1.5 rounded-full border border-ink/20 hover:border-ink/60 pl-3.5 pr-2.5 py-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-ember/40"
+                aria-haspopup="listbox" aria-expanded="false">
+          <span class="sr-only" data-i18n="nav.language">Language</span>
+          <span id="lang-current" class="font-medium">EN</span>
+          <svg class="lang-chevron w-3 h-3 text-ink-soft transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <ul id="lang-menu" role="listbox" aria-label="Language"
+            class="hidden absolute right-0 mt-2 min-w-[9rem] origin-top-right rounded-xl border border-line bg-paper p-1.5 shadow-[0_18px_40px_-18px_rgba(33,27,22,0.45)] z-50">
+          <li role="option" data-lang="en" tabindex="0"
+              class="lang-option flex items-center justify-between gap-3 rounded-lg px-3 py-2 cursor-pointer text-ink-soft hover:bg-paper-2 hover:text-ink transition-colors">
+            <span>English</span>
+            <svg class="lang-check w-4 h-4 text-ember opacity-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+          </li>
+          <li role="option" data-lang="it" tabindex="0"
+              class="lang-option flex items-center justify-between gap-3 rounded-lg px-3 py-2 cursor-pointer text-ink-soft hover:bg-paper-2 hover:text-ink transition-colors">
+            <span>Italiano</span>
+            <svg class="lang-check w-4 h-4 text-ember opacity-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+          </li>
+        </ul>
+      </div>
+
+      <a href="https://demo.homelog.dev" class="inline-flex items-center gap-1.5 rounded-full bg-ink text-paper px-4 py-2 hover:bg-ember hover:text-cream transition-colors">
         <span data-i18n="nav.demo">Live demo</span>
         <span aria-hidden="true">→</span>
       </a>
@@ -163,7 +230,7 @@
 
         <div class="reveal mt-9 flex flex-wrap items-center gap-3.5" style="animation-delay:.28s">
           <a href="https://demo.homelog.dev"
-             class="group inline-flex items-center gap-2 rounded-full bg-ember text-paper font-semibold px-6 py-3.5 shadow-[0_12px_30px_-10px_rgba(217,83,30,0.7)] hover:bg-ember-deep transition-colors">
+             class="group inline-flex items-center gap-2 rounded-full bg-ember text-cream font-semibold px-6 py-3.5 shadow-[0_12px_30px_-10px_rgba(217,83,30,0.7)] hover:bg-ember-deep transition-colors">
             <span data-i18n="hero.ctaDemo">Try the live demo</span>
             <span class="transition-transform group-hover:translate-x-1" aria-hidden="true">→</span>
           </a>
@@ -216,7 +283,7 @@
 
         <!-- Floating "bill matched" toast -->
         <div class="hidden sm:flex absolute -bottom-6 -left-4 items-center gap-3 bg-ink text-paper rounded-2xl px-4 py-3 shadow-xl rotate-2">
-          <span class="grid place-items-center w-8 h-8 rounded-lg bg-pine text-paper">✓</span>
+          <span class="grid place-items-center w-8 h-8 rounded-lg bg-pine text-cream">✓</span>
           <div class="leading-tight">
             <div class="text-sm font-semibold" data-i18n="toast.title">Bill matched to reading</div>
             <div class="font-mono text-[11px] text-paper/70">GAS-771-2025 · 190 Smc</div>
@@ -293,9 +360,9 @@
       </div>
 
       <div class="grid sm:grid-cols-2 gap-4 font-mono text-sm">
-        <div class="bg-pine text-paper rounded-2xl p-6">
+        <div class="bg-pine text-cream rounded-2xl p-6">
           <div class="text-3xl font-bold">256<span class="text-base font-normal opacity-70"> MB</span></div>
-          <p class="mt-2 text-paper/75 leading-snug" data-i18n="stat1.body">Runs comfortably in a single low-memory container.</p>
+          <p class="mt-2 text-cream/75 leading-snug" data-i18n="stat1.body">Runs comfortably in a single low-memory container.</p>
         </div>
         <div class="bg-paper border border-line rounded-2xl p-6">
           <div class="text-3xl font-bold text-ember">2</div>
@@ -324,7 +391,7 @@
         instance from GitHub in minutes.
       </p>
       <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
-        <a href="https://demo.homelog.dev" class="rounded-full bg-ember text-paper font-semibold px-7 py-4 hover:bg-ember-deep transition-colors" data-i18n="cta.demo">Open the live demo</a>
+        <a href="https://demo.homelog.dev" class="rounded-full bg-ember text-cream font-semibold px-7 py-4 hover:bg-ember-deep transition-colors" data-i18n="cta.demo">Open the live demo</a>
         <a href="https://github.com/sgiraz/homelog" class="rounded-full border border-paper/30 hover:border-paper px-7 py-4 font-semibold transition-colors" data-i18n="cta.github">View on GitHub</a>
         <a href="https://ko-fi.com/sgiraz" class="inline-flex items-center gap-2 rounded-full bg-paper/10 hover:bg-paper/20 px-7 py-4 font-semibold transition-colors" data-i18n="cta.support">❤️ Support the project</a>
       </div>
@@ -354,10 +421,11 @@
   <script>
     const I18N = {
       en: {
-        'wipbar': '🚧 Work in progress — this site and the <a href="https://docs.homelog.dev" class="underline underline-offset-2 hover:text-ember transition-colors">docs</a> are still being built.',
+        'wipbar': '🚧 Work in progress — this site and the <a href="https://docs.homelog.dev" class="underline underline-offset-2 hover:text-cream/80 transition-colors">docs</a> are still being built.',
         'nav.docs': 'Docs',
         'nav.demo': 'Live demo',
         'nav.language': 'Language',
+        'nav.theme': 'Toggle theme',
         'hero.kicker': 'Self-hosted · Open-source',
         'hero.title': 'Every euro that<br /><span class="italic text-ember">runs your home</span>,<br />in one ledger.',
         'hero.sub': 'HomeLog tracks shared expenses, utility bills and meter readings for the whole family — then settles up who owes what. Your data lives on <em class="font-display not-italic font-semibold text-ink">your</em> server, not in someone else\'s cloud.',
@@ -406,10 +474,11 @@
         'footer.tagline': 'Made with care for the home.',
       },
       it: {
-        'wipbar': '🚧 Lavori in corso — questo sito e la <a href="https://docs.homelog.dev" class="underline underline-offset-2 hover:text-ember transition-colors">documentazione</a> sono ancora in costruzione.',
+        'wipbar': '🚧 Lavori in corso — questo sito e la <a href="https://docs.homelog.dev" class="underline underline-offset-2 hover:text-cream/80 transition-colors">documentazione</a> sono ancora in costruzione.',
         'nav.docs': 'Documentazione',
         'nav.demo': 'Demo live',
         'nav.language': 'Lingua',
+        'nav.theme': 'Cambia tema',
         'hero.kicker': 'Self-hosted · Open-source',
         'hero.title': 'Ogni euro che<br /><span class="italic text-ember">manda avanti casa</span>,<br />in un solo registro.',
         'hero.sub': 'HomeLog tiene traccia di spese condivise, bollette e letture dei contatori per tutta la famiglia — poi calcola chi deve cosa. I tuoi dati vivono sul <em class="font-display not-italic font-semibold text-ink">tuo</em> server, non nel cloud di qualcun altro.',
@@ -470,8 +539,19 @@
         const k = el.getAttribute('data-i18n-html');
         if (dict[k] != null) el.innerHTML = dict[k];
       });
-      const sel = document.getElementById('lang-select');
-      if (sel) sel.value = lang;
+      document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
+        const k = el.getAttribute('data-i18n-title');
+        if (dict[k] != null) { el.title = dict[k]; el.setAttribute('aria-label', dict[k]); }
+      });
+      // Reflect the active language in the custom dropdown.
+      const cur = document.getElementById('lang-current');
+      if (cur) cur.textContent = lang.toUpperCase();
+      document.querySelectorAll('#lang-menu .lang-option').forEach(function (opt) {
+        const active = opt.getAttribute('data-lang') === lang;
+        opt.setAttribute('aria-selected', active ? 'true' : 'false');
+        const chk = opt.querySelector('.lang-check');
+        if (chk) chk.style.opacity = active ? '1' : '0';
+      });
     }
 
     // Storage access can throw (Safari private mode, blocked storage) — never
@@ -487,12 +567,54 @@
       const browser = (navigator.language || 'en').toLowerCase().indexOf('it') === 0 ? 'it' : 'en';
       applyLang(storedLang() || browser);
 
-      const sel = document.getElementById('lang-select');
-      if (sel) {
-        sel.addEventListener('change', function (e) {
-          const l = e.target.value;
-          saveLang(l);
-          applyLang(l);
+      // ── Custom language dropdown ──
+      const dd = document.getElementById('lang-dropdown');
+      const trigger = document.getElementById('lang-trigger');
+      const menu = document.getElementById('lang-menu');
+      if (dd && trigger && menu) {
+        const open = function () {
+          menu.classList.remove('hidden');
+          trigger.setAttribute('aria-expanded', 'true');
+          dd.classList.add('lang-open');
+        };
+        const close = function () {
+          menu.classList.add('hidden');
+          trigger.setAttribute('aria-expanded', 'false');
+          dd.classList.remove('lang-open');
+        };
+        trigger.addEventListener('click', function (e) {
+          e.stopPropagation();
+          menu.classList.contains('hidden') ? open() : close();
+        });
+        menu.querySelectorAll('.lang-option').forEach(function (opt) {
+          const choose = function () {
+            const l = opt.getAttribute('data-lang');
+            saveLang(l);
+            applyLang(l);
+            close();
+            trigger.focus();
+          };
+          opt.addEventListener('click', choose);
+          opt.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(); }
+          });
+        });
+        document.addEventListener('click', function (e) {
+          if (!dd.contains(e.target)) close();
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') close();
+        });
+      }
+
+      // ── Dark / light theme toggle ──
+      const themeBtn = document.getElementById('theme-toggle');
+      if (themeBtn) {
+        themeBtn.addEventListener('click', function () {
+          const root = document.documentElement;
+          const next = root.classList.contains('dark') ? 'light' : 'dark';
+          root.classList.toggle('dark', next === 'dark');
+          try { localStorage.setItem('homelog-theme', next); } catch (e) { /* storage unavailable */ }
         });
       }
     })();
