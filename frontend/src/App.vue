@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+  <div class="min-h-screen bg-paper dark:bg-gray-900">
     <!-- Skip to main content (accessibility) -->
     <a
       href="#main-content"
@@ -15,7 +15,7 @@
 
     <main
       id="main-content"
-      :class="authStore.isAuthenticated ? 'max-w-7xl mx-auto p-6 pb-24 md:pb-6' : ''"
+      :class="authStore.isAuthenticated ? 'max-w-7xl mx-auto p-6 pb-[calc(6.5rem_+_env(safe-area-inset-bottom))] md:pb-6' : ''"
       tabindex="-1"
     >
       <router-view v-slot="{ Component, route }">

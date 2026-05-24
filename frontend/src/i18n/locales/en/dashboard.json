@@ -45,5 +45,30 @@
     "loading": "Loading...",
     "empty": "No expenses recorded",
     "addFirst": "Add your first expense"
+  },
+  "attention": {
+    "title": "Home today",
+    "subtitle_one": "{n} thing needs attention",
+    "subtitle_other": "{n} things need attention",
+    "allClear": "All clear",
+    "allClearSub": "No bills due, no open balance",
+    "more_one": "+{n} more",
+    "more_other": "+{n} more",
+    "open": "Open",
+    "logReading": "Log",
+    "settle": "Settle",
+    "dueToday": "Due today",
+    "dueIn_one": "Due in {n} day",
+    "dueIn_other": "Due in {n} days",
+    "overdueBy_one": "Overdue by {n} day",
+    "overdueBy_other": "Overdue by {n} days",
+    "readingMissing": "No reading logged",
+    "readingLast_one": "Reading due · last {n} day ago",
+    "readingLast_other": "Reading due · last {n} days ago",
+    "overBudget": "Over budget · {pct}%",
+    "owedToYou": "{name} owes you",
+    "youOwe": "You owe {name}",
+    "lastExpense": "Last expense: {date}",
+    "lastReading": "Last reading: {date}"
   }
 }

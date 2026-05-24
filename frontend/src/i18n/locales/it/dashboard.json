@@ -45,5 +45,30 @@
     "loading": "Caricamento...",
     "empty": "Nessuna spesa registrata",
     "addFirst": "Aggiungi la tua prima spesa"
+  },
+  "attention": {
+    "title": "Casa oggi",
+    "subtitle_one": "{n} cosa richiede attenzione",
+    "subtitle_other": "{n} cose richiedono attenzione",
+    "allClear": "Tutto in ordine",
+    "allClearSub": "Nessuna bolletta in scadenza, nessun saldo aperto",
+    "more_one": "+{n} altro",
+    "more_other": "+{n} altri",
+    "open": "Apri",
+    "logReading": "Registra",
+    "settle": "Salda",
+    "dueToday": "Scade oggi",
+    "dueIn_one": "Scade tra {n} giorno",
+    "dueIn_other": "Scade tra {n} giorni",
+    "overdueBy_one": "Scaduta da {n} giorno",
+    "overdueBy_other": "Scaduta da {n} giorni",
+    "readingMissing": "Nessuna lettura registrata",
+    "readingLast_one": "Lettura consigliata · ultima {n} giorno fa",
+    "readingLast_other": "Lettura consigliata · ultima {n} giorni fa",
+    "overBudget": "Oltre budget · {pct}%",
+    "owedToYou": "{name} ti deve",
+    "youOwe": "Devi a {name}",
+    "lastExpense": "Ultima spesa: {date}",
+    "lastReading": "Ultima lettura: {date}"
   }
 }

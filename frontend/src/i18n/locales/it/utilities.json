@@ -293,7 +293,7 @@
     "namePlaceholder": "Es: Fornitore Luce Bimestrale",
     "providerLabel": "Fornitore *",
     "providerPlaceholder": "Nome del fornitore",
-    "typeLabel": "Tipo Utenza *",
+    "typeLabel": "Tipo Servizio *",
     "analyzing": "Analisi PDF in corso...",
     "pageCount": "{n} pagine estratte - Clicca per cambiare file",
     "dropTitle": "Trascina qui un PDF di esempio",
