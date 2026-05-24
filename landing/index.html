@@ -140,16 +140,6 @@
     .floaty { animation: floaty 8s ease-in-out infinite; }
     @media (prefers-reduced-motion: reduce) { .floaty { animation: none; } }
 
-    /* Work-in-progress diagonal ribbon */
-    .wip-ribbon {
-      position: absolute; top: 26px; right: -54px; z-index: 10;
-      transform: rotate(45deg);
-      background: rgb(var(--c-ink)); color: rgb(var(--c-paper));
-      font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.18em;
-      padding: 7px 64px; text-transform: uppercase;
-      box-shadow: 0 6px 18px rgba(33, 27, 22, 0.25);
-    }
-
     .link-underline { background-image: linear-gradient(currentColor, currentColor); background-size: 0% 1.5px; background-repeat: no-repeat; background-position: 0 100%; transition: background-size 0.3s ease; }
     .link-underline:hover { background-size: 100% 1.5px; }
 
@@ -264,7 +254,6 @@
 
       <!-- Ledger card visual -->
       <div class="reveal relative" style="animation-delay:.3s">
-        <div class="wip-ribbon" data-i18n="wipRibbon">Work in progress</div>
         <div class="floaty relative bg-paper rounded-[1.6rem] border border-line shadow-[0_30px_60px_-25px_rgba(33,27,22,0.45)] p-6 sm:p-7 max-w-md mx-auto">
           <div class="flex items-baseline justify-between mb-1">
             <span class="font-display text-xl font-semibold" data-i18n="card.balanceTitle">Household balance</span>
@@ -420,7 +409,6 @@
       <div class="flex items-center gap-2.5">
         <span class="grid place-items-center w-7 h-7 rounded-lg bg-ink text-paper">⌂</span>
         <span class="font-display text-lg font-semibold text-ink">HomeLog</span>
-        <span class="font-mono text-xs ml-2 px-2 py-0.5 rounded-full bg-paper-2 border border-line">WIP</span>
       </div>
       <nav class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
         <a href="https://demo.homelog.dev" class="link-underline hover:text-ink">Demo</a>
@@ -457,7 +445,6 @@
         'card.groceries': 'Groceries',
         'card.thisMonth': 'This month',
         'toast.title': 'Bill matched to reading',
-        'wipRibbon': 'Work in progress',
         'features.kicker': "What's inside",
         'features.title': 'One app for the money that keeps a household running.',
         'feat1.title': 'Expense splitting',
@@ -510,7 +497,6 @@
         'card.groceries': 'Spesa',
         'card.thisMonth': 'Questo mese',
         'toast.title': 'Bolletta abbinata alla lettura',
-        'wipRibbon': 'Lavori in corso',
         'features.kicker': "Cosa c'è dentro",
         'features.title': "Un'unica app per il denaro che manda avanti una casa.",
         'feat1.title': 'Divisione delle spese',

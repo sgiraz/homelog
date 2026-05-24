@@ -36,6 +36,13 @@
     <!-- Main content (only when user has a property) -->
     <template v-if="settingsStore.hasProperty">
 
+    <!-- Da gestire — brief operativo concreto (prima "cosa fare", poi il riepilogo) -->
+    <AttentionPanel
+      :items="attentionItems"
+      :empty-detail="attentionEmptyDetail"
+      @action="onAttentionAction"
+    />
+
     <!-- KPI Cards -->
     <KpiCards
       :monthTotal="totalMonth"
@@ -103,18 +110,30 @@
       @close="showEditExpense = false; editingExpense = null"
       @updated="onExpenseUpdated"
     />
+
+    <!-- Modal Salda (aperto inline dal pannello "Da gestire") -->
+    <SettlementModal
+      v-if="showSettle && balanceInfo"
+      :balance="balanceInfo.balance"
+      :other-member-name="balanceInfo.other_member_name"
+      :other-member-id="balanceInfo.other_member_id"
+      :current-member-id="balanceInfo.current_member_id"
+      :property-id="settingsStore.householdPropertyId"
+      @close="showSettle = false"
+      @created="onSettled"
+    />
   </div>
 </template>
 
 <script setup>
 defineOptions({ name: 'DashboardView' })
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
-import { categoriesAPI, projectsAPI, expensesAPI } from '@/api/client'
+import { categoriesAPI, projectsAPI, expensesAPI, utilitiesAPI, balanceAPI } from '@/api/client'
 import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import { useConfirm } from '@/composables/useConfirm'
 import Button from '@/components/common/Button.vue'
@@ -122,9 +141,11 @@ import Card from '@/components/common/Card.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditExpenseModal from '@/components/expenses/EditExpenseModal.vue'
 import KpiCards from '@/components/dashboard/KpiCards.vue'
+import AttentionPanel from '@/components/dashboard/AttentionPanel.vue'
 import DashboardCharts from '@/components/dashboard/DashboardCharts.vue'
 import DashboardFilters from '@/components/dashboard/DashboardFilters.vue'
 import RecentExpensesList from '@/components/dashboard/RecentExpensesList.vue'
+import SettlementModal from '@/components/balance/SettlementModal.vue'
 
 const { t } = useI18n()
 const expensesStore = useExpensesStore()
@@ -134,6 +155,7 @@ const { confirm } = useConfirm()
 
 const showAddExpense = ref(false)
 const showEditExpense = ref(false)
+const showSettle = ref(false)
 const editingExpense = ref(null)
 const trendChartType = ref('line')
 const filtersOpen = ref(false)
@@ -259,6 +281,193 @@ const trendLineChartData = computed(() => {
   }
 })
 
+// ── "Casa oggi" brief data source ──
+// One utilities.list call carries embedded bills + readings; balance is a
+// single endpoint; projects are already fetched for the filters. No N+1.
+const utilities = ref([])
+const balanceInfo = ref(null)
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+const METERED_TYPES = ['electricity', 'gas', 'water', 'waste']
+
+async function fetchActionables() {
+  // The brief is scoped to the current property. householdPropertyId is
+  // populated asynchronously at startup, so bail out until it's known rather
+  // than calling /utilities unscoped (which would return cross-property data
+  // and skip the balance). The watcher below re-runs us once it's set.
+  const propertyId = settingsStore.householdPropertyId
+  if (!propertyId) return
+  try {
+    const { data } = await utilitiesAPI.list({ property_id: propertyId })
+    utilities.value = data || []
+  } catch {
+    utilities.value = []
+  }
+  try {
+    const { data } = await balanceAPI.get(propertyId)
+    balanceInfo.value = data
+  } catch {
+    balanceInfo.value = null
+  }
+}
+
+// Localized service name; fall back to the raw type if no translation.
+function serviceTypeName(type) {
+  const key = `utilities.utilityTypes.${type}`
+  const label = t(key)
+  return label === key ? type : label
+}
+
+// Brief title for a service row: "Enel · Luce" (or just the type if no provider).
+function serviceLabel(u) {
+  const typeName = serviceTypeName(u.type)
+  return u.provider ? `${u.provider} · ${typeName}` : typeName
+}
+
+// Concrete, per-item "to handle" brief. Each row names the specific service,
+// shows its amount/date, and links to the most specific destination (or opens
+// a modal). Priority: overdue bills → due-soon → open balance → missing
+// readings → projects over budget. Capped to 5 (panel shows 3 on mobile).
+const attentionItems = computed(() => {
+  const items = []
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
+  // Calendar-day difference from today (local). Reads the date's Y-M-D
+  // directly so a date-only / UTC-midnight value isn't shifted across the day
+  // boundary by timezone. <0 = past, 0 = today, >0 = future.
+  const dayDiff = (dateStr) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateStr))
+    const due = m
+      ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+      : new Date(dateStr)
+    due.setHours(0, 0, 0, 0)
+    return Math.round((due - todayStart) / MS_PER_DAY)
+  }
+
+  const bills = []
+  const readings = []
+
+  utilities.value.forEach((u) => {
+    (u.bills || []).forEach((b) => {
+      if (b.is_paid) return
+      const diff = dayDiff(b.due_date)
+      if (diff < 0) bills.push({ u, b, overdue: true, days: -diff })
+      else if (diff <= 7) bills.push({ u, b, overdue: false, days: diff })
+    })
+    if (METERED_TYPES.includes(u.type)) {
+      const last = u.readings && u.readings[0]
+      if (!last) readings.push({ u, days: null })
+      else {
+        const ago = -dayDiff(last.reading_date)
+        if (ago >= 30) readings.push({ u, days: ago })
+      }
+    }
+  })
+
+  // Overdue first (most overdue first), then due-soon (soonest first).
+  bills.sort((a, b) => {
+    if (a.overdue !== b.overdue) return a.overdue ? -1 : 1
+    return a.overdue ? b.days - a.days : a.days - b.days
+  })
+
+  bills.forEach(({ u, b, overdue, days }) => {
+    const when = overdue
+      ? t(`dashboard.attention.overdueBy_${days === 1 ? 'one' : 'other'}`, { n: days })
+      : days <= 0
+        ? t('dashboard.attention.dueToday')
+        : t(`dashboard.attention.dueIn_${days === 1 ? 'one' : 'other'}`, { n: days })
+    items.push({
+      key: `bill-${b.id}`,
+      tone: overdue ? 'danger' : 'warn',
+      icon: 'bill',
+      title: serviceLabel(u),
+      detail: `${when} · ${formatCurrency(b.amount_total || 0)}`,
+      to: `/utilities/${u.id}`,
+      action: t('dashboard.attention.open'),
+    })
+  })
+
+  const bal = balanceInfo.value?.balance || 0
+  if (Math.abs(bal) >= 0.01) {
+    const name = balanceInfo.value?.other_member_name || ''
+    items.push({
+      key: 'balance',
+      tone: bal > 0 ? 'positive' : 'accent',
+      icon: 'balance',
+      title: bal > 0 ? t('dashboard.attention.owedToYou', { name }) : t('dashboard.attention.youOwe', { name }),
+      detail: formatCurrency(Math.abs(bal)),
+      action: t('dashboard.attention.settle'),
+    })
+  }
+
+  readings.forEach(({ u, days }) => {
+    items.push({
+      key: `reading-${u.id}`,
+      tone: 'info',
+      icon: 'reading',
+      title: serviceLabel(u),
+      detail: days === null
+        ? t('dashboard.attention.readingMissing')
+        : t(`dashboard.attention.readingLast_${days === 1 ? 'one' : 'other'}`, { n: days }),
+      to: `/utilities/${u.id}`,
+      action: t('dashboard.attention.logReading'),
+    })
+  })
+
+  ;(projects.value || []).forEach((p) => {
+    if (p.status === 'active' && (p.stats?.percentage_spent ?? 0) > 100) {
+      items.push({
+        key: `project-${p.id}`,
+        tone: 'accent',
+        icon: 'project',
+        title: p.name,
+        detail: t('dashboard.attention.overBudget', { pct: Math.round(p.stats.percentage_spent) }),
+        to: `/projects/${p.id}`,
+        action: t('dashboard.attention.open'),
+      })
+    }
+  })
+
+  return items.slice(0, 5)
+})
+
+// Micro-line for the calm empty state: last expense + last reading dates.
+const attentionEmptyDetail = computed(() => {
+  const parts = []
+  const lastExpense = expensesStore.expenses?.[0]
+  if (lastExpense?.date) {
+    parts.push(t('dashboard.attention.lastExpense', { date: formatDate(lastExpense.date) }))
+  }
+  let lastReadingStr = null
+  let lastReadingTime = 0
+  utilities.value.forEach((u) => {
+    const r = u.readings && u.readings[0]
+    if (r?.reading_date) {
+      const ts = new Date(r.reading_date).getTime()
+      if (ts > lastReadingTime) {
+        lastReadingTime = ts
+        lastReadingStr = r.reading_date
+      }
+    }
+  })
+  if (lastReadingStr) {
+    parts.push(t('dashboard.attention.lastReading', { date: formatDate(lastReadingStr) }))
+  }
+  return parts.join(' · ')
+})
+
+// Items without a `to` (the open balance) ask the panel to act inline.
+function onAttentionAction(item) {
+  if (item.key === 'balance') showSettle.value = true
+}
+
+function onSettled() {
+  showSettle.value = false
+  fetchActionables()
+  applyFilters()
+}
+
 // Methods
 async function fetchStats(params = {}) {
   try {
@@ -332,12 +541,14 @@ function editExpense(expense) {
 function onExpenseCreated() {
   showAddExpense.value = false
   applyFilters()
+  fetchActionables()
 }
 
 function onExpenseUpdated() {
   showEditExpense.value = false
   editingExpense.value = null
   applyFilters()
+  fetchActionables()
 }
 
 async function deleteExpenseConfirm(id) {
@@ -350,6 +561,7 @@ async function deleteExpenseConfirm(id) {
   if (ok) {
     try {
       await expensesStore.deleteExpense(id)
+      fetchActionables()
     } catch (err) {
       window.$toast?.error(t('expenses.deleteError', { error: err.response?.data?.error || err.message }))
     }
@@ -359,6 +571,21 @@ async function deleteExpenseConfirm(id) {
 onMounted(() => {
   fetchFiltersData()
   applyFilters()
+})
+
+// "Casa oggi" is scoped to the current property, whose id arrives
+// asynchronously after mount. Fetch as soon as it's known (covers first load),
+// and re-fetch whenever it changes.
+watch(
+  () => settingsStore.householdPropertyId,
+  (id) => { if (id) fetchActionables() }
+)
+
+// keep-alive caches this view, so onMounted won't re-run on return. Refresh on
+// re-activation (and on initial mount, when the id is already known) so paid
+// bills / new readings / settled balances drop off without a hard reload.
+onActivated(() => {
+  if (settingsStore.householdPropertyId) fetchActionables()
 })
 </script>
 

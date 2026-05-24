@@ -64,7 +64,7 @@
     "namePlaceholder": "E.g.: Bimonthly Electricity Provider",
     "providerLabel": "Provider *",
     "providerPlaceholder": "Provider name",
-    "typeLabel": "Utility Type *",
+    "typeLabel": "Service Type *",
     "analyzing": "Analyzing PDF...",
     "pageCount": "{n} pages extracted — Click to change file",
     "dropTitle": "Drop a sample PDF here",
@@ -159,7 +159,7 @@
     }
   },
   "editUtilityModal": {
-    "title": "Edit Utility",
+    "title": "Edit Service",
     "typeLabel": "Type",
     "active": "Active",
     "inactive": "Inactive",
@@ -178,7 +178,7 @@
     "providerRequired": "Provider is required"
   },
   "addUtilityModal": {
-    "title": "New Utility",
+    "title": "New Service",
     "extracting": "Extracting data from contract...",
     "extractedFromContract": "Data extracted from contract",
     "dropZoneTitle": "Drop the contract PDF here",
@@ -257,7 +257,7 @@
     "cancel": "Cancel",
     "save": "Save",
     "saving": "Saving...",
-    "successToast": "Utility added successfully!",
+    "successToast": "Service added successfully!",
     "validationRequired": "Type and provider are required",
     "genericError": "Error while saving"
   },
