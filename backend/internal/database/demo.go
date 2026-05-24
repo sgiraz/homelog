@@ -262,7 +262,7 @@ func seedDemoData(db *gorm.DB) error {
 		{UtilityID: gas.ID, BillNumber: "GAS-771-2025", IssueDate: daysAgo(50), PeriodStart: daysAgo(120), PeriodEnd: daysAgo(60),
 			DueDate: daysAgo(30), ProviderReading: f(3610), ConsumptionTotal: 190, ConversionCoefficient: f(1.04), AmountTotal: 145.80, IsPaid: false},
 		{UtilityID: water.ID, BillNumber: "ACQ-2025-334", IssueDate: daysAgo(20), PeriodStart: daysAgo(95), PeriodEnd: daysAgo(5),
-			DueDate: daysAgo(-10), ProviderReading: f(448), ConsumptionTotal: 36, AmountTotal: 58.20, IsPaid: false},
+			DueDate: daysAgo(-5), ProviderReading: f(448), ConsumptionTotal: 36, AmountTotal: 58.20, IsPaid: false},
 	}
 	for _, b := range bills {
 		if _, err := makeBill(b); err != nil {

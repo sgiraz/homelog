@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+  <div class="min-h-screen flex items-center justify-center bg-paper dark:bg-gray-900 p-4">
     <Card class="w-full max-w-md p-8">
       <div class="text-center mb-8">
         <h1 class="text-4xl font-bold mb-2 text-gray-900 dark:text-white">HomeLog</h1>
@@ -9,24 +9,24 @@
       <!-- ── Demo banner (only on demo instances) ── -->
       <div
         v-if="isDemoMode && mode === 'login'"
-        class="mb-6 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 space-y-3 text-center"
+        class="mb-6 p-4 rounded-xl bg-paper-100 dark:bg-gray-800 border border-ember/20 dark:border-ember/30 space-y-3 text-center"
       >
-        <p class="text-sm font-semibold text-indigo-800 dark:text-indigo-300">
+        <p class="text-sm font-semibold text-ember-deep dark:text-ember-light">
           🎭 {{ t('demo.login.title') }}
         </p>
-        <p class="text-xs text-indigo-700 dark:text-indigo-400">
+        <p class="text-xs text-gray-600 dark:text-gray-400">
           {{ t('demo.login.description') }}
         </p>
         <Button class="w-full" :disabled="loading" @click="enterDemo">
           {{ t('demo.login.button') }}
         </Button>
-        <p class="text-xs text-indigo-700 dark:text-indigo-400 pt-1">
+        <p class="text-xs text-gray-500 dark:text-gray-400 pt-1">
           {{ t('demo.login.selfHostPrompt') }}
           <a
             :href="links.github"
             target="_blank"
             rel="noopener"
-            class="font-semibold underline hover:no-underline"
+            class="font-semibold underline hover:no-underline text-ember-deep dark:text-ember-light"
           >
             {{ t('demo.login.selfHostLink') }}
           </a>
