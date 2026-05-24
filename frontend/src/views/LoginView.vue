@@ -149,7 +149,7 @@
         <button
           type="button"
           @click="mode = 'login'; error = null; resetToken = null; forgotSubmitted = false"
-          class="w-full text-sm text-gray-500 hover:text-ink-soft"
+          class="w-full text-sm text-ink-muted hover:text-ink-soft"
         >
           {{ t('auth.forgot.backToLogin') }}
         </button>
@@ -209,7 +209,7 @@
         <button
           type="button"
           @click="mode = 'forgot'; error = null; success = null"
-          class="w-full text-sm text-gray-500 hover:text-ink-soft"
+          class="w-full text-sm text-ink-muted hover:text-ink-soft"
         >
           {{ t('auth.reset.backToForgot') }}
         </button>

@@ -14,8 +14,9 @@
    Components use ONE class (bg-surface, text-ink, border-line, …) with NO
    `dark:` variant; the value flips automatically when `.dark` is on <html>.
    Re-theming any tone (light or dark) is a one-line edit here. Channels are
-   stored as "R G B" so Tailwind's /opacity modifiers keep working via the
-   `<alpha-value>` placeholder below.
+   stored as "R G B" (not full colors) so Tailwind v4 can build /opacity
+   modifiers (e.g. bg-surface/50) via color-mix(). Do NOT add `<alpha-value>`
+   inside @theme — v4 leaks it as a literal and the utility dies.
    ─────────────────────────────────────────────────────────────────────────── */
 :root {
   --c-canvas:    251 246 236; /* page background (warm paper) */
