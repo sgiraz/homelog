@@ -18,32 +18,32 @@
    modifiers (e.g. bg-surface/50) via color-mix(). Do NOT add `<alpha-value>`
    inside @theme — v4 leaks it as a literal and the utility dies.
    ─────────────────────────────────────────────────────────────────────────── */
-/* ── "Paper" = default theme (no data-theme, or data-theme="paper"). ──
-   Accents are theme-able too: accent = fills/buttons (white text on it),
-   accent-soft = accent as text/icon (brighter in dark for contrast),
-   positive = success / "owed to you". */
+/* ── "Slate" = DEFAULT theme (lives in :root/.dark, i.e. no data-theme set).
+   Cool & minimal. Other themes are [data-theme="…"] blocks below. Accents
+   are theme-able too: accent = fills/buttons (white text on it), accent-soft
+   = accent as text/icon (brighter in dark for contrast), positive = success. */
 :root {
-  --c-canvas:    251 246 236; /* page background (warm paper) */
+  --c-canvas:    234 237 243; /* page background (cool slate) */
   --c-surface:   255 255 255; /* cards, modals, inputs */
-  --c-surface-2: 243 244 246; /* subtle fills, hovers, chips */
-  --c-surface-3: 229 231 235; /* secondary buttons, stronger fills */
-  --c-ink:        17  24  39; /* primary text */
-  --c-ink-soft:   75  85  99; /* secondary text, labels */
-  --c-ink-muted: 107 114 128; /* tertiary text */
-  --c-ink-faint: 156 163 175; /* faint text, icons, placeholders */
-  --c-line:      229 231 235; /* borders, dividers */
+  --c-surface-2: 224 228 236; /* subtle fills, hovers, chips */
+  --c-surface-3: 208 214 224; /* secondary buttons, stronger fills */
+  --c-ink:        26  34  51; /* primary text */
+  --c-ink-soft:   71  82 100; /* secondary text, labels */
+  --c-ink-muted: 104 114 130; /* tertiary text */
+  --c-ink-faint: 150 159 174; /* faint text, icons, placeholders */
+  --c-line:      219 224 233; /* borders, dividers */
   --c-accent:      217  83  30; --c-accent-deep: 178  63  18; --c-accent-soft: 217  83  30; --c-positive: 35 78 58;
 }
 .dark {
-  --c-canvas:     26  22  18; /* warm paper-dark, shared with the landing */
-  --c-surface:    34  29  24;
-  --c-surface-2:  49  42  36;
-  --c-surface-3:  60  52  44;
-  --c-ink:       255 255 255;
-  --c-ink-soft:  156 163 175;
-  --c-ink-muted: 156 163 175;
-  --c-ink-faint: 107 114 128;
-  --c-line:       58  50  42;
+  --c-canvas:     15  19  26; /* cool charcoal */
+  --c-surface:    23  28  37;
+  --c-surface-2:  33  40  51;
+  --c-surface-3:  45  54  67;
+  --c-ink:       230 234 241;
+  --c-ink-soft:  155 165 180;
+  --c-ink-muted: 146 157 173;
+  --c-ink-faint: 108 119 135;
+  --c-line:       41  50  63;
   --c-accent:      217  83  30; --c-accent-deep: 178  63  18; --c-accent-soft: 232 137  90; --c-positive: 62 125 92;
 }
 
@@ -51,15 +51,15 @@
    neutrals + accents for light and (.dark) dark. All stay in the warm,
    earthy family so the app harmonises with the landing/docs. ── */
 
-/* SLATE — cool, minimal; keeps the ember accent as the brand thread. */
-[data-theme="slate"] {
-  --c-canvas: 234 237 243; --c-surface: 255 255 255; --c-surface-2: 224 228 236; --c-surface-3: 208 214 224;
-  --c-ink: 26 34 51; --c-ink-soft: 71 82 100; --c-ink-muted: 104 114 130; --c-ink-faint: 150 159 174; --c-line: 219 224 233;
+/* PAPER — warm cream; the landing/docs palette, now an opt-in alternative. */
+[data-theme="paper"] {
+  --c-canvas: 251 246 236; --c-surface: 255 255 255; --c-surface-2: 243 244 246; --c-surface-3: 229 231 235;
+  --c-ink: 17 24 39; --c-ink-soft: 75 85 99; --c-ink-muted: 107 114 128; --c-ink-faint: 156 163 175; --c-line: 229 231 235;
   --c-accent: 217 83 30; --c-accent-deep: 178 63 18; --c-accent-soft: 217 83 30; --c-positive: 35 78 58;
 }
-.dark[data-theme="slate"] {
-  --c-canvas: 15 19 26; --c-surface: 23 28 37; --c-surface-2: 33 40 51; --c-surface-3: 45 54 67;
-  --c-ink: 230 234 241; --c-ink-soft: 155 165 180; --c-ink-muted: 146 157 173; --c-ink-faint: 108 119 135; --c-line: 41 50 63;
+.dark[data-theme="paper"] {
+  --c-canvas: 26 22 18; --c-surface: 34 29 24; --c-surface-2: 49 42 36; --c-surface-3: 60 52 44;
+  --c-ink: 255 255 255; --c-ink-soft: 156 163 175; --c-ink-muted: 156 163 175; --c-ink-faint: 107 114 128; --c-line: 58 50 42;
   --c-accent: 217 83 30; --c-accent-deep: 178 63 18; --c-accent-soft: 232 137 90; --c-positive: 62 125 92;
 }
 

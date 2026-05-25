@@ -7,7 +7,7 @@ import { useTheme } from '@/composables/useTheme'
 export const useSettingsStore = defineStore('settings', () => {
   // State
   const theme = ref('auto')
-  const colorTheme = ref('paper')
+  const colorTheme = ref('slate')
   const currency = ref('EUR')
   const language = ref('it')
   const dateFormat = ref('DD/MM/YYYY')
@@ -48,7 +48,7 @@ export const useSettingsStore = defineStore('settings', () => {
     try {
       const { data } = await apiClient.get('/settings')
       theme.value = data.theme || 'auto'
-      colorTheme.value = data.color_theme || 'paper'
+      colorTheme.value = data.color_theme || 'slate'
       currency.value = data.currency || 'EUR'
       language.value = data.language || 'it'
       dateFormat.value = data.date_format || 'DD/MM/YYYY'
@@ -156,7 +156,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function $reset() {
     theme.value = 'auto'
-    colorTheme.value = 'paper'
+    colorTheme.value = 'slate'
     currency.value = 'EUR'
     language.value = 'it'
     dateFormat.value = 'DD/MM/YYYY'

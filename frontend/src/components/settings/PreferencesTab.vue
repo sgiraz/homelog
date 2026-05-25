@@ -23,7 +23,7 @@
           <label class="block text-sm font-medium text-ink-soft mb-2">{{ t('settings.preferences.colorTheme') }}</label>
           <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
             <button
-              v-for="th in THEMES"
+              v-for="th in sortedThemes"
               :key="th.id"
               type="button"
               @click="selectColorTheme(th.id)"
@@ -334,11 +334,18 @@ const { setColorTheme } = useTheme()
 
 const preferences = ref({
   theme: 'auto',
-  color_theme: 'paper',
+  color_theme: 'slate',
   currency: 'EUR',
   language: 'it',
   date_format: 'DD/MM/YYYY'
 })
+
+// Themes shown alphabetically by their localized label (per language).
+const sortedThemes = computed(() =>
+  [...THEMES].sort((a, b) =>
+    t(`settings.preferences.themes.${a.id}`).localeCompare(t(`settings.preferences.themes.${b.id}`))
+  )
+)
 
 const notificationRetentionDays = ref(90)
 const notifyJoinRequests = ref(true)
@@ -450,7 +457,7 @@ async function loadUserSettings() {
     const { data } = await apiClient.get('/settings')
     preferences.value = {
       theme: data.theme || 'auto',
-      color_theme: data.color_theme || 'paper',
+      color_theme: data.color_theme || 'slate',
       currency: data.currency || 'EUR',
       language: data.language || 'it',
       date_format: data.date_format || 'DD/MM/YYYY'

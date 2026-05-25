@@ -22,7 +22,7 @@ export const THEMES = [
 ]
 
 export const THEME_IDS = THEMES.map(t => t.id)
-export const DEFAULT_THEME = 'paper'
+export const DEFAULT_THEME = 'slate'
 
 export function isValidTheme(id) {
   return THEME_IDS.includes(id)
