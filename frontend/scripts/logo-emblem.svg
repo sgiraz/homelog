@@ -1,21 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:serif="http://www.serif.com/" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <clipPath id="round"><rect width="512" height="512" rx="112"/></clipPath>
-    <radialGradient id="tileLight" cx="50%" cy="36%" r="75%">
-      <stop offset="0%" stop-color="#FFFFFF"/><stop offset="100%" stop-color="#E7ECF3"/>
-    </radialGradient>
-    <radialGradient id="tileDark" cx="50%" cy="34%" r="80%">
-      <stop offset="0%" stop-color="#21344C"/><stop offset="60%" stop-color="#142133"/><stop offset="100%" stop-color="#0C1320"/>
-    </radialGradient>
-    <style>
-      /*DARK-START*/@media (prefers-color-scheme:dark){.tilebg{fill:url(#tileDark)!important}.c-teal{fill:#5FD3E0!important}.c-navy{fill:#8AB2E4!important}.c-coral{fill:#FF8E70!important}.sheen{opacity:.10!important}.rim{stroke:#FFFFFF!important;stroke-opacity:.16!important}}/*DARK-END*/
-    </style>
-  </defs>
-  <g clip-path="url(#round)">
-    <rect class="tilebg" width="512" height="512" fill="url(#tileLight)"/>
-    <ellipse class="sheen" cx="256" cy="36" rx="230" ry="176" fill="#FFFFFF" opacity="0.55"/>
-  </g>
-  <g transform="translate(256 256) scale(0.37766) translate(-1533 -1533)">
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 3072 3072" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <rect id="Tavola-da-disegno1" serif:id="Tavola da disegno1" x="0" y="0" width="3072" height="3072" style="fill:none;"/>
     <g id="Tavola-da-disegno11" serif:id="Tavola da disegno1">
         <g>
             <path d="M1048.44,1484.58C1066.58,1464.07 1175.72,1384.19 1175.72,1384.19L1175.72,1236.05C1175.72,1236.05 1175.14,1210.93 1204.41,1210.93L1288.51,1210.93C1313.69,1211.06 1316.78,1236.05 1316.78,1236.05L1316.78,1284.98L1497.98,1151.55C1520.55,1139.41 1548.66,1139.55 1571.08,1153.99C1597.91,1171.28 1674.4,1226.03 1674.4,1226.03C1646.72,1251.41 1653.33,1311.89 1653.33,1311.89L1546.79,1234.36C1540.49,1229.77 1531.94,1229.76 1525.63,1234.34C1466.14,1277.49 1174.1,1489.41 1114.4,1534.27C1073.94,1564.68 1026.3,1525.74 1048.44,1484.58Z" style="fill:rgb(70,189,204);stroke:black;stroke-width:0.9px;"/>
@@ -34,6 +20,4 @@
             </g>
         </g>
     </g>
-  </g>
-  <rect class="rim" x="1.5" y="1.5" width="509" height="509" rx="110.5" fill="none" stroke="#0E2436" stroke-opacity="0.08" stroke-width="2"/>
 </svg>
