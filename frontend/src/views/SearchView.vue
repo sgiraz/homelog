@@ -38,7 +38,7 @@
             :placeholder="t('search.placeholder')"
             class="w-full pl-9 pr-9 py-3 rounded-xl text-base
                    bg-surface-2/60 text-ink
-                   placeholder-gray-400
+                   placeholder-ink-faint
                    border border-transparent
                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-surface"
           />

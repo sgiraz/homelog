@@ -31,6 +31,22 @@ func NewSettingsHandler(db *gorm.DB) *SettingsHandler {
 	return &SettingsHandler{db: db}
 }
 
+// Allow-lists so unexpected client values never get persisted/echoed back.
+const defaultColorTheme = "slate"
+
+var validThemes = map[string]bool{"auto": true, "light": true, "dark": true}
+var validColorThemes = map[string]bool{
+	"slate": true, "paper": true, "forest": true, "ocean": true, "plum": true,
+}
+
+// colorThemeOrDefault coalesces an empty/unknown stored value to the default.
+func colorThemeOrDefault(v string) string {
+	if validColorThemes[v] {
+		return v
+	}
+	return defaultColorTheme
+}
+
 // UserSettingsResponse represents the user settings response
 type UserSettingsResponse struct {
 	Theme                     string                  `json:"theme"`
@@ -114,6 +130,7 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 			// Return defaults
 			c.JSON(http.StatusOK, UserSettingsResponse{
 				Theme:                     "auto",
+				ColorTheme:                defaultColorTheme,
 				Currency:                  "EUR",
 				Language:                  "it",
 				DateFormat:                "DD/MM/YYYY",
@@ -147,7 +164,7 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 
 	c.JSON(http.StatusOK, UserSettingsResponse{
 		Theme:                     settings.Theme,
-		ColorTheme:                settings.ColorTheme,
+		ColorTheme:                colorThemeOrDefault(settings.ColorTheme),
 		Currency:                  settings.Currency,
 		Language:                  settings.Language,
 		DateFormat:                dateFormat,
@@ -188,6 +205,7 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 			settings = models.UserSettings{
 				UserID:                    userID,
 				Theme:                     "auto",
+				ColorTheme:                defaultColorTheme,
 				Currency:                  "EUR",
 				Language:                  "it",
 				DefaultSplitWithMemberIDs: "",
@@ -200,11 +218,11 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 		}
 	}
 
-	// Update fields if provided
-	if req.Theme != nil {
+	// Update fields if provided (validated against allow-lists).
+	if req.Theme != nil && validThemes[*req.Theme] {
 		settings.Theme = *req.Theme
 	}
-	if req.ColorTheme != nil {
+	if req.ColorTheme != nil && validColorThemes[*req.ColorTheme] {
 		settings.ColorTheme = *req.ColorTheme
 	}
 	if req.Currency != nil {
@@ -270,7 +288,7 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 
 	c.JSON(http.StatusOK, UserSettingsResponse{
 		Theme:                     settings.Theme,
-		ColorTheme:                settings.ColorTheme,
+		ColorTheme:                colorThemeOrDefault(settings.ColorTheme),
 		Currency:                  settings.Currency,
 		Language:                  settings.Language,
 		DateFormat:                updateDateFormat,
