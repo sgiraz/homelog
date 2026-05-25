@@ -3,14 +3,14 @@
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <!-- Quick Templates -->
       <div v-if="expenseTemplates.length > 0">
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('expenses.modal.templateLabel') }}
         </label>
         <select
           v-model.number="selectedTemplateId"
           @change="onTemplateSelect"
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option :value="null">{{ t('expenses.modal.templateNone') }}</option>
@@ -26,7 +26,7 @@
 
       <!-- Amount + Currency -->
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('expenses.modal.amountLabel') }}</label>
+        <label class="block text-sm text-ink-soft mb-1">{{ t('expenses.modal.amountLabel') }}</label>
         <div class="flex gap-2">
           <div class="flex-1">
             <Input
@@ -41,8 +41,8 @@
           </div>
           <select
             v-model="selectedCurrency"
-            class="w-24 px-2 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+            class="w-24 px-2 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-sm
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option v-for="c in allCurrencies" :key="c.code" :value="c.code">
@@ -53,19 +53,19 @@
 
         <!-- Conversion preview -->
         <div v-if="isForeignCurrency && form.amount" class="mt-1.5">
-          <div v-if="rateLoading" class="text-xs text-gray-400">
+          <div v-if="rateLoading" class="text-xs text-ink-faint">
             {{ t('expenses.modal.rateLoading') }}
           </div>
           <div v-else-if="convertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
             {{ formatOriginal(form.amount, selectedCurrency) }} ≈ {{ formatCurrency(convertedAmount) }}
-            <span class="text-gray-400">{{ t('expenses.modal.rateInfo', { rate: exchangeRate?.toFixed(6) }) }}</span>
+            <span class="text-ink-faint">{{ t('expenses.modal.rateInfo', { rate: exchangeRate?.toFixed(6) }) }}</span>
           </div>
           <div v-else-if="rateError" class="space-y-1">
             <p class="text-xs text-amber-600 dark:text-amber-400">
               {{ t('expenses.modal.rateUnavailable') }}
             </p>
             <div class="flex items-center gap-2">
-              <span class="text-xs text-gray-500">1 {{ selectedCurrency }} =</span>
+              <span class="text-xs text-ink-muted">1 {{ selectedCurrency }} =</span>
               <input
                 v-model.number="manualRate"
                 type="number"
@@ -73,11 +73,11 @@
                 min="0"
                 placeholder="0.00"
                 inputmode="decimal"
-                class="w-28 px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                class="w-28 px-2 py-1 text-sm border border-line rounded
+                       bg-surface text-ink
                        focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
-              <span class="text-xs text-gray-500">{{ settingsStore.currency }}</span>
+              <span class="text-xs text-ink-muted">{{ settingsStore.currency }}</span>
             </div>
             <div v-if="manualConvertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
               {{ formatOriginal(form.amount, selectedCurrency) }} ≈ {{ formatCurrency(manualConvertedAmount) }}
@@ -87,7 +87,7 @@
       </div>
 
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('expenses.modal.descriptionLabel') }}
         </label>
         <textarea
@@ -97,22 +97,22 @@
           :placeholder="t('expenses.modal.descriptionPlaceholder')"
           autocorrect="off"
           autocapitalize="off"
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('expenses.modal.categoryLabel') }}
         </label>
         <select
           v-model.number="form.category_id"
           @change="form.subcategory_id = null"
           required
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="" disabled>{{ t('expenses.modal.categoryPlaceholder') }}</option>
@@ -128,13 +128,13 @@
 
       <!-- Subcategory (shown only when selected category has subcategories) -->
       <div v-if="selectedCategorySubcategories.length > 0">
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('expenses.modal.subcategoryLabel') }}
         </label>
         <select
           v-model.number="form.subcategory_id"
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option :value="null">{{ t('expenses.modal.subcategoryNone') }}</option>
@@ -157,13 +157,13 @@
 
       <!-- Project (Optional) -->
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('expenses.modal.projectLabel') }}
         </label>
         <select
           v-model.number="form.project_id"
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option :value="null">{{ t('expenses.modal.projectNone') }}</option>
@@ -178,15 +178,15 @@
       </div>
 
       <!-- Sezione Split -->
-      <div v-if="hasMultipleUsers" class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
+      <div v-if="hasMultipleUsers" class="border-t border-line pt-4 space-y-3">
         <div class="flex items-center gap-3">
           <input
             type="checkbox"
             id="split-checkbox"
             v-model="form.is_split"
-            class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            class="w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500"
           />
-          <label for="split-checkbox" class="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+          <label for="split-checkbox" class="text-sm font-medium text-ink cursor-pointer">
             {{ t('expenses.modal.splitToggle') }}
           </label>
         </div>
@@ -194,45 +194,45 @@
         <div v-if="form.is_split" class="space-y-4 pl-2 border-l-2 border-blue-200 dark:border-blue-800 ml-2">
           <!-- Chi ha pagato -->
           <div class="pl-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label class="block text-sm font-medium text-ink-soft mb-2">
               {{ t('expenses.modal.paidByLabel') }}
             </label>
             <div class="space-y-2">
               <label
                 v-for="user in householdUsers"
                 :key="user.id"
-                class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-2 cursor-pointer"
               >
                 <input
                   type="radio"
                   :value="user.id"
                   v-model="form.paid_by_member_id"
-                  class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  class="w-4 h-4 text-blue-600 border-line focus:ring-blue-500"
                 />
-                <span class="text-gray-900 dark:text-white">{{ user.name }}</span>
-                <span v-if="user.user_id === authStore.user?.id" class="text-xs text-gray-500">{{ t('expenses.modal.paidByYou') }}</span>
+                <span class="text-ink">{{ user.name }}</span>
+                <span v-if="user.user_id === authStore.user?.id" class="text-xs text-ink-muted">{{ t('expenses.modal.paidByYou') }}</span>
               </label>
             </div>
           </div>
 
           <!-- Con chi dividere -->
           <div class="pl-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label class="block text-sm font-medium text-ink-soft mb-2">
               {{ t('expenses.modal.splitWithLabel') }}
             </label>
             <div class="space-y-2">
               <label
                 v-for="user in otherUsers"
                 :key="user.id"
-                class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-2 cursor-pointer"
               >
                 <input
                   type="checkbox"
                   :value="user.id"
                   v-model="form.split_with_member_ids"
-                  class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  class="w-4 h-4 text-blue-600 rounded border-line focus:ring-blue-500"
                 />
-                <span class="text-gray-900 dark:text-white">{{ user.name }}</span>
+                <span class="text-ink">{{ user.name }}</span>
               </label>
             </div>
           </div>
@@ -243,8 +243,8 @@
             class="ml-4 bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg"
           >
             <div class="text-sm space-y-1">
-              <div class="font-medium text-gray-900 dark:text-white mb-2">{{ t('expenses.modal.summaryTitle') }}</div>
-              <div class="text-gray-600 dark:text-gray-400">
+              <div class="font-medium text-ink mb-2">{{ t('expenses.modal.summaryTitle') }}</div>
+              <div class="text-ink-soft">
                 {{ t('expenses.modal.summaryTotal') }} <span class="font-medium">
                   <template v-if="isForeignCurrency">{{ formatOriginal(form.amount, selectedCurrency) }}</template>
                   <template v-else>{{ formatCurrency(form.amount) }}</template>
@@ -253,7 +253,7 @@
                   ≈ {{ formatCurrency(finalConvertedAmount) }}
                 </span>
               </div>
-              <div class="text-gray-600 dark:text-gray-400">
+              <div class="text-ink-soft">
                 {{ t('expenses.modal.summaryDividedBetween', { n: totalPeople }) }}
               </div>
               <div class="text-lg font-bold text-blue-600 dark:text-blue-400 mt-2">
@@ -269,7 +269,7 @@
       </div>
 
       <!-- Save as template -->
-      <div v-if="form.category_id && form.description" class="border-t border-gray-200 dark:border-gray-700 pt-3">
+      <div v-if="form.category_id && form.description" class="border-t border-line pt-3">
         <button
           type="button"
           @click="saveAsTemplate"

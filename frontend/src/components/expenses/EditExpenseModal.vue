@@ -26,7 +26,7 @@
         <p v-if="amountLocked && !isSettled" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
           {{ t('expenses.modal.amountLockedNotice') }}
         </p>
-        <p v-if="expense.original_currency" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p v-if="expense.original_currency" class="mt-1 text-xs text-ink-muted">
           {{ t('expenses.modal.originalAmountInfo', { amount: formatOriginal(expense.original_amount, expense.original_currency) }) }}
           <span v-if="expense.original_amount && expense.amount">
             {{ t('expenses.modal.originalRateInfo', { rate: (expense.amount / expense.original_amount).toFixed(6) }) }}
@@ -35,7 +35,7 @@
       </div>
 
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('expenses.modal.descriptionLabel') }}
         </label>
         <textarea
@@ -45,22 +45,22 @@
           :placeholder="t('expenses.modal.descriptionPlaceholder')"
           autocorrect="off"
           autocapitalize="off"
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('expenses.modal.categoryLabel') }}
         </label>
         <select
           v-model.number="form.category_id"
           @change="form.subcategory_id = null"
           required
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="" disabled>{{ t('expenses.modal.categoryPlaceholder') }}</option>
@@ -76,13 +76,13 @@
 
       <!-- Subcategory selector -->
       <div v-if="selectedCategorySubcategories.length > 0">
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('expenses.modal.subcategoryLabel') }}
         </label>
         <select
           v-model.number="form.subcategory_id"
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option :value="null">{{ t('expenses.modal.subcategoryNone') }}</option>
@@ -106,14 +106,14 @@
 
       <!-- Project (Optional) -->
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('expenses.modal.projectLabel') }}
         </label>
         <select
           v-model.number="form.project_id"
           :disabled="isSettled"
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500
                  disabled:opacity-50 disabled:cursor-not-allowed"
         >

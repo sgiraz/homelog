@@ -1,14 +1,14 @@
 <template>
   <div
     v-if="isDemoMode"
-    class="bg-indigo-600 text-white text-sm"
+    class="bg-gradient-to-r from-accent to-accent-deep text-white text-sm"
     role="status"
   >
     <div class="max-w-7xl mx-auto px-4 py-2 flex items-center gap-3">
       <span class="font-semibold flex items-center gap-1.5 flex-shrink-0">
         🎭 {{ t('demo.banner.label') }}
       </span>
-      <span class="hidden sm:inline text-indigo-100 truncate">
+      <span class="hidden sm:inline text-white/85 truncate">
         {{ t('demo.banner.description') }}
       </span>
       <div class="ml-auto flex items-center gap-2 flex-shrink-0">

@@ -33,6 +33,14 @@
     "themeLight": "Chiaro",
     "themeDark": "Scuro",
     "themeAuto": "Automatico",
+    "colorTheme": "Tema colore",
+    "themes": {
+      "paper": "Carta",
+      "slate": "Ardesia",
+      "forest": "Bosco",
+      "ocean": "Oceano",
+      "plum": "Prugna"
+    },
     "currency": "Valuta",
     "language": "Lingua",
     "dateFormat": "Formato Data",

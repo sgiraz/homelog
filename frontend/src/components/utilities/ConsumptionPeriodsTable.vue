@@ -1,34 +1,34 @@
 <template>
-  <div v-if="consumptionAnalysis && consumptionAnalysis.length > 0" class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-    <h4 class="font-semibold text-gray-900 dark:text-white mb-3">{{ t('utilities.consumptionPeriods.title') }}</h4>
+  <div v-if="consumptionAnalysis && consumptionAnalysis.length > 0" class="p-4 bg-surface rounded-lg">
+    <h4 class="font-semibold text-ink mb-3">{{ t('utilities.consumptionPeriods.title') }}</h4>
 
     <div class="overflow-x-auto -mx-2">
       <table class="w-full text-xs sm:text-sm min-w-0">
         <thead>
-          <tr class="border-b border-gray-300 dark:border-gray-600">
-            <th class="text-left py-2 px-1.5 text-gray-600 dark:text-gray-400">{{ t('utilities.consumptionPeriods.period') }}</th>
-            <th class="text-right py-2 px-1.5 text-gray-600 dark:text-gray-400">
+          <tr class="border-b border-line">
+            <th class="text-left py-2 px-1.5 text-ink-soft">{{ t('utilities.consumptionPeriods.period') }}</th>
+            <th class="text-right py-2 px-1.5 text-ink-soft">
               <span class="hidden sm:inline">{{ t('utilities.consumptionPeriods.consumptionPrefix') }} </span>{{ t('utilities.consumptionPeriods.actual') }}
             </th>
-            <th class="text-right py-2 px-1.5 text-gray-600 dark:text-gray-400">
+            <th class="text-right py-2 px-1.5 text-ink-soft">
               <span class="hidden sm:inline">{{ t('utilities.consumptionPeriods.consumptionPrefix') }} </span>{{ t('utilities.consumptionPeriods.billed') }}
             </th>
-            <th class="text-right py-2 px-1.5 text-gray-600 dark:text-gray-400 w-16 sm:w-auto">{{ t('utilities.consumptionPeriods.diff') }}</th>
+            <th class="text-right py-2 px-1.5 text-ink-soft w-16 sm:w-auto">{{ t('utilities.consumptionPeriods.diff') }}</th>
           </tr>
         </thead>
         <tbody>
           <tr
             v-for="(period, idx) in consumptionAnalysis"
             :key="idx"
-            class="border-b border-gray-200 dark:border-gray-700"
+            class="border-b border-line"
           >
-            <td class="py-2 px-1.5 text-gray-900 dark:text-white whitespace-nowrap">
+            <td class="py-2 px-1.5 text-ink whitespace-nowrap">
               {{ formatPeriodCompact(period.period_start, period.period_end) }}
             </td>
-            <td class="py-2 px-1.5 text-right text-gray-900 dark:text-white whitespace-nowrap tabular-nums">
+            <td class="py-2 px-1.5 text-right text-ink whitespace-nowrap tabular-nums">
               {{ period.user_consumption != null ? fmtNum(period.user_consumption) : '-' }}
             </td>
-            <td class="py-2 px-1.5 text-right text-gray-900 dark:text-white whitespace-nowrap tabular-nums">
+            <td class="py-2 px-1.5 text-right text-ink whitespace-nowrap tabular-nums">
               {{ period.provider_consumption != null ? fmtNum(period.provider_consumption) : '-' }}
             </td>
             <td :class="['py-2 px-1.5 text-right font-medium whitespace-nowrap tabular-nums', getDiffClass(period.difference)]">
@@ -37,13 +37,13 @@
           </tr>
         </tbody>
         <tfoot>
-          <tr class="border-t-2 border-gray-400 dark:border-gray-500 font-semibold">
-            <td class="py-2 px-1.5 text-gray-900 dark:text-white">{{ t('utilities.consumptionPeriods.total') }}</td>
-            <td class="py-2 px-1.5 text-right text-gray-900 dark:text-white whitespace-nowrap tabular-nums">
-              {{ fmtNum(consumptionSummary?.total_user || 0) }} <span class="text-gray-400 font-normal">{{ getUnit() }}</span>
+          <tr class="border-t-2 border-ink-faint font-semibold">
+            <td class="py-2 px-1.5 text-ink">{{ t('utilities.consumptionPeriods.total') }}</td>
+            <td class="py-2 px-1.5 text-right text-ink whitespace-nowrap tabular-nums">
+              {{ fmtNum(consumptionSummary?.total_user || 0) }} <span class="text-ink-faint font-normal">{{ getUnit() }}</span>
             </td>
-            <td class="py-2 px-1.5 text-right text-gray-900 dark:text-white whitespace-nowrap tabular-nums">
-              {{ fmtNum(consumptionSummary?.total_provider || 0) }} <span class="text-gray-400 font-normal">{{ getUnit() }}</span>
+            <td class="py-2 px-1.5 text-right text-ink whitespace-nowrap tabular-nums">
+              {{ fmtNum(consumptionSummary?.total_provider || 0) }} <span class="text-ink-faint font-normal">{{ getUnit() }}</span>
             </td>
             <td :class="['py-2 px-1.5 text-right whitespace-nowrap tabular-nums', getDiffClass(consumptionSummary?.cumulative_difference)]">
               {{ fmtDiff(consumptionSummary?.cumulative_difference || 0) }}

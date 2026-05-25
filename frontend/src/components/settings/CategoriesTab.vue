@@ -3,8 +3,8 @@
     <Card class="p-6">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ t('settings.categories.title') }}</h2>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <h2 class="text-xl font-bold text-ink">{{ t('settings.categories.title') }}</h2>
+          <p class="text-sm text-ink-soft mt-1">
             {{ t('settings.categories.subtitle') }}
           </p>
         </div>
@@ -17,23 +17,23 @@
 
       <!-- Add Category Form -->
       <div v-if="showAddCategoryForm" class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 overflow-hidden">
-        <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">{{ t('settings.categories.newCategoryTitle') }}</h3>
+        <h3 class="text-sm font-medium text-ink mb-3">{{ t('settings.categories.newCategoryTitle') }}</h3>
         <div class="flex gap-2 mb-2 min-w-0">
           <input
             v-model="newCategory.icon"
             type="text"
             :placeholder="t('settings.categories.iconPlaceholder')"
             maxlength="4"
-            class="w-14 shrink-0 px-2 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-center text-base
+            class="w-14 shrink-0 px-2 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-center text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <input
             v-model="newCategory.name"
             type="text"
             :placeholder="t('settings.categories.namePlaceholder')"
-            class="flex-1 min-w-0 px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+            class="flex-1 min-w-0 px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
             @keyup.enter="addCategory"
           />
@@ -43,9 +43,9 @@
             type="checkbox"
             id="cat-is-default"
             v-model="newCategory.is_default"
-            class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            class="w-4 h-4 text-blue-600 rounded border-line focus:ring-blue-500"
           />
-          <label for="cat-is-default" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+          <label for="cat-is-default" class="text-sm text-ink-soft cursor-pointer">
             {{ t('settings.categories.isDefault') }}
           </label>
         </div>
@@ -56,29 +56,29 @@
       </div>
 
       <!-- Category List -->
-      <div v-if="categories.length === 0 && !categoriesLoading" class="text-sm text-gray-500 dark:text-gray-400 italic p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-center">
+      <div v-if="categories.length === 0 && !categoriesLoading" class="text-sm text-ink-muted italic p-4 bg-surface-2 rounded-lg text-center">
         {{ t('settings.categories.empty') }}
       </div>
 
       <div class="space-y-2">
         <!-- Default categories -->
         <div v-if="defaultCategories.length > 0">
-          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+          <div class="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
             {{ t('settings.categories.defaultSection') }}
           </div>
           <div
             v-for="cat in defaultCategories"
             :key="cat.id"
-            class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden"
+            class="border border-line rounded-xl overflow-hidden"
           >
             <div
-              class="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 cursor-pointer"
+              class="flex items-center gap-2 p-3 bg-surface cursor-pointer"
               @click="toggleCategory(cat.id)"
             >
               <span class="text-lg w-6 shrink-0 text-center">{{ cat.icon }}</span>
               <div class="flex-1 min-w-0">
-                <span class="font-medium text-gray-900 dark:text-white truncate block">{{ cat.name }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('settings.categories.subcategoriesCount', { n: cat.subcategories?.length || 0 }) }}</span>
+                <span class="font-medium text-ink truncate block">{{ cat.name }}</span>
+                <span class="text-xs text-ink-muted">{{ t('settings.categories.subcategoriesCount', { n: cat.subcategories?.length || 0 }) }}</span>
               </div>
               <div class="flex items-center shrink-0">
                 <button
@@ -102,7 +102,7 @@
                   </svg>
                 </button>
                 <svg
-                  :class="['w-4 h-4 ml-1 text-gray-400 transition-transform', expandedCategories.has(cat.id) ? 'rotate-180' : '']"
+                  :class="['w-4 h-4 ml-1 text-ink-faint transition-transform', expandedCategories.has(cat.id) ? 'rotate-180' : '']"
                   fill="none" stroke="currentColor" viewBox="0 0 24 24"
                 >
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -110,34 +110,34 @@
               </div>
             </div>
 
-            <div v-if="expandedCategories.has(cat.id)" class="border-t border-gray-200 dark:border-gray-700">
+            <div v-if="expandedCategories.has(cat.id)" class="border-t border-line">
               <div v-if="addSubcategoryForCat === cat.id" class="p-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
                 <div class="flex gap-2">
                   <input
                     v-model="newSubcategoryName"
                     type="text"
                     :placeholder="t('settings.categories.subcategoryPlaceholder')"
-                    class="flex-1 px-2 py-2 text-base border border-gray-200 dark:border-gray-700 rounded
-                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                    class="flex-1 px-2 py-2 text-base border border-line rounded
+                           bg-surface text-ink
                            focus:outline-none focus:ring-1 focus:ring-blue-500"
                     @keyup.enter="saveSubcategory(cat.id)"
                     ref="subcategoryInput"
                   />
                   <button @click="saveSubcategory(cat.id)" class="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">{{ t('settings.categories.addSubcategoryButton') }}</button>
-                  <button @click="addSubcategoryForCat = null; newSubcategoryName = ''" class="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800">{{ t('settings.categories.cancel') }}</button>
+                  <button @click="addSubcategoryForCat = null; newSubcategoryName = ''" class="px-3 py-2 text-sm text-ink-soft hover:text-ink">{{ t('settings.categories.cancel') }}</button>
                 </div>
               </div>
 
-              <div v-if="!cat.subcategories?.length" class="px-4 py-2 text-sm text-gray-400 italic">
+              <div v-if="!cat.subcategories?.length" class="px-4 py-2 text-sm text-ink-faint italic">
                 {{ t('settings.categories.noSubcategories') }}
               </div>
               <div
                 v-for="sub in cat.subcategories"
                 :key="sub.id"
-                class="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                class="flex items-center gap-2 px-4 py-2 hover:bg-surface-2"
               >
-                <span class="w-4 h-4 text-gray-400">·</span>
-                <span class="flex-1 text-sm text-gray-700 dark:text-gray-300">{{ sub.name }}</span>
+                <span class="w-4 h-4 text-ink-faint">·</span>
+                <span class="flex-1 text-sm text-ink-soft">{{ sub.name }}</span>
                 <button
                   v-if="isAdmin"
                   @click="deleteSubcategory(cat, sub)"
@@ -155,22 +155,22 @@
 
         <!-- Personal categories -->
         <div v-if="personalCategories.length > 0" :class="defaultCategories.length > 0 ? 'mt-4' : ''">
-          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+          <div class="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
             {{ t('settings.categories.personalSection') }}
           </div>
           <div
             v-for="cat in personalCategories"
             :key="cat.id"
-            class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden"
+            class="border border-line rounded-xl overflow-hidden"
           >
             <div
-              class="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 cursor-pointer"
+              class="flex items-center gap-2 p-3 bg-surface cursor-pointer"
               @click="toggleCategory(cat.id)"
             >
               <span class="text-lg w-6 shrink-0 text-center">{{ cat.icon }}</span>
               <div class="flex-1 min-w-0">
-                <span class="font-medium text-gray-900 dark:text-white truncate block">{{ cat.name }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('settings.categories.subcategoriesCount', { n: cat.subcategories?.length || 0 }) }}</span>
+                <span class="font-medium text-ink truncate block">{{ cat.name }}</span>
+                <span class="text-xs text-ink-muted">{{ t('settings.categories.subcategoriesCount', { n: cat.subcategories?.length || 0 }) }}</span>
               </div>
               <div class="flex items-center shrink-0">
                 <button
@@ -192,7 +192,7 @@
                   </svg>
                 </button>
                 <svg
-                  :class="['w-4 h-4 ml-1 text-gray-400 transition-transform', expandedCategories.has(cat.id) ? 'rotate-180' : '']"
+                  :class="['w-4 h-4 ml-1 text-ink-faint transition-transform', expandedCategories.has(cat.id) ? 'rotate-180' : '']"
                   fill="none" stroke="currentColor" viewBox="0 0 24 24"
                 >
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -200,33 +200,33 @@
               </div>
             </div>
 
-            <div v-if="expandedCategories.has(cat.id)" class="border-t border-gray-200 dark:border-gray-700">
+            <div v-if="expandedCategories.has(cat.id)" class="border-t border-line">
               <div v-if="addSubcategoryForCat === cat.id" class="p-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
                 <div class="flex gap-2">
                   <input
                     v-model="newSubcategoryName"
                     type="text"
                     :placeholder="t('settings.categories.subcategoryPlaceholder')"
-                    class="flex-1 px-2 py-2 text-base border border-gray-200 dark:border-gray-700 rounded
-                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                    class="flex-1 px-2 py-2 text-base border border-line rounded
+                           bg-surface text-ink
                            focus:outline-none focus:ring-1 focus:ring-blue-500"
                     @keyup.enter="saveSubcategory(cat.id)"
                   />
                   <button @click="saveSubcategory(cat.id)" class="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">{{ t('settings.categories.addSubcategoryButton') }}</button>
-                  <button @click="addSubcategoryForCat = null; newSubcategoryName = ''" class="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800">{{ t('settings.categories.cancel') }}</button>
+                  <button @click="addSubcategoryForCat = null; newSubcategoryName = ''" class="px-3 py-2 text-sm text-ink-soft hover:text-ink">{{ t('settings.categories.cancel') }}</button>
                 </div>
               </div>
 
-              <div v-if="!cat.subcategories?.length" class="px-4 py-2 text-sm text-gray-400 italic">
+              <div v-if="!cat.subcategories?.length" class="px-4 py-2 text-sm text-ink-faint italic">
                 {{ t('settings.categories.noSubcategories') }}
               </div>
               <div
                 v-for="sub in cat.subcategories"
                 :key="sub.id"
-                class="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                class="flex items-center gap-2 px-4 py-2 hover:bg-surface-2"
               >
-                <span class="w-4 h-4 text-gray-400">·</span>
-                <span class="flex-1 text-sm text-gray-700 dark:text-gray-300">{{ sub.name }}</span>
+                <span class="w-4 h-4 text-ink-faint">·</span>
+                <span class="flex-1 text-sm text-ink-soft">{{ sub.name }}</span>
                 <button
                   @click="deleteSubcategory(cat, sub)"
                   class="p-2 text-red-400 hover:text-red-600 opacity-60 hover:opacity-100"

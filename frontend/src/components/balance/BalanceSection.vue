@@ -6,25 +6,25 @@
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
       </svg>
-      <p class="mt-4 text-gray-600 dark:text-gray-400">{{ t('balance.loading') }}</p>
+      <p class="mt-4 text-ink-soft">{{ t('balance.loading') }}</p>
     </div>
 
     <template v-else>
       <!-- Balance Card -->
       <Card class="p-4 sm:p-8">
         <div class="text-center">
-          <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+          <div class="text-sm text-ink-soft mb-2">
             {{ t('balance.balanceWith', { name: balanceStore.otherMemberName || t('balance.partnerFallback') }) }}
           </div>
           <div :class="[
             'text-3xl sm:text-5xl font-bold mb-3',
             balanceStore.balance > 0 ? 'text-green-600 dark:text-green-400' :
             balanceStore.balance < 0 ? 'text-red-600 dark:text-red-400' :
-            'text-gray-600 dark:text-gray-400'
+            'text-ink-soft'
           ]">
             {{ balanceStore.balance > 0 ? '+' : '' }}{{ formatCurrency(balanceStore.balance) }}
           </div>
-          <div class="text-lg text-gray-700 dark:text-gray-300">
+          <div class="text-lg text-ink-soft">
             {{ balanceMessage }}
           </div>
 
@@ -52,13 +52,13 @@
       <!-- Stats Cards -->
       <div class="grid grid-cols-2 gap-4">
         <Card class="p-4 sm:p-6 text-center">
-          <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('balance.stats.unsettledCount') }}</div>
+          <div class="text-sm text-ink-soft mb-1">{{ t('balance.stats.unsettledCount') }}</div>
           <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">
             {{ balanceStore.unsettledSplits.length }}
           </div>
         </Card>
         <Card class="p-4 sm:p-6 text-center">
-          <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('balance.stats.totalSettled') }}</div>
+          <div class="text-sm text-ink-soft mb-1">{{ t('balance.stats.totalSettled') }}</div>
           <div class="text-2xl font-bold text-green-600 dark:text-green-400">
             {{ formatCurrency(totalSettled) }}
           </div>
@@ -73,14 +73,14 @@
           aria-controls="unsettled-splits-list"
           class="w-full flex items-center justify-between text-left"
         >
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <h3 class="text-lg font-semibold text-ink flex items-center gap-2">
             {{ t('balance.unsettled.title') }}
             <span class="text-sm font-normal px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
               {{ balanceStore.unsettledSplits.length }}
             </span>
           </h3>
           <svg
-            :class="['w-5 h-5 text-gray-400 transition-transform', unsettledOpen ? 'rotate-180' : '']"
+            :class="['w-5 h-5 text-ink-faint transition-transform', unsettledOpen ? 'rotate-180' : '']"
             fill="none" stroke="currentColor" viewBox="0 0 24 24"
           >
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -90,7 +90,7 @@
         <Transition name="filter-expand">
           <div v-if="unsettledOpen" id="unsettled-splits-list" class="mt-4 space-y-3">
             <!-- Totale da saldare -->
-            <div class="text-sm text-gray-600 dark:text-gray-400 flex justify-between border-b border-gray-100 dark:border-gray-700 pb-2">
+            <div class="text-sm text-ink-soft flex justify-between border-b border-line pb-2">
               <span>{{ t('balance.unsettled.totalLabel') }}</span>
               <span class="font-semibold text-amber-600 dark:text-amber-400">{{ formatCurrency(totalUnsettled) }}</span>
             </div>
@@ -98,14 +98,14 @@
             <div
               v-for="split in balanceStore.unsettledSplits"
               :key="split.expense_id"
-              class="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
+              class="p-3 sm:p-4 border border-line rounded-lg"
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="flex-1 min-w-0">
-                  <div class="font-medium text-gray-900 dark:text-white truncate">
+                  <div class="font-medium text-ink truncate">
                     {{ split.description || t('balance.unsettled.noDescription') }}
                   </div>
-                  <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-2">
+                  <div class="text-sm text-ink-soft mt-1 flex items-center gap-2">
                     <span>{{ formatDate(split.date) }}</span>
                     <span class="text-xs">{{ t('balance.unsettled.paidBy', { name: split.paid_by_name }) }}</span>
                   </div>
@@ -124,36 +124,36 @@
 
       <!-- Storico Pagamenti -->
       <Card class="p-4 sm:p-6">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ t('balance.history.title') }}</h3>
+        <h3 class="text-lg font-semibold text-ink mb-4">{{ t('balance.history.title') }}</h3>
         <div v-if="balanceStore.settlements.length === 0" class="text-center py-8">
-          <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-16 h-16 mx-auto text-ink-faint mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
-          <p class="text-gray-600 dark:text-gray-400">{{ t('balance.history.empty') }}</p>
+          <p class="text-ink-soft">{{ t('balance.history.empty') }}</p>
         </div>
 
         <div v-else class="space-y-3">
           <div
             v-for="settlement in balanceStore.settlements"
             :key="settlement.id"
-            class="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
+            class="p-3 sm:p-4 border border-line rounded-lg"
           >
             <div class="flex items-start justify-between gap-3">
               <div class="flex-1 min-w-0">
-                <div class="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                <div class="font-medium text-ink flex items-center gap-2">
                   <span class="truncate">{{ settlement.from_member_name }}</span>
-                  <svg class="w-4 h-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4 shrink-0 text-ink-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
                   <span class="truncate">{{ settlement.to_member_name }}</span>
                 </div>
-                <div class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-2">
+                <div class="text-sm text-ink-soft mt-1 flex items-center gap-2">
                   <span>{{ formatDate(settlement.date) }}</span>
-                  <span v-if="settlement.payment_method" class="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
+                  <span v-if="settlement.payment_method" class="text-xs px-2 py-0.5 bg-surface-2 rounded">
                     {{ paymentMethodLabel(settlement.payment_method) }}
                   </span>
                 </div>
-                <div v-if="settlement.note" class="text-sm text-gray-500 dark:text-gray-500 mt-1 italic">
+                <div v-if="settlement.note" class="text-sm text-ink-muted mt-1 italic">
                   "{{ settlement.note }}"
                 </div>
               </div>

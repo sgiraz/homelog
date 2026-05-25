@@ -3,8 +3,8 @@
     <Card class="p-3 sm:p-6">
       <div class="flex items-center justify-between gap-2">
         <div class="min-w-0">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.kpi.monthExpenses') }}</div>
-          <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
+          <div class="text-xs sm:text-sm text-ink-soft">{{ t('dashboard.kpi.monthExpenses') }}</div>
+          <div class="text-lg sm:text-2xl font-bold text-ink truncate">
             {{ formatCurrency(monthTotal) }}
           </div>
         </div>
@@ -19,8 +19,8 @@
     <Card class="p-3 sm:p-6">
       <div class="flex items-center justify-between gap-2">
         <div class="min-w-0">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.kpi.periodCount') }}</div>
-          <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
+          <div class="text-xs sm:text-sm text-ink-soft">{{ t('dashboard.kpi.periodCount') }}</div>
+          <div class="text-lg sm:text-2xl font-bold text-ink">
             {{ periodCount }}
           </div>
         </div>
@@ -35,8 +35,8 @@
     <Card class="p-3 sm:p-6">
       <div class="flex items-center justify-between gap-2">
         <div class="min-w-0">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.kpi.dailyAverage') }}</div>
-          <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
+          <div class="text-xs sm:text-sm text-ink-soft">{{ t('dashboard.kpi.dailyAverage') }}</div>
+          <div class="text-lg sm:text-2xl font-bold text-ink truncate">
             {{ formatCurrency(dailyAverage) }}
           </div>
         </div>
@@ -51,8 +51,8 @@
     <Card class="p-3 sm:p-6">
       <div class="flex items-center justify-between gap-2">
         <div class="min-w-0">
-          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.kpi.yearExpenses') }}</div>
-          <div class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
+          <div class="text-xs sm:text-sm text-ink-soft">{{ t('dashboard.kpi.yearExpenses') }}</div>
+          <div class="text-lg sm:text-2xl font-bold text-ink truncate">
             {{ formatCurrency(yearTotal) }}
           </div>
         </div>

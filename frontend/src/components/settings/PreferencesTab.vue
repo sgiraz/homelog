@@ -1,16 +1,16 @@
 <template>
   <div class="space-y-4">
     <Card class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.preferences.title') }}</h2>
+      <h2 class="text-xl font-bold text-ink mb-4">{{ t('settings.preferences.title') }}</h2>
 
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t('settings.preferences.theme') }}</label>
+          <label class="block text-sm font-medium text-ink-soft mb-2">{{ t('settings.preferences.theme') }}</label>
           <select
             v-model="preferences.theme"
             @change="updateUserSettings"
-            class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+            class="w-full px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="light">{{ t('settings.preferences.themeLight') }}</option>
@@ -20,12 +20,36 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t('settings.preferences.currency') }}</label>
+          <label class="block text-sm font-medium text-ink-soft mb-2">{{ t('settings.preferences.colorTheme') }}</label>
+          <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            <button
+              v-for="th in sortedThemes"
+              :key="th.id"
+              type="button"
+              @click="selectColorTheme(th.id)"
+              class="flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-colors"
+              :class="preferences.color_theme === th.id
+                ? 'border-accent ring-2 ring-accent/40'
+                : 'border-line hover:border-ink-faint'"
+              :aria-pressed="preferences.color_theme === th.id"
+            >
+              <span class="flex h-8 w-full overflow-hidden rounded-lg border border-line">
+                <span class="flex-1" :style="{ backgroundColor: th.swatch[0] }"></span>
+                <span class="flex-1" :style="{ backgroundColor: th.swatch[1] }"></span>
+                <span class="flex-1" :style="{ backgroundColor: th.swatch[2] }"></span>
+              </span>
+              <span class="text-xs font-medium text-ink">{{ t('settings.preferences.themes.' + th.id) }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-ink-soft mb-2">{{ t('settings.preferences.currency') }}</label>
           <select
             v-model="preferences.currency"
             @change="updateUserSettings"
-            class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+            class="w-full px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="EUR">{{ t('settings.preferences.options.currencyEUR') }}</option>
@@ -35,12 +59,12 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t('settings.preferences.language') }}</label>
+          <label class="block text-sm font-medium text-ink-soft mb-2">{{ t('settings.preferences.language') }}</label>
           <select
             v-model="preferences.language"
             @change="updateUserSettings"
-            class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+            class="w-full px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="it">{{ t('settings.preferences.options.languageIT') }}</option>
@@ -49,12 +73,12 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t('settings.preferences.dateFormat') }}</label>
+          <label class="block text-sm font-medium text-ink-soft mb-2">{{ t('settings.preferences.dateFormat') }}</label>
           <select
             v-model="preferences.date_format"
             @change="updateUserSettings"
-            class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+            class="w-full px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="DD/MM/YYYY">{{ t('settings.preferences.options.dateFormatDDMMYYYY') }}</option>
@@ -69,7 +93,7 @@
     <!-- Expense Templates -->
     <Card class="p-6">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ t('settings.preferences.templates.title') }}</h2>
+        <h2 class="text-xl font-bold text-ink">{{ t('settings.preferences.templates.title') }}</h2>
         <button
           type="button"
           @click="showAddTemplate = true"
@@ -79,11 +103,11 @@
         </button>
       </div>
 
-      <div v-if="templatesLoading" class="text-sm text-gray-500 py-4 text-center">
+      <div v-if="templatesLoading" class="text-sm text-ink-muted py-4 text-center">
         {{ t('common.states.loading') }}
       </div>
 
-      <div v-else-if="templates.length === 0" class="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
+      <div v-else-if="templates.length === 0" class="text-sm text-ink-muted py-4 text-center">
         {{ t('settings.preferences.templates.empty') }}
       </div>
 
@@ -91,12 +115,12 @@
         <div
           v-for="tpl in templates"
           :key="tpl.id"
-          class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700"
+          class="flex items-center gap-3 p-3 rounded-lg border border-line"
         >
           <span class="text-xl flex-shrink-0">{{ tpl.icon || tpl.category?.icon || '📋' }}</span>
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ tpl.name }}</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">
+            <div class="text-sm font-medium text-ink truncate">{{ tpl.name }}</div>
+            <div class="text-xs text-ink-muted">
               {{ tpl.category?.name }}<span v-if="tpl.subcategory"> / {{ tpl.subcategory.name }}</span>
               <span v-if="tpl.amount"> · {{ formatCurrency(tpl.amount) }}</span>
             </div>
@@ -104,7 +128,7 @@
           <button
             type="button"
             @click="editTemplate(tpl)"
-            class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-400 hover:text-blue-500"
+            class="p-1.5 rounded hover:bg-surface-3 text-ink-faint hover:text-blue-500"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -113,7 +137,7 @@
           <button
             type="button"
             @click="deleteTemplate(tpl)"
-            class="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500"
+            class="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-ink-faint hover:text-red-500"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -141,13 +165,13 @@
             inputmode="decimal"
           />
           <div>
-            <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('settings.preferences.templates.categoryLabel') }}</label>
+            <label class="block text-sm text-ink-soft mb-1">{{ t('settings.preferences.templates.categoryLabel') }}</label>
             <select
               v-model.number="tplForm.category_id"
               @change="tplForm.subcategory_id = null"
               required
-              class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+              class="w-full px-3 py-3 border border-line rounded-lg
+                     bg-surface text-ink text-base
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option v-for="cat in tplCategories" :key="cat.id" :value="cat.id">
@@ -157,11 +181,11 @@
           </div>
         </div>
         <div v-if="tplSubcategories.length > 0">
-          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('settings.preferences.templates.subcategoryLabel') }}</label>
+          <label class="block text-sm text-ink-soft mb-1">{{ t('settings.preferences.templates.subcategoryLabel') }}</label>
           <select
             v-model.number="tplForm.subcategory_id"
-            class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+            class="w-full px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option :value="null">{{ t('settings.preferences.templates.noSubcategory') }}</option>
@@ -183,30 +207,30 @@
 
     <!-- Notifications -->
     <Card class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.preferences.notifications.title') }}</h2>
+      <h2 class="text-xl font-bold text-ink mb-4">{{ t('settings.preferences.notifications.title') }}</h2>
       <div class="space-y-4">
         <div class="space-y-3 mb-2">
-          <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('settings.preferences.notifications.description') }}</p>
+          <p class="text-sm text-ink-soft">{{ t('settings.preferences.notifications.description') }}</p>
           <label class="flex items-center justify-between cursor-pointer">
-            <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('settings.preferences.notifications.joinRequests') }}</span>
+            <span class="text-sm text-ink-soft">{{ t('settings.preferences.notifications.joinRequests') }}</span>
             <input type="checkbox" v-model="notifyJoinRequests" @change="updateNotificationPrefs"
-                   class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+                   class="w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500" />
           </label>
           <label class="flex items-center justify-between cursor-pointer">
-            <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('settings.preferences.notifications.sharedExpenses') }}</span>
+            <span class="text-sm text-ink-soft">{{ t('settings.preferences.notifications.sharedExpenses') }}</span>
             <input type="checkbox" v-model="notifySharedExpenses" @change="updateNotificationPrefs"
-                   class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+                   class="w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500" />
           </label>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label class="block text-sm font-medium text-ink-soft mb-2">
             {{ t('settings.preferences.notifications.retentionLabel') }}
           </label>
           <select
             v-model.number="notificationRetentionDays"
             @change="updateRetentionDays"
-            class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+            class="w-full px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option :value="30">{{ t('settings.preferences.notifications.retentionDays', { n: 30 }) }}</option>
@@ -215,7 +239,7 @@
             <option :value="180">{{ t('settings.preferences.notifications.retentionDays', { n: 180 }) }}</option>
             <option :value="365">{{ t('settings.preferences.notifications.retentionYear') }}</option>
           </select>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p class="text-xs text-ink-muted mt-1">
             {{ t('settings.preferences.notifications.retentionInfo') }}
           </p>
         </div>
@@ -224,7 +248,7 @@
 
     <!-- Account -->
     <Card class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.preferences.account.title') }}</h2>
+      <h2 class="text-xl font-bold text-ink mb-4">{{ t('settings.preferences.account.title') }}</h2>
       <div class="space-y-3">
         <!-- Change Password toggle -->
         <div>
@@ -291,6 +315,8 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { useTheme } from '@/composables/useTheme'
+import { THEMES } from '@/config/themes'
 import { authAPI, expenseTemplatesAPI, categoriesAPI } from '@/api/client'
 import apiClient from '@/api/client'
 import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
@@ -304,13 +330,22 @@ const { t } = useI18n()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const { setTheme } = useDarkMode()
+const { setColorTheme } = useTheme()
 
 const preferences = ref({
   theme: 'auto',
+  color_theme: 'slate',
   currency: 'EUR',
   language: 'it',
   date_format: 'DD/MM/YYYY'
 })
+
+// Themes shown alphabetically by their localized label (per language).
+const sortedThemes = computed(() =>
+  [...THEMES].sort((a, b) =>
+    t(`settings.preferences.themes.${a.id}`).localeCompare(t(`settings.preferences.themes.${b.id}`))
+  )
+)
 
 const notificationRetentionDays = ref(90)
 const notifyJoinRequests = ref(true)
@@ -422,6 +457,7 @@ async function loadUserSettings() {
     const { data } = await apiClient.get('/settings')
     preferences.value = {
       theme: data.theme || 'auto',
+      color_theme: data.color_theme || 'slate',
       currency: data.currency || 'EUR',
       language: data.language || 'it',
       date_format: data.date_format || 'DD/MM/YYYY'
@@ -433,6 +469,17 @@ async function loadUserSettings() {
     setTheme(preferences.value.theme)
   } catch {
     console.log('Using default user settings')
+  }
+}
+
+async function selectColorTheme(id) {
+  preferences.value.color_theme = id
+  setColorTheme(id) // apply instantly; persist in the background
+  try {
+    await apiClient.put('/settings', { color_theme: id })
+    settingsStore.colorTheme = id
+  } catch (err) {
+    console.error('Error updating color theme:', err)
   }
 }
 

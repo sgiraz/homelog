@@ -7,11 +7,26 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="HomeLog - Home Expense Management">
-    <meta name="theme-color" content="#2563EB">
+    <!-- Default theme (slate) canvas — keep in sync with themes.js slate swatch. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#EAEDF3">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F131A">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="HomeLog">
     <title>HomeLog - Gestione Spese</title>
+    <!-- Apply saved dark mode + color theme before first paint (no flash). -->
+    <script>
+      (function () {
+        try {
+          var m = localStorage.getItem('themeMode');
+          var dark = m === 'dark' || ((m === null || m === 'auto') &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+          var t = localStorage.getItem('colorTheme');
+          if (t) document.documentElement.dataset.theme = t;
+        } catch (e) { /* storage blocked — defaults apply */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>

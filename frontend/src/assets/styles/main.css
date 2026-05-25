@@ -9,6 +9,112 @@
    `dark:` utility still resolves under the class-based toggle. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ───────────────────────────────────────────────────────────────────────────
+   Semantic color tokens — single source of truth for the neutral palette.
+   Components use ONE class (bg-surface, text-ink, border-line, …) with NO
+   `dark:` variant; the value flips automatically when `.dark` is on <html>.
+   Re-theming any tone (light or dark) is a one-line edit here. Channels are
+   stored as "R G B" (not full colors) so Tailwind v4 can build /opacity
+   modifiers (e.g. bg-surface/50) via color-mix(). Do NOT add `<alpha-value>`
+   inside @theme — v4 leaks it as a literal and the utility dies.
+   ─────────────────────────────────────────────────────────────────────────── */
+/* ── "Slate" = DEFAULT theme (lives in :root/.dark, i.e. no data-theme set).
+   Cool & minimal. Other themes are [data-theme="…"] blocks below. Accents
+   are theme-able too: accent = fills/buttons (white text on it), accent-soft
+   = accent as text/icon (brighter in dark for contrast), positive = success. */
+:root {
+  --c-canvas:    234 237 243; /* page background (cool slate) */
+  --c-surface:   255 255 255; /* cards, modals, inputs */
+  --c-surface-2: 224 228 236; /* subtle fills, hovers, chips */
+  --c-surface-3: 208 214 224; /* secondary buttons, stronger fills */
+  --c-ink:        26  34  51; /* primary text */
+  --c-ink-soft:   71  82 100; /* secondary text, labels */
+  --c-ink-muted: 104 114 130; /* tertiary text */
+  --c-ink-faint: 150 159 174; /* faint text, icons, placeholders */
+  --c-line:      219 224 233; /* borders, dividers */
+  --c-accent:      217  83  30; --c-accent-deep: 178  63  18; --c-accent-soft: 217  83  30; --c-positive: 35 78 58;
+}
+.dark {
+  --c-canvas:     15  19  26; /* cool charcoal */
+  --c-surface:    23  28  37;
+  --c-surface-2:  33  40  51;
+  --c-surface-3:  45  54  67;
+  --c-ink:       230 234 241;
+  --c-ink-soft:  155 165 180;
+  --c-ink-muted: 146 157 173;
+  --c-ink-faint: 108 119 135;
+  --c-line:       41  50  63;
+  --c-accent:      217  83  30; --c-accent-deep: 178  63  18; --c-accent-soft: 232 137  90; --c-positive: 62 125 92;
+}
+
+/* ── Alternate themes. Set via data-theme on <html>; each defines its own
+   neutrals + accents for light and (.dark) dark. All stay in the warm,
+   earthy family so the app harmonises with the landing/docs. ── */
+
+/* PAPER — warm cream; the landing/docs palette, now an opt-in alternative. */
+[data-theme="paper"] {
+  --c-canvas: 251 246 236; --c-surface: 255 255 255; --c-surface-2: 243 244 246; --c-surface-3: 229 231 235;
+  --c-ink: 17 24 39; --c-ink-soft: 75 85 99; --c-ink-muted: 107 114 128; --c-ink-faint: 156 163 175; --c-line: 229 231 235;
+  --c-accent: 217 83 30; --c-accent-deep: 178 63 18; --c-accent-soft: 217 83 30; --c-positive: 35 78 58;
+}
+.dark[data-theme="paper"] {
+  --c-canvas: 26 22 18; --c-surface: 34 29 24; --c-surface-2: 49 42 36; --c-surface-3: 60 52 44;
+  --c-ink: 255 255 255; --c-ink-soft: 156 163 175; --c-ink-muted: 156 163 175; --c-ink-faint: 107 114 128; --c-line: 58 50 42;
+  --c-accent: 217 83 30; --c-accent-deep: 178 63 18; --c-accent-soft: 232 137 90; --c-positive: 62 125 92;
+}
+
+/* FOREST — warm sage; pine green leads. */
+[data-theme="forest"] {
+  --c-canvas: 242 244 238; --c-surface: 251 252 248; --c-surface-2: 234 238 226; --c-surface-3: 219 224 208;
+  --c-ink: 30 42 34; --c-ink-soft: 74 88 78; --c-ink-muted: 104 118 108; --c-ink-faint: 150 162 150; --c-line: 219 226 210;
+  --c-accent: 46 107 78; --c-accent-deep: 35 78 58; --c-accent-soft: 46 107 78; --c-positive: 46 107 78;
+}
+.dark[data-theme="forest"] {
+  --c-canvas: 20 24 19; --c-surface: 28 35 27; --c-surface-2: 40 48 38; --c-surface-3: 52 62 49;
+  --c-ink: 232 238 226; --c-ink-soft: 156 168 152; --c-ink-muted: 150 162 146; --c-ink-faint: 108 120 104; --c-line: 46 56 43;
+  --c-accent: 62 125 92; --c-accent-deep: 46 107 78; --c-accent-soft: 110 180 140; --c-positive: 110 180 140;
+}
+
+/* OCEAN — cool teal/blue. */
+[data-theme="ocean"] {
+  --c-canvas: 240 245 247; --c-surface: 255 255 255; --c-surface-2: 230 238 241; --c-surface-3: 214 226 230;
+  --c-ink: 20 36 44; --c-ink-soft: 68 90 100; --c-ink-muted: 100 120 130; --c-ink-faint: 148 166 174; --c-line: 215 226 230;
+  --c-accent: 14 124 134; --c-accent-deep: 11 100 108; --c-accent-soft: 14 124 134; --c-positive: 16 122 96;
+}
+.dark[data-theme="ocean"] {
+  --c-canvas: 13 22 32; --c-surface: 21 33 44; --c-surface-2: 31 45 58; --c-surface-3: 42 58 72;
+  --c-ink: 228 238 243; --c-ink-soft: 150 168 180; --c-ink-muted: 144 162 174; --c-ink-faint: 104 122 136; --c-line: 37 51 62;
+  --c-accent: 20 150 156; --c-accent-deep: 14 124 134; --c-accent-soft: 90 200 205; --c-positive: 90 195 170;
+}
+
+/* PLUM — warm wine/aubergine. */
+[data-theme="plum"] {
+  --c-canvas: 248 241 240; --c-surface: 255 255 255; --c-surface-2: 244 235 235; --c-surface-3: 234 221 222;
+  --c-ink: 42 28 34; --c-ink-soft: 96 78 84; --c-ink-muted: 124 106 112; --c-ink-faint: 168 152 156; --c-line: 236 220 221;
+  --c-accent: 154 59 99; --c-accent-deep: 122 44 76; --c-accent-soft: 154 59 99; --c-positive: 35 110 78;
+}
+.dark[data-theme="plum"] {
+  --c-canvas: 26 19 24; --c-surface: 34 26 32; --c-surface-2: 48 38 45; --c-surface-3: 60 48 56;
+  --c-ink: 241 230 234; --c-ink-soft: 176 158 166; --c-ink-muted: 168 150 158; --c-ink-faint: 122 108 116; --c-line: 58 46 52;
+  --c-accent: 168 69 110; --c-accent-deep: 154 59 99; --c-accent-soft: 214 130 168; --c-positive: 110 185 145;
+}
+
+@theme inline {
+  --color-canvas:    rgb(var(--c-canvas));
+  --color-surface:   rgb(var(--c-surface));
+  --color-surface-2: rgb(var(--c-surface-2));
+  --color-surface-3: rgb(var(--c-surface-3));
+  --color-ink:       rgb(var(--c-ink));
+  --color-ink-soft:  rgb(var(--c-ink-soft));
+  --color-ink-muted: rgb(var(--c-ink-muted));
+  --color-ink-faint: rgb(var(--c-ink-faint));
+  --color-line:      rgb(var(--c-line));
+  --color-accent:      rgb(var(--c-accent));
+  --color-accent-deep: rgb(var(--c-accent-deep));
+  --color-accent-soft: rgb(var(--c-accent-soft));
+  --color-positive:    rgb(var(--c-positive));
+}
+
 @layer base {
   /* Tailwind v4 changed the default border/divide color from `gray-200` to
      `currentColor`. Preserve v3 behaviour so bare `border` / `divide-*`
@@ -24,11 +130,7 @@
 
   /* Visible focus ring for keyboard navigation */
   :focus-visible {
-    @apply outline-none ring-2 ring-blue-500 ring-offset-2;
-  }
-
-  .dark :focus-visible {
-    @apply ring-offset-gray-900;
+    @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-canvas;
   }
 
   /* Custom scrollbar */
@@ -40,10 +142,10 @@
     @apply bg-transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+    @apply bg-ink-faint rounded-full;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400 dark:bg-gray-500;
+    @apply bg-ink-muted;
   }
 }
 

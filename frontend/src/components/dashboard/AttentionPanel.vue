@@ -1,15 +1,15 @@
 <template>
-  <Card class="p-4 sm:p-5 border-l-4 border-l-ember">
+  <Card class="p-4 sm:p-5 border-l-4 border-l-accent">
     <!-- Header: warm "home brief" identity + dynamic subtitle -->
-    <div class="flex items-center gap-3 pb-3 mb-3 border-b border-gray-100 dark:border-gray-700/60">
-      <span class="w-9 h-9 rounded-xl grid place-items-center shrink-0 bg-ember/10 text-ember dark:bg-ember/20 dark:text-ember-light">
+    <div class="flex items-center gap-3 pb-3 mb-3 border-b border-line/60">
+      <span class="w-9 h-9 rounded-xl grid place-items-center shrink-0 bg-accent-soft/15 text-accent-soft">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
       </span>
       <div class="min-w-0">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-white leading-tight">{{ t('dashboard.attention.title') }}</h2>
-        <p class="text-xs text-gray-500 dark:text-gray-400 leading-tight">
+        <h2 class="text-sm font-semibold text-ink leading-tight">{{ t('dashboard.attention.title') }}</h2>
+        <p class="text-xs text-ink-muted leading-tight">
           {{ items.length
             ? t(`dashboard.attention.${items.length === 1 ? 'subtitle_one' : 'subtitle_other'}`, { n: items.length })
             : t('dashboard.attention.allClear') }}
@@ -19,20 +19,20 @@
 
     <!-- Calm "all clear" state -->
     <div v-if="!items.length" class="flex items-start gap-3 py-1">
-      <span class="w-8 h-8 rounded-lg grid place-items-center shrink-0 bg-pine/10 text-pine dark:bg-pine/25 dark:text-pine-light">
+      <span class="w-8 h-8 rounded-lg grid place-items-center shrink-0 bg-positive/15 text-positive">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
         </svg>
       </span>
       <div class="min-w-0">
-        <div class="text-sm text-gray-700 dark:text-gray-200">{{ t('dashboard.attention.allClearSub') }}</div>
-        <div v-if="emptyDetail" class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ emptyDetail }}</div>
+        <div class="text-sm text-ink">{{ t('dashboard.attention.allClearSub') }}</div>
+        <div v-if="emptyDetail" class="text-xs text-ink-faint mt-0.5">{{ emptyDetail }}</div>
       </div>
     </div>
 
     <!-- Concrete items (3 on mobile, 5 on desktop) -->
     <template v-else>
-      <ul class="divide-y divide-gray-100 dark:divide-gray-700/60">
+      <ul class="divide-y divide-line/60">
         <li
           v-for="(item, idx) in items"
           :key="item.key"
@@ -43,8 +43,8 @@
             <component :is="icons[item.icon]" />
           </span>
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ item.title }}</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ item.detail }}</div>
+            <div class="text-sm font-medium text-ink truncate">{{ item.title }}</div>
+            <div class="text-xs text-ink-muted truncate">{{ item.detail }}</div>
           </div>
           <component
             :is="item.to ? 'router-link' : 'button'"
@@ -62,7 +62,7 @@
       <button
         v-if="items.length > 3 && !showAllMobile"
         type="button"
-        class="md:hidden mt-2 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+        class="md:hidden mt-2 text-xs font-medium text-ink-muted hover:text-ink"
         @click="showAllMobile = true"
       >
         {{ t(`dashboard.attention.${items.length - 3 === 1 ? 'more_one' : 'more_other'}`, { n: items.length - 3 }) }}
@@ -102,8 +102,8 @@ const toneChip = {
   danger: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300',
   warn: 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300',
   info: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300',
-  positive: 'bg-pine/10 text-pine dark:bg-pine/25 dark:text-pine-light',
-  accent: 'bg-ember/10 text-ember dark:bg-ember/20 dark:text-ember-light',
+  positive: 'bg-positive/15 text-positive',
+  accent: 'bg-accent-soft/15 text-accent-soft',
 }
 
 // Small inline icon set keyed by item.icon

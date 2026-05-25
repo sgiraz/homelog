@@ -1,32 +1,32 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-paper dark:bg-gray-900 p-4">
+  <div class="min-h-screen flex items-center justify-center bg-canvas p-4">
     <Card class="w-full max-w-md p-8">
       <div class="text-center mb-8">
-        <h1 class="text-4xl font-bold mb-2 text-gray-900 dark:text-white">HomeLog</h1>
-        <p class="text-gray-600 dark:text-gray-400">{{ t('auth.appTagline') }}</p>
+        <h1 class="text-4xl font-bold mb-2 text-ink">HomeLog</h1>
+        <p class="text-ink-soft">{{ t('auth.appTagline') }}</p>
       </div>
 
       <!-- ── Demo banner (only on demo instances) ── -->
       <div
         v-if="isDemoMode && mode === 'login'"
-        class="mb-6 p-4 rounded-xl bg-paper-100 dark:bg-gray-800 border border-ember/20 dark:border-ember/30 space-y-3 text-center"
+        class="mb-6 p-4 rounded-xl bg-surface-2 border border-accent-soft/30 space-y-3 text-center"
       >
-        <p class="text-sm font-semibold text-ember-deep dark:text-ember-light">
+        <p class="text-sm font-semibold text-accent-soft">
           🎭 {{ t('demo.login.title') }}
         </p>
-        <p class="text-xs text-gray-600 dark:text-gray-400">
+        <p class="text-xs text-ink-soft">
           {{ t('demo.login.description') }}
         </p>
         <Button class="w-full" :disabled="loading" @click="enterDemo">
           {{ t('demo.login.button') }}
         </Button>
-        <p class="text-xs text-gray-500 dark:text-gray-400 pt-1">
+        <p class="text-xs text-ink-muted pt-1">
           {{ t('demo.login.selfHostPrompt') }}
           <a
             :href="links.github"
             target="_blank"
             rel="noopener"
-            class="font-semibold underline hover:no-underline text-ember-deep dark:text-ember-light"
+            class="font-semibold underline hover:no-underline text-accent-soft"
           >
             {{ t('demo.login.selfHostLink') }}
           </a>
@@ -86,7 +86,7 @@
             v-if="mode === 'login'"
             type="button"
             @click="mode = 'forgot'; error = null; success = null"
-            class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            class="text-sm text-ink-muted hover:text-ink-soft"
           >
             {{ t('auth.forgotPasswordLink') }}
           </button>
@@ -96,8 +96,8 @@
       <!-- ── Forgot Password ── -->
       <div v-else-if="mode === 'forgot'" class="space-y-4">
         <div class="text-center mb-2">
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ t('auth.forgot.title') }}</h2>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <h2 class="text-xl font-bold text-ink">{{ t('auth.forgot.title') }}</h2>
+          <p class="text-sm text-ink-soft mt-1">
             {{ t('auth.forgot.subtitle') }}
           </p>
         </div>
@@ -121,7 +121,7 @@
           <p class="text-sm font-medium text-amber-800 dark:text-amber-300">
             {{ t('auth.forgot.tokenGenerated') }}
           </p>
-          <code class="block break-all text-xs bg-white dark:bg-gray-800 p-3 rounded-lg border border-amber-200 dark:border-amber-700 text-gray-900 dark:text-gray-100 select-all">
+          <code class="block break-all text-xs bg-surface p-3 rounded-lg border border-amber-200 dark:border-amber-700 text-ink select-all">
             {{ resetToken }}
           </code>
           <p class="text-xs text-amber-700 dark:text-amber-400">
@@ -149,7 +149,7 @@
         <button
           type="button"
           @click="mode = 'login'; error = null; resetToken = null; forgotSubmitted = false"
-          class="w-full text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
+          class="w-full text-sm text-ink-muted hover:text-ink-soft"
         >
           {{ t('auth.forgot.backToLogin') }}
         </button>
@@ -158,20 +158,20 @@
       <!-- ── Reset Password ── -->
       <div v-else-if="mode === 'reset'" class="space-y-4">
         <div class="text-center mb-2">
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ t('auth.reset.title') }}</h2>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <h2 class="text-xl font-bold text-ink">{{ t('auth.reset.title') }}</h2>
+          <p class="text-sm text-ink-soft mt-1">
             {{ t('auth.reset.subtitle') }}
           </p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('auth.reset.tokenLabel') }}</label>
+          <label class="block text-sm font-medium text-ink-soft mb-1">{{ t('auth.reset.tokenLabel') }}</label>
           <textarea
             v-model="resetForm.token"
             rows="2"
             :placeholder="t('auth.reset.tokenPlaceholder')"
-            class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+            class="w-full px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-sm
                    focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono"
           />
         </div>
@@ -209,7 +209,7 @@
         <button
           type="button"
           @click="mode = 'forgot'; error = null; success = null"
-          class="w-full text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
+          class="w-full text-sm text-ink-muted hover:text-ink-soft"
         >
           {{ t('auth.reset.backToForgot') }}
         </button>

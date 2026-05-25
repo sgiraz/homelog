@@ -7,14 +7,14 @@
           v-model="billSearch"
           type="search"
           :placeholder="t('utilities.billsTab.searchPlaceholder')"
-          class="flex-1 px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+          class="flex-1 px-3 py-2.5 border border-line rounded-lg
+                 bg-surface text-ink text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <select
           v-model="billStatusFilter"
-          class="px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+          class="px-3 py-2.5 border border-line rounded-lg
+                 bg-surface text-ink text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">{{ t('utilities.billsTab.statusAll') }}</option>
@@ -26,16 +26,16 @@
         <input
           v-model="billDateFrom"
           type="date"
-          class="px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+          class="px-3 py-2.5 border border-line rounded-lg
+                 bg-surface text-ink text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
           :title="t('utilities.billsTab.dateFrom')"
         />
         <input
           v-model="billDateTo"
           type="date"
-          class="px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+          class="px-3 py-2.5 border border-line rounded-lg
+                 bg-surface text-ink text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
           :title="t('utilities.billsTab.dateTo')"
         />
@@ -44,7 +44,7 @@
 
     <!-- Bill Summary -->
     <div v-if="filteredBills.length > 0" class="mb-3 flex items-center justify-between">
-      <span class="text-sm text-gray-500 dark:text-gray-400">
+      <span class="text-sm text-ink-muted">
         {{ t('utilities.billsTab.summary', { n: filteredBills.length, amount: formatCurrency(filteredBillsTotal) }) }}
       </span>
       <Button size="sm" @click="openAddBill">
@@ -57,7 +57,7 @@
 
     <!-- Empty -->
     <div v-if="filteredBills.length === 0" class="text-center py-8">
-      <p class="text-gray-500 dark:text-gray-400 mb-3">
+      <p class="text-ink-muted mb-3">
         {{ utility.bills?.length ? t('utilities.billsTab.emptyFiltered') : t('utilities.billsTab.empty') }}
       </p>
       <Button size="sm" @click="openAddBill">{{ t('utilities.billsTab.addBillButton') }}</Button>
@@ -69,8 +69,8 @@
         v-for="bill in filteredBills"
         :key="bill.id"
         :ref="(el) => registerRow(bill.id, el)"
-        class="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl
-               hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+        class="p-4 bg-surface border border-line rounded-xl
+               hover:border-line transition-colors"
         :class="{ 'search-flash': isHighlighted(bill.id) }"
       >
         <div v-if="hasMultipleInstallments(bill)" class="mb-2 flex items-center justify-between">
@@ -97,12 +97,12 @@
                   :checked="inst.is_paid"
                   :disabled="inst.is_locked"
                   @change="toggleInstallmentPaid(bill, inst, $event.target.checked)"
-                  class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="w-4 h-4 text-purple-600 rounded border-line focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   :title="inst.is_locked ? lockedHint : ''"
                 />
-                <span class="text-gray-500 dark:text-gray-400 w-10">#{{ inst.number }}</span>
-                <span class="text-gray-900 dark:text-white font-medium">{{ formatCurrency(inst.amount) }}</span>
-                <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('utilities.billsTab.installmentDue', { date: formatDate(inst.due_date) }) }}</span>
+                <span class="text-ink-muted w-10">#{{ inst.number }}</span>
+                <span class="text-ink font-medium">{{ formatCurrency(inst.amount) }}</span>
+                <span class="text-xs text-ink-faint">{{ t('utilities.billsTab.installmentDue', { date: formatDate(inst.due_date) }) }}</span>
               </label>
               <span v-if="inst.is_locked" class="text-xs text-amber-600 dark:text-amber-400" :title="lockedHint">{{ t('utilities.billsTab.installmentLocked') }}</span>
               <span v-else-if="inst.is_paid" class="text-xs text-green-600 dark:text-green-400">{{ t('utilities.billsTab.installmentPaid') }}</span>
@@ -112,12 +112,12 @@
         <div class="flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="font-semibold text-gray-900 dark:text-white">
+              <span class="font-semibold text-ink">
                 {{ formatCurrency(bill.amount_total) }}
               </span>
               <span
                 v-if="bill.original_amount != null && bill.original_currency"
-                class="text-xs text-gray-500 dark:text-gray-400"
+                class="text-xs text-ink-muted"
                 :title="t('utilities.billsTab.originalAmountTitle')"
               >
                 ({{ formatOriginal(bill.original_amount, bill.original_currency) }})
@@ -133,10 +133,10 @@
                 {{ bill.is_paid ? t('utilities.billsTab.statusPaidBadge') : isDueSoon(bill) ? t('utilities.billsTab.statusDueSoon') : t('utilities.billsTab.statusUnpaidBadge') }}
               </span>
             </div>
-            <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <div class="text-sm text-ink-muted mt-1">
               {{ formatPeriod(bill.period_start, bill.period_end) }}
             </div>
-            <div class="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500 mt-1">
+            <div class="flex items-center gap-3 text-xs text-ink-faint mt-1">
               <span>{{ t('utilities.billsTab.duePrefix', { date: formatDate(bill.due_date) }) }}</span>
               <span v-if="bill.consumption_total">{{ formatConsumption(bill.consumption_total) }} {{ consumptionUnit }}</span>
               <span v-if="bill.bill_number" class="font-mono">{{ t('utilities.billsTab.billNumberPrefix', { number: bill.bill_number }) }}</span>
@@ -160,7 +160,7 @@
             </button>
             <button
               @click="openEditBill(bill)"
-              class="p-2.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              class="p-2.5 rounded-lg text-ink-faint hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
               :title="bill.is_locked ? t('utilities.billsTab.viewDetailsTitle') : t('utilities.billsTab.editTitle')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,7 +170,7 @@
             <button
               :disabled="bill.is_locked"
               @click="confirmDeleteBill(bill)"
-              class="p-2.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400"
+              class="p-2.5 rounded-lg text-ink-faint hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink-faint"
               :title="bill.is_locked ? lockedHint : t('utilities.billsTab.deleteTitle')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

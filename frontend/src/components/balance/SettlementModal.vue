@@ -2,11 +2,11 @@
   <BaseModal :title="balance > 0 ? t('balance.receivePayment') : t('balance.settleUp')" @close="$emit('close')">
     <!-- Balance Info -->
     <div class="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-6 text-center mb-6">
-      <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">{{ t('balance.settlement.amountLabel') }}</div>
+      <div class="text-sm text-ink-soft mb-1">{{ t('balance.settlement.amountLabel') }}</div>
       <div class="text-4xl font-bold text-blue-600 dark:text-blue-400">
         {{ formatCurrency(Math.abs(balance)) }}
       </div>
-      <div class="text-sm text-gray-600 dark:text-gray-400 mt-2">
+      <div class="text-sm text-ink-soft mt-2">
         {{ balance > 0 ? t('balance.settlement.fromOther', { name: otherMemberName }) : t('balance.settlement.toOther', { name: otherMemberName }) }}
       </div>
     </div>
@@ -20,13 +20,13 @@
       />
 
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('balance.settlement.methodLabel') }}
         </label>
         <select
           v-model="form.payment_method"
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="bank_transfer">{{ t('balance.settlement.methods.bank_transfer') }}</option>
@@ -38,7 +38,7 @@
       </div>
 
       <div>
-        <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <label class="block text-sm text-ink-soft mb-1">
           {{ t('balance.settlement.noteLabel') }}
         </label>
         <textarea
@@ -46,8 +46,8 @@
           rows="2"
           :placeholder="t('balance.settlement.notePlaceholder')"
           autocorrect="off"
-          class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>

@@ -3,8 +3,8 @@
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{{ t('utilities.title') }}</h1>
-        <p class="text-gray-600 dark:text-gray-400 text-sm mt-1">
+        <h1 class="text-2xl sm:text-3xl font-bold text-ink">{{ t('utilities.title') }}</h1>
+        <p class="text-ink-soft text-sm mt-1">
           {{ t('utilities.subtitle') }}
         </p>
       </div>
@@ -14,8 +14,8 @@
           v-if="properties.length > 0"
           v-model="selectedPropertyId"
           @change="onPropertyChange"
-          class="px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+          class="px-3 py-2.5 border border-line rounded-lg
+                 bg-surface text-ink text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option v-for="p in properties" :key="p.id" :value="p.id">
@@ -25,8 +25,8 @@
 
         <button
           @click="showTemplatesManager = true"
-          class="p-2.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300
-                 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          class="p-2.5 text-ink-muted hover:text-ink-soft
+                 border border-line rounded-lg hover:bg-surface-2 transition-colors"
           :title="t('utilities.templatesTooltip')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -43,18 +43,18 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="utilitiesStore.loading" class="text-center py-12 text-gray-600 dark:text-gray-400">
+    <div v-if="utilitiesStore.loading" class="text-center py-12 text-ink-soft">
       {{ t('utilities.loading') }}
     </div>
 
     <!-- Empty State -->
     <div v-else-if="utilitiesStore.utilities.length === 0" class="text-center py-12">
       <Card class="p-8">
-        <svg class="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-16 h-16 mx-auto text-ink-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">{{ t('utilities.empty.title') }}</h3>
-        <p class="mt-2 text-gray-500 dark:text-gray-400">{{ t('utilities.empty.subtitle') }}</p>
+        <h3 class="mt-4 text-lg font-medium text-ink">{{ t('utilities.empty.title') }}</h3>
+        <p class="mt-2 text-ink-muted">{{ t('utilities.empty.subtitle') }}</p>
         <Button v-if="settingsStore.isPropertyAdmin" class="mt-4" @click="showAddUtility = true">
           {{ t('utilities.empty.addFirst') }}
         </Button>
@@ -65,22 +65,22 @@
       <!-- KPI Cards -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card class="p-4">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.kpi.avgMonthly') }}</div>
-          <div class="text-xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(dashboardKPIs.avgMonthly) }}</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('utilities.kpi.avgMonthly') }}</div>
+          <div class="text-xl font-bold text-ink">{{ formatCurrency(dashboardKPIs.avgMonthly) }}</div>
         </Card>
         <Card class="p-4">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.kpi.unpaidTotal') }}</div>
-          <div class="text-xl font-bold" :class="dashboardKPIs.unpaidTotal > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'">
+          <div class="text-xs text-ink-muted mb-1">{{ t('utilities.kpi.unpaidTotal') }}</div>
+          <div class="text-xl font-bold" :class="dashboardKPIs.unpaidTotal > 0 ? 'text-red-600 dark:text-red-400' : 'text-ink'">
             {{ formatCurrency(dashboardKPIs.unpaidTotal) }}
           </div>
         </Card>
         <Card class="p-4">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.kpi.unpaidCount') }}</div>
-          <div class="text-xl font-bold text-gray-900 dark:text-white">{{ dashboardKPIs.unpaidCount }}</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('utilities.kpi.unpaidCount') }}</div>
+          <div class="text-xl font-bold text-ink">{{ dashboardKPIs.unpaidCount }}</div>
         </Card>
         <Card class="p-4">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('utilities.kpi.activeServices') }}</div>
-          <div class="text-xl font-bold text-gray-900 dark:text-white">{{ utilitiesStore.utilities.length }}</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('utilities.kpi.activeServices') }}</div>
+          <div class="text-xl font-bold text-ink">{{ utilitiesStore.utilities.length }}</div>
         </Card>
       </div>
 
@@ -128,27 +128,27 @@
                 <component :is="getUtilityIcon(utility.type)" class="w-6 h-6" />
               </div>
               <div class="flex-1 min-w-0">
-                <h3 class="font-bold text-gray-900 dark:text-white truncate">{{ getUtilityName(utility.type) }}</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ utility.provider }}</p>
+                <h3 class="font-bold text-ink truncate">{{ getUtilityName(utility.type) }}</h3>
+                <p class="text-sm text-ink-muted truncate">{{ utility.provider }}</p>
               </div>
-              <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5 text-ink-faint flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
             </div>
 
             <!-- Stats -->
             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              <div class="text-gray-500 dark:text-gray-400">{{ isMeteredType(utility.type) ? t('utilities.card.lastBill') : t('utilities.card.lastAmount') }}</div>
-              <div class="text-right font-medium text-gray-900 dark:text-white">{{ getLastBillAmount(utility) }}</div>
-              <div class="text-gray-500 dark:text-gray-400">{{ t('utilities.card.dueDate') }}</div>
-              <div class="text-right text-gray-900 dark:text-white">{{ getLastBillDueDate(utility) }}</div>
+              <div class="text-ink-muted">{{ isMeteredType(utility.type) ? t('utilities.card.lastBill') : t('utilities.card.lastAmount') }}</div>
+              <div class="text-right font-medium text-ink">{{ getLastBillAmount(utility) }}</div>
+              <div class="text-ink-muted">{{ t('utilities.card.dueDate') }}</div>
+              <div class="text-right text-ink">{{ getLastBillDueDate(utility) }}</div>
               <template v-if="isMeteredType(utility.type)">
-                <div class="text-gray-500 dark:text-gray-400">{{ t('utilities.card.consumption') }}</div>
-                <div class="text-right text-gray-900 dark:text-white">{{ getLastConsumption(utility) }}</div>
+                <div class="text-ink-muted">{{ t('utilities.card.consumption') }}</div>
+                <div class="text-right text-ink">{{ getLastConsumption(utility) }}</div>
               </template>
               <template v-else-if="utility.recurring_amount">
-                <div class="text-gray-500 dark:text-gray-400">{{ t('utilities.card.fee') }}</div>
-                <div class="text-right text-gray-900 dark:text-white">{{ t('utilities.card.feePerMonth', { amount: formatCurrency(utility.recurring_amount) }) }}</div>
+                <div class="text-ink-muted">{{ t('utilities.card.fee') }}</div>
+                <div class="text-right text-ink">{{ t('utilities.card.feePerMonth', { amount: formatCurrency(utility.recurring_amount) }) }}</div>
               </template>
             </div>
 
@@ -165,8 +165,8 @@
               <button
                 v-if="isMeteredType(utility.type)"
                 @click.prevent="openAddReading(utility)"
-                class="flex-1 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg
-                       hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300
+                class="flex-1 py-2.5 text-sm border border-line rounded-lg
+                       hover:bg-surface-2 transition-colors text-ink-soft
                        flex items-center justify-center gap-1.5"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -176,8 +176,8 @@
               </button>
               <button
                 @click.prevent="openAddBill(utility)"
-                class="flex-1 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg
-                       hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300
+                class="flex-1 py-2.5 text-sm border border-line rounded-lg
+                       hover:bg-surface-2 transition-colors text-ink-soft
                        flex items-center justify-center gap-1.5"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

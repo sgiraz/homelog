@@ -5,10 +5,10 @@
   >
     <Card class="w-full max-w-6xl p-6 my-auto">
       <div class="flex items-center justify-between mb-6">
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+        <h3 class="text-xl font-bold text-ink">
           {{ isEditing ? t('utilities.templateWizard.editTitle') : t('utilities.templateWizard.createTitle') }}
         </h3>
-        <button @click="handleClose" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+        <button @click="handleClose" class="text-ink-muted hover:text-ink">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -30,7 +30,7 @@
                   ? 'bg-green-500 text-white'
                   : step === index + 1
                     ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                    : 'bg-surface-3 text-ink-soft'
               ]"
             >
               <svg v-if="step > index + 1" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -41,7 +41,7 @@
 
             <span
               class="absolute -bottom-7 text-[10px] uppercase tracking-wider font-bold whitespace-nowrap"
-              :class="step === index + 1 ? 'text-blue-500' : 'text-gray-400'"
+              :class="step === index + 1 ? 'text-blue-500' : 'text-ink-faint'"
             >
               {{ stepInfo }}
             </span>
@@ -51,7 +51,7 @@
             v-if="index < steps.length - 1"
             :class="[
               'w-16 h-1 mx-2 mb-0',
-              step > index + 1 ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'
+              step > index + 1 ? 'bg-green-500' : 'bg-surface-3'
             ]"
           />
         </div>
@@ -114,7 +114,7 @@
       </div>
 
       <!-- Navigation Buttons -->
-      <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div class="flex gap-3 mt-6 pt-4 border-t border-line">
         <Button
           v-if="step > 1"
           type="button"

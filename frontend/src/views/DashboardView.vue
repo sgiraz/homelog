@@ -3,8 +3,8 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{{ t('dashboard.title') }}</h1>
-        <p class="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base">{{ t('dashboard.subtitle') }}</p>
+        <h1 class="text-2xl sm:text-3xl font-bold text-ink">{{ t('dashboard.title') }}</h1>
+        <p class="text-ink-soft mt-1 text-sm sm:text-base">{{ t('dashboard.subtitle') }}</p>
       </div>
       <Button @click="showAddExpense = true">
         <svg class="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -18,8 +18,8 @@
     <Card v-if="!settingsStore.hasProperty" className="p-6">
       <div v-if="settingsStore.pendingJoinRequest" class="text-center space-y-3">
         <div class="text-4xl">⏳</div>
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('dashboard.noProperty.pendingTitle') }}</h2>
-        <p class="text-gray-600 dark:text-gray-400">
+        <h2 class="text-lg font-semibold text-ink">{{ t('dashboard.noProperty.pendingTitle') }}</h2>
+        <p class="text-ink-soft">
           <i18n-t keypath="dashboard.noProperty.pendingMessage" tag="span">
             <template #name><strong>{{ settingsStore.pendingJoinRequest.property_name }}</strong></template>
           </i18n-t>
@@ -27,8 +27,8 @@
       </div>
       <div v-else class="text-center space-y-3">
         <div class="text-4xl">🏠</div>
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('dashboard.noProperty.noneTitle') }}</h2>
-        <p class="text-gray-600 dark:text-gray-400">{{ t('dashboard.noProperty.noneDescription') }}</p>
+        <h2 class="text-lg font-semibold text-ink">{{ t('dashboard.noProperty.noneTitle') }}</h2>
+        <p class="text-ink-soft">{{ t('dashboard.noProperty.noneDescription') }}</p>
         <Button @click="$router.push('/onboarding')">{{ t('dashboard.noProperty.configureButton') }}</Button>
       </div>
     </Card>

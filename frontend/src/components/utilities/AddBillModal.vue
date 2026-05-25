@@ -21,7 +21,7 @@
 
         <!-- Importo Totale -->
         <div v-if="isForeignCurrency">
-          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+          <label class="block text-sm text-ink-soft mb-1">
             {{ t('utilities.addBillModal.totalAmountForeign', { currency: utility.currency }) }}
           </label>
           <Input
@@ -33,19 +33,19 @@
             :disabled="isLocked"
           />
           <div class="mt-1.5">
-            <div v-if="rateLoading" class="text-xs text-gray-400">
+            <div v-if="rateLoading" class="text-xs text-ink-faint">
               {{ t('utilities.addBillModal.rateConverting') }}
             </div>
             <div v-else-if="form.original_amount && convertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
               {{ formatOriginal(form.original_amount, utility.currency) }} ≈ {{ formatCurrency(convertedAmount) }}
-              <span class="text-gray-400">{{ t('utilities.addBillModal.rateInfo', { rate: exchangeRate?.toFixed(6) }) }}</span>
+              <span class="text-ink-faint">{{ t('utilities.addBillModal.rateInfo', { rate: exchangeRate?.toFixed(6) }) }}</span>
             </div>
             <div v-else-if="rateError" class="space-y-1">
               <p class="text-xs text-amber-600 dark:text-amber-400">
                 {{ t('utilities.addBillModal.rateUnavailable') }}
               </p>
               <div class="flex items-center gap-2">
-                <span class="text-xs text-gray-500">{{ t('utilities.addBillModal.currencyEquals', { currency: utility.currency }) }}</span>
+                <span class="text-xs text-ink-muted">{{ t('utilities.addBillModal.currencyEquals', { currency: utility.currency }) }}</span>
                 <input
                   v-model.number="manualRate"
                   type="number"
@@ -53,11 +53,11 @@
                   min="0"
                   placeholder="0.00"
                   inputmode="decimal"
-                  class="w-28 px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                  class="w-28 px-2 py-1 text-sm border border-line rounded
+                         bg-surface text-ink
                          focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
-                <span class="text-xs text-gray-500">{{ settingsStore.currency }}</span>
+                <span class="text-xs text-ink-muted">{{ settingsStore.currency }}</span>
               </div>
               <div v-if="form.original_amount && manualConvertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
                 {{ formatOriginal(form.original_amount, utility.currency) }} ≈ {{ formatCurrency(manualConvertedAmount) }}
@@ -129,17 +129,17 @@
 
         <!-- Autolettura di riferimento (metered only) -->
         <div v-if="isMetered" class="space-y-2">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label class="block text-sm font-medium text-ink-soft">
             {{ t('utilities.addBillModal.userReadingLabel') }}
           </label>
-          <p class="text-xs text-gray-500 dark:text-gray-400">
+          <p class="text-xs text-ink-muted">
             {{ t('utilities.addBillModal.userReadingHint') }}
           </p>
 
           <select
             v-model="form.user_reading_id"
-            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+            class="w-full px-3 py-2 border border-line rounded-lg
+                   bg-surface text-ink
                    focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             @change="inlineReadingValue = null"
           >
@@ -164,13 +164,13 @@
                 type="number"
                 step="0.001"
                 :placeholder="form.provider_reading ? String(form.provider_reading) : '0'"
-                class="flex-1 px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                class="flex-1 px-2 py-1.5 text-sm border border-line rounded
+                       bg-surface text-ink
                        focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
-              <span class="text-xs text-gray-500 dark:text-gray-400">{{ readingUnit }}</span>
+              <span class="text-xs text-ink-muted">{{ readingUnit }}</span>
             </div>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            <p class="text-xs text-ink-faint mt-1">
               {{ t('utilities.addBillModal.inlineReadingFooter') }}
             </p>
           </div>
@@ -191,15 +191,15 @@
         />
 
         <!-- Estimated consumption toggle (gas + water) -->
-        <div v-if="isMetered && (utility.type === 'gas' || utility.type === 'water')" class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+        <div v-if="isMetered && (utility.type === 'gas' || utility.type === 'water')" class="border-t border-line pt-3 mt-3">
           <div class="flex items-center gap-2">
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" v-model="form.has_estimated"
-                class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
-              <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('utilities.addBillModal.estimatedToggle') }}</span>
+                class="w-4 h-4 text-amber-600 rounded border-line focus:ring-amber-500" />
+              <span class="text-sm text-ink-soft">{{ t('utilities.addBillModal.estimatedToggle') }}</span>
             </label>
             <button type="button" @click="showEstimatedHelp = !showEstimatedHelp"
-              class="w-5 h-5 inline-flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+              class="w-5 h-5 inline-flex items-center justify-center rounded-full border border-line text-xs font-semibold text-ink-muted hover:bg-surface-2"
               :aria-expanded="showEstimatedHelp"
               :aria-label="t('utilities.addBillModal.estimatedHelpAria')">?</button>
           </div>
@@ -211,14 +211,14 @@
           </div>
           <div v-if="form.has_estimated" class="mt-3 space-y-3 pl-4 border-l-2 border-amber-300 dark:border-amber-600">
             <div>
-              <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.addBillModal.estimatedDate') }}</label>
+              <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.addBillModal.estimatedDate') }}</label>
               <input v-model="form.estimated_date" type="date"
-                class="w-full min-w-0 max-w-full box-border px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                class="w-full min-w-0 max-w-full box-border px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-amber-500" />
             </div>
             <div>
-              <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('utilities.addBillModal.estimatedReading') }}</label>
+              <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.addBillModal.estimatedReading') }}</label>
               <input v-model="form.estimated_reading" type="number" step="0.001" placeholder="0"
-                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-amber-500" />
               <p v-if="calculatedEstimatedConsumption != null" class="text-xs text-amber-600 dark:text-amber-400 mt-1">
                 {{ t('utilities.addBillModal.estimatedConsumption', { value: formatNumber(calculatedEstimatedConsumption), unit: utility.type === 'gas' ? 'Smc' : 'mc' }) }}
               </p>
@@ -228,18 +228,18 @@
 
         <!-- Comunicazioni importanti -->
         <div>
-          <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+          <label class="block text-sm text-ink-soft mb-1">
             {{ t('utilities.addBillModal.communicationsLabel') }}
           </label>
           <textarea
             v-model="form.communication_text"
             rows="3"
             :placeholder="isMetered ? t('utilities.addBillModal.communicationsPlaceholderBill') : t('utilities.addBillModal.communicationsPlaceholderInvoice')"
-            class="w-full px-3 py-3 border border-gray-200 dark:border-gray-700 rounded-lg
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+            class="w-full px-3 py-3 border border-line rounded-lg
+                   bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+          <p class="text-xs text-ink-faint mt-1">
             {{ isMetered ? t('utilities.addBillModal.communicationsHintBill') : t('utilities.addBillModal.communicationsHintInvoice') }}
           </p>
         </div>
@@ -261,9 +261,9 @@
         <div v-if="!isInstallmentBased" class="flex items-center gap-3">
           <input type="checkbox" id="is-paid" v-model="form.is_paid"
             :disabled="isLocked"
-            class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+            class="w-5 h-5 text-blue-600 rounded border-line focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
           <label for="is-paid" class="text-sm cursor-pointer"
-            :class="isLocked ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'text-gray-900 dark:text-white'">
+            :class="isLocked ? 'text-ink-faint cursor-not-allowed' : 'text-ink'">
             {{ isLocked ? t('utilities.addBillModal.alreadyPaidLocked') : t('utilities.addBillModal.alreadyPaid') }}
           </label>
         </div>

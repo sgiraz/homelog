@@ -5,7 +5,7 @@
       <div class="flex items-center justify-between">
         <button
           @click="emit('update:filtersOpen', !filtersOpen)"
-          class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+          class="flex items-center gap-2 text-sm font-medium text-ink-soft"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
@@ -23,13 +23,13 @@
         </Button>
       </div>
       <Transition name="filter-expand">
-        <div v-if="filtersOpen" class="mt-3 space-y-3 border-t border-gray-100 dark:border-gray-700 pt-3">
+        <div v-if="filtersOpen" class="mt-3 space-y-3 border-t border-line pt-3">
           <div class="grid grid-cols-2 gap-2">
             <select
               :value="filters.categoryId"
               @change="emit('update:filters', { ...filters, categoryId: $event.target.value }); emit('apply')"
-              class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+              class="px-3 py-2 border border-line rounded-lg
+                     bg-surface text-ink text-base
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">{{ t('dashboard.filters.allCategoriesLong') }}</option>
@@ -38,8 +38,8 @@
             <select
               :value="filters.projectId"
               @change="emit('update:filters', { ...filters, projectId: $event.target.value }); emit('apply')"
-              class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+              class="px-3 py-2 border border-line rounded-lg
+                     bg-surface text-ink text-base
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">{{ t('dashboard.filters.allProjectsLong') }}</option>
@@ -49,16 +49,16 @@
               :value="filters.from"
               @change="emit('update:filters', { ...filters, from: $event.target.value }); emit('apply')"
               type="date"
-              class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+              class="px-3 py-2 border border-line rounded-lg
+                     bg-surface text-ink text-base
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <input
               :value="filters.to"
               @change="emit('update:filters', { ...filters, to: $event.target.value }); emit('apply')"
               type="date"
-              class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base
+              class="px-3 py-2 border border-line rounded-lg
+                     bg-surface text-ink text-base
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -69,12 +69,12 @@
     <!-- Desktop: filtri sempre visibili -->
     <div class="hidden sm:flex flex-wrap items-center gap-4">
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.filters.categoryLabel') }}</label>
+        <label class="text-sm text-ink-soft">{{ t('dashboard.filters.categoryLabel') }}</label>
         <select
           :value="filters.categoryId"
           @change="emit('update:filters', { ...filters, categoryId: $event.target.value }); emit('apply')"
-          class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+          class="px-3 py-2 border border-line rounded-lg
+                 bg-surface text-ink text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">{{ t('dashboard.filters.allCategoriesShort') }}</option>
@@ -85,12 +85,12 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.filters.projectLabel') }}</label>
+        <label class="text-sm text-ink-soft">{{ t('dashboard.filters.projectLabel') }}</label>
         <select
           :value="filters.projectId"
           @change="emit('update:filters', { ...filters, projectId: $event.target.value }); emit('apply')"
-          class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+          class="px-3 py-2 border border-line rounded-lg
+                 bg-surface text-ink text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">{{ t('dashboard.filters.allProjectsShort') }}</option>
@@ -101,24 +101,24 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.filters.fromLabel') }}</label>
+        <label class="text-sm text-ink-soft">{{ t('dashboard.filters.fromLabel') }}</label>
         <input
           :value="filters.from"
           @change="emit('update:filters', { ...filters, from: $event.target.value }); emit('apply')"
           type="date"
-          class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+          class="px-3 py-2 border border-line rounded-lg
+                 bg-surface text-ink text-sm"
         />
       </div>
 
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600 dark:text-gray-400">{{ t('dashboard.filters.toLabel') }}</label>
+        <label class="text-sm text-ink-soft">{{ t('dashboard.filters.toLabel') }}</label>
         <input
           :value="filters.to"
           @change="emit('update:filters', { ...filters, to: $event.target.value }); emit('apply')"
           type="date"
-          class="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+          class="px-3 py-2 border border-line rounded-lg
+                 bg-surface text-ink text-sm"
         />
       </div>
 

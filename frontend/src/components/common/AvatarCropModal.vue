@@ -19,8 +19,8 @@
       <div class="flex items-center gap-3 px-1">
         <button
           @click="adjustZoom(-0.15)"
-          class="p-2 rounded-full text-gray-500 dark:text-gray-400
-                 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600
+          class="p-2 rounded-full text-ink-muted
+                 hover:bg-surface-2 active:bg-surface-3
                  transition-colors"
           :aria-label="t('common.avatarCrop.zoomOut')"
         >
@@ -35,7 +35,7 @@
           step="0.005"
           v-model.number="zoomLevel"
           @input="onSliderZoom"
-          class="flex-1 h-1 bg-gray-200 dark:bg-gray-700 rounded-full appearance-none cursor-pointer
+          class="flex-1 h-1 bg-surface-3 rounded-full appearance-none cursor-pointer
                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6
                  [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-white
                  [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-blue-500
@@ -44,8 +44,8 @@
         />
         <button
           @click="adjustZoom(0.15)"
-          class="p-2 rounded-full text-gray-500 dark:text-gray-400
-                 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600
+          class="p-2 rounded-full text-ink-muted
+                 hover:bg-surface-2 active:bg-surface-3
                  transition-colors"
           :aria-label="t('common.avatarCrop.zoomIn')"
         >

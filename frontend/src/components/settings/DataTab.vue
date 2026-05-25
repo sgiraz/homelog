@@ -2,11 +2,11 @@
   <div class="space-y-4">
     <!-- Versione & Aggiornamenti -->
     <Card class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.data.versionTitle') }}</h2>
+      <h2 class="text-xl font-bold text-ink mb-4">{{ t('settings.data.versionTitle') }}</h2>
       <div class="flex items-center justify-between gap-4">
         <div>
-          <div class="text-sm text-gray-600 dark:text-gray-400">{{ t('settings.data.versionLabel') }}</div>
-          <div class="text-lg font-semibold text-gray-900 dark:text-white font-mono">{{ currentVersion }}</div>
+          <div class="text-sm text-ink-soft">{{ t('settings.data.versionLabel') }}</div>
+          <div class="text-lg font-semibold text-ink font-mono">{{ currentVersion }}</div>
         </div>
         <Button @click="checkForUpdates" :disabled="checking" variant="secondary" size="sm">
           <svg v-if="checking" class="w-4 h-4 mr-1.5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -40,11 +40,11 @@
             </div>
           </div>
         </div>
-        <div v-else class="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div v-else class="flex items-center gap-2 p-3 bg-surface rounded-lg">
+          <svg class="w-5 h-5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
-          <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('settings.data.upToDate') }}</span>
+          <span class="text-sm text-ink-soft">{{ t('settings.data.upToDate') }}</span>
         </div>
       </div>
 
@@ -54,25 +54,25 @@
     </Card>
 
     <Card class="p-6">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ t('settings.data.backupTitle') }}</h2>
+      <h2 class="text-xl font-bold text-ink mb-4">{{ t('settings.data.backupTitle') }}</h2>
 
       <div class="space-y-6">
         <!-- Export -->
         <div>
-          <h3 class="font-medium text-gray-900 dark:text-white mb-1">{{ t('settings.data.exportTitle') }}</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          <h3 class="font-medium text-ink mb-1">{{ t('settings.data.exportTitle') }}</h3>
+          <p class="text-sm text-ink-soft mb-3">
             {{ t('settings.data.exportDescription') }}
           </p>
 
           <!-- Format toggle -->
-          <div class="flex items-center gap-1 mb-4 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
+          <div class="flex items-center gap-1 mb-4 p-1 bg-surface-2 rounded-lg w-fit">
             <button
               @click="exportFormat = 'json'"
               :class="[
                 'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
                 exportFormat === 'json'
                   ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  : 'text-ink-soft hover:bg-surface-2'
               ]"
             >
               JSON
@@ -83,7 +83,7 @@
                 'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
                 exportFormat === 'csv'
                   ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  : 'text-ink-soft hover:bg-surface-2'
               ]"
             >
               CSV
@@ -107,9 +107,9 @@
         </div>
 
         <!-- Import -->
-        <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <h3 class="font-medium text-gray-900 dark:text-white mb-1">{{ t('settings.data.importTitle') }}</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <div class="border-t border-line pt-6">
+          <h3 class="font-medium text-ink mb-1">{{ t('settings.data.importTitle') }}</h3>
+          <p class="text-sm text-ink-soft mb-4">
             {{ t('settings.data.importDescription') }}
           </p>
 
@@ -122,16 +122,16 @@
               'border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer',
               isDragging
                 ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500'
+                : 'border-line hover:border-blue-400 dark:hover:border-blue-500'
             ]"
             @click="$refs.fileInput.click()"
           >
             <input ref="fileInput" type="file" accept=".json" class="hidden" @change="handleFileSelect" />
             <div class="text-3xl mb-2">📁</div>
-            <p class="text-sm text-gray-600 dark:text-gray-400">
+            <p class="text-sm text-ink-soft">
               {{ t('settings.data.importDropPrompt') }} <span class="text-blue-600 dark:text-blue-400 underline">{{ t('settings.data.importDropSelect') }}</span>
             </p>
-            <p v-if="selectedFile" class="text-sm font-medium text-gray-800 dark:text-gray-200 mt-2">
+            <p v-if="selectedFile" class="text-sm font-medium text-ink mt-2">
               {{ selectedFile.name }}
             </p>
           </div>
