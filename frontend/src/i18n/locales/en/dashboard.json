@@ -55,7 +55,7 @@
     "more_one": "+{n} more",
     "more_other": "+{n} more",
     "open": "Open",
-    "logReading": "Log",
+    "readingsGroup": "{n} readings to log",
     "settle": "Settle",
     "dueToday": "Due today",
     "dueIn_one": "Due in {n} day",

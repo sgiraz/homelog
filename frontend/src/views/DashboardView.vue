@@ -401,19 +401,34 @@ const attentionItems = computed(() => {
     })
   }
 
-  readings.forEach(({ u, days }) => {
+  // Multiple pending readings collapse into ONE row so the brief stays a short
+  // list of concrete priorities. The action opens the utilities list (it does
+  // not log a reading inline) → labelled "Apri", not "Registra".
+  if (readings.length >= 2) {
     items.push({
-      key: `reading-${u.id}`,
+      key: 'readings-group',
       tone: 'info',
       icon: 'reading',
-      title: serviceLabel(u),
-      detail: days === null
-        ? t('dashboard.attention.readingMissing')
-        : t(`dashboard.attention.readingLast_${days === 1 ? 'one' : 'other'}`, { n: days }),
-      to: `/utilities/${u.id}`,
-      action: t('dashboard.attention.logReading'),
+      title: t('dashboard.attention.readingsGroup', { n: readings.length }),
+      detail: readings.map(({ u }) => serviceLabel(u)).join(', '),
+      to: '/utilities',
+      action: t('dashboard.attention.open'),
     })
-  })
+  } else {
+    readings.forEach(({ u, days }) => {
+      items.push({
+        key: `reading-${u.id}`,
+        tone: 'info',
+        icon: 'reading',
+        title: serviceLabel(u),
+        detail: days === null
+          ? t('dashboard.attention.readingMissing')
+          : t(`dashboard.attention.readingLast_${days === 1 ? 'one' : 'other'}`, { n: days }),
+        to: `/utilities/${u.id}`,
+        action: t('dashboard.attention.open'),
+      })
+    })
+  }
 
   ;(projects.value || []).forEach((p) => {
     if (p.status === 'active' && (p.stats?.percentage_spent ?? 0) > 100) {
