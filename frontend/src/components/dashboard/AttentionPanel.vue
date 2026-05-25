@@ -1,25 +1,17 @@
 <template>
-  <Card class="p-4 sm:p-5 border-l-4 border-l-accent">
+  <Card
+    class="p-4 sm:p-5 border-l-4 border-l-accent transition-colors"
+    :class="{ 'attention-warn': items.length }"
+  >
     <!-- Header: warm "home brief" identity + dynamic subtitle -->
     <div class="flex items-center gap-3 pb-3 mb-3 border-b border-line/60">
-      <span
-        class="w-9 h-9 rounded-xl grid place-items-center shrink-0 transition-colors"
-        :class="items.length
-          ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300'
-          : 'bg-accent-soft/15 text-accent-soft'"
-      >
+      <span class="w-9 h-9 rounded-xl grid place-items-center shrink-0 bg-accent-soft/15 text-accent-soft">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
       </span>
       <div class="min-w-0">
-        <div class="flex items-center gap-1.5">
-          <h2 class="text-sm font-semibold text-ink leading-tight">{{ t('dashboard.attention.title') }}</h2>
-          <span
-            v-if="items.length"
-            class="inline-flex items-center justify-center min-w-[1.125rem] h-[1.125rem] px-1 rounded-full text-[0.6875rem] font-semibold leading-none tabular-nums bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
-          >{{ items.length }}</span>
-        </div>
+        <h2 class="text-sm font-semibold text-ink leading-tight">{{ t('dashboard.attention.title') }}</h2>
         <p class="text-xs text-ink-muted leading-tight">
           {{ items.length
             ? t(`dashboard.attention.${items.length === 1 ? 'subtitle_one' : 'subtitle_other'}`, { n: items.length })
@@ -158,5 +150,17 @@ const icons = {
 }
 .dark .action-pill:hover {
   background: rgb(75 85 99); /* gray-600 */
+}
+
+/* Attention state: warm amber wash over the whole panel + amber left border.
+   Scoped (→ [data-v]) so it beats the Card's bg-surface utility without
+   needing !important or relying on Tailwind v4 utility ordering. */
+.attention-warn {
+  background-color: rgb(255 251 235); /* amber-50 */
+  border-left-color: rgb(245 158 11); /* amber-500 */
+}
+.dark .attention-warn {
+  background-color: rgb(120 53 15 / 0.12); /* warm amber wash */
+  border-left-color: rgb(217 119 6); /* amber-600 */
 }
 </style>
