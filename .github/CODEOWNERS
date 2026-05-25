@@ -1,0 +1,9 @@
+# CODEOWNERS — HomeLog
+# https://docs.github.com/articles/about-code-owners
+#
+# Every PR that touches a file requires an explicit review from its
+# owner(s) before it can be merged. The last matching rule wins, so
+# the wildcard below is the default owner for anything not overridden
+# by a more specific rule. Add more specific rules above as needed.
+
+* @sgiraz
