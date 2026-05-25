@@ -1,9 +1,8 @@
 <template>
-  <Card
-    class="p-4 sm:p-5 border-l-4 border-l-accent transition-colors"
-    :class="{ 'attention-warn': items.length }"
-  >
-    <!-- Header: warm "home brief" identity + dynamic subtitle -->
+  <Card class="p-4 sm:p-5 border-l-4 border-l-accent">
+    <!-- Header: quiet but clearly the section title — hierarchy comes from type
+         (larger/bolder than the rows) + spacing + a hairline, NOT a fill. The
+         urgency colour lives in each row's status chip, per HIG/Material. -->
     <div class="flex items-center gap-3 pb-3 mb-3 border-b border-line/60">
       <span class="w-9 h-9 rounded-xl grid place-items-center shrink-0 bg-accent-soft/15 text-accent-soft">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -11,7 +10,7 @@
         </svg>
       </span>
       <div class="min-w-0">
-        <h2 class="text-sm font-semibold text-ink leading-tight">{{ t('dashboard.attention.title') }}</h2>
+        <h2 class="text-base font-semibold text-ink leading-tight">{{ t('dashboard.attention.title') }}</h2>
         <p class="text-xs text-ink-muted leading-tight">
           {{ items.length
             ? t(`dashboard.attention.${items.length === 1 ? 'subtitle_one' : 'subtitle_other'}`, { n: items.length })
@@ -47,7 +46,7 @@
           </span>
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium text-ink truncate">{{ item.title }}</div>
-            <div class="text-xs text-ink-muted truncate">{{ item.detail }}</div>
+            <div class="text-xs truncate" :class="toneText[item.tone] || 'text-ink-muted'">{{ item.detail }}</div>
           </div>
           <component
             :is="item.to ? 'router-link' : 'button'"
@@ -100,13 +99,22 @@ defineEmits(['action'])
 
 const showAllMobile = ref(false)
 
-// Tone → chip color classes
+// Tone → chip color classes (the left status chip carries the urgency colour)
 const toneChip = {
   danger: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300',
   warn: 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300',
   info: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300',
   positive: 'bg-positive/15 text-positive',
   accent: 'bg-accent-soft/15 text-accent-soft',
+}
+
+// Tone → status-line color. Only urgent/actionable tones tint the detail text;
+// 'info' (e.g. readings) stays muted so it doesn't read like a link.
+const toneText = {
+  danger: 'text-red-600 dark:text-red-300',
+  warn: 'text-amber-700 dark:text-amber-300',
+  positive: 'text-positive',
+  accent: 'text-accent-soft',
 }
 
 // Small inline icon set keyed by item.icon
@@ -150,17 +158,5 @@ const icons = {
 }
 .dark .action-pill:hover {
   background: rgb(75 85 99); /* gray-600 */
-}
-
-/* Attention state: warm amber wash over the whole panel + amber left border.
-   Scoped (→ [data-v]) so it beats the Card's bg-surface utility without
-   needing !important or relying on Tailwind v4 utility ordering. */
-.attention-warn {
-  background-color: rgb(255 251 235); /* amber-50 */
-  border-left-color: rgb(245 158 11); /* amber-500 */
-}
-.dark .attention-warn {
-  background-color: rgb(120 53 15 / 0.12); /* warm amber wash */
-  border-left-color: rgb(217 119 6); /* amber-600 */
 }
 </style>

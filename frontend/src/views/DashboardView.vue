@@ -281,7 +281,7 @@ const trendLineChartData = computed(() => {
   }
 })
 
-// ── "Casa oggi" brief data source ──
+// ── "Da gestire" brief data source ──
 // One utilities.list call carries embedded bills + readings; balance is a
 // single endpoint; projects are already fetched for the filters. No N+1.
 const utilities = ref([])
@@ -573,7 +573,7 @@ onMounted(() => {
   applyFilters()
 })
 
-// "Casa oggi" is scoped to the current property, whose id arrives
+// "Da gestire" is scoped to the current property, whose id arrives
 // asynchronously after mount. Fetch as soon as it's known (covers first load),
 // and re-fetch whenever it changes.
 watch(

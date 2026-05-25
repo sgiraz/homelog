@@ -47,7 +47,7 @@
     "addFirst": "Aggiungi la tua prima spesa"
   },
   "attention": {
-    "title": "Casa oggi",
+    "title": "Da gestire",
     "subtitle_one": "{n} cosa richiede attenzione",
     "subtitle_other": "{n} cose richiedono attenzione",
     "allClear": "Tutto in ordine",

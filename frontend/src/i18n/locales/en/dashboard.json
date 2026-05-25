@@ -47,7 +47,7 @@
     "addFirst": "Add your first expense"
   },
   "attention": {
-    "title": "Home today",
+    "title": "To do",
     "subtitle_one": "{n} thing needs attention",
     "subtitle_other": "{n} things need attention",
     "allClear": "All clear",
