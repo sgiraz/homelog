@@ -93,11 +93,11 @@ type Expense struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID        uint  `gorm:"not null;index" json:"user_id"`
-	PropertyID    *uint `gorm:"index" json:"property_id,omitempty"`
-	CategoryID    uint  `gorm:"not null;index" json:"category_id"`
-	SubcategoryID *uint `gorm:"index" json:"subcategory_id,omitempty"`
-	ProjectID     *uint `gorm:"index" json:"project_id,omitempty"`
+	UserID            uint  `gorm:"not null;index" json:"user_id"`
+	PropertyID        *uint `gorm:"index" json:"property_id,omitempty"`
+	CategoryID        uint  `gorm:"not null;index" json:"category_id"`
+	SubcategoryID     *uint `gorm:"index" json:"subcategory_id,omitempty"`
+	ProjectID         *uint `gorm:"index" json:"project_id,omitempty"`
 	BillID            *uint `gorm:"index" json:"bill_id,omitempty"`             // auto-created from bill payment
 	BillInstallmentID *uint `gorm:"index" json:"bill_installment_id,omitempty"` // specific installment when bill is installment-based
 
@@ -142,18 +142,18 @@ type Utility struct {
 	IsActive     bool       `gorm:"not null;default:true" json:"is_active"`
 
 	// Service classification
-	IsMetered bool `gorm:"not null;default:true" json:"is_metered"` // true for electricity/gas/water/waste, false for internet/insurance/affitto/mutuo
+	IsMetered bool `gorm:"not null;default:true" json:"is_metered"` // true for electricity/gas/water, false for internet/insurance/affitto/mutuo
 
 	// Metered service fields
-	PowerCapacity       float64 `json:"power_capacity,omitempty"`              // For electricity (kW)
+	PowerCapacity       float64 `json:"power_capacity,omitempty"`                // For electricity (kW)
 	AllowsSelfReading   *bool   `gorm:"default:true" json:"allows_self_reading"` // Se il fornitore accetta autolettura
 	ComparisonThreshold float64 `gorm:"default:2.0" json:"comparison_threshold"` // Soglia base per letture stesso giorno
 	ThresholdPerDay     float64 `gorm:"default:1.0" json:"threshold_per_day"`    // Tolleranza aggiuntiva per giorno
 
 	// Fixed service fields
-	RecurringAmount  *float64 `json:"recurring_amount,omitempty"`                    // Periodic amount (for fixed services)
-	BillingInterval  int      `gorm:"not null;default:1" json:"billing_interval"`    // e.g. 2
-	BillingUnit      string   `gorm:"not null;default:'month'" json:"billing_unit"`  // day, week, month, year
+	RecurringAmount *float64 `json:"recurring_amount,omitempty"`                   // Periodic amount (for fixed services)
+	BillingInterval int      `gorm:"not null;default:1" json:"billing_interval"`   // e.g. 2
+	BillingUnit     string   `gorm:"not null;default:'month'" json:"billing_unit"` // day, week, month, year
 
 	// Expense auto-creation
 	DefaultCategoryID *uint `gorm:"index" json:"default_category_id,omitempty"` // Category for auto-created expenses
@@ -169,8 +169,8 @@ type Utility struct {
 	IsInstallmentBased bool `gorm:"not null;default:false" json:"is_installment_based"`
 
 	// Per-service split override
-	SplitOverride  string `gorm:"not null;default:''" json:"split_override"`   // "": use global default, "no_split": never split, "custom": use split_member_ids
-	SplitMemberIDs string `json:"split_member_ids,omitempty"`                   // JSON array of member IDs e.g. "[2,3]" (used when split_override="custom")
+	SplitOverride  string `gorm:"not null;default:''" json:"split_override"` // "": use global default, "no_split": never split, "custom": use split_member_ids
+	SplitMemberIDs string `json:"split_member_ids,omitempty"`                // JSON array of member IDs e.g. "[2,3]" (used when split_override="custom")
 
 	// Template
 	DefaultBillTemplateID *uint `gorm:"index" json:"default_bill_template_id,omitempty"` // Default bill extraction template
@@ -196,11 +196,11 @@ type Utility struct {
 	DefaultCategory     *Category              `gorm:"foreignKey:DefaultCategoryID" json:"default_category,omitempty"`
 	PaidByMember        *HouseholdMember       `gorm:"foreignKey:PaidByMemberID" json:"paid_by_member,omitempty"`
 	DefaultBillTemplate *BillTemplate          `gorm:"foreignKey:DefaultBillTemplateID" json:"default_bill_template,omitempty"`
-	Readings        []MeterReading         `gorm:"foreignKey:UtilityID" json:"readings,omitempty"`
-	Bills           []Bill                 `gorm:"foreignKey:UtilityID" json:"bills,omitempty"`
-	Rates           []UtilityRate          `gorm:"foreignKey:UtilityID" json:"rates,omitempty"`
-	PriceChanges    []PriceChange          `gorm:"foreignKey:UtilityID" json:"price_changes,omitempty"`
-	Communications  []ServiceCommunication `gorm:"foreignKey:UtilityID" json:"communications,omitempty"`
+	Readings            []MeterReading         `gorm:"foreignKey:UtilityID" json:"readings,omitempty"`
+	Bills               []Bill                 `gorm:"foreignKey:UtilityID" json:"bills,omitempty"`
+	Rates               []UtilityRate          `gorm:"foreignKey:UtilityID" json:"rates,omitempty"`
+	PriceChanges        []PriceChange          `gorm:"foreignKey:UtilityID" json:"price_changes,omitempty"`
+	Communications      []ServiceCommunication `gorm:"foreignKey:UtilityID" json:"communications,omitempty"`
 }
 
 // PriceChange tracks historical price changes for fixed-cost services
@@ -209,13 +209,13 @@ type PriceChange struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	UtilityID             uint       `gorm:"not null;index" json:"utility_id"`
-	EffectiveDate         time.Time  `gorm:"not null;index" json:"effective_date"`
-	OldAmount             float64    `gorm:"not null" json:"old_amount"`
-	NewAmount             float64    `gorm:"not null" json:"new_amount"`
-	Reason                string     `json:"reason,omitempty"`                  // e.g. "Modifica condizioni contrattuali"
-	CancellationDeadline  *time.Time `json:"cancellation_deadline,omitempty"`   // Deadline to cancel without penalty
-	SourceBillID          *uint      `gorm:"index" json:"source_bill_id,omitempty"` // Bill that announced this change
+	UtilityID            uint       `gorm:"not null;index" json:"utility_id"`
+	EffectiveDate        time.Time  `gorm:"not null;index" json:"effective_date"`
+	OldAmount            float64    `gorm:"not null" json:"old_amount"`
+	NewAmount            float64    `gorm:"not null" json:"new_amount"`
+	Reason               string     `json:"reason,omitempty"`                      // e.g. "Modifica condizioni contrattuali"
+	CancellationDeadline *time.Time `json:"cancellation_deadline,omitempty"`       // Deadline to cancel without penalty
+	SourceBillID         *uint      `gorm:"index" json:"source_bill_id,omitempty"` // Bill that announced this change
 }
 
 // ServiceCommunication represents an important communication extracted from a bill/invoice
@@ -245,12 +245,12 @@ type Notification struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID     uint   `gorm:"not null;index" json:"user_id"`      // recipient
-	Type       string `gorm:"not null;index" json:"type"`         // join_request, expense_shared
+	UserID     uint   `gorm:"not null;index" json:"user_id"` // recipient
+	Type       string `gorm:"not null;index" json:"type"`    // join_request, expense_shared
 	Title      string `gorm:"not null" json:"title"`
 	Content    string `gorm:"type:text" json:"content"`
 	IsRead     bool   `gorm:"not null;default:false" json:"is_read"`
-	RelatedID  *uint  `json:"related_id,omitempty"`               // ID of the related entity
+	RelatedID  *uint  `json:"related_id,omitempty"` // ID of the related entity
 	PropertyID *uint  `gorm:"index" json:"property_id,omitempty"`
 
 	// Relations
@@ -289,18 +289,18 @@ type Bill struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UtilityID   uint      `gorm:"not null;index" json:"utility_id"`
-	BillNumber  string    `gorm:"not null;index" json:"bill_number"`
+	UtilityID  uint   `gorm:"not null;index" json:"utility_id"`
+	BillNumber string `gorm:"not null;index" json:"bill_number"`
 
 	// Explicit association to the user's self-reading for this bill period.
 	// When set, this reading is used as the "Consumo Effettivo" anchor.
 	// When nil, the provider_reading value is used as fallback.
-	UserReadingID *uint        `json:"user_reading_id,omitempty"`
+	UserReadingID *uint         `json:"user_reading_id,omitempty"`
 	UserReading   *MeterReading `gorm:"foreignKey:UserReadingID" json:"user_reading,omitempty"`
-	IssueDate   time.Time `gorm:"not null" json:"issue_date"`
-	PeriodStart time.Time `gorm:"not null;index" json:"period_start"`
-	PeriodEnd   time.Time `gorm:"not null;index" json:"period_end"`
-	DueDate     time.Time `gorm:"not null;index" json:"due_date"`
+	IssueDate     time.Time     `gorm:"not null" json:"issue_date"`
+	PeriodStart   time.Time     `gorm:"not null;index" json:"period_start"`
+	PeriodEnd     time.Time     `gorm:"not null;index" json:"period_end"`
+	DueDate       time.Time     `gorm:"not null;index" json:"due_date"`
 
 	// Provider Readings (letture rilevate dal fornitore nella bolletta)
 	// These are the readings reported by the utility provider
@@ -491,10 +491,10 @@ type PropertyJoinRequest struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID     uint   `gorm:"not null;index" json:"user_id"`
-	PropertyID uint   `gorm:"not null;index" json:"property_id"`
-	Status     string `gorm:"not null;default:'pending'" json:"status"` // pending, approved, rejected
-	ResolvedBy *uint  `json:"resolved_by,omitempty"`
+	UserID     uint       `gorm:"not null;index" json:"user_id"`
+	PropertyID uint       `gorm:"not null;index" json:"property_id"`
+	Status     string     `gorm:"not null;default:'pending'" json:"status"` // pending, approved, rejected
+	ResolvedBy *uint      `json:"resolved_by,omitempty"`
 	ResolvedAt *time.Time `json:"resolved_at,omitempty"`
 
 	// Relations
@@ -584,12 +584,12 @@ type ExpenseTemplate struct {
 	UserID        uint    `gorm:"not null;index" json:"user_id"`
 	Name          string  `gorm:"not null" json:"name"`
 	Icon          string  `json:"icon"`
-	Amount        float64 `json:"amount"`                              // 0 means "ask every time"
+	Amount        float64 `json:"amount"` // 0 means "ask every time"
 	Description   string  `json:"description"`
 	CategoryID    uint    `gorm:"not null;index" json:"category_id"`
 	SubcategoryID *uint   `gorm:"index" json:"subcategory_id,omitempty"`
 	ProjectID     *uint   `gorm:"index" json:"project_id,omitempty"`
-	Currency      string  `json:"currency,omitempty"`             // template currency, empty = user preference currency
+	Currency      string  `json:"currency,omitempty"` // template currency, empty = user preference currency
 	SortOrder     int     `gorm:"not null;default:0" json:"sort_order"`
 
 	// Relations
