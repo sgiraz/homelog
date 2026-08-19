@@ -5,7 +5,19 @@ This page is a stub. Screenshots and step-by-step walkthroughs are coming.
 :::
 
 A **utility** is a service tied to your home — electricity, gas, water, and so
-on. Each utility keeps its own meter readings, bills, and consumption history.
+on. Each utility keeps its own bills, and — when it has a meter — its readings
+and consumption history.
+
+## Metered vs fixed-cost services
+
+The service type decides how HomeLog treats it:
+
+- **Metered** — electricity, gas and water. These get the **Readings** and
+  **Analysis** tabs, and consumption is tracked between bills.
+- **Fixed-cost** — waste (TARI is billed on surface area, not on consumption),
+  internet, insurance, rent and mortgage. Instead of readings they get a **Price
+  history** tab, which records every change in the amount from one bill to the
+  next.
 
 ## Meter readings
 

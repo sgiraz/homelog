@@ -355,6 +355,57 @@ func seedDemoData(db *gorm.DB) error {
 		return err
 	}
 
+	// ---- A long-term debt, partly repaid ---------------------------------
+	// Giulia fronted the deposit on the new house. Left in the running balance
+	// it would swallow every ordinary expense between the two of them, so it
+	// lives in its own ledger (Expense.IsLongTermDebt) and Mario pays it back
+	// at his own pace — the Debts tab shows the remainder and the progress.
+	deposit := models.Expense{
+		UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("Casa"),
+		Amount: 12000, Date: daysAgo(75), Description: "Acconto acquisto casa",
+		PaidByMemberID: giulia.ID, IsSplit: true, IsLongTermDebt: true,
+	}
+	if err := db.Create(&deposit).Error; err != nil {
+		return err
+	}
+	depositShare := round2(deposit.Amount / 2)
+	debtSplit := models.ExpenseSplit{ExpenseID: deposit.ID, MemberID: mario.ID, Amount: depositShare}
+	payerSplit := models.ExpenseSplit{
+		ExpenseID: deposit.ID, MemberID: giulia.ID, Amount: depositShare,
+		SettledAmount: depositShare, IsSettled: true, SettledAt: tptr(deposit.Date),
+	}
+	for _, sp := range []*models.ExpenseSplit{&debtSplit, &payerSplit} {
+		if err := db.Create(sp).Error; err != nil {
+			return err
+		}
+	}
+
+	// Two repayments of different sizes, so the progress bar is not at 0.
+	for _, r := range []struct {
+		amount float64
+		day    int
+		method string
+	}{{800, 50, "bonifico"}, {500, 20, "bonifico"}} {
+		repayment := models.Settlement{
+			PropertyID: property.ID, FromMemberID: mario.ID, ToMemberID: giulia.ID,
+			Amount: r.amount, Date: daysAgo(r.day), PaymentMethod: r.method,
+			Note: "Rata acconto casa", TargetExpenseID: &deposit.ID,
+		}
+		if err := db.Create(&repayment).Error; err != nil {
+			return err
+		}
+		if err := db.Create(&models.SettlementAllocation{
+			SettlementID: repayment.ID, ExpenseSplitID: debtSplit.ID,
+			Amount: r.amount, Kind: "payment", CreatedAt: repayment.Date,
+		}).Error; err != nil {
+			return err
+		}
+		debtSplit.SettledAmount += r.amount
+	}
+	if err := db.Model(&debtSplit).Update("settled_amount", debtSplit.SettledAmount).Error; err != nil {
+		return err
+	}
+
 	log.Printf("✅ Demo dataset seeded (user ID=%d)", user.ID)
 	return nil
 }
