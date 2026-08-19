@@ -97,8 +97,8 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		IsMetered           *bool      `json:"is_metered"`
 		PowerCapacity       float64    `json:"power_capacity"`
 		RecurringAmount     *float64   `json:"recurring_amount"`
-		BillingInterval     *int       `json:"billing_interval"`                                                        // default 1
-		BillingUnit         string     `json:"billing_unit" binding:"omitempty,oneof=day week month year"`               // default "month"
+		BillingInterval     *int       `json:"billing_interval"`                                           // default 1
+		BillingUnit         string     `json:"billing_unit" binding:"omitempty,oneof=day week month year"` // default "month"
 		PaidByMemberID      *uint      `json:"paid_by_member_id"`
 		DefaultCategoryID   *uint      `json:"default_category_id"`
 		SplitOverride       string     `json:"split_override" binding:"omitempty,oneof=no_split custom"`
@@ -157,7 +157,7 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 	}
 
 	// Determine if service is metered based on type (unless explicitly set)
-	meteredTypes := map[string]bool{"electricity": true, "gas": true, "water": true, "waste": true}
+	meteredTypes := map[string]bool{"electricity": true, "gas": true, "water": true, "waste": false}
 	isMetered := meteredTypes[input.Type]
 	if input.IsMetered != nil {
 		isMetered = *input.IsMetered
@@ -333,22 +333,22 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	}
 
 	var input struct {
-		Provider            string     `json:"provider"`
-		CustomerCode        string     `json:"customer_code"`
-		ServiceCode         string     `json:"service_code"`
-		Address             string     `json:"address"`
-		StartDate           *time.Time `json:"start_date"`
-		EndDate             *time.Time `json:"end_date"`
-		IsActive            *bool      `json:"is_active"`
-		PowerCapacity       *float64   `json:"power_capacity"`
-		CustomerPortal      string     `json:"customer_portal"`
-		Notes               string     `json:"notes"`
-		AllowsSelfReading   *bool      `json:"allows_self_reading"`
-		ComparisonThreshold *float64   `json:"comparison_threshold"`
-		ThresholdPerDay     *float64   `json:"threshold_per_day"`
-		RecurringAmount     *float64   `json:"recurring_amount"`
-		BillingInterval     *int       `json:"billing_interval"`
-		BillingUnit         string     `json:"billing_unit" binding:"omitempty,oneof=day week month year"`
+		Provider              string     `json:"provider"`
+		CustomerCode          string     `json:"customer_code"`
+		ServiceCode           string     `json:"service_code"`
+		Address               string     `json:"address"`
+		StartDate             *time.Time `json:"start_date"`
+		EndDate               *time.Time `json:"end_date"`
+		IsActive              *bool      `json:"is_active"`
+		PowerCapacity         *float64   `json:"power_capacity"`
+		CustomerPortal        string     `json:"customer_portal"`
+		Notes                 string     `json:"notes"`
+		AllowsSelfReading     *bool      `json:"allows_self_reading"`
+		ComparisonThreshold   *float64   `json:"comparison_threshold"`
+		ThresholdPerDay       *float64   `json:"threshold_per_day"`
+		RecurringAmount       *float64   `json:"recurring_amount"`
+		BillingInterval       *int       `json:"billing_interval"`
+		BillingUnit           string     `json:"billing_unit" binding:"omitempty,oneof=day week month year"`
 		PaidByMemberID        *uint      `json:"paid_by_member_id"`
 		DefaultCategoryID     *uint      `json:"default_category_id"`
 		DefaultBillTemplateID *uint      `json:"default_bill_template_id"`
