@@ -346,11 +346,12 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		// Create split for the payer (already settled)
 		now := time.Now()
 		payerSplit := models.ExpenseSplit{
-			ExpenseID: expense.ID,
-			MemberID:  paidByMemberID,
-			Amount:    splitAmount,
-			IsSettled: true,
-			SettledAt: &now,
+			ExpenseID:     expense.ID,
+			MemberID:      paidByMemberID,
+			Amount:        splitAmount,
+			SettledAmount: splitAmount,
+			IsSettled:     true,
+			SettledAt:     &now,
 		}
 		if err := tx.Create(&payerSplit).Error; err != nil {
 			tx.Rollback()
@@ -517,14 +518,15 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 	// Build updates map
 	updates := make(map[string]any)
 
-	// Guardrail for split-amount propagation: reject if any non-payer split is
-	// already settled (money has changed hands), otherwise the new per-person
-	// quota would silently rewrite historical balances.
+	// Guardrail for split-amount propagation: reject if any non-payer split has
+	// already received money (fully or partially settled via the settlement
+	// ledger), otherwise the new per-person quota would silently rewrite
+	// historical balances out from under existing payments.
 	amountChanging := !settled && req.Amount != nil && *req.Amount != expense.Amount
 	if amountChanging && expense.IsSplit {
 		var settledNonPayer int64
 		h.db.Model(&models.ExpenseSplit{}).
-			Where("expense_id = ? AND member_id <> ? AND is_settled = true", expense.ID, expense.PaidByMemberID).
+			Where("expense_id = ? AND member_id <> ? AND settled_amount > 0", expense.ID, expense.PaidByMemberID).
 			Count(&settledNonPayer)
 		if settledNonPayer > 0 {
 			c.JSON(http.StatusConflict, gin.H{"error": "Alcune quote sono già state saldate. Annulla i pagamenti dal Bilancio per modificare l'importo."})
@@ -677,15 +679,17 @@ func (h *ExpenseHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Block deletion of fully-settled split expenses
+	// Block deletion once any non-payer share has received money (fully or
+	// partially, via the settlement ledger) — deleting would silently erase
+	// the debt those payments were made against.
 	if expense.IsSplit {
-		var unsettled int64
+		var settledNonPayer int64
 		h.db.Model(&models.ExpenseSplit{}).
-			Where("expense_id = ? AND is_settled = false", expense.ID).
-			Count(&unsettled)
-		if unsettled == 0 {
+			Where("expense_id = ? AND member_id <> ? AND settled_amount > 0", expense.ID, expense.PaidByMemberID).
+			Count(&settledNonPayer)
+		if settledNonPayer > 0 {
 			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Questa spesa è già stata completamente saldata e non può essere eliminata.",
+				"error": "Questa spesa ha quote già saldate (anche parzialmente) e non può essere eliminata. Annulla i pagamenti dal Bilancio prima di eliminarla.",
 			})
 			return
 		}
@@ -698,4 +702,3 @@ func (h *ExpenseHandler) Delete(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Expense deleted successfully"})
 }
-

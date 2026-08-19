@@ -88,6 +88,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.HouseholdSettings{},
 		&models.ExpenseSplit{},
 		&models.Settlement{},
+		&models.SettlementAllocation{},
 		&models.BillTemplate{},
 		&models.ContractTemplate{},
 		&models.ExpenseTemplate{},
@@ -108,6 +109,20 @@ func AutoMigrate(db *gorm.DB) error {
 	// Default billing frequency for existing utilities
 	db.Exec(`UPDATE utilities SET billing_interval = 1 WHERE billing_interval IS NULL OR billing_interval = 0`)
 	db.Exec(`UPDATE utilities SET billing_unit = 'month' WHERE billing_unit IS NULL OR billing_unit = ''`)
+
+	// Data migration: backfill SettledAmount for splits settled before the
+	// partial-settlement ledger existed (SettledAmount added as a new column,
+	// defaults to 0 for all pre-existing rows).
+	db.Exec(`UPDATE expense_splits SET settled_amount = amount WHERE is_settled = 1 AND settled_amount = 0`)
+	// Backfill settlement_allocations for legacy fully-settled splits so a
+	// future partial reversal of an old settlement has ledger detail to work
+	// with instead of an orphaned SettlementID. Idempotent: skips splits that
+	// already have an allocation row.
+	db.Exec(`INSERT INTO settlement_allocations (settlement_id, expense_split_id, amount, created_at)
+		SELECT settlement_id, id, amount, COALESCE(settled_at, CURRENT_TIMESTAMP)
+		FROM expense_splits
+		WHERE is_settled = 1 AND settlement_id IS NOT NULL
+		AND id NOT IN (SELECT expense_split_id FROM settlement_allocations)`)
 
 	// Data migration: ensure property owners have admin role on their HouseholdMember
 	// This backfills existing databases where HouseholdMember.Role was not set to "admin"

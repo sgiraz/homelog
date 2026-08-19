@@ -191,7 +191,7 @@
     "providerLabel": "Provider *",
     "operatorLabel": "Operator / Authority *",
     "providerPlaceholder": "Provider name",
-    "operatorPlaceholder": "e.g. WindTre, Allianz, Landlord...",
+    "operatorPlaceholder": "e.g. WindTre, Allianz, Intesa Sanpaolo, Landlord...",
     "serviceCodePlaceholder": {
       "electricity": "IT001E...",
       "gas": "IT001...",
@@ -209,7 +209,7 @@
     "contractNumberLabel": "Contract number",
     "customerCodePlaceholder": "Customer number",
     "contractRefPlaceholder": "Contract reference",
-    "recurringAmountLabel": "Recurring amount (€)",
+    "recurringAmountLabel": "Recurring amount",
     "recurringAmountPlaceholder": "e.g. 29.99",
     "billingFrequencyLabel": "Billing frequency",
     "frequencyPreviewSingular": "Every {unit}",

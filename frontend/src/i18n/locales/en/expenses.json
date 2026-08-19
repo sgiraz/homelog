@@ -47,7 +47,8 @@
   "addButton": "Add Expense",
   "tabs": {
     "list": "List",
-    "balance": "Balance"
+    "balance": "Balance",
+    "debts": "Debts"
   },
   "filters": {
     "filtersLabel": "Filters",

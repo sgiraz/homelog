@@ -302,7 +302,7 @@
             <div class="text-xs text-ink-muted">{{ t('utilities.addUtilityModal.domiciledHint') }}</div>
           </div>
         </label>
-        <label class="flex items-start gap-3 cursor-pointer">
+        <label v-if="form.type !== 'mutuo'" class="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
             v-model="form.is_installment_based"

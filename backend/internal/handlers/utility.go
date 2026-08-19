@@ -53,15 +53,28 @@ func (h *UtilityHandler) List(c *gin.Context) {
 		query = query.Where("is_active = ?", true)
 	}
 
+	// No LIMIT in these preloads. GORM loads an association for every parent in
+	// a single query (`... WHERE utility_id IN (1,2,3) ORDER BY ... LIMIT 3`),
+	// so a limit caps the whole result set, not each service: the newest rows
+	// all land on one or two services and the rest come back empty — which also
+	// silently broke the overview KPIs and the dashboard's overdue-bill brief,
+	// both of which sum over these lists.
+	//
+	// Volume is kept in check by selecting only the columns the list actually
+	// renders, leaving out parsed_data (the raw PDF extraction blob, by far the
+	// heaviest and read only in the per-bill detail views).
+	billListColumns := []string{
+		"id", "created_at", "updated_at", "deleted_at", "utility_id", "bill_number",
+		"issue_date", "period_start", "period_end", "due_date",
+		"consumption_total", "amount_total", "is_paid", "paid_date",
+		"original_amount", "original_currency",
+	}
 	if err := query.Preload("Property").
 		Preload("Bills", func(db *gorm.DB) *gorm.DB {
-			return db.Order("period_end DESC").Limit(3)
-		}).
-		Preload("Bills.Installments", func(db *gorm.DB) *gorm.DB {
-			return db.Order("number ASC")
+			return db.Select(billListColumns).Order("period_end DESC")
 		}).
 		Preload("Readings", func(db *gorm.DB) *gorm.DB {
-			return db.Order("reading_date DESC").Limit(3)
+			return db.Order("reading_date DESC")
 		}).
 		Order("type ASC, provider ASC").
 		Find(&utilities).Error; err != nil {

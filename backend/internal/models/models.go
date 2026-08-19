@@ -112,6 +112,14 @@ type Expense struct {
 	PaidByMemberID uint `gorm:"not null;index;default:0" json:"paid_by_member_id"` // HouseholdMember ID
 	IsSplit        bool `gorm:"not null;default:false" json:"is_split"`
 
+	// IsLongTermDebt takes this expense's shares out of the running household
+	// balance and turns them into standalone debts repaid on their own schedule
+	// (see the Debiti tab). Without it a single outsized expense — a mortgage
+	// down payment, say — nets against every ordinary expense, so the debtor
+	// never gets reimbursed for the groceries they front: their share is
+	// silently swallowed by the big debt instead.
+	IsLongTermDebt bool `gorm:"not null;default:false;index" json:"is_long_term_debt"`
+
 	// Relations
 	Property    *Property        `json:"property,omitempty"`
 	Category    Category         `json:"category"`
@@ -516,18 +524,27 @@ type HouseholdSettings struct {
 	Property Property `json:"property"`
 }
 
-// ExpenseSplit represents a member's share of an expense
+// ExpenseSplit represents a member's share of an expense.
+// SettledAmount tracks partial payments (a ledger, not a boolean): a split is
+// fully settled only once SettledAmount reaches Amount. IsSettled/SettledAt/
+// SettlementID are derived convenience fields kept in sync by the handlers
+// that mutate SettledAmount (see SettlementAllocation for the per-payment
+// breakdown when a split receives contributions from multiple settlements).
 type ExpenseSplit struct {
 	ID        uint      `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	ExpenseID    uint       `gorm:"not null;index" json:"expense_id"`
-	MemberID     uint       `gorm:"not null;index" json:"member_id"` // HouseholdMember ID
-	Amount       float64    `gorm:"not null" json:"amount"`
-	IsSettled    bool       `gorm:"not null;default:false" json:"is_settled"`
-	SettledAt    *time.Time `json:"settled_at,omitempty"`
-	SettlementID *uint      `gorm:"index" json:"settlement_id,omitempty"`
+	ExpenseID     uint       `gorm:"not null;index" json:"expense_id"`
+	MemberID      uint       `gorm:"not null;index" json:"member_id"` // HouseholdMember ID
+	Amount        float64    `gorm:"not null" json:"amount"`
+	SettledAmount float64    `gorm:"not null;default:0" json:"settled_amount"`
+	IsSettled     bool       `gorm:"not null;default:false" json:"is_settled"` // derived: SettledAmount >= Amount
+	SettledAt     *time.Time `json:"settled_at,omitempty"`                     // set when it became fully settled
+	SettlementID  *uint      `gorm:"index" json:"settlement_id,omitempty"`     // last settlement that touched it
+
+	// Computed: Amount - SettledAmount, set by handlers on read. Not persisted.
+	RemainingAmount float64 `gorm:"-" json:"remaining_amount"`
 
 	// Relations
 	Expense    Expense         `json:"expense"`
@@ -547,14 +564,45 @@ type Settlement struct {
 	ToMemberID    uint      `gorm:"not null;index" json:"to_member_id"`   // HouseholdMember ID
 	Amount        float64   `gorm:"not null" json:"amount"`
 	Date          time.Time `gorm:"not null;index" json:"date"`
-	PaymentMethod string    `json:"payment_method,omitempty"` // bank_transfer, cash, satispay, paypal
+	PaymentMethod string    `json:"payment_method,omitempty"` // bank_transfer, cash, satispay, paypal, compensation
 	Note          string    `json:"note,omitempty"`
 
+	// TargetExpenseID scopes the payment to a single long-term debt (the
+	// expense flagged IsLongTermDebt). When nil the payment settles the
+	// ordinary running balance instead, oldest share first.
+	TargetExpenseID *uint    `gorm:"index" json:"target_expense_id,omitempty"`
+	TargetExpense   *Expense `gorm:"foreignKey:TargetExpenseID" json:"target_expense,omitempty"`
+
 	// Relations
-	Property      Property        `json:"property"`
-	FromMember    HouseholdMember `gorm:"foreignKey:FromMemberID" json:"from_member"`
-	ToMember      HouseholdMember `gorm:"foreignKey:ToMemberID" json:"to_member"`
-	ExpenseSplits []ExpenseSplit  `gorm:"foreignKey:SettlementID" json:"expense_splits,omitempty"`
+	Property    Property               `json:"property"`
+	FromMember  HouseholdMember        `gorm:"foreignKey:FromMemberID" json:"from_member"`
+	ToMember    HouseholdMember        `gorm:"foreignKey:ToMemberID" json:"to_member"`
+	Allocations []SettlementAllocation `gorm:"foreignKey:SettlementID" json:"allocations,omitempty"`
+}
+
+// SettlementAllocation records how much of a settlement's amount was applied
+// against a specific ExpenseSplit. A settlement can partially cover several
+// splits, and a single split can receive allocations from multiple
+// settlements over time (partial repayments) — this is the ledger detail
+// that ExpenseSplit.SettledAmount aggregates.
+//
+// Kind distinguishes the two sides of a compensation. A cash settlement has
+// only "payment" rows, and they sum to Settlement.Amount. A compensation —
+// where a credit you're owed is turned into a repayment instead of being
+// reimbursed — additionally carries one "funding" row marking the credit that
+// was consumed. Both kinds move SettledAmount and both are reversed on
+// delete; only "payment" rows count against the settlement total.
+type SettlementAllocation struct {
+	ID        uint      `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+
+	SettlementID   uint    `gorm:"not null;index" json:"settlement_id"`
+	ExpenseSplitID uint    `gorm:"not null;index" json:"expense_split_id"`
+	Amount         float64 `gorm:"not null" json:"amount"`
+	Kind           string  `gorm:"not null;default:'payment'" json:"kind"` // payment, funding
+
+	// Relations
+	ExpenseSplit ExpenseSplit `gorm:"foreignKey:ExpenseSplitID" json:"expense_split,omitempty"`
 }
 
 // BillTemplate represents extraction rules for a utility provider's bill format

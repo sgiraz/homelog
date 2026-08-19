@@ -342,7 +342,7 @@
             <div class="text-xs text-ink-muted">{{ t('utilities.addUtilityModal.domiciledHint') }}</div>
           </div>
         </label>
-        <label class="flex items-start gap-3 cursor-pointer">
+        <label v-if="form.type !== 'mutuo'" class="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
             v-model="form.is_installment_based"
@@ -517,6 +517,11 @@ const frequencyPreview = computed(() => {
 function selectType(type) {
   form.value.type = type.value
   form.value.is_metered = type.metered
+  // A mortgage isn't "one bill split into installments" (installmentsHint) —
+  // it already generates one bill per billing period on its own.
+  if (type.value === 'mutuo') {
+    form.value.is_installment_based = false
+  }
 }
 
 const form = ref({

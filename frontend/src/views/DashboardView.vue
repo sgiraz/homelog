@@ -128,7 +128,7 @@
 <script setup>
 defineOptions({ name: 'DashboardView' })
 
-import { ref, computed, onMounted, onActivated, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, onDeactivated, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
@@ -493,14 +493,25 @@ async function fetchStats(params = {}) {
   }
 }
 
+// Separate from the categories fetch because projects carry the budget stats
+// the brief reads, so they have to be refreshed on every re-activation, while
+// categories only change from Settings.
+async function fetchProjects() {
+  try {
+    const { data } = await projectsAPI.list()
+    projects.value = data?.projects || data || []
+  } catch (err) {
+    console.error('Error fetching projects:', err)
+  }
+}
+
 async function fetchFiltersData() {
   try {
-    const [catRes, projRes] = await Promise.all([
+    const [catRes] = await Promise.all([
       categoriesAPI.list(),
-      projectsAPI.list()
+      fetchProjects()
     ])
     categories.value = catRes.data || []
-    projects.value = projRes.data?.projects || projRes.data || []
   } catch (err) {
     console.error('Error fetching filter data:', err)
   }
@@ -556,13 +567,21 @@ function editExpense(expense) {
 function onExpenseCreated() {
   showAddExpense.value = false
   applyFilters()
-  fetchActionables()
+  refreshBrief()
 }
 
 function onExpenseUpdated() {
   showEditExpense.value = false
   editingExpense.value = null
   applyFilters()
+  refreshBrief()
+}
+
+// Everything the "Da gestire" brief reads: property-scoped services and
+// balance, plus the project budget stats behind the "oltre budget" row. Any
+// expense mutation can move either, so they always refresh together.
+function refreshBrief() {
+  fetchProjects()
   fetchActionables()
 }
 
@@ -576,7 +595,7 @@ async function deleteExpenseConfirm(id) {
   if (ok) {
     try {
       await expensesStore.deleteExpense(id)
-      fetchActionables()
+      refreshBrief()
     } catch (err) {
       window.$toast?.error(t('expenses.deleteError', { error: err.response?.data?.error || err.message }))
     }
@@ -597,9 +616,15 @@ watch(
 )
 
 // keep-alive caches this view, so onMounted won't re-run on return. Refresh on
-// re-activation (and on initial mount, when the id is already known) so paid
-// bills / new readings / settled balances drop off without a hard reload.
+// re-activation so paid bills / new readings / settled balances / over-budget
+// projects drop off without a hard reload. onActivated also fires right after
+// the first mount, where fetchFiltersData has just loaded the projects — the
+// flag keeps that one from fetching them twice.
+let wasDeactivated = false
+onDeactivated(() => { wasDeactivated = true })
+
 onActivated(() => {
+  if (wasDeactivated) fetchProjects()
   if (settingsStore.householdPropertyId) fetchActionables()
 })
 </script>

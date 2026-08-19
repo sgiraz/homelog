@@ -311,6 +311,7 @@ func seedDemoData(db *gorm.DB) error {
 		for _, mid := range splitAmong {
 			split := models.ExpenseSplit{ExpenseID: e.ID, MemberID: mid, Amount: share}
 			if mid == e.PaidByMemberID {
+				split.SettledAmount = share
 				split.IsSettled = true
 				split.SettledAt = tptr(e.Date)
 			}

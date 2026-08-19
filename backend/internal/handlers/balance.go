@@ -33,14 +33,19 @@ type BalanceResponse struct {
 	Message           string  `json:"message"`
 }
 
-// UnsettledSplitDetail represents a single unsettled expense split
+// UnsettledSplitDetail represents a single unsettled (or partially settled) expense split
 type UnsettledSplitDetail struct {
-	ExpenseID   uint    `json:"expense_id"`
-	Description string  `json:"description"`
-	Amount      float64 `json:"amount"`
-	PaidByName  string  `json:"paid_by_name"`
-	PaidByID    uint    `json:"paid_by_id"`
-	Date        string  `json:"date"`
+	ExpenseID uint `json:"expense_id"`
+	// SplitID identifies this exact share — the handle a compensation needs to
+	// spend this credit against a long-term debt.
+	SplitID       uint    `json:"split_id"`
+	Description   string  `json:"description"`
+	Amount        float64 `json:"amount"`
+	SettledAmount float64 `json:"settled_amount"`
+	Remaining     float64 `json:"remaining_amount"`
+	PaidByName    string  `json:"paid_by_name"`
+	PaidByID      uint    `json:"paid_by_id"`
+	Date          string  `json:"date"`
 }
 
 // SettlementDetail represents a settlement record
@@ -263,7 +268,8 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 		return
 	}
 
-	// Get unsettled splits between these members
+	// Get unsettled splits between these members (long-term debts live in their
+	// own ledger — see GetDebts)
 	var splits []models.ExpenseSplit
 	err = h.db.
 		Preload("Expense").
@@ -273,6 +279,7 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 		Where("expense_splits.is_settled = ?", false).
 		Where("expenses.property_id = ?", propertyID).
 		Where("expenses.deleted_at IS NULL").
+		Where("expenses.is_long_term_debt = ?", false).
 		Where("(expenses.paid_by_member_id = ? AND expense_splits.member_id = ?) OR (expenses.paid_by_member_id = ? AND expense_splits.member_id = ?)",
 			currentMember.ID, otherMemberID, otherMemberID, currentMember.ID).
 		Order("expenses.date DESC").
@@ -290,21 +297,26 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 			paidByName = split.Expense.PaidBy.Name
 		}
 		unsettledSplits = append(unsettledSplits, UnsettledSplitDetail{
-			ExpenseID:   split.ExpenseID,
-			Description: split.Expense.Description,
-			Amount:      split.Amount,
-			PaidByName:  paidByName,
-			PaidByID:    split.Expense.PaidByMemberID,
-			Date:        split.Expense.Date.Format("2006-01-02"),
+			ExpenseID:     split.ExpenseID,
+			SplitID:       split.ID,
+			Description:   split.Expense.Description,
+			Amount:        split.Amount,
+			SettledAmount: split.SettledAmount,
+			Remaining:     split.Amount - split.SettledAmount,
+			PaidByName:    paidByName,
+			PaidByID:      split.Expense.PaidByMemberID,
+			Date:          split.Expense.Date.Format("2006-01-02"),
 		})
 	}
 
-	// Get settlements between these members
+	// Get settlements between these members. Payments aimed at a long-term debt
+	// are listed under that debt instead, not in the running balance history.
 	var settlements []models.Settlement
 	err = h.db.
 		Preload("FromMember").
 		Preload("ToMember").
 		Where("property_id = ?", propertyID).
+		Where("target_expense_id IS NULL").
 		Where("(from_member_id = ? AND to_member_id = ?) OR (from_member_id = ? AND to_member_id = ?)",
 			currentMember.ID, otherMemberID, otherMemberID, currentMember.ID).
 		Order("date DESC").
@@ -367,7 +379,10 @@ func CalculateBalance(currentMemberID, otherMemberID, propertyID uint, db *gorm.
 		return 0.0, nil
 	}
 
-	// 2. Get unsettled ExpenseSplits for this property
+	// 2. Get unsettled ExpenseSplits for this property. Long-term debts are
+	// excluded by design: they are repaid on their own schedule from the Debiti
+	// tab, and netting them here would swallow every ordinary expense until the
+	// big debt is gone (see Expense.IsLongTermDebt).
 	var splits []models.ExpenseSplit
 	err = db.
 		Preload("Expense").
@@ -375,6 +390,7 @@ func CalculateBalance(currentMemberID, otherMemberID, propertyID uint, db *gorm.
 		Where("expense_splits.is_settled = ?", false).
 		Where("expenses.property_id = ?", propertyID).
 		Where("expenses.deleted_at IS NULL").
+		Where("expenses.is_long_term_debt = ?", false).
 		Find(&splits).Error
 	if err != nil {
 		log.Printf("CalculateBalance - Error fetching splits: %v", err)
@@ -383,27 +399,30 @@ func CalculateBalance(currentMemberID, otherMemberID, propertyID uint, db *gorm.
 
 	log.Printf("CalculateBalance - Found %d unsettled splits for property %d", len(splits), propertyID)
 
-	// 3. Calculate from splits
+	// 3. Calculate from splits (remaining balance, not the original split amount —
+	// a split may have been partially paid down via the settlement ledger)
 	for _, split := range splits {
-		log.Printf("CalculateBalance - Split: ExpenseID=%d, PaidByMemberID=%d, MemberID=%d, Amount=%.2f",
-			split.ExpenseID, split.Expense.PaidByMemberID, split.MemberID, split.Amount)
+		remaining := split.Amount - split.SettledAmount
+		log.Printf("CalculateBalance - Split: ExpenseID=%d, PaidByMemberID=%d, MemberID=%d, Amount=%.2f, Remaining=%.2f",
+			split.ExpenseID, split.Expense.PaidByMemberID, split.MemberID, split.Amount, remaining)
 
 		if split.Expense.PaidByMemberID == currentMemberID && split.MemberID == otherMemberID {
 			// Other member owes me this amount
-			balance += split.Amount
-			log.Printf("CalculateBalance - OtherMember owes me %.2f", split.Amount)
+			balance += remaining
+			log.Printf("CalculateBalance - OtherMember owes me %.2f", remaining)
 		} else if split.Expense.PaidByMemberID == otherMemberID && split.MemberID == currentMemberID {
 			// I owe other member this amount
-			balance -= split.Amount
-			log.Printf("CalculateBalance - I owe OtherMember %.2f", split.Amount)
+			balance -= remaining
+			log.Printf("CalculateBalance - I owe OtherMember %.2f", remaining)
 		}
 	}
 
 	log.Printf("CalculateBalance - Final balance: %.2f", balance)
 
-	// NOTE: Settlements are NOT counted in balance calculation because when a settlement is created,
-	// the associated expense splits are marked as is_settled=true. This means they're already
-	// excluded from the balance calculation above. Counting settlements again would be double-counting.
+	// NOTE: Settlements are NOT counted separately in the balance calculation because a settlement's
+	// amount is applied directly against ExpenseSplit.SettledAmount when it's created (see
+	// SettlementHandler.Create). The loop above already reads the post-allocation remaining balance,
+	// so summing settlement amounts too would be double-counting.
 
 	return balance, nil
 }

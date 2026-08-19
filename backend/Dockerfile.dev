@@ -1,5 +1,7 @@
 # Development Dockerfile with hot-reload using Air
-FROM golang:1.25-alpine AS base
+# air v1.67+ requires go >= 1.26, hence the 1.26 base image (backend/go.mod
+# itself only needs go 1.25.0, so this is just a newer, compatible toolchain).
+FROM golang:1.26-alpine AS base
 
 # Install dependencies — single layer, cached unless base image changes
 RUN apk add --no-cache git gcc musl-dev sqlite-dev poppler-utils && \
