@@ -131,7 +131,7 @@
 
       <AnalysisTab
         v-show="activeTab === 'analysis'"
-        v-if="isMetered && utility.type !== 'waste'"
+        v-if="isMetered"
         ref="analysisTab"
         :utility="utility"
         :consumption-unit="consumptionUnit"
@@ -198,7 +198,7 @@ const analysisTab = ref(null)
 // ── Computed ──
 
 const isMetered = computed(() => {
-  return ['electricity', 'gas', 'water', 'waste'].includes(utility.value?.type)
+  return ['electricity', 'gas', 'water'].includes(utility.value?.type)
 })
 
 const billingFrequencyLabel = computed(() => {
@@ -218,9 +218,7 @@ const tabs = computed(() => {
   ]
   if (isMetered.value) {
     list.push({ id: 'readings', label: t('utilities.detail.tabs.readings'), icon: '\uD83D\uDCCA', count: utility.value?.readings?.length || 0 })
-    if (utility.value?.type !== 'waste') {
-      list.push({ id: 'analysis', label: t('utilities.detail.tabs.analysis'), icon: '\uD83D\uDCC8', count: null })
-    }
+    list.push({ id: 'analysis', label: t('utilities.detail.tabs.analysis'), icon: '\uD83D\uDCC8', count: null })
   } else {
     list.push({ id: 'price_history', label: t('utilities.detail.tabs.priceHistory'), icon: '\uD83D\uDCC8', count: utility.value?.price_changes?.length || 0 })
   }

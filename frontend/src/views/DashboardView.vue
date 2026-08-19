@@ -288,7 +288,7 @@ const utilities = ref([])
 const balanceInfo = ref(null)
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
-const METERED_TYPES = ['electricity', 'gas', 'water', 'waste']
+const METERED_TYPES = ['electricity', 'gas', 'water']
 
 async function fetchActionables() {
   // The brief is scoped to the current property. householdPropertyId is

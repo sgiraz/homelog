@@ -150,7 +150,13 @@ type Utility struct {
 	IsActive     bool       `gorm:"not null;default:true" json:"is_active"`
 
 	// Service classification
-	IsMetered bool `gorm:"not null;default:true" json:"is_metered"` // true for electricity/gas/water, false for internet/insurance/affitto/mutuo
+
+	// IsMetered marks a service billed on meter readings. Defaults are derived
+	// from Type at creation (see handlers.UtilityHandler.Create): true for
+	// electricity/gas/water, false for waste/internet/insurance/affitto/mutuo —
+	// waste (TARI) is billed on surface area, not on consumption. The caller
+	// can override the default explicitly when creating the service.
+	IsMetered bool `gorm:"not null;default:true" json:"is_metered"`
 
 	// Metered service fields
 	PowerCapacity       float64 `json:"power_capacity,omitempty"`                // For electricity (kW)

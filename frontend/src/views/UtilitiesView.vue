@@ -436,11 +436,11 @@ function getUtilityName(type) {
 }
 
 function isMeteredType(type) {
-  return ['electricity', 'gas', 'water', 'waste'].includes(type)
+  return ['electricity', 'gas', 'water'].includes(type)
 }
 
 function getConsumptionUnit(type) {
-  const units = { electricity: 'kWh', gas: 'Smc', water: 'mc', waste: 'mq' }
+  const units = { electricity: 'kWh', gas: 'Smc', water: 'mc' }
   return units[type] || ''
 }
 

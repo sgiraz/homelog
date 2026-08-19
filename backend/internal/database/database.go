@@ -103,9 +103,17 @@ func AutoMigrate(db *gorm.DB) error {
 	// Data migration: set default role for existing project members
 	db.Exec(`UPDATE project_members SET role = 'member' WHERE role IS NULL OR role = ''`)
 
-	// Data migration: ensure is_metered is set correctly for existing utilities (force, not just NULL)
-	db.Exec(`UPDATE utilities SET is_metered = 1 WHERE type IN ('electricity', 'gas', 'water', 'waste')`)
-	db.Exec(`UPDATE utilities SET is_metered = 0 WHERE type IN ('internet', 'insurance', 'affitto', 'mutuo')`)
+	// Data migration: classify existing utilities by type. Guarded, because this
+	// runs on every start: unguarded it overwrote is_metered on each boot, which
+	// both undid the waste reclassification below and discarded the explicit
+	// is_metered a service was created with (see handlers.UtilityHandler.Create).
+	// waste is fixed-cost: TARI is billed on surface area, not on a meter.
+	runOnce(db, "2026-08-utility-metered-classification", func(tx *gorm.DB) error {
+		if err := tx.Exec(`UPDATE utilities SET is_metered = 1 WHERE type IN ('electricity', 'gas', 'water')`).Error; err != nil {
+			return err
+		}
+		return tx.Exec(`UPDATE utilities SET is_metered = 0 WHERE type IN ('waste', 'internet', 'insurance', 'affitto', 'mutuo')`).Error
+	})
 	// Default billing frequency for existing utilities
 	db.Exec(`UPDATE utilities SET billing_interval = 1 WHERE billing_interval IS NULL OR billing_interval = 0`)
 	db.Exec(`UPDATE utilities SET billing_unit = 'month' WHERE billing_unit IS NULL OR billing_unit = ''`)
@@ -188,6 +196,41 @@ func AutoMigrate(db *gorm.DB) error {
 
 	log.Println("✅ Database migrations completed")
 	return nil
+}
+
+// runOnce runs fn the first time it is called for key, then records key in
+// applied_migrations so later boots skip it. Data fixes that overwrite a value
+// the user can set belong here: replayed on every start they silently revert
+// the user's choice. Failures are logged, not fatal — the key stays unrecorded
+// so the next start retries.
+func runOnce(db *gorm.DB, key string, fn func(tx *gorm.DB) error) {
+	if err := db.Exec(`CREATE TABLE IF NOT EXISTS applied_migrations (
+		key TEXT PRIMARY KEY,
+		applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`).Error; err != nil {
+		log.Printf("⚠️  migration %s skipped: %v", key, err)
+		return
+	}
+
+	var applied int64
+	if err := db.Raw(`SELECT COUNT(*) FROM applied_migrations WHERE key = ?`, key).Scan(&applied).Error; err != nil {
+		log.Printf("⚠️  migration %s skipped: %v", key, err)
+		return
+	}
+	if applied > 0 {
+		return
+	}
+
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		if err := fn(tx); err != nil {
+			return err
+		}
+		return tx.Exec(`INSERT INTO applied_migrations (key) VALUES (?)`, key).Error
+	}); err != nil {
+		log.Printf("⚠️  migration %s failed: %v", key, err)
+		return
+	}
+	log.Printf("✅ migration %s applied", key)
 }
 
 // backfillPriceChanges scans existing bills of fixed-cost services and creates

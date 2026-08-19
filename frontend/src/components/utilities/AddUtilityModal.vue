@@ -216,7 +216,7 @@
       />
 
       <!-- Allows Self Reading -->
-      <div v-if="isMetered && form.type !== 'waste'" class="flex items-center gap-3 p-3 bg-surface rounded-lg">
+      <div v-if="isMetered" class="flex items-center gap-3 p-3 bg-surface rounded-lg">
         <input
           type="checkbox"
           id="allows-self-reading"
@@ -234,7 +234,7 @@
       </div>
 
       <!-- Comparison Threshold -->
-      <div v-if="isMetered && form.type !== 'waste'" class="p-3 bg-surface rounded-lg">
+      <div v-if="isMetered" class="p-3 bg-surface rounded-lg">
         <div class="flex items-center justify-between">
           <div>
             <label for="comparison-threshold" class="text-sm font-medium text-ink">
@@ -467,10 +467,11 @@ const meteredTypes = computed(() => [
   { value: 'electricity', label: typeLabel('electricity'), icon: '⚡', iconClass: 'text-yellow-500', metered: true },
   { value: 'gas', label: typeLabel('gas'), icon: '🔥', iconClass: 'text-orange-500', metered: true },
   { value: 'water', label: typeLabel('water'), icon: '💧', iconClass: 'text-blue-500', metered: true },
-  { value: 'waste', label: typeLabel('waste'), icon: '♻️', iconClass: 'text-green-500', metered: true },
 ])
 
 const fixedTypes = computed(() => [
+  // waste (TARI) is billed on surface area, not on a meter — see Utility.IsMetered.
+  { value: 'waste', label: typeLabel('waste'), icon: '♻️', iconClass: 'text-green-500', metered: false },
   { value: 'internet', label: typeLabel('internet'), icon: '🌐', iconClass: 'text-indigo-500', metered: false },
   { value: 'insurance', label: typeLabel('insurance'), icon: '🛡️', iconClass: 'text-emerald-500', metered: false },
   { value: 'affitto', label: typeLabel('affitto'), icon: '🏠', iconClass: 'text-purple-500', metered: false },

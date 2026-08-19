@@ -170,6 +170,8 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 	}
 
 	// Determine if service is metered based on type (unless explicitly set)
+	// waste is listed explicitly at false to record that it is NOT an oversight:
+	// TARI is billed on surface area, so it is a fixed-cost service.
 	meteredTypes := map[string]bool{"electricity": true, "gas": true, "water": true, "waste": false}
 	isMetered := meteredTypes[input.Type]
 	if input.IsMetered != nil {
