@@ -116,7 +116,7 @@ export function useConsumptionCalculation(form, utility, isEditing, editingBill)
         }
         form.value.consumption_total = Math.round(consumption * 1000) / 1000
       }
-    } else {
+    } else { //TODO: water consumption needs to be verified (not clear to me)
       let consumption = diff
       const prevBill = previousBill.value
       if (previousBillHasEstimate.value && prevBill?.estimated_reading == null) {
