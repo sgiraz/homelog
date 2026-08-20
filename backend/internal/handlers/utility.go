@@ -61,20 +61,26 @@ func (h *UtilityHandler) List(c *gin.Context) {
 	// both of which sum over these lists.
 	//
 	// Volume is kept in check by selecting only the columns the list actually
-	// renders, leaving out parsed_data (the raw PDF extraction blob, by far the
-	// heaviest and read only in the per-bill detail views).
+	// renders, leaving out the free-text and blob fields: parsed_data (the raw
+	// PDF extraction blob, by far the heaviest) on bills, notes and photo_url on
+	// readings. All three are read only in the per-service detail views, which
+	// preload in full (see Get).
 	billListColumns := []string{
 		"id", "created_at", "updated_at", "deleted_at", "utility_id", "bill_number",
 		"issue_date", "period_start", "period_end", "due_date",
 		"consumption_total", "amount_total", "is_paid", "paid_date",
 		"original_amount", "original_currency",
 	}
+	readingListColumns := []string{
+		"id", "created_at", "updated_at", "utility_id", "reading_date",
+		"value", "value_f1", "value_f2", "value_f3", "source",
+	}
 	if err := query.Preload("Property").
 		Preload("Bills", func(db *gorm.DB) *gorm.DB {
 			return db.Select(billListColumns).Order("period_end DESC")
 		}).
 		Preload("Readings", func(db *gorm.DB) *gorm.DB {
-			return db.Order("reading_date DESC")
+			return db.Select(readingListColumns).Order("reading_date DESC")
 		}).
 		Order("type ASC, provider ASC").
 		Find(&utilities).Error; err != nil {

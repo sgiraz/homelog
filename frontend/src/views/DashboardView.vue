@@ -288,7 +288,6 @@ const utilities = ref([])
 const balanceInfo = ref(null)
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
-const METERED_TYPES = ['electricity', 'gas', 'water']
 
 async function fetchActionables() {
   // The brief is scoped to the current property. householdPropertyId is
@@ -355,7 +354,8 @@ const attentionItems = computed(() => {
       if (diff < 0) bills.push({ u, b, overdue: true, days: -diff })
       else if (diff <= 7) bills.push({ u, b, overdue: false, days: diff })
     })
-    if (METERED_TYPES.includes(u.type)) {
+    // The persisted flag decides, not the type (models.Utility.IsMetered).
+    if (u.is_metered === true) {
       const last = u.readings && u.readings[0]
       if (!last) readings.push({ u, days: null })
       else {

@@ -197,9 +197,10 @@ const analysisTab = ref(null)
 
 // ── Computed ──
 
-const isMetered = computed(() => {
-  return ['electricity', 'gas', 'water'].includes(utility.value?.type)
-})
+// The persisted flag decides, not the type: its default is derived from the
+// type at creation but the caller can override it (models.Utility.IsMetered),
+// and re-deriving here would silently ignore that choice.
+const isMetered = computed(() => utility.value?.is_metered === true)
 
 const billingFrequencyLabel = computed(() => {
   const n = utility.value?.billing_interval || 1

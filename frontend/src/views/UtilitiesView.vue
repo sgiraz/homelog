@@ -138,11 +138,11 @@
 
             <!-- Stats -->
             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              <div class="text-ink-muted">{{ isMeteredType(utility.type) ? t('utilities.card.lastBill') : t('utilities.card.lastAmount') }}</div>
+              <div class="text-ink-muted">{{ isMeteredService(utility) ? t('utilities.card.lastBill') : t('utilities.card.lastAmount') }}</div>
               <div class="text-right font-medium text-ink">{{ getLastBillAmount(utility) }}</div>
               <div class="text-ink-muted">{{ t('utilities.card.dueDate') }}</div>
               <div class="text-right text-ink">{{ getLastBillDueDate(utility) }}</div>
-              <template v-if="isMeteredType(utility.type)">
+              <template v-if="isMeteredService(utility)">
                 <div class="text-ink-muted">{{ t('utilities.card.consumption') }}</div>
                 <div class="text-right text-ink">{{ getLastConsumption(utility) }}</div>
               </template>
@@ -163,7 +163,7 @@
             <!-- Quick Actions -->
             <div class="mt-3 flex gap-2">
               <button
-                v-if="isMeteredType(utility.type)"
+                v-if="isMeteredService(utility)"
                 @click.prevent="openAddReading(utility)"
                 class="flex-1 py-2.5 text-sm border border-line rounded-lg
                        hover:bg-surface-2 transition-colors text-ink-soft
@@ -183,7 +183,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
-                {{ isMeteredType(utility.type) ? t('utilities.card.billButton') : t('utilities.card.invoiceButton') }}
+                {{ isMeteredService(utility) ? t('utilities.card.billButton') : t('utilities.card.invoiceButton') }}
               </button>
             </div>
           </Card>
@@ -307,7 +307,7 @@ const alerts = computed(() => {
     }
 
     // Reading alerts (metered only)
-    if (u.is_metered !== false && u.readings?.length > 0) {
+    if (isMeteredService(u) && u.readings?.length > 0) {
       const lastReading = new Date(u.readings[0].reading_date)
       const days = Math.floor((now - lastReading) / (1000 * 60 * 60 * 24))
       if (days >= 30) {
@@ -435,8 +435,10 @@ function getUtilityName(type) {
   return label === key ? type : label
 }
 
-function isMeteredType(type) {
-  return ['electricity', 'gas', 'water'].includes(type)
+// The persisted flag decides, not the type: its default is derived from the
+// type at creation but the caller can override it (models.Utility.IsMetered).
+function isMeteredService(utility) {
+  return utility?.is_metered === true
 }
 
 function getConsumptionUnit(type) {
@@ -445,7 +447,7 @@ function getConsumptionUnit(type) {
 }
 
 function getLastConsumption(utility) {
-  if (!isMeteredType(utility.type)) return null
+  if (!isMeteredService(utility)) return null
   if (utility.bills?.length > 0) {
     const bill = utility.bills[0]
     const num = parseFloat(bill.consumption_total)
@@ -479,7 +481,7 @@ function formatDate(dateStr) {
 }
 
 function shouldShowReadingAlert(utility) {
-  if (!isMeteredType(utility.type)) return false
+  if (!isMeteredService(utility)) return false
   if (!utility.readings || utility.readings.length === 0) return false
   const lastReading = new Date(utility.readings[0].reading_date)
   const now = new Date()

@@ -302,7 +302,7 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 			Description:   split.Expense.Description,
 			Amount:        split.Amount,
 			SettledAmount: split.SettledAmount,
-			Remaining:     split.Amount - split.SettledAmount,
+			Remaining:     remainingOwed(split),
 			PaidByName:    paidByName,
 			PaidByID:      split.Expense.PaidByMemberID,
 			Date:          split.Expense.Date.Format("2006-01-02"),
@@ -402,7 +402,7 @@ func CalculateBalance(currentMemberID, otherMemberID, propertyID uint, db *gorm.
 	// 3. Calculate from splits (remaining balance, not the original split amount —
 	// a split may have been partially paid down via the settlement ledger)
 	for _, split := range splits {
-		remaining := split.Amount - split.SettledAmount
+		remaining := remainingOwed(split)
 		log.Printf("CalculateBalance - Split: ExpenseID=%d, PaidByMemberID=%d, MemberID=%d, Amount=%.2f, Remaining=%.2f",
 			split.ExpenseID, split.Expense.PaidByMemberID, split.MemberID, split.Amount, remaining)
 

@@ -436,6 +436,74 @@ func TestSettlement_Delete_ReversesOnlyItsOwnAllocation(t *testing.T) {
 	}
 }
 
+// Deleting one of several settlements that funded the same split must rebuild
+// the split's derived fields from what survives — blanking settlement_id would
+// orphan the split from the payments still standing against it.
+func TestSettlement_Delete_KeepsSplitLinkedToSurvivingSettlement(t *testing.T) {
+	f := setupMoneyFixture(t)
+	id := f.createSplitExpense(t, 1000, []uint{f.mBob.ID}) // bob owes 500
+
+	first := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 300.0, "date": "2026-05-03",
+	})
+	if first.Code != http.StatusCreated {
+		t.Fatalf("first settlement: status %d, body %s", first.Code, first.Body.String())
+	}
+	var s1 models.Settlement
+	if err := json.Unmarshal(first.Body.Bytes(), &s1); err != nil {
+		t.Fatalf("decode first settlement: %v", err)
+	}
+
+	second := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 200.0, "date": "2026-05-04",
+	})
+	if second.Code != http.StatusCreated {
+		t.Fatalf("second settlement: status %d, body %s", second.Code, second.Body.String())
+	}
+	var s2 models.Settlement
+	if err := json.Unmarshal(second.Body.Bytes(), &s2); err != nil {
+		t.Fatalf("decode second settlement: %v", err)
+	}
+	if bob := f.splitFor(t, id, f.mBob.ID); !bob.IsSettled {
+		t.Fatalf("precondition: 300 + 200 should have fully settled bob's 500 share")
+	}
+
+	// Drop the OLDER payment: the newer one still stands for 200.
+	del := doJSON(t, f.router, http.MethodDelete, "/settlements/"+itoa(s1.ID), f.aliceTok, nil)
+	if del.Code != http.StatusOK {
+		t.Fatalf("delete settlement: status %d, body %s", del.Code, del.Body.String())
+	}
+
+	bob := f.splitFor(t, id, f.mBob.ID)
+	if !approx(bob.SettledAmount, 200) {
+		t.Errorf("settled amount = %.2f, want the surviving settlement's 200", bob.SettledAmount)
+	}
+	if bob.IsSettled || bob.SettledAt != nil {
+		t.Error("split must fall back to unsettled once it is no longer fully covered")
+	}
+	if bob.SettlementID == nil || *bob.SettlementID != s2.ID {
+		t.Errorf("settlement_id = %v, want the surviving settlement %d", bob.SettlementID, s2.ID)
+	}
+}
+
+func TestDebts_InvalidOtherMemberID_Returns400(t *testing.T) {
+	f := setupMoneyFixture(t)
+
+	for name, query := range map[string]string{
+		"unparseable":   "?other_member_id=abc",
+		"otherProperty": "?other_member_id=99999",
+	} {
+		t.Run(name, func(t *testing.T) {
+			got := doGET(t, f.router, "/properties/"+itoa(f.prop.ID)+"/debts"+query, f.bobTok)
+			if got.Code != http.StatusBadRequest {
+				t.Errorf("status = %d, want 400 — a bad other_member_id must not pass as an empty ledger (body %s)", got.Code, got.Body.String())
+			}
+		})
+	}
+}
+
 func TestSettlement_AmountExceedingOutstanding_Returns400(t *testing.T) {
 	f := setupMoneyFixture(t)
 	f.createSplitExpense(t, 100000, []uint{f.mBob.ID}) // bob owes 50000

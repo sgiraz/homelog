@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -68,9 +69,19 @@ type DebtsResponse struct {
 	TotalTheyOwe      float64      `json:"total_they_owe"`
 }
 
+// errInvalidOtherMember marks an other_member_id the caller got wrong — either
+// unparseable or naming a member of some other property. That is a client
+// mistake (400) and must not be flattened into the empty-payload answer that
+// "this household has no counterpart yet" legitimately produces.
+var errInvalidOtherMember = errors.New("invalid other_member_id")
+
 // resolveMemberPair finds the current user's member for a property and the
 // counterpart member, either explicitly requested via other_member_id or
 // auto-detected as any other member of the same property.
+//
+// A missing pair comes back as gorm.ErrRecordNotFound (caller may answer with
+// an empty ledger); a bad other_member_id as errInvalidOtherMember; anything
+// else is a real database failure and must surface as one.
 func resolveMemberPair(db *gorm.DB, userID, propertyID uint, otherMemberIDStr string) (current, other models.HouseholdMember, err error) {
 	if err = db.Where("property_id = ? AND user_id = ?", propertyID, userID).First(&current).Error; err != nil {
 		return current, other, err
@@ -78,9 +89,12 @@ func resolveMemberPair(db *gorm.DB, userID, propertyID uint, otherMemberIDStr st
 	if otherMemberIDStr != "" {
 		parsed, parseErr := strconv.ParseUint(otherMemberIDStr, 10, 32)
 		if parseErr != nil {
-			return current, other, parseErr
+			return current, other, errInvalidOtherMember
 		}
 		err = db.Where("id = ? AND property_id = ?", uint(parsed), propertyID).First(&other).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return current, other, errInvalidOtherMember
+		}
 		return current, other, err
 	}
 	err = db.Where("property_id = ? AND id != ?", propertyID, current.ID).First(&other).Error
@@ -110,9 +124,19 @@ func (h *DebtHandler) List(c *gin.Context) {
 	empty := DebtsResponse{Debts: []DebtDetail{}}
 
 	current, other, err := resolveMemberPair(h.db, userID, propertyID, c.Query("other_member_id"))
-	if err != nil {
+	switch {
+	case err == nil:
+		// Pair resolved — fall through to the ledger below.
+	case errors.Is(err, errInvalidOtherMember):
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid other_member_id"})
+		return
+	case errors.Is(err, gorm.ErrRecordNotFound):
 		// No member profile or no counterpart yet — nothing to owe anyone.
 		c.JSON(http.StatusOK, empty)
+		return
+	default:
+		log.Printf("ERROR resolving member pair for property %d: %v", propertyID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch debts"})
 		return
 	}
 
@@ -155,10 +179,7 @@ func (h *DebtHandler) List(c *gin.Context) {
 	resp := empty
 	resp.Debts = make([]DebtDetail, 0, len(splits))
 	for _, s := range splits {
-		remaining := s.Amount - s.SettledAmount
-		if remaining < 0 {
-			remaining = 0
-		}
+		remaining := remainingOwed(s)
 		iOwe := s.MemberID == current.ID
 		counterpart := other.Name
 		if !iOwe {

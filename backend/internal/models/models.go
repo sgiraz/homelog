@@ -549,9 +549,6 @@ type ExpenseSplit struct {
 	SettledAt     *time.Time `json:"settled_at,omitempty"`                     // set when it became fully settled
 	SettlementID  *uint      `gorm:"index" json:"settlement_id,omitempty"`     // last settlement that touched it
 
-	// Computed: Amount - SettledAmount, set by handlers on read. Not persisted.
-	RemainingAmount float64 `gorm:"-" json:"remaining_amount"`
-
 	// Relations
 	Expense    Expense         `json:"expense"`
 	Member     HouseholdMember `gorm:"foreignKey:MemberID" json:"member"`

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"math"
 	"net/http"
@@ -16,6 +17,18 @@ import (
 
 // settlementEpsilon absorbs float64 rounding noise when comparing amounts.
 const settlementEpsilon = 0.005
+
+// remainingOwed is what is still due on a split once the settlement ledger is
+// applied, clamped at zero. Successive partial allocations accumulate float64
+// error, so a fully repaid split can land a hair past its own amount; the
+// negative residue must never reach the API, the balance, or the UI.
+func remainingOwed(split models.ExpenseSplit) float64 {
+	remaining := split.Amount - split.SettledAmount
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
 
 // Allocation kinds — see models.SettlementAllocation.
 const (
@@ -172,7 +185,7 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 
 	var totalOwed float64
 	for _, s := range splits {
-		totalOwed += s.Amount - s.SettledAmount
+		totalOwed += remainingOwed(s)
 	}
 	if req.Amount > totalOwed+settlementEpsilon {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "L'importo supera il debito residuo tra questi membri"})
@@ -215,7 +228,7 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 		if remaining <= settlementEpsilon {
 			break
 		}
-		owed := splits[i].Amount - splits[i].SettledAmount
+		owed := remainingOwed(splits[i])
 		if owed <= settlementEpsilon {
 			continue
 		}
@@ -416,12 +429,40 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 		if newSettledAmount < settlementEpsilon {
 			newSettledAmount = 0
 		}
-		if err := tx.Model(&models.ExpenseSplit{}).Where("id = ?", split.ID).Updates(map[string]any{
+
+		// is_settled / settled_at / settlement_id are derived from the ledger,
+		// so rebuild them from what survives this reversal rather than blanking
+		// them: a split funded by several settlements is still (possibly fully)
+		// settled by the others, and must keep pointing at the most recent one.
+		updates := map[string]any{
 			"settled_amount": newSettledAmount,
 			"is_settled":     false,
 			"settled_at":     nil,
 			"settlement_id":  nil,
-		}).Error; err != nil {
+		}
+
+		var survivor models.SettlementAllocation
+		err := tx.
+			Joins("JOIN settlements ON settlements.id = settlement_allocations.settlement_id AND settlements.deleted_at IS NULL").
+			Where("settlement_allocations.expense_split_id = ? AND settlement_allocations.settlement_id != ?", split.ID, settlement.ID).
+			Order("settlements.date DESC, settlement_allocations.id DESC").
+			First(&survivor).Error
+		switch {
+		case err == nil:
+			updates["settlement_id"] = survivor.SettlementID
+			if newSettledAmount >= split.Amount-settlementEpsilon {
+				updates["is_settled"] = true
+				updates["settled_at"] = survivor.CreatedAt
+			}
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			// This settlement was the split's only funder — fully unsettled.
+		default:
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load remaining allocations"})
+			return
+		}
+
+		if err := tx.Model(&models.ExpenseSplit{}).Where("id = ?", split.ID).Updates(updates).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unsettle expense split"})
 			return
@@ -496,7 +537,7 @@ func (h *SettlementHandler) Compensate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Un debito a lungo termine non può finanziare una compensazione"})
 		return
 	}
-	sourceRemaining := source.Amount - source.SettledAmount
+	sourceRemaining := remainingOwed(source)
 	if sourceRemaining <= settlementEpsilon {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Questa quota è già stata saldata"})
 		return
@@ -528,7 +569,7 @@ func (h *SettlementHandler) Compensate(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Debito a lungo termine non trovato per questa coppia"})
 		return
 	}
-	debtRemaining := debt.Amount - debt.SettledAmount
+	debtRemaining := remainingOwed(debt)
 	if debtRemaining <= settlementEpsilon {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Questo debito è già estinto"})
 		return
