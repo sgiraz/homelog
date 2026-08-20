@@ -327,7 +327,7 @@ erDiagram
 
 ## Note
 
-- **Generalizzazione UTILITY**: `is_metered = true` → servizio a contatore (electricity, gas, water, waste) con campi `power_capacity`, `allows_self_reading`, `comparison_threshold`; `is_metered = false` → servizio a canone fisso (internet, insurance, affitto, mutuo) con campi `recurring_amount`, `auto_mark_paid`
+- **Generalizzazione UTILITY**: `is_metered = true` → servizio a contatore (electricity, gas, water) con campi `power_capacity`, `allows_self_reading`, `comparison_threshold`; `is_metered = false` → servizio a canone fisso (waste, internet, insurance, affitto, mutuo) con campi `recurring_amount`, `billing_interval`, `billing_unit`. La classificazione per tipo vive in `models.MeteredByType` — waste (TARI) è a canone perché fatturata sulla superficie, non sui consumi
 - **Entità deboli**: `SUBCATEGORY`, `EXPENSE_SPLIT`, `METER_READING`, `BILL`, `UTILITY_RATE`, `PRICE_CHANGE`, `SERVICE_COMMUNICATION` dipendono dall'entità padre per l'identificazione
 - **Many-to-many**: `PROJECT ↔ USER` tramite tabella ponte `project_members`
 - **Campi audit** (`created_at`, `updated_at`, `deleted_at`) omessi per leggibilità
