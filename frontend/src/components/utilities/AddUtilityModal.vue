@@ -411,6 +411,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useUtilitiesStore } from '@/stores/utilities'
+import { currencies, currencyOptionLabel } from '@/utils/currencies'
 import { useSettingsStore } from '@/stores/settings'
 import apiClient, { utilitiesAPI, membersAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -433,17 +434,7 @@ const currencyOptions = computed(() => {
   const base = settingsStore.formatSettings.currency || 'EUR'
   return [
     { value: '', label: t('utilities.addUtilityModal.currencyGlobalOption', { base }) },
-    { value: 'EUR', label: 'EUR — Euro' },
-    { value: 'USD', label: 'USD — Dollaro USA' },
-    { value: 'GBP', label: 'GBP — Sterlina' },
-    { value: 'CHF', label: 'CHF — Franco svizzero' },
-    { value: 'JPY', label: 'JPY — Yen' },
-    { value: 'CAD', label: 'CAD — Dollaro canadese' },
-    { value: 'AUD', label: 'AUD — Dollaro australiano' },
-    { value: 'SEK', label: 'SEK — Corona svedese' },
-    { value: 'NOK', label: 'NOK — Corona norvegese' },
-    { value: 'DKK', label: 'DKK — Corona danese' },
-    { value: 'PLN', label: 'PLN — Złoty' },
+    ...currencies.map(c => ({ value: c.code, label: currencyOptionLabel(c.code, t) })),
   ]
 })
 

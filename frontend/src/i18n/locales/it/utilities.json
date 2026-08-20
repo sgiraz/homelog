@@ -285,7 +285,12 @@
     "testing": "Test in corso...",
     "testResultsTitle": "Risultati Test",
     "fieldLabel": "{field}:",
-    "positionInfo": "Pag. {page}, pos: ({x}, {y})"
+    "positionInfo": "Pag. {page}, pos: ({x}, {y})",
+    "testErrors": {
+      "emptyInput": "Pattern o testo vuoto",
+      "noMatch": "Nessuna corrispondenza trovata",
+      "invalidRegex": "Regex non valida"
+    }
   },
   "wizardStepInfo": {
     "intro": "Carica un PDF di esempio del fornitore per creare le regole di estrazione.",

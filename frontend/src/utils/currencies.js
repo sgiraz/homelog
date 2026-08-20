@@ -1,21 +1,44 @@
+// Currency codes and symbols only — the display name is NOT here.
+// A name is user-visible text, so it lives in i18n under `common.currencies.<CODE>`
+// and is resolved by the component that renders it (see `currencyLabel` below).
+// This list is the single source: don't re-declare a subset inline in a modal.
 export const currencies = [
-  { code: 'EUR', symbol: '\u20ac', name: 'Euro' },
-  { code: 'USD', symbol: '$', name: 'Dollaro USA' },
-  { code: 'GBP', symbol: '\u00a3', name: 'Sterlina' },
-  { code: 'CHF', symbol: 'Fr', name: 'Franco svizzero' },
-  { code: 'JPY', symbol: '\u00a5', name: 'Yen giapponese' },
-  { code: 'CAD', symbol: 'C$', name: 'Dollaro canadese' },
-  { code: 'AUD', symbol: 'A$', name: 'Dollaro australiano' },
-  { code: 'SEK', symbol: 'kr', name: 'Corona svedese' },
-  { code: 'NOK', symbol: 'kr', name: 'Corona norvegese' },
-  { code: 'DKK', symbol: 'kr', name: 'Corona danese' },
-  { code: 'PLN', symbol: 'z\u0142', name: 'Zloty polacco' },
-  { code: 'CZK', symbol: 'K\u010d', name: 'Corona ceca' },
-  { code: 'HUF', symbol: 'Ft', name: 'Fiorino ungherese' },
-  { code: 'TRY', symbol: '\u20ba', name: 'Lira turca' },
-  { code: 'BRL', symbol: 'R$', name: 'Real brasiliano' },
-  { code: 'CNY', symbol: '\u00a5', name: 'Yuan cinese' },
-  { code: 'INR', symbol: '\u20b9', name: 'Rupia indiana' },
-  { code: 'KRW', symbol: '\u20a9', name: 'Won sudcoreano' },
-  { code: 'THB', symbol: '\u0e3f', name: 'Baht thailandese' },
+  { code: 'EUR', symbol: '€' },
+  { code: 'USD', symbol: '$' },
+  { code: 'GBP', symbol: '£' },
+  { code: 'CHF', symbol: 'Fr' },
+  { code: 'JPY', symbol: '¥' },
+  { code: 'CAD', symbol: 'C$' },
+  { code: 'AUD', symbol: 'A$' },
+  { code: 'SEK', symbol: 'kr' },
+  { code: 'NOK', symbol: 'kr' },
+  { code: 'DKK', symbol: 'kr' },
+  { code: 'PLN', symbol: 'zł' },
+  { code: 'CZK', symbol: 'Kč' },
+  { code: 'HUF', symbol: 'Ft' },
+  { code: 'TRY', symbol: '₺' },
+  { code: 'BRL', symbol: 'R$' },
+  { code: 'CNY', symbol: '¥' },
+  { code: 'INR', symbol: '₹' },
+  { code: 'KRW', symbol: '₩' },
+  { code: 'THB', symbol: '฿' },
 ]
+
+/**
+ * Translated name of a currency, e.g. currencyName('USD', t) -> "US Dollar".
+ * Falls back to the code itself for a currency with no message yet.
+ * @param {string} code - ISO 4217 code
+ * @param {Function} t - vue-i18n `t` from the calling component
+ */
+export function currencyName(code, t) {
+  const key = `common.currencies.${code}`
+  const name = t(key)
+  return name === key ? code : name
+}
+
+/**
+ * "USD — US Dollar", the option label used by every currency picker.
+ */
+export function currencyOptionLabel(code, t) {
+  return `${code} — ${currencyName(code, t)}`
+}

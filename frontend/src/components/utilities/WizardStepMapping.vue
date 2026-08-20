@@ -147,7 +147,7 @@
           </svg>
           <span class="text-ink-soft">{{ t('utilities.wizardStepMapping.fieldLabel', { field: getFieldLabel(fieldKey) }) }}</span>
           <span :class="result.success ? 'text-green-600 dark:text-green-400 font-medium' : 'text-orange-600 dark:text-orange-400'">
-            {{ result.success ? result.value : result.error }}
+            {{ result.success ? result.value : testErrorText(result) }}
           </span>
         </div>
         <div v-if="result.hasPosition" class="text-xs text-ink-faint ml-6">
@@ -245,4 +245,12 @@ const emit = defineEmits([
 ])
 
 const { t } = useI18n()
+
+// testPattern reports failures as a key plus an optional raw detail (a regex
+// engine message), so the wording is translated here rather than in the util.
+function testErrorText(result) {
+  if (!result.errorKey) return ''
+  const message = t(`utilities.wizardStepMapping.testErrors.${result.errorKey}`)
+  return result.errorDetail ? `${message}: ${result.errorDetail}` : message
+}
 </script>

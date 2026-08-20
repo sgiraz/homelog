@@ -658,14 +658,22 @@ export function regeneratePatternWithContext(token, fieldKey, allTokens, rawText
 }
 
 /**
- * Test a pattern against raw text
+ * Test a pattern against raw text.
+ *
+ * Reports failures as an `errorKey`, never as prose: this is a plain module with
+ * no access to vue-i18n, so a sentence returned from here would reach the UI
+ * untranslatable. The caller resolves the key — see WizardStepMapping.
+ *
  * @param {string} pattern - Regex pattern
  * @param {string} rawText - Text to search
- * @returns {Object} - { success: boolean, value: string|null, error: string|null }
+ * @returns {Object} - { success: boolean, value: string|null, errorKey: string|null, errorDetail: string }
  */
 export function testPattern(pattern, rawText) {
+  const ok = value => ({ success: true, value, errorKey: null, errorDetail: '' })
+  const fail = (errorKey, errorDetail = '') => ({ success: false, value: null, errorKey, errorDetail })
+
   if (!pattern || !rawText) {
-    return { success: false, value: null, error: 'Pattern or text is empty' }
+    return fail('emptyInput')
   }
 
   try {
@@ -673,14 +681,14 @@ export function testPattern(pattern, rawText) {
     const match = rawText.match(regex)
 
     if (match && match.length > 1) {
-      return { success: true, value: match[1], error: null }
+      return ok(match[1])
     } else if (match) {
-      return { success: true, value: match[0], error: null }
+      return ok(match[0])
     }
 
-    return { success: false, value: null, error: 'Nessuna corrispondenza trovata' }
+    return fail('noMatch')
   } catch (e) {
-    return { success: false, value: null, error: `Regex non valida: ${e.message}` }
+    return fail('invalidRegex', e.message)
   }
 }
 

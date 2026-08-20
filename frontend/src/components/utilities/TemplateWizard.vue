@@ -473,7 +473,6 @@ async function testAllPatterns() {
           if (result.hasPosition) {
             // Position-based extraction should use the exact value at that position
             result.value = mapping.token.text
-            result.note = 'Valore estratto per posizione'
           }
         }
 

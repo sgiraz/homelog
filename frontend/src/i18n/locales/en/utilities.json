@@ -56,7 +56,12 @@
     "testing": "Testing...",
     "testResultsTitle": "Test Results",
     "fieldLabel": "{field}:",
-    "positionInfo": "Page {page}, pos: ({x}, {y})"
+    "positionInfo": "Page {page}, pos: ({x}, {y})",
+    "testErrors": {
+      "emptyInput": "Pattern or text is empty",
+      "noMatch": "No match found",
+      "invalidRegex": "Invalid regex"
+    }
   },
   "wizardStepInfo": {
     "intro": "Upload a sample PDF from the provider to create the extraction rules.",

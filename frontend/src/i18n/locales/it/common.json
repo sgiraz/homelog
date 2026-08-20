@@ -29,5 +29,26 @@
     "updateHint": "Aggiorna per usare l'ultima versione di HomeLog.",
     "update": "Aggiorna",
     "later": "Più tardi"
+  },
+  "currencies": {
+    "EUR": "Euro",
+    "USD": "Dollaro USA",
+    "GBP": "Sterlina",
+    "CHF": "Franco svizzero",
+    "JPY": "Yen giapponese",
+    "CAD": "Dollaro canadese",
+    "AUD": "Dollaro australiano",
+    "SEK": "Corona svedese",
+    "NOK": "Corona norvegese",
+    "DKK": "Corona danese",
+    "PLN": "Zloty polacco",
+    "CZK": "Corona ceca",
+    "HUF": "Fiorino ungherese",
+    "TRY": "Lira turca",
+    "BRL": "Real brasiliano",
+    "CNY": "Yuan cinese",
+    "INR": "Rupia indiana",
+    "KRW": "Won sudcoreano",
+    "THB": "Baht thailandese"
   }
 }

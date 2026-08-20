@@ -368,7 +368,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { propertiesAPI, settingsAPI, joinRequestAPI } from '@/api/client'
-import { currencies as allCurrencies } from '@/utils/currencies'
+import { currencies as allCurrencies, currencyName } from '@/utils/currencies'
 import { useSettingsStore } from '@/stores/settings'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -413,7 +413,11 @@ const steps = computed(() => [
   { id: 4, label: t('onboarding.steps.discover') }
 ])
 
-const currencies = allCurrencies.map(c => ({ value: c.code, symbol: c.symbol, name: c.name }))
+// computed, not a plain const: the names come from i18n and must follow a
+// language change made in this very wizard.
+const currencies = computed(() =>
+  allCurrencies.map(c => ({ value: c.code, symbol: c.symbol, name: currencyName(c.code, t) }))
+)
 
 const languages = [
   { value: 'it', label: '🇮🇹 Italiano' },
