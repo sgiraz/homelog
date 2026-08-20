@@ -515,9 +515,17 @@ const frequencyPreview = computed(() => {
     : t('utilities.addUtilityModal.frequencyPreviewPlural', { n, unit: word })
 })
 
+// Always set the type through this: the payload carries is_metered alongside
+// type, so assigning form.type on its own submits the PREVIOUS type's metering
+// — which is how a mutuo reached the API with is_metered=true.
+function applyType(value) {
+  const known = [...meteredTypes.value, ...fixedTypes.value].find(t => t.value === value)
+  form.value.type = value
+  form.value.is_metered = known?.metered ?? false
+}
+
 function selectType(type) {
-  form.value.type = type.value
-  form.value.is_metered = type.metered
+  applyType(type.value)
   // A mortgage isn't "one bill split into installments" (installmentsHint) —
   // it already generates one bill per billing period on its own.
   if (type.value === 'mutuo') {
@@ -594,16 +602,16 @@ async function processFile(file) {
       if (data.service_code) {
         form.value.service_code = data.service_code
         if (data.service_code.startsWith('IT') && data.service_code.includes('E')) {
-          form.value.type = 'electricity'
+          applyType('electricity')
         } else if (/^\d+$/.test(data.service_code)) {
-          form.value.type = 'gas'
+          applyType('gas')
         }
       }
       if (data.customer_code) form.value.customer_code = data.customer_code
       if (data.address) form.value.address = data.address
       if (data.power_capacity) {
         form.value.power_capacity = parseFloat(data.power_capacity.replace(',', '.'))
-        form.value.type = 'electricity'
+        applyType('electricity')
       }
     }
   } catch (err) {

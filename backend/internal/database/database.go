@@ -103,17 +103,19 @@ func AutoMigrate(db *gorm.DB) error {
 	// Data migration: set default role for existing project members
 	db.Exec(`UPDATE project_members SET role = 'member' WHERE role IS NULL OR role = ''`)
 
-	// Data migration: classify existing utilities by type. Guarded, because this
-	// runs on every start: unguarded it overwrote is_metered on each boot, which
-	// both undid the waste reclassification below and discarded the explicit
-	// is_metered a service was created with (see handlers.UtilityHandler.Create).
-	// waste is fixed-cost: TARI is billed on surface area, not on a meter.
+	// Data migration: mark existing metered services. Guarded, because this runs
+	// on every start: unguarded it would discard an explicit is_metered=false,
+	// which a metered service is allowed to carry (a flat-rate water contract).
 	runOnce(db, "2026-08-utility-metered-classification", func(tx *gorm.DB) error {
-		if err := tx.Exec(`UPDATE utilities SET is_metered = 1 WHERE type IN ('electricity', 'gas', 'water')`).Error; err != nil {
-			return err
-		}
-		return tx.Exec(`UPDATE utilities SET is_metered = 0 WHERE type IN ('waste', 'internet', 'insurance', 'affitto', 'mutuo')`).Error
+		return tx.Exec(`UPDATE utilities SET is_metered = 1 WHERE type IN ('electricity', 'gas', 'water')`).Error
 	})
+
+	// Not guarded, unlike the backfill above: for a fixed-cost type is_metered=0
+	// is an invariant rather than a user choice — there is no meter on a mortgage
+	// or a TARI bill, so re-asserting it every boot cannot discard anything the
+	// user picked. It self-heals rows written by a build that still took
+	// is_metered from the client (see handlers.UtilityHandler.Create).
+	db.Exec(`UPDATE utilities SET is_metered = 0 WHERE type IN ? AND is_metered = 1`, models.FixedCostTypes())
 	// Default billing frequency for existing utilities
 	db.Exec(`UPDATE utilities SET billing_interval = 1 WHERE billing_interval IS NULL OR billing_interval = 0`)
 	db.Exec(`UPDATE utilities SET billing_unit = 'month' WHERE billing_unit IS NULL OR billing_unit = ''`)

@@ -175,13 +175,14 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		}
 	}
 
-	// Determine if service is metered based on type (unless explicitly set)
-	// waste is listed explicitly at false to record that it is NOT an oversight:
-	// TARI is billed on surface area, so it is a fixed-cost service.
-	meteredTypes := map[string]bool{"electricity": true, "gas": true, "water": true, "waste": false}
-	isMetered := meteredTypes[input.Type]
-	if input.IsMetered != nil {
-		isMetered = *input.IsMetered
+	// Whether a service has a meter follows from its type, so the payload only
+	// gets to turn metering OFF (a flat-rate water contract, say) — never on.
+	// Trusting the client in both directions is how a mutuo was stored with
+	// is_metered=true and then offered meter readings: a bank loan is repaid on
+	// an amortisation schedule, there is nothing to read.
+	isMetered := models.MeteredByType[input.Type]
+	if input.IsMetered != nil && !*input.IsMetered {
+		isMetered = false
 	}
 
 	// Check if there's already an active service of the same type for this property

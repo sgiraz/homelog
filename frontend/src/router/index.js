@@ -101,7 +101,12 @@ router.beforeEach(async (to, from, next) => {
         // If settings fail to load, don't block navigation
       }
     }
-    if (settingsStore.loaded && !settingsStore.onboardingCompleted) {
+    // hasProperty vetoes the redirect: someone already in a household has
+    // nothing left to onboard, and the wizard could only offer to create or
+    // join a property they are already a member of. Accounts predating the
+    // onboarding flag (no user_settings row -> the API answers with
+    // onboarding_completed=false) would otherwise be trapped here forever.
+    if (settingsStore.loaded && !settingsStore.onboardingCompleted && !settingsStore.hasProperty) {
       next('/onboarding')
       return
     }

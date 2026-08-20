@@ -1,6 +1,7 @@
 package models
 
 import (
+	"sort"
 	"time"
 
 	"gorm.io/gorm"
@@ -129,9 +130,37 @@ type Expense struct {
 	Splits      []ExpenseSplit   `gorm:"foreignKey:ExpenseID" json:"splits,omitempty"`
 }
 
+// MeteredByType is the single source of truth for which service types are
+// billed on meter readings. Fixed-cost types are listed explicitly at false so
+// that adding a type forces a decision here instead of silently defaulting:
+// a mortgage or a rent has no meter, only instalments on a schedule.
+var MeteredByType = map[string]bool{
+	"electricity": true,
+	"gas":         true,
+	"water":       true,
+	"waste":       false, // TARI is billed on surface area, not on consumption
+	"internet":    false,
+	"insurance":   false,
+	"affitto":     false,
+	"mutuo":       false, // a bank loan: instalments on an amortisation plan
+}
+
+// FixedCostTypes lists the types that can never be metered, sorted so callers
+// (SQL IN clauses, tests) see a stable order despite Go's map iteration.
+func FixedCostTypes() []string {
+	types := make([]string, 0, len(MeteredByType))
+	for t, metered := range MeteredByType {
+		if !metered {
+			types = append(types, t)
+		}
+	}
+	sort.Strings(types)
+	return types
+}
+
 // Utility represents a service (metered utilities or fixed-cost subscriptions).
-// Generalization: metered services (electricity, gas, water, waste) have readings/consumption;
-// fixed services (internet, insurance, affitto, mutuo) have recurring amounts and price tracking.
+// Metered services have readings/consumption; fixed-cost ones have recurring
+// amounts and price tracking. See MeteredByType for which is which.
 type Utility struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
@@ -151,12 +180,14 @@ type Utility struct {
 
 	// Service classification
 
-	// IsMetered marks a service billed on meter readings. Defaults are derived
-	// from Type at creation (see handlers.UtilityHandler.Create): true for
-	// electricity/gas/water, false for waste/internet/insurance/affitto/mutuo —
-	// waste (TARI) is billed on surface area, not on consumption. The caller
-	// can override the default explicitly when creating the service.
-	IsMetered bool `gorm:"not null;default:true" json:"is_metered"`
+	// IsMetered marks a service billed on meter readings, derived from Type via
+	// MeteredByType at creation; the caller may only turn it OFF (a flat-rate
+	// water contract), never on for a type that has no meter.
+	//
+	// No `default` tag on purpose: GORM omits a zero-valued field from the INSERT
+	// when its column has a default, so a computed false was dropped and SQLite
+	// wrote DEFAULT true instead — that is how a mortgage got stored as metered.
+	IsMetered bool `gorm:"not null" json:"is_metered"`
 
 	// Metered service fields
 	PowerCapacity       float64 `json:"power_capacity,omitempty"`                // For electricity (kW)
