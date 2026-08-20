@@ -1,0 +1,73 @@
+name: Publish GitHub Release
+
+# Manual on purpose. Pushing a CalVer tag publishes the Docker image; announcing
+# the release is a separate decision, taken once the image has been tried out.
+#
+# It matters more than it looks: the in-app update check reads
+# api.github.com/repos/sgiraz/homelog/releases/latest (backend/cmd/api/main.go),
+# so creating the release is the act that tells every running instance a new
+# version exists. Nothing else does.
+#
+# Run it from the default branch — a workflow_dispatch always executes the
+# definition found on the ref it is launched from, so launching it from an older
+# tag would run that tag's version of this file (or none at all). The tag to
+# publish is an input, not the ref.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing CalVer tag to publish (e.g. 2026.08.20)'
+        required: true
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # create the release
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ inputs.tag }}
+      IMAGE: sgira/homelog
+
+    steps:
+      - name: Check the tag exists
+        run: |
+          set -euo pipefail
+          if ! gh api "repos/${GH_REPO}/git/ref/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::error::Tag ${TAG} does not exist. Push the tag first — that is what builds and publishes the image."
+            exit 1
+          fi
+          echo "Tag ${TAG} found."
+
+      - name: Check the image is on DockerHub
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /dev/null -w '%{http_code}' \
+            "https://hub.docker.com/v2/repositories/${IMAGE}/tags/${TAG}")
+          if [ "${code}" != "200" ]; then
+            echo "::error::${IMAGE}:${TAG} is not on DockerHub (HTTP ${code}). Publishing the release would tell every instance to upgrade to an image it cannot pull."
+            exit 1
+          fi
+          echo "Image ${IMAGE}:${TAG} is published."
+
+      - name: Create the release
+        run: |
+          set -euo pipefail
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "::notice::Release ${TAG} already exists — left untouched."
+          else
+            gh release create "${TAG}" --title "HomeLog ${TAG}" --generate-notes
+            echo "::notice::Release ${TAG} published."
+          fi
+
+      - name: Summary
+        run: |
+          echo "## Release ${TAG}" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ github.server_url }}/${{ github.repository }}/releases/tag/${TAG}" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: \`${{ env.IMAGE }}:${TAG}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Instances polling \`releases/latest\` will now see this version" >> $GITHUB_STEP_SUMMARY

@@ -29,12 +29,32 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract version tag
+      - name: Resolve version and image tags
         id: meta
         run: |
+          set -euo pipefail
           VERSION=${GITHUB_REF_NAME}
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Building version: ${VERSION}"
+
+          # workflow_dispatch can run from a branch, where GITHUB_REF_NAME is the
+          # branch name — "main", not a version. Such a build must never claim
+          # :latest, or a demo redeploy (and every `docker compose pull`) would
+          # silently ship an untagged main build as the current release.
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            IS_RELEASE=true
+          else
+            IS_RELEASE=false
+          fi
+
+          {
+            echo "version=${VERSION}"
+            echo "is_release=${IS_RELEASE}"
+            echo "tags<<TAGS_EOF"
+            echo "${IMAGE}:${VERSION}"
+            if [ "${IS_RELEASE}" = "true" ]; then echo "${IMAGE}:latest"; fi
+            echo "TAGS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Building version: ${VERSION} (release: ${IS_RELEASE})"
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -42,9 +62,7 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
-          tags: |
-            ${{ env.IMAGE }}:latest
-            ${{ env.IMAGE }}:${{ steps.meta.outputs.version }}
+          tags: ${{ steps.meta.outputs.tags }}
           build-args: |
             APP_VERSION=${{ steps.meta.outputs.version }}
           cache-from: type=gha
@@ -55,3 +73,9 @@ jobs:
           echo "## Docker Image Published" >> $GITHUB_STEP_SUMMARY
           echo "- \`${{ env.IMAGE }}:${{ steps.meta.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Platforms: linux/amd64, linux/arm64, linux/arm/v7" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.meta.outputs.is_release }}" = "true" ]; then
+            echo "- Also tagged \`latest\`" >> $GITHUB_STEP_SUMMARY
+            echo "- Announce it when ready via the **Publish GitHub Release** workflow" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Not a tag build: \`latest\` was skipped" >> $GITHUB_STEP_SUMMARY
+          fi
