@@ -1,6 +1,7 @@
 package models
 
 import (
+	"sort"
 	"time"
 
 	"gorm.io/gorm"
@@ -112,6 +113,14 @@ type Expense struct {
 	PaidByMemberID uint `gorm:"not null;index;default:0" json:"paid_by_member_id"` // HouseholdMember ID
 	IsSplit        bool `gorm:"not null;default:false" json:"is_split"`
 
+	// IsLongTermDebt takes this expense's shares out of the running household
+	// balance and turns them into standalone debts repaid on their own schedule
+	// (see the Debiti tab). Without it a single outsized expense — a mortgage
+	// down payment, say — nets against every ordinary expense, so the debtor
+	// never gets reimbursed for the groceries they front: their share is
+	// silently swallowed by the big debt instead.
+	IsLongTermDebt bool `gorm:"not null;default:false;index" json:"is_long_term_debt"`
+
 	// Relations
 	Property    *Property        `json:"property,omitempty"`
 	Category    Category         `json:"category"`
@@ -121,9 +130,37 @@ type Expense struct {
 	Splits      []ExpenseSplit   `gorm:"foreignKey:ExpenseID" json:"splits,omitempty"`
 }
 
+// MeteredByType is the single source of truth for which service types are
+// billed on meter readings. Fixed-cost types are listed explicitly at false so
+// that adding a type forces a decision here instead of silently defaulting:
+// a mortgage or a rent has no meter, only instalments on a schedule.
+var MeteredByType = map[string]bool{
+	"electricity": true,
+	"gas":         true,
+	"water":       true,
+	"waste":       false, // TARI is billed on surface area, not on consumption
+	"internet":    false,
+	"insurance":   false,
+	"affitto":     false,
+	"mutuo":       false, // a bank loan: instalments on an amortisation plan
+}
+
+// FixedCostTypes lists the types that can never be metered, sorted so callers
+// (SQL IN clauses, tests) see a stable order despite Go's map iteration.
+func FixedCostTypes() []string {
+	types := make([]string, 0, len(MeteredByType))
+	for t, metered := range MeteredByType {
+		if !metered {
+			types = append(types, t)
+		}
+	}
+	sort.Strings(types)
+	return types
+}
+
 // Utility represents a service (metered utilities or fixed-cost subscriptions).
-// Generalization: metered services (electricity, gas, water, waste) have readings/consumption;
-// fixed services (internet, insurance, affitto, mutuo) have recurring amounts and price tracking.
+// Metered services have readings/consumption; fixed-cost ones have recurring
+// amounts and price tracking. See MeteredByType for which is which.
 type Utility struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
@@ -142,7 +179,15 @@ type Utility struct {
 	IsActive     bool       `gorm:"not null;default:true" json:"is_active"`
 
 	// Service classification
-	IsMetered bool `gorm:"not null;default:true" json:"is_metered"` // true for electricity/gas/water, false for internet/insurance/affitto/mutuo
+
+	// IsMetered marks a service billed on meter readings, derived from Type via
+	// MeteredByType at creation; the caller may only turn it OFF (a flat-rate
+	// water contract), never on for a type that has no meter.
+	//
+	// No `default` tag on purpose: GORM omits a zero-valued field from the INSERT
+	// when its column has a default, so a computed false was dropped and SQLite
+	// wrote DEFAULT true instead — that is how a mortgage got stored as metered.
+	IsMetered bool `gorm:"not null" json:"is_metered"`
 
 	// Metered service fields
 	PowerCapacity       float64 `json:"power_capacity,omitempty"`                // For electricity (kW)
@@ -516,18 +561,24 @@ type HouseholdSettings struct {
 	Property Property `json:"property"`
 }
 
-// ExpenseSplit represents a member's share of an expense
+// ExpenseSplit represents a member's share of an expense.
+// SettledAmount tracks partial payments (a ledger, not a boolean): a split is
+// fully settled only once SettledAmount reaches Amount. IsSettled/SettledAt/
+// SettlementID are derived convenience fields kept in sync by the handlers
+// that mutate SettledAmount (see SettlementAllocation for the per-payment
+// breakdown when a split receives contributions from multiple settlements).
 type ExpenseSplit struct {
 	ID        uint      `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	ExpenseID    uint       `gorm:"not null;index" json:"expense_id"`
-	MemberID     uint       `gorm:"not null;index" json:"member_id"` // HouseholdMember ID
-	Amount       float64    `gorm:"not null" json:"amount"`
-	IsSettled    bool       `gorm:"not null;default:false" json:"is_settled"`
-	SettledAt    *time.Time `json:"settled_at,omitempty"`
-	SettlementID *uint      `gorm:"index" json:"settlement_id,omitempty"`
+	ExpenseID     uint       `gorm:"not null;index" json:"expense_id"`
+	MemberID      uint       `gorm:"not null;index" json:"member_id"` // HouseholdMember ID
+	Amount        float64    `gorm:"not null" json:"amount"`
+	SettledAmount float64    `gorm:"not null;default:0" json:"settled_amount"`
+	IsSettled     bool       `gorm:"not null;default:false" json:"is_settled"` // derived: SettledAmount >= Amount
+	SettledAt     *time.Time `json:"settled_at,omitempty"`                     // set when it became fully settled
+	SettlementID  *uint      `gorm:"index" json:"settlement_id,omitempty"`     // last settlement that touched it
 
 	// Relations
 	Expense    Expense         `json:"expense"`
@@ -547,14 +598,45 @@ type Settlement struct {
 	ToMemberID    uint      `gorm:"not null;index" json:"to_member_id"`   // HouseholdMember ID
 	Amount        float64   `gorm:"not null" json:"amount"`
 	Date          time.Time `gorm:"not null;index" json:"date"`
-	PaymentMethod string    `json:"payment_method,omitempty"` // bank_transfer, cash, satispay, paypal
+	PaymentMethod string    `json:"payment_method,omitempty"` // bank_transfer, cash, satispay, paypal, compensation
 	Note          string    `json:"note,omitempty"`
 
+	// TargetExpenseID scopes the payment to a single long-term debt (the
+	// expense flagged IsLongTermDebt). When nil the payment settles the
+	// ordinary running balance instead, oldest share first.
+	TargetExpenseID *uint    `gorm:"index" json:"target_expense_id,omitempty"`
+	TargetExpense   *Expense `gorm:"foreignKey:TargetExpenseID" json:"target_expense,omitempty"`
+
 	// Relations
-	Property      Property        `json:"property"`
-	FromMember    HouseholdMember `gorm:"foreignKey:FromMemberID" json:"from_member"`
-	ToMember      HouseholdMember `gorm:"foreignKey:ToMemberID" json:"to_member"`
-	ExpenseSplits []ExpenseSplit  `gorm:"foreignKey:SettlementID" json:"expense_splits,omitempty"`
+	Property    Property               `json:"property"`
+	FromMember  HouseholdMember        `gorm:"foreignKey:FromMemberID" json:"from_member"`
+	ToMember    HouseholdMember        `gorm:"foreignKey:ToMemberID" json:"to_member"`
+	Allocations []SettlementAllocation `gorm:"foreignKey:SettlementID" json:"allocations,omitempty"`
+}
+
+// SettlementAllocation records how much of a settlement's amount was applied
+// against a specific ExpenseSplit. A settlement can partially cover several
+// splits, and a single split can receive allocations from multiple
+// settlements over time (partial repayments) — this is the ledger detail
+// that ExpenseSplit.SettledAmount aggregates.
+//
+// Kind distinguishes the two sides of a compensation. A cash settlement has
+// only "payment" rows, and they sum to Settlement.Amount. A compensation —
+// where a credit you're owed is turned into a repayment instead of being
+// reimbursed — additionally carries one "funding" row marking the credit that
+// was consumed. Both kinds move SettledAmount and both are reversed on
+// delete; only "payment" rows count against the settlement total.
+type SettlementAllocation struct {
+	ID        uint      `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+
+	SettlementID   uint    `gorm:"not null;index" json:"settlement_id"`
+	ExpenseSplitID uint    `gorm:"not null;index" json:"expense_split_id"`
+	Amount         float64 `gorm:"not null" json:"amount"`
+	Kind           string  `gorm:"not null;default:'payment'" json:"kind"` // payment, funding
+
+	// Relations
+	ExpenseSplit ExpenseSplit `gorm:"foreignKey:ExpenseSplitID" json:"expense_split,omitempty"`
 }
 
 // BillTemplate represents extraction rules for a utility provider's bill format

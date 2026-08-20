@@ -148,7 +148,7 @@
     "providerLabel": "Fornitore *",
     "operatorLabel": "Operatore / Ente *",
     "providerPlaceholder": "Nome del fornitore",
-    "operatorPlaceholder": "es. WindTre, Allianz, Proprietario...",
+    "operatorPlaceholder": "es. WindTre, Allianz, Intesa Sanpaolo, Proprietario...",
     "serviceCodePlaceholder": {
       "electricity": "IT001E...",
       "gas": "IT001...",
@@ -166,7 +166,7 @@
     "contractNumberLabel": "Numero Contratto",
     "customerCodePlaceholder": "Numero cliente",
     "contractRefPlaceholder": "Riferimento contratto",
-    "recurringAmountLabel": "Importo ricorrente (€)",
+    "recurringAmountLabel": "Importo ricorrente",
     "recurringAmountPlaceholder": "es. 29.99",
     "billingFrequencyLabel": "Frequenza fatturazione",
     "frequencyPreviewSingular": "Ogni {unit}",

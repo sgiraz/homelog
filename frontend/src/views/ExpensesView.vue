@@ -32,6 +32,9 @@
     <!-- Tab: Bilancio -->
     <BalanceSection v-if="activeTab === 'bilancio'" />
 
+    <!-- Tab: Debiti a lungo termine -->
+    <DebtsSection v-if="activeTab === 'debiti'" />
+
     <!-- Tab: Lista -->
     <template v-if="activeTab === 'lista'">
 
@@ -434,6 +437,7 @@ import Button from '@/components/common/Button.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditExpenseModal from '@/components/expenses/EditExpenseModal.vue'
 import BalanceSection from '@/components/balance/BalanceSection.vue'
+import DebtsSection from '@/components/balance/DebtsSection.vue'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -448,9 +452,11 @@ const { isHighlighted, registerRow } = useHighlight({
 const expenseTabs = computed(() => [
   { id: 'lista',    label: t('expenses.tabs.list'),    icon: '📋' },
   { id: 'bilancio', label: t('expenses.tabs.balance'), icon: '⚖️' },
+  { id: 'debiti',   label: t('expenses.tabs.debts'),   icon: '🏦' },
 ])
 
-const activeTab = ref(route.query.tab === 'bilancio' ? 'bilancio' : 'lista')
+const validTabs = ['lista', 'bilancio', 'debiti']
+const activeTab = ref(validTabs.includes(route.query.tab) ? route.query.tab : 'lista')
 const showAddExpense = ref(false)
 const showEditExpense = ref(false)
 const editingExpense = ref(null)
@@ -667,6 +673,15 @@ watch(
   (next, prev) => {
     if (next === prev) return
     applyHighlightTarget()
+  },
+)
+
+// This view is kept alive, so a query-only navigation (e.g. /balance →
+// /expenses?tab=bilancio) never re-runs setup: the tab must follow the query.
+watch(
+  () => route.query.tab,
+  (next) => {
+    if (validTabs.includes(next)) activeTab.value = next
   },
 )
 

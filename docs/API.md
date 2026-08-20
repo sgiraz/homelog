@@ -35,8 +35,10 @@ POST   /properties              # Create property
 GET    /properties/:id          # Get property
 PUT    /properties/:id          # Update property
 DELETE /properties/:id          # Delete property
-GET    /properties/:id/balance          # Get balance for property
+GET    /properties/:id/balance          # Get balance for property (long-term debts excluded)
 GET    /properties/:id/balance/details  # Get detailed balance
+GET    /properties/:id/debts            # Long-term debts: remaining, progress, payments
+                                        # (filter: other_member_id)
 GET    /properties/:id/settings         # Get household settings
 PUT    /properties/:id/settings         # Update household settings
 GET    /properties/:id/members          # List household members
@@ -73,6 +75,9 @@ GET    /expenses/:id            # Get expense
 PUT    /expenses/:id            # Update expense (restricted if settled)
 DELETE /expenses/:id            # Delete expense
 GET    /expenses/stats          # Expense statistics (trend, by_category, totals)
+PATCH  /expenses/:id/long-term-debt  # Move the expense's shares out of the running
+                                     # balance and into the debts ledger, or back
+                                     # (409 once any share is partly settled)
 ```
 
 ## Expense Templates
@@ -191,10 +196,19 @@ DELETE /members/:id             # Delete member
 
 ```http
 GET    /settlements             # List settlements (filter by property_id)
-POST   /settlements             # Create settlement (marks splits as settled)
+POST   /settlements             # Record a payment; allocated oldest-share-first,
+                                # partial amounts allowed. Pass target_expense_id
+                                # to pay down one long-term debt instead
+POST   /settlements/compensate  # Offset a long-term debt against a credit the
+                                # debtor holds on the other member (no cash moves)
 GET    /settlements/:id         # Get settlement
-DELETE /settlements/:id         # Delete settlement
+DELETE /settlements/:id         # Delete settlement (reverses only its own allocations)
 ```
+
+A settlement never marks a share settled by fiat: it records **allocations**
+against individual shares, so an amount smaller than the outstanding balance
+leaves the remainder owed. `POST` with an amount above what is outstanding
+returns `400`.
 
 ## Admin
 

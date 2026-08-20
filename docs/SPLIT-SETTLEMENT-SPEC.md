@@ -1,6 +1,42 @@
 # 💰 HomeLog - Split & Settlement Feature: Specifica Tecnica Completa
 
+> **Documento di progetto, non descrizione dell'implementazione corrente.**
+> La feature è stata realizzata e poi estesa: schema, logica ed endpoint qui
+> sotto descrivono il disegno iniziale. Per il comportamento attuale vedi
+> [Stato attuale](#-stato-attuale) e `docs/API.md`.
+
+## 🔄 STATO ATTUALE
+
+Cosa è cambiato rispetto alla specifica originale:
+
+**Saldo parziale, non booleano.** `ExpenseSplit` ha `settled_amount`: un
+settlement crea righe `settlement_allocations` (una per quota toccata) e ripaga
+le quote dalla più vecchia, fermandosi quando l'importo si esaurisce. Una quota
+è saldata quando `settled_amount >= amount`; `is_settled`, `settled_at` e
+`settlement_id` restano ma sono derivati. Un importo superiore al residuo dovuto
+è rifiutato con `400`. Cancellare un settlement inverte solo le proprie
+allocazioni, non tutte quelle della quota.
+
+**Due libri mastri.** `Expense.is_long_term_debt` toglie le quote di una spesa
+dal bilancio corrente e le trasforma in un debito a sé, con residuo e storico
+dei versamenti propri (scheda **Debiti**). Serve perché una spesa fuori scala —
+l'acconto di un mutuo — si compenserebbe con ogni spesa ordinaria, e chi la
+anticipa non verrebbe mai rimborsato per la spesa di tutti i giorni:
+`CalculateBalance` e `GetBalanceDetails` escludono queste spese e i relativi
+settlement.
+
+**Compensazione.** Un debito può essere ridotto anche senza movimento di denaro,
+compensandolo con un credito che il debitore vanta verso l'altro membro: nasce
+un settlement con `payment_method = "compensation"` e due allocazioni (una
+`payment` sul debito, una `funding` sulla quota a credito).
+
+**Endpoint aggiunti:** `GET /properties/:id/debts`,
+`PATCH /expenses/:id/long-term-debt`, `POST /settlements/compensate`.
+
+---
+
 ## 📋 INDICE
+0. [Stato attuale](#-stato-attuale)
 1. [Overview](#overview)
 2. [Database Schema](#database-schema)
 3. [Business Logic](#business-logic)

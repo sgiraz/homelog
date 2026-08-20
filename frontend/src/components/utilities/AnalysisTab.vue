@@ -43,7 +43,7 @@
     </div>
 
     <!-- Comparison Section -->
-    <div v-if="utility.type !== 'waste'" class="space-y-4">
+    <div class="space-y-4">
       <!-- Threshold Settings (collapsible) -->
       <Card class="p-4">
         <button

@@ -53,15 +53,34 @@ func (h *UtilityHandler) List(c *gin.Context) {
 		query = query.Where("is_active = ?", true)
 	}
 
+	// No LIMIT in these preloads. GORM loads an association for every parent in
+	// a single query (`... WHERE utility_id IN (1,2,3) ORDER BY ... LIMIT 3`),
+	// so a limit caps the whole result set, not each service: the newest rows
+	// all land on one or two services and the rest come back empty — which also
+	// silently broke the overview KPIs and the dashboard's overdue-bill brief,
+	// both of which sum over these lists.
+	//
+	// Volume is kept in check by selecting only the columns the list actually
+	// renders, leaving out the free-text and blob fields: parsed_data (the raw
+	// PDF extraction blob, by far the heaviest) on bills, notes and photo_url on
+	// readings. All three are read only in the per-service detail views, which
+	// preload in full (see Get).
+	billListColumns := []string{
+		"id", "created_at", "updated_at", "deleted_at", "utility_id", "bill_number",
+		"issue_date", "period_start", "period_end", "due_date",
+		"consumption_total", "amount_total", "is_paid", "paid_date",
+		"original_amount", "original_currency",
+	}
+	readingListColumns := []string{
+		"id", "created_at", "updated_at", "utility_id", "reading_date",
+		"value", "value_f1", "value_f2", "value_f3", "source",
+	}
 	if err := query.Preload("Property").
 		Preload("Bills", func(db *gorm.DB) *gorm.DB {
-			return db.Order("period_end DESC").Limit(3)
-		}).
-		Preload("Bills.Installments", func(db *gorm.DB) *gorm.DB {
-			return db.Order("number ASC")
+			return db.Select(billListColumns).Order("period_end DESC")
 		}).
 		Preload("Readings", func(db *gorm.DB) *gorm.DB {
-			return db.Order("reading_date DESC").Limit(3)
+			return db.Select(readingListColumns).Order("reading_date DESC")
 		}).
 		Order("type ASC, provider ASC").
 		Find(&utilities).Error; err != nil {
@@ -156,11 +175,14 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		}
 	}
 
-	// Determine if service is metered based on type (unless explicitly set)
-	meteredTypes := map[string]bool{"electricity": true, "gas": true, "water": true, "waste": false}
-	isMetered := meteredTypes[input.Type]
-	if input.IsMetered != nil {
-		isMetered = *input.IsMetered
+	// Whether a service has a meter follows from its type, so the payload only
+	// gets to turn metering OFF (a flat-rate water contract, say) — never on.
+	// Trusting the client in both directions is how a mutuo was stored with
+	// is_metered=true and then offered meter readings: a bank loan is repaid on
+	// an amortisation schedule, there is nothing to read.
+	isMetered := models.MeteredByType[input.Type]
+	if input.IsMetered != nil && !*input.IsMetered {
+		isMetered = false
 	}
 
 	// Check if there's already an active service of the same type for this property

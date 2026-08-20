@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"errors"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -13,6 +15,31 @@ import (
 	"github.com/sgiraz/homelog/internal/models"
 )
 
+// settlementEpsilon absorbs float64 rounding noise when comparing amounts.
+const settlementEpsilon = 0.005
+
+// remainingOwed is what is still due on a split once the settlement ledger is
+// applied, clamped at zero. Successive partial allocations accumulate float64
+// error, so a fully repaid split can land a hair past its own amount; the
+// negative residue must never reach the API, the balance, or the UI.
+func remainingOwed(split models.ExpenseSplit) float64 {
+	remaining := split.Amount - split.SettledAmount
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
+// Allocation kinds — see models.SettlementAllocation.
+const (
+	allocationKindPayment = "payment" // reduces the debt this settlement pays
+	allocationKindFunding = "funding" // the credit consumed to fund a compensation
+)
+
+// paymentMethodCompensation marks a settlement where no money moved: a credit
+// the debtor was owed was applied to their debt instead of being reimbursed.
+const paymentMethodCompensation = "compensation"
+
 // SettlementHandler handles settlement operations
 type SettlementHandler struct {
 	db *gorm.DB
@@ -21,6 +48,32 @@ type SettlementHandler struct {
 // NewSettlementHandler creates a new settlement handler
 func NewSettlementHandler(db *gorm.DB) *SettlementHandler {
 	return &SettlementHandler{db: db}
+}
+
+// applyAllocation records how much of a settlement covered a given split and
+// moves that split's settled amount by the same figure, flipping it to fully
+// settled once nothing is left owed.
+func applyAllocation(tx *gorm.DB, settlementID uint, split models.ExpenseSplit, amount float64, kind string, now time.Time) error {
+	allocation := models.SettlementAllocation{
+		SettlementID:   settlementID,
+		ExpenseSplitID: split.ID,
+		Amount:         amount,
+		Kind:           kind,
+	}
+	if err := tx.Create(&allocation).Error; err != nil {
+		return err
+	}
+
+	newSettledAmount := split.SettledAmount + amount
+	updates := map[string]any{
+		"settled_amount": newSettledAmount,
+		"settlement_id":  settlementID,
+	}
+	if newSettledAmount >= split.Amount-settlementEpsilon {
+		updates["is_settled"] = true
+		updates["settled_at"] = now
+	}
+	return tx.Model(&models.ExpenseSplit{}).Where("id = ?", split.ID).Updates(updates).Error
 }
 
 // CreateSettlementRequest represents the request body for creating a settlement
@@ -32,6 +85,9 @@ type CreateSettlementRequest struct {
 	Date          string  `json:"date" binding:"required"`
 	PaymentMethod string  `json:"payment_method"`
 	Note          string  `json:"note"`
+	// TargetExpenseID aims the payment at a single long-term debt. When absent
+	// the payment settles the ordinary running balance instead.
+	TargetExpenseID *uint `json:"target_expense_id"`
 }
 
 // Create registers a payment between members
@@ -87,18 +143,68 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// Fetch outstanding splits between the pair, oldest expense first — the
+	// payment is applied as a ledger, oldest debt paid down before newer ones.
+	query := h.db.
+		Joins("JOIN expenses ON expenses.id = expense_splits.expense_id").
+		Where("expense_splits.is_settled = ?", false).
+		Where("expenses.property_id = ?", req.PropertyID).
+		Where("expenses.deleted_at IS NULL")
+
+	if req.TargetExpenseID != nil {
+		// Aimed at one long-term debt: only that expense's share, and only in
+		// the direction the payer actually owes — paying Alice must not clear
+		// what Alice owes you.
+		var target models.Expense
+		if err := h.db.First(&target, *req.TargetExpenseID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Debito non trovato"})
+			return
+		}
+		if !target.IsLongTermDebt {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Questa spesa non è un debito a lungo termine"})
+			return
+		}
+		query = query.
+			Where("expenses.id = ?", target.ID).
+			Where("expenses.paid_by_member_id = ? AND expense_splits.member_id = ?", req.ToMemberID, req.FromMemberID)
+	} else {
+		// Ordinary balance: long-term debts are repaid explicitly, never swept
+		// up by a generic settlement.
+		query = query.
+			Where("expenses.is_long_term_debt = ?", false).
+			Where("(expenses.paid_by_member_id = ? AND expense_splits.member_id = ?) OR (expenses.paid_by_member_id = ? AND expense_splits.member_id = ?)",
+				req.ToMemberID, req.FromMemberID, req.FromMemberID, req.ToMemberID)
+	}
+
+	var splits []models.ExpenseSplit
+	if err := query.Order("expenses.date ASC").Find(&splits).Error; err != nil {
+		log.Printf("ERROR finding expense splits to settle: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find expense splits"})
+		return
+	}
+
+	var totalOwed float64
+	for _, s := range splits {
+		totalOwed += remainingOwed(s)
+	}
+	if req.Amount > totalOwed+settlementEpsilon {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "L'importo supera il debito residuo tra questi membri"})
+		return
+	}
+
 	// Start transaction
 	tx := h.db.Begin()
 
 	// Create Settlement record
 	settlement := models.Settlement{
-		PropertyID:    req.PropertyID,
-		FromMemberID:  req.FromMemberID,
-		ToMemberID:    req.ToMemberID,
-		Amount:        req.Amount,
-		Date:          date,
-		PaymentMethod: req.PaymentMethod,
-		Note:          req.Note,
+		PropertyID:      req.PropertyID,
+		FromMemberID:    req.FromMemberID,
+		ToMemberID:      req.ToMemberID,
+		Amount:          req.Amount,
+		Date:            date,
+		PaymentMethod:   req.PaymentMethod,
+		Note:            req.Note,
+		TargetExpenseID: req.TargetExpenseID,
 	}
 
 	if err := tx.Create(&settlement).Error; err != nil {
@@ -111,54 +217,35 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 	log.Printf("Settlement created - ID: %d, From: %d, To: %d, Amount: %.2f",
 		settlement.ID, req.FromMemberID, req.ToMemberID, req.Amount)
 
-	// Mark unsettled ExpenseSplits as settled
-	// SQLite doesn't support UPDATE with JOIN, so we use a two-step approach:
-	// 1. Find the IDs of expense_splits that need to be updated
-	// 2. Update those specific IDs
-
-	// Step 1: Find expense_split IDs to update
-	var splitIDs []uint
-	err = tx.Model(&models.ExpenseSplit{}).
-		Select("expense_splits.id").
-		Joins("JOIN expenses ON expenses.id = expense_splits.expense_id").
-		Where("expense_splits.is_settled = ?", false).
-		Where("expenses.property_id = ?", req.PropertyID).
-		Where("(expenses.paid_by_member_id = ? AND expense_splits.member_id = ?) OR (expenses.paid_by_member_id = ? AND expense_splits.member_id = ?)",
-			req.ToMemberID, req.FromMemberID, req.FromMemberID, req.ToMemberID).
-		Pluck("expense_splits.id", &splitIDs).Error
-
-	if err != nil {
-		tx.Rollback()
-		log.Printf("ERROR finding expense splits to settle: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find expense splits"})
-		return
-	}
-
-	log.Printf("Found %d expense splits to settle: %v", len(splitIDs), splitIDs)
-
-	// Step 2: Update those splits by ID
+	// Apply the payment against the outstanding splits, oldest first. Each
+	// split touched gets a SettlementAllocation recording exactly how much of
+	// this settlement covered it; a split not fully covered stays unsettled
+	// with a reduced remaining balance instead of being force-marked settled.
 	now := time.Now()
-	var result *gorm.DB
-	if len(splitIDs) > 0 {
-		result = tx.Model(&models.ExpenseSplit{}).
-			Where("id IN ?", splitIDs).
-			Updates(map[string]any{
-				"is_settled":    true,
-				"settled_at":    now,
-				"settlement_id": settlement.ID,
-			})
+	remaining := req.Amount
+	touched := 0
+	for i := range splits {
+		if remaining <= settlementEpsilon {
+			break
+		}
+		owed := remainingOwed(splits[i])
+		if owed <= settlementEpsilon {
+			continue
+		}
+		alloc := math.Min(owed, remaining)
 
-		if result.Error != nil {
+		if err := applyAllocation(tx, settlement.ID, splits[i], alloc, allocationKindPayment, now); err != nil {
 			tx.Rollback()
-			log.Printf("ERROR updating expense splits: %v", result.Error)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update expense splits"})
+			log.Printf("ERROR allocating settlement to split %d: %v", splits[i].ID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to allocate settlement"})
 			return
 		}
 
-		log.Printf("✅ SETTLEMENT: Marked %d splits as settled", result.RowsAffected)
-	} else {
-		log.Printf("ℹ️ No unsettled splits found to mark as settled")
+		remaining -= alloc
+		touched++
 	}
+
+	log.Printf("✅ SETTLEMENT: Allocated %.2f across %d splits", req.Amount-remaining, touched)
 
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
@@ -252,7 +339,7 @@ func (h *SettlementHandler) Get(c *gin.Context) {
 	if err := h.db.
 		Preload("FromMember").
 		Preload("ToMember").
-		Preload("ExpenseSplits").
+		Preload("Allocations").
 		First(&settlement, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Settlement not found"})
@@ -320,16 +407,71 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 	// Start transaction
 	tx := h.db.Begin()
 
-	// Unsettle the expense splits linked to this settlement
-	if err := tx.Model(&models.ExpenseSplit{}).
-		Where("settlement_id = ?", settlement.ID).
-		Updates(map[string]any{
-			"is_settled":    false,
-			"settled_at":    nil,
-			"settlement_id": nil,
-		}).Error; err != nil {
+	// Reverse only this settlement's own allocations — a split may have
+	// received contributions from other settlements too (before or after this
+	// one), which must stay untouched.
+	var allocations []models.SettlementAllocation
+	if err := tx.Where("settlement_id = ?", settlement.ID).Find(&allocations).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unsettle expense splits"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load settlement allocations"})
+		return
+	}
+
+	for _, alloc := range allocations {
+		var split models.ExpenseSplit
+		if err := tx.First(&split, alloc.ExpenseSplitID).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load expense split"})
+			return
+		}
+
+		newSettledAmount := split.SettledAmount - alloc.Amount
+		if newSettledAmount < settlementEpsilon {
+			newSettledAmount = 0
+		}
+
+		// is_settled / settled_at / settlement_id are derived from the ledger,
+		// so rebuild them from what survives this reversal rather than blanking
+		// them: a split funded by several settlements is still (possibly fully)
+		// settled by the others, and must keep pointing at the most recent one.
+		updates := map[string]any{
+			"settled_amount": newSettledAmount,
+			"is_settled":     false,
+			"settled_at":     nil,
+			"settlement_id":  nil,
+		}
+
+		var survivor models.SettlementAllocation
+		err := tx.
+			Joins("JOIN settlements ON settlements.id = settlement_allocations.settlement_id AND settlements.deleted_at IS NULL").
+			Where("settlement_allocations.expense_split_id = ? AND settlement_allocations.settlement_id != ?", split.ID, settlement.ID).
+			Order("settlements.date DESC, settlement_allocations.id DESC").
+			First(&survivor).Error
+		switch {
+		case err == nil:
+			updates["settlement_id"] = survivor.SettlementID
+			if newSettledAmount >= split.Amount-settlementEpsilon {
+				updates["is_settled"] = true
+				updates["settled_at"] = survivor.CreatedAt
+			}
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			// This settlement was the split's only funder — fully unsettled.
+		default:
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load remaining allocations"})
+			return
+		}
+
+		if err := tx.Model(&models.ExpenseSplit{}).Where("id = ?", split.ID).Updates(updates).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unsettle expense split"})
+			return
+		}
+	}
+
+	if err := tx.Where("settlement_id = ?", settlement.ID).Delete(&models.SettlementAllocation{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete settlement allocations"})
 		return
 	}
 
@@ -346,4 +488,148 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Settlement deleted successfully"})
+}
+
+// CompensateRequest applies a credit the debtor is owed against one of their
+// long-term debts, instead of being reimbursed for it in cash.
+type CompensateRequest struct {
+	PropertyID      uint   `json:"property_id" binding:"required"`
+	SourceSplitID   uint   `json:"source_split_id" binding:"required"`
+	TargetExpenseID uint   `json:"target_expense_id" binding:"required"`
+	Date            string `json:"date"`
+	Note            string `json:"note"`
+}
+
+// Compensate offsets an outstanding credit against a long-term debt
+// POST /api/v1/settlements/compensate
+//
+// No money moves: the share the counterpart owed on an ordinary expense is
+// cancelled, and the same figure comes off the debt owed back to them.
+func (h *SettlementHandler) Compensate(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	var req CompensateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !requirePropertyMember(c, h.db, userID, req.PropertyID) {
+		return
+	}
+
+	// The credit being spent: `source.MemberID` owes this share to whoever paid
+	// the expense, and it's that payer's own debt we're about to shrink.
+	var source models.ExpenseSplit
+	if err := h.db.Preload("Expense").First(&source, req.SourceSplitID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Spesa a credito non trovata"})
+		return
+	}
+	if source.Expense.PropertyID == nil || *source.Expense.PropertyID != req.PropertyID {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "La spesa non appartiene a questa casa"})
+		return
+	}
+	if source.Expense.IsLongTermDebt {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Un debito a lungo termine non può finanziare una compensazione"})
+		return
+	}
+	sourceRemaining := remainingOwed(source)
+	if sourceRemaining <= settlementEpsilon {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Questa quota è già stata saldata"})
+		return
+	}
+
+	// debtor repays their own debt using the credit; holder is owed both.
+	debtorID := source.Expense.PaidByMemberID
+	holderID := source.MemberID
+
+	var currentMember models.HouseholdMember
+	if err := h.db.Where("property_id = ? AND user_id = ?", req.PropertyID, userID).First(&currentMember).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You must be a member of this property"})
+		return
+	}
+	if currentMember.ID != debtorID && currentMember.ID != holderID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You must be involved in the compensation"})
+		return
+	}
+
+	// The debt to shrink: same pair, opposite direction, flagged long-term.
+	var debt models.ExpenseSplit
+	if err := h.db.
+		Joins("JOIN expenses ON expenses.id = expense_splits.expense_id").
+		Where("expenses.id = ?", req.TargetExpenseID).
+		Where("expenses.is_long_term_debt = ?", true).
+		Where("expenses.deleted_at IS NULL").
+		Where("expenses.paid_by_member_id = ? AND expense_splits.member_id = ?", holderID, debtorID).
+		First(&debt).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Debito a lungo termine non trovato per questa coppia"})
+		return
+	}
+	debtRemaining := remainingOwed(debt)
+	if debtRemaining <= settlementEpsilon {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Questo debito è già estinto"})
+		return
+	}
+
+	amount := math.Min(sourceRemaining, debtRemaining)
+
+	date := time.Now()
+	if req.Date != "" {
+		parsed, err := time.Parse("2006-01-02", req.Date)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format. Use YYYY-MM-DD"})
+			return
+		}
+		date = parsed
+	}
+
+	tx := h.db.Begin()
+
+	targetExpenseID := req.TargetExpenseID
+	settlement := models.Settlement{
+		PropertyID:      req.PropertyID,
+		FromMemberID:    debtorID,
+		ToMemberID:      holderID,
+		Amount:          amount,
+		Date:            date,
+		PaymentMethod:   paymentMethodCompensation,
+		Note:            req.Note,
+		TargetExpenseID: &targetExpenseID,
+	}
+	if err := tx.Create(&settlement).Error; err != nil {
+		tx.Rollback()
+		log.Printf("ERROR creating compensation settlement: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create compensation"})
+		return
+	}
+
+	now := time.Now()
+	// Both sides move by the same figure: the debt shrinks, and the credit that
+	// paid for it is consumed. Delete() reverses both together.
+	if err := applyAllocation(tx, settlement.ID, debt, amount, allocationKindPayment, now); err != nil {
+		tx.Rollback()
+		log.Printf("ERROR allocating compensation to debt split %d: %v", debt.ID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to apply compensation"})
+		return
+	}
+	if err := applyAllocation(tx, settlement.ID, source, amount, allocationKindFunding, now); err != nil {
+		tx.Rollback()
+		log.Printf("ERROR consuming credit split %d: %v", source.ID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to apply compensation"})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete compensation"})
+		return
+	}
+
+	log.Printf("✅ COMPENSATION: %.2f from credit split %d applied to debt expense %d", amount, source.ID, targetExpenseID)
+
+	h.db.Preload("FromMember").Preload("ToMember").First(&settlement, settlement.ID)
+	c.JSON(http.StatusCreated, settlement)
 }

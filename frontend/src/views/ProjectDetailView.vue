@@ -72,11 +72,14 @@
 
         <Card class="p-4">
           <div class="text-xs sm:text-sm text-ink-soft mb-1">{{ t('projects.detail.kpiRemaining') }}</div>
+          <!-- No Math.abs here: over budget the remainder IS negative, and under a
+               fixed "Remaining" label the absolute value read as budget still
+               available. formatCurrency (Intl) renders the sign locale-aware. -->
           <div :class="[
             'text-lg sm:text-2xl font-bold',
             stats.remaining >= 0 ? 'text-green-600' : 'text-red-600'
           ]">
-            {{ formatCurrency(Math.abs(stats.remaining)) }}
+            {{ formatCurrency(stats.remaining) }}
           </div>
         </Card>
 

@@ -56,6 +56,7 @@ func wireMoneyRoutes(db *gorm.DB) *gin.Engine {
 	settle := NewSettlementHandler(db)
 	util := NewUtilityHandler(db)
 	settings := NewSettingsHandler(db)
+	debt := NewDebtHandler(db)
 
 	r := gin.New()
 	p := r.Group("")
@@ -63,7 +64,10 @@ func wireMoneyRoutes(db *gorm.DB) *gin.Engine {
 	p.POST("/expenses", exp.Create)
 	p.PUT("/expenses/:id", exp.Update)
 	p.DELETE("/expenses/:id", exp.Delete)
+	p.PATCH("/expenses/:id/long-term-debt", debt.SetLongTermDebt)
+	p.GET("/properties/:id/debts", debt.List)
 	p.POST("/settlements", settle.Create)
+	p.POST("/settlements/compensate", settle.Compensate)
 	p.DELETE("/settlements/:id", settle.Delete)
 	p.POST("/utilities/:id/bills", util.AddBill)
 	p.PUT("/utilities/:id/bills/:billId", util.UpdateBill)
@@ -159,13 +163,19 @@ func (f *moneyFixture) splitFor(t *testing.T, expenseID, memberID uint) models.E
 // createSplitExpense posts a split expense paid by mAlice and returns its ID.
 func (f *moneyFixture) createSplitExpense(t *testing.T, amount float64, splitWith []uint) uint {
 	t.Helper()
-	rec := doJSON(t, f.router, http.MethodPost, "/expenses", f.aliceTok, map[string]any{
+	return f.createSplitExpenseBy(t, f.aliceTok, f.mAlice.ID, amount, splitWith)
+}
+
+// createSplitExpenseBy posts a split expense paid by an arbitrary member.
+func (f *moneyFixture) createSplitExpenseBy(t *testing.T, token string, payerMemberID uint, amount float64, splitWith []uint) uint {
+	t.Helper()
+	rec := doJSON(t, f.router, http.MethodPost, "/expenses", token, map[string]any{
 		"amount":                amount,
 		"category_id":           f.casaCatID,
 		"property_id":           f.prop.ID,
 		"date":                  "2026-05-01",
 		"description":           "Spesa condivisa",
-		"paid_by_member_id":     f.mAlice.ID,
+		"paid_by_member_id":     payerMemberID,
 		"is_split":              true,
 		"split_with_member_ids": splitWith,
 	})
@@ -177,6 +187,16 @@ func (f *moneyFixture) createSplitExpense(t *testing.T, amount float64, splitWit
 		t.Fatalf("decode expense: %v", err)
 	}
 	return out.ID
+}
+
+// markLongTermDebt moves an expense into the long-term debt ledger.
+func (f *moneyFixture) markLongTermDebt(t *testing.T, expenseID uint) {
+	t.Helper()
+	rec := doJSON(t, f.router, http.MethodPatch, "/expenses/"+itoa(expenseID)+"/long-term-debt", f.aliceTok,
+		map[string]any{"is_long_term_debt": true})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("mark long-term debt: status %d, body %s", rec.Code, rec.Body.String())
+	}
 }
 
 // ── 1. Split create + edit amount ───────────────────────────────────────────
@@ -295,6 +315,415 @@ func TestSettlement_SettlesOnlyOwedSharesAndNeverPayerSelfSplit(t *testing.T) {
 	// Carol's unrelated share must be untouched.
 	if f.splitFor(t, idAC, f.mCarol.ID).IsSettled {
 		t.Error("carol's share must remain unsettled — the bob↔alice settlement must not touch it")
+	}
+}
+
+// ── 2b. Partial settlement ledger ───────────────────────────────────────────
+//
+// A single outsized expense (e.g. a mortgage down payment) used to create a
+// monolithic debt: the boolean is_settled flag meant nothing could be paid
+// down except in one lump sum covering the whole share, which then blocked
+// settling any other, unrelated expense between the same pair. These tests
+// lock the ledger behaviour that replaced it: settlements apply partially,
+// oldest outstanding split first (FIFO), and can be reversed precisely.
+
+func TestSettlement_PartialPayment_LeavesSplitUnsettledWithReducedBalance(t *testing.T) {
+	f := setupMoneyFixture(t)
+	id := f.createSplitExpense(t, 100000, []uint{f.mBob.ID}) // bob owes 50000
+
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id":    f.prop.ID,
+		"from_member_id": f.mBob.ID,
+		"to_member_id":   f.mAlice.ID,
+		"amount":         500.0,
+		"date":           "2026-05-03",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("settlement: status %d, body %s", rec.Code, rec.Body.String())
+	}
+
+	bob := f.splitFor(t, id, f.mBob.ID)
+	if bob.IsSettled {
+		t.Error("bob's split must stay unsettled after a payment smaller than the owed amount")
+	}
+	if !approx(bob.SettledAmount, 500) {
+		t.Errorf("bob.SettledAmount = %.2f, want 500", bob.SettledAmount)
+	}
+
+	balance, err := CalculateBalance(f.mAlice.ID, f.mBob.ID, f.prop.ID, f.db)
+	if err != nil {
+		t.Fatalf("CalculateBalance: %v", err)
+	}
+	if !approx(balance, 49500) {
+		t.Errorf("alice's balance = %.2f, want 49500 still owed to her", balance)
+	}
+
+	var allocCount int64
+	f.db.Model(&models.SettlementAllocation{}).Where("expense_split_id = ?", bob.ID).Count(&allocCount)
+	if allocCount != 1 {
+		t.Errorf("expected 1 settlement allocation for bob's split, got %d", allocCount)
+	}
+}
+
+func TestSettlement_MultiplePartialPayments_ApplyFIFOAcrossOldestSplitFirst(t *testing.T) {
+	f := setupMoneyFixture(t)
+	bigID := f.createSplitExpense(t, 100000, []uint{f.mBob.ID}) // dated 2026-05-01, bob owes 50000
+
+	// First partial payment eats into the big (older) split.
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 500.0, "date": "2026-05-03",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("first settlement: status %d, body %s", rec.Code, rec.Body.String())
+	}
+
+	smallID := f.createSplitExpense(t, 40, []uint{f.mBob.ID}) // newer, bob owes 20
+
+	rec = doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 200.0, "date": "2026-05-04",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("second settlement: status %d, body %s", rec.Code, rec.Body.String())
+	}
+
+	if !approx(f.splitFor(t, bigID, f.mBob.ID).SettledAmount, 700) {
+		t.Errorf("older/bigger split should absorb payments first (FIFO), got %.2f", f.splitFor(t, bigID, f.mBob.ID).SettledAmount)
+	}
+	if !approx(f.splitFor(t, smallID, f.mBob.ID).SettledAmount, 0) {
+		t.Errorf("newer split should stay untouched while the older one still has room, got %.2f", f.splitFor(t, smallID, f.mBob.ID).SettledAmount)
+	}
+}
+
+func TestSettlement_Delete_ReversesOnlyItsOwnAllocation(t *testing.T) {
+	f := setupMoneyFixture(t)
+	id := f.createSplitExpense(t, 100000, []uint{f.mBob.ID}) // bob owes 50000
+
+	rec1 := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 500.0, "date": "2026-05-03",
+	})
+	if rec1.Code != http.StatusCreated {
+		t.Fatalf("first settlement: status %d, body %s", rec1.Code, rec1.Body.String())
+	}
+	rec2 := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 200.0, "date": "2026-05-04",
+	})
+	if rec2.Code != http.StatusCreated {
+		t.Fatalf("second settlement: status %d, body %s", rec2.Code, rec2.Body.String())
+	}
+	var s2 models.Settlement
+	if err := json.Unmarshal(rec2.Body.Bytes(), &s2); err != nil {
+		t.Fatalf("decode second settlement: %v", err)
+	}
+	if !approx(f.splitFor(t, id, f.mBob.ID).SettledAmount, 700) {
+		t.Fatalf("precondition: bob.SettledAmount should be 700 before deletion")
+	}
+
+	del := doJSON(t, f.router, http.MethodDelete, "/settlements/"+itoa(s2.ID), f.aliceTok, nil)
+	if del.Code != http.StatusOK {
+		t.Fatalf("delete settlement: status %d, body %s", del.Code, del.Body.String())
+	}
+
+	bob := f.splitFor(t, id, f.mBob.ID)
+	if !approx(bob.SettledAmount, 500) {
+		t.Errorf("deleting the second settlement should leave only the first's 500, got %.2f", bob.SettledAmount)
+	}
+	if bob.IsSettled {
+		t.Error("bob's split must be unsettled again after reversing a partial payment")
+	}
+}
+
+// Deleting one of several settlements that funded the same split must rebuild
+// the split's derived fields from what survives — blanking settlement_id would
+// orphan the split from the payments still standing against it.
+func TestSettlement_Delete_KeepsSplitLinkedToSurvivingSettlement(t *testing.T) {
+	f := setupMoneyFixture(t)
+	id := f.createSplitExpense(t, 1000, []uint{f.mBob.ID}) // bob owes 500
+
+	first := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 300.0, "date": "2026-05-03",
+	})
+	if first.Code != http.StatusCreated {
+		t.Fatalf("first settlement: status %d, body %s", first.Code, first.Body.String())
+	}
+	var s1 models.Settlement
+	if err := json.Unmarshal(first.Body.Bytes(), &s1); err != nil {
+		t.Fatalf("decode first settlement: %v", err)
+	}
+
+	second := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 200.0, "date": "2026-05-04",
+	})
+	if second.Code != http.StatusCreated {
+		t.Fatalf("second settlement: status %d, body %s", second.Code, second.Body.String())
+	}
+	var s2 models.Settlement
+	if err := json.Unmarshal(second.Body.Bytes(), &s2); err != nil {
+		t.Fatalf("decode second settlement: %v", err)
+	}
+	if bob := f.splitFor(t, id, f.mBob.ID); !bob.IsSettled {
+		t.Fatalf("precondition: 300 + 200 should have fully settled bob's 500 share")
+	}
+
+	// Drop the OLDER payment: the newer one still stands for 200.
+	del := doJSON(t, f.router, http.MethodDelete, "/settlements/"+itoa(s1.ID), f.aliceTok, nil)
+	if del.Code != http.StatusOK {
+		t.Fatalf("delete settlement: status %d, body %s", del.Code, del.Body.String())
+	}
+
+	bob := f.splitFor(t, id, f.mBob.ID)
+	if !approx(bob.SettledAmount, 200) {
+		t.Errorf("settled amount = %.2f, want the surviving settlement's 200", bob.SettledAmount)
+	}
+	if bob.IsSettled || bob.SettledAt != nil {
+		t.Error("split must fall back to unsettled once it is no longer fully covered")
+	}
+	if bob.SettlementID == nil || *bob.SettlementID != s2.ID {
+		t.Errorf("settlement_id = %v, want the surviving settlement %d", bob.SettlementID, s2.ID)
+	}
+}
+
+func TestDebts_InvalidOtherMemberID_Returns400(t *testing.T) {
+	f := setupMoneyFixture(t)
+
+	for name, query := range map[string]string{
+		"unparseable":   "?other_member_id=abc",
+		"otherProperty": "?other_member_id=99999",
+	} {
+		t.Run(name, func(t *testing.T) {
+			got := doGET(t, f.router, "/properties/"+itoa(f.prop.ID)+"/debts"+query, f.bobTok)
+			if got.Code != http.StatusBadRequest {
+				t.Errorf("status = %d, want 400 — a bad other_member_id must not pass as an empty ledger (body %s)", got.Code, got.Body.String())
+			}
+		})
+	}
+}
+
+func TestSettlement_AmountExceedingOutstanding_Returns400(t *testing.T) {
+	f := setupMoneyFixture(t)
+	f.createSplitExpense(t, 100000, []uint{f.mBob.ID}) // bob owes 50000
+
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 60000.0, "date": "2026-05-03",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("settlement exceeding outstanding balance: status %d, want 400 (body %s)", rec.Code, rec.Body.String())
+	}
+}
+
+// ── 2c. Long-term debts ─────────────────────────────────────────────────────
+//
+// A mortgage down payment is not an ordinary expense: netted into the running
+// balance it swallows everything else, so the debtor keeps fronting groceries
+// they never get reimbursed for — their half just nibbles at the big debt.
+// Flagged as long-term it moves to its own ledger, repaid deliberately, while
+// day-to-day expenses keep splitting and settling normally.
+
+// balance reports what the other member owes the current one (negative: the
+// current member owes).
+func (f *moneyFixture) balance(t *testing.T, current, other uint) float64 {
+	t.Helper()
+	b, err := CalculateBalance(current, other, f.prop.ID, f.db)
+	if err != nil {
+		t.Fatalf("CalculateBalance: %v", err)
+	}
+	return b
+}
+
+func TestLongTermDebt_KeepsOrdinaryExpensesReimbursable(t *testing.T) {
+	f := setupMoneyFixture(t)
+
+	// Alice fronts the down payment: Bob's half is 50.000.
+	big := f.createSplitExpense(t, 100000, []uint{f.mBob.ID})
+	f.markLongTermDebt(t, big)
+
+	if bal := f.balance(t, f.mAlice.ID, f.mBob.ID); !approx(bal, 0) {
+		t.Fatalf("running balance after parking the debt = %.2f, want 0", bal)
+	}
+
+	// Ordinary life continues: Bob pays the groceries, Alice owes him her half.
+	f.createSplitExpenseBy(t, f.bobTok, f.mBob.ID, 100, []uint{f.mAlice.ID})
+	if bal := f.balance(t, f.mAlice.ID, f.mBob.ID); !approx(bal, -50) {
+		t.Fatalf("Alice should owe Bob 50 for the groceries, got %.2f", bal)
+	}
+
+	// ...and she can reimburse him for real, without the 50.000 getting in the way.
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mAlice.ID, "to_member_id": f.mBob.ID,
+		"amount": 50.0, "date": "2026-05-05",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("ordinary settlement: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	if bal := f.balance(t, f.mAlice.ID, f.mBob.ID); !approx(bal, 0) {
+		t.Errorf("running balance after reimbursement = %.2f, want 0", bal)
+	}
+	if sa := f.splitFor(t, big, f.mBob.ID).SettledAmount; !approx(sa, 0) {
+		t.Errorf("an ordinary settlement must not touch the long-term debt, got settled=%.2f", sa)
+	}
+}
+
+func TestLongTermDebt_OrdinarySettlementCannotSweepIt(t *testing.T) {
+	f := setupMoneyFixture(t)
+	big := f.createSplitExpense(t, 100000, []uint{f.mBob.ID})
+	f.markLongTermDebt(t, big)
+
+	// Nothing is outstanding in the running balance, so there is nothing to pay.
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 50000.0, "date": "2026-05-05",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("untargeted settlement covering a long-term debt: status %d, want 400 (body %s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestLongTermDebt_TargetedPaymentReducesOnlyThatDebt(t *testing.T) {
+	f := setupMoneyFixture(t)
+	big := f.createSplitExpense(t, 100000, []uint{f.mBob.ID})
+	f.markLongTermDebt(t, big)
+	groceries := f.createSplitExpenseBy(t, f.bobTok, f.mBob.ID, 100, []uint{f.mAlice.ID})
+
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 500.0, "date": "2026-05-05", "target_expense_id": big,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("targeted debt payment: status %d, body %s", rec.Code, rec.Body.String())
+	}
+
+	if sa := f.splitFor(t, big, f.mBob.ID).SettledAmount; !approx(sa, 500) {
+		t.Errorf("debt settled amount = %.2f, want 500", sa)
+	}
+	if sa := f.splitFor(t, groceries, f.mAlice.ID).SettledAmount; !approx(sa, 0) {
+		t.Errorf("a targeted debt payment must not touch ordinary shares, got settled=%.2f", sa)
+	}
+	if bal := f.balance(t, f.mAlice.ID, f.mBob.ID); !approx(bal, -50) {
+		t.Errorf("running balance = %.2f, want -50 (still owed for the groceries)", bal)
+	}
+}
+
+func TestLongTermDebt_TargetedPaymentExceedingRemainder_Returns400(t *testing.T) {
+	f := setupMoneyFixture(t)
+	big := f.createSplitExpense(t, 100000, []uint{f.mBob.ID})
+	f.markLongTermDebt(t, big)
+
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 60000.0, "date": "2026-05-05", "target_expense_id": big,
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("overpaying a debt: status %d, want 400 (body %s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCompensation_TurnsACreditIntoDebtRepayment(t *testing.T) {
+	f := setupMoneyFixture(t)
+	big := f.createSplitExpense(t, 100000, []uint{f.mBob.ID}) // Bob owes Alice 50.000
+	f.markLongTermDebt(t, big)
+	groceries := f.createSplitExpenseBy(t, f.bobTok, f.mBob.ID, 100, []uint{f.mAlice.ID}) // Alice owes Bob 50
+	source := f.splitFor(t, groceries, f.mAlice.ID)
+
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements/compensate", f.bobTok, map[string]any{
+		"property_id": f.prop.ID, "source_split_id": source.ID, "target_expense_id": big,
+		"date": "2026-05-06",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("compensation: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var settlement models.Settlement
+	if err := json.Unmarshal(rec.Body.Bytes(), &settlement); err != nil {
+		t.Fatalf("decode settlement: %v", err)
+	}
+	if !approx(settlement.Amount, 50) {
+		t.Errorf("compensation amount = %.2f, want 50 (capped by the credit)", settlement.Amount)
+	}
+
+	if !f.splitFor(t, groceries, f.mAlice.ID).IsSettled {
+		t.Error("the credit that funded the compensation must be settled")
+	}
+	if sa := f.splitFor(t, big, f.mBob.ID).SettledAmount; !approx(sa, 50) {
+		t.Errorf("debt settled amount = %.2f, want 50", sa)
+	}
+	if bal := f.balance(t, f.mAlice.ID, f.mBob.ID); !approx(bal, 0) {
+		t.Errorf("running balance after compensation = %.2f, want 0", bal)
+	}
+
+	// Reversing it restores both sides, not just the debt.
+	del := doJSON(t, f.router, http.MethodDelete, "/settlements/"+itoa(settlement.ID), f.bobTok, nil)
+	if del.Code != http.StatusOK {
+		t.Fatalf("delete compensation: status %d, body %s", del.Code, del.Body.String())
+	}
+	if f.splitFor(t, groceries, f.mAlice.ID).IsSettled {
+		t.Error("the funding credit must be owed again after reversing the compensation")
+	}
+	if sa := f.splitFor(t, big, f.mBob.ID).SettledAmount; !approx(sa, 0) {
+		t.Errorf("debt settled amount after reversal = %.2f, want 0", sa)
+	}
+}
+
+func TestLongTermDebt_FlagBlockedOnceMoneyMoved(t *testing.T) {
+	f := setupMoneyFixture(t)
+	id := f.createSplitExpense(t, 100000, []uint{f.mBob.ID})
+
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 500.0, "date": "2026-05-05",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("partial settlement: status %d, body %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doJSON(t, f.router, http.MethodPatch, "/expenses/"+itoa(id)+"/long-term-debt", f.aliceTok,
+		map[string]any{"is_long_term_debt": true})
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("flagging an already part-paid expense: status %d, want 409 (body %s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestDebts_ListReportsRemainderAndPayments(t *testing.T) {
+	f := setupMoneyFixture(t)
+	big := f.createSplitExpense(t, 100000, []uint{f.mBob.ID})
+	f.markLongTermDebt(t, big)
+
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 500.0, "date": "2026-05-05", "target_expense_id": big,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("targeted debt payment: status %d, body %s", rec.Code, rec.Body.String())
+	}
+
+	// Bob's view: he is the debtor.
+	got := doGET(t, f.router, "/properties/"+itoa(f.prop.ID)+"/debts?other_member_id="+itoa(f.mAlice.ID), f.bobTok)
+	if got.Code != http.StatusOK {
+		t.Fatalf("list debts: status %d, body %s", got.Code, got.Body.String())
+	}
+	var resp DebtsResponse
+	if err := json.Unmarshal(got.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode debts: %v", err)
+	}
+	if len(resp.Debts) != 1 {
+		t.Fatalf("expected 1 debt, got %d", len(resp.Debts))
+	}
+	d := resp.Debts[0]
+	if !d.IOwe {
+		t.Error("Bob must be reported as the debtor")
+	}
+	if !approx(d.Remaining, 49500) {
+		t.Errorf("remaining = %.2f, want 49500", d.Remaining)
+	}
+	if !approx(resp.TotalIOwe, 49500) {
+		t.Errorf("total owed = %.2f, want 49500", resp.TotalIOwe)
+	}
+	if len(d.Payments) != 1 || !approx(d.Payments[0].Amount, 500) {
+		t.Errorf("expected one 500 payment in the debt history, got %+v", d.Payments)
 	}
 }
 

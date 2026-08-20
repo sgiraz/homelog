@@ -100,6 +100,8 @@ export const expensesAPI = {
   update: (id, data) => apiClient.put(`/expenses/${id}`, data),
   delete: (id) => apiClient.delete(`/expenses/${id}`),
   stats: (params) => apiClient.get('/expenses/stats', { params }),
+  setLongTermDebt: (id, isLongTermDebt) =>
+    apiClient.patch(`/expenses/${id}/long-term-debt`, { is_long_term_debt: isLongTermDebt }),
 }
 
 export const categoriesAPI = {
@@ -126,10 +128,15 @@ export const settingsAPI = {
 export const balanceAPI = {
   get: (propertyId) => apiClient.get(`/properties/${propertyId}/balance`),
   details: (propertyId) => apiClient.get(`/properties/${propertyId}/balance/details`),
+  debts: (propertyId, otherMemberId) =>
+    apiClient.get(`/properties/${propertyId}/debts`, {
+      params: otherMemberId ? { other_member_id: otherMemberId } : {},
+    }),
 }
 
 export const settlementsAPI = {
   create: (data) => apiClient.post('/settlements', data),
+  compensate: (data) => apiClient.post('/settlements/compensate', data),
   list: (propertyId) => apiClient.get('/settlements', { params: { property_id: propertyId } }),
 }
 

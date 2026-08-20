@@ -251,8 +251,11 @@ const waterExtraFields = computed(() => [
   { key: 'previous_estimated_consumption', label: t('utilities.templateWizard.fields.previous_estimated_consumption_mc'), required: false }
 ])
 
+// Metered services, per Utility.IsMetered — waste (TARI) is fixed-cost, so its
+// period_end comes from the service's billing frequency like the other fixed
+// services (see inferMissingPeriodDate in PDFUploadZone).
 const isMeteredTemplateType = computed(() => {
-  return ['electricity', 'gas', 'water', 'waste'].includes(template.value.utility_type)
+  return ['electricity', 'gas', 'water'].includes(template.value.utility_type)
 })
 
 const extractionFields = computed(() => {

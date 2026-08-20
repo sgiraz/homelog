@@ -51,11 +51,11 @@ func (h *UtilityHandler) detectPriceChange(utility *models.Utility, newBill *mod
 	}
 
 	change := models.PriceChange{
-		UtilityID:    utility.ID,
+		UtilityID:     utility.ID,
 		EffectiveDate: newBill.PeriodStart,
-		OldAmount:    prevBill.AmountTotal,
-		NewAmount:    newBill.AmountTotal,
-		SourceBillID: &newBill.ID,
+		OldAmount:     prevBill.AmountTotal,
+		NewAmount:     newBill.AmountTotal,
+		SourceBillID:  &newBill.ID,
 	}
 
 	if err := h.db.Create(&change).Error; err != nil {
@@ -246,6 +246,7 @@ func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *mod
 				IsSettled: mid == payerMember.ID,
 			}
 			if split.IsSettled {
+				split.SettledAmount = splitAmount
 				split.SettledAt = &now
 			}
 			h.db.Create(&split)

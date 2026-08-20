@@ -309,7 +309,7 @@ const { t } = useI18n()
 const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 
-const isMetered = computed(() => ['electricity', 'gas', 'water'].includes(props.utility?.type))
+const isMetered = computed(() => props.utility?.is_metered === true)
 const isEditing = computed(() => !!props.bill)
 const isInstallmentBased = computed(() => !!props.utility?.is_installment_based)
 const isLocked = computed(() => !!props.bill?.is_locked)

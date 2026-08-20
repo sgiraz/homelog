@@ -148,7 +148,7 @@
       />
 
       <!-- Allows Self Reading -->
-      <div v-if="isMetered && form.type !== 'waste'" class="flex items-center gap-3 p-3 bg-surface rounded-lg">
+      <div v-if="isMetered" class="flex items-center gap-3 p-3 bg-surface rounded-lg">
         <input
           type="checkbox"
           id="edit-allows-self-reading"
@@ -166,7 +166,7 @@
       </div>
 
       <!-- Comparison Threshold -->
-      <div v-if="isMetered && form.type !== 'waste'" class="p-3 bg-surface rounded-lg">
+      <div v-if="isMetered" class="p-3 bg-surface rounded-lg">
         <div class="flex items-center justify-between">
           <div>
             <label for="edit-comparison-threshold" class="text-sm font-medium text-ink">
@@ -195,7 +195,7 @@
       </div>
 
       <!-- Threshold per Day -->
-      <div v-if="isMetered && form.type !== 'waste'" class="p-3 bg-surface rounded-lg">
+      <div v-if="isMetered" class="p-3 bg-surface rounded-lg">
         <div class="flex items-center justify-between">
           <div>
             <label for="edit-threshold-per-day" class="text-sm font-medium text-ink">
@@ -302,7 +302,7 @@
             <div class="text-xs text-ink-muted">{{ t('utilities.addUtilityModal.domiciledHint') }}</div>
           </div>
         </label>
-        <label class="flex items-start gap-3 cursor-pointer">
+        <label v-if="form.type !== 'mutuo'" class="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
             v-model="form.is_installment_based"
@@ -458,7 +458,8 @@ const allTypes = computed(() => [
   { value: 'electricity', label: typeLabel('electricity'), icon: '⚡', metered: true },
   { value: 'gas', label: typeLabel('gas'), icon: '🔥', metered: true },
   { value: 'water', label: typeLabel('water'), icon: '💧', metered: true },
-  { value: 'waste', label: typeLabel('waste'), icon: '♻️', metered: true },
+  // waste (TARI) is billed on surface area, not on a meter — see Utility.IsMetered.
+  { value: 'waste', label: typeLabel('waste'), icon: '♻️', metered: false },
   { value: 'internet', label: typeLabel('internet'), icon: '🌐', metered: false },
   { value: 'insurance', label: typeLabel('insurance'), icon: '🛡️', metered: false },
   { value: 'affitto', label: typeLabel('affitto'), icon: '🏠', metered: false },

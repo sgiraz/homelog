@@ -197,6 +197,7 @@ func main() {
 				expenses.PUT("/:id", expHandler.Update)
 				expenses.DELETE("/:id", expHandler.Delete)
 				expenses.GET("/stats", expHandler.GetStats)
+				expenses.PATCH("/:id/long-term-debt", handlers.NewDebtHandler(db).SetLongTermDebt)
 			}
 
 			// Centralized communications (across all utilities)
@@ -330,6 +331,10 @@ func main() {
 			properties.GET("/:id/balance", balanceHandler.GetBalance)
 			properties.GET("/:id/balance/details", balanceHandler.GetBalanceDetails)
 
+			// Long-term debts (per property) - kept out of the running balance
+			debtHandler := handlers.NewDebtHandler(db)
+			properties.GET("/:id/debts", debtHandler.List)
+
 			// Household settings (per property) - nested under properties
 			properties.GET("/:id/settings", settingsHandler.GetHouseholdSettings)
 			properties.PUT("/:id/settings", settingsHandler.UpdateHouseholdSettings)
@@ -360,6 +365,7 @@ func main() {
 				settlementHandler := handlers.NewSettlementHandler(db)
 				settlements.GET("", settlementHandler.List)
 				settlements.POST("", settlementHandler.Create)
+				settlements.POST("/compensate", settlementHandler.Compensate)
 				settlements.GET("/:id", settlementHandler.Get)
 				settlements.DELETE("/:id", settlementHandler.Delete)
 			}

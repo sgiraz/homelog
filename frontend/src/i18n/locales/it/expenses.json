@@ -3,7 +3,8 @@
   "addButton": "Aggiungi Spesa",
   "tabs": {
     "list": "Lista",
-    "balance": "Bilancio"
+    "balance": "Bilancio",
+    "debts": "Debiti"
   },
   "filters": {
     "filtersLabel": "Filtri",

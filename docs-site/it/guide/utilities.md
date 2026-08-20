@@ -5,8 +5,19 @@ Questa pagina è una bozza. Screenshot e procedure passo-passo sono in arrivo.
 :::
 
 Un'**utenza** è un servizio legato alla tua casa — luce, gas, acqua e così via.
-Ogni utenza tiene le proprie letture del contatore, le bollette e lo storico dei
-consumi.
+Ogni utenza tiene le proprie bollette e — se ha un contatore — le letture e lo
+storico dei consumi.
+
+## Servizi a consumo e servizi fissi
+
+Il tipo di servizio decide come HomeLog lo tratta:
+
+- **A consumo** — luce, gas e acqua. Hanno le schede **Letture** e **Analisi**, e
+  il consumo viene tracciato tra una bolletta e l'altra.
+- **A costo fisso** — rifiuti (la TARI si calcola sulla superficie, non sul
+  consumo), internet, assicurazione, affitto e mutuo. Al posto delle letture
+  hanno la scheda **Storico prezzi**, che registra ogni variazione di importo da
+  una bolletta alla successiva.
 
 ## Letture del contatore
 

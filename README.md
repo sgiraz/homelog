@@ -43,8 +43,9 @@
 ## Features
 
 - **Expense Tracking** with categories, subcategories, and project-based budgets
-- **Expense Splitting** between household members with automatic balance and settlement tracking
-- **Utilities Management** for electricity, gas, water — meter readings, bills, consumption analysis
+- **Expense Splitting** between household members, with partial settlements and an always-accurate running balance
+- **Long-Term Debts** — take an outsized expense (a mortgage down payment) out of the balance and repay it on its own schedule, in payments or by offsetting a credit
+- **Utilities Management** — metered services (electricity, gas, water) with readings and consumption analysis, fixed-cost ones (waste, internet, insurance, rent, mortgage) with price history
 - **PDF Bill Templates** with drag-and-drop field extraction wizard
 - **Global Search** with full-text search (FTS5) across expenses, bills, utilities, and projects
 - **Multi-Currency** support — per-expense and per-utility currency with live exchange rates

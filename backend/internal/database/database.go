@@ -88,6 +88,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.HouseholdSettings{},
 		&models.ExpenseSplit{},
 		&models.Settlement{},
+		&models.SettlementAllocation{},
 		&models.BillTemplate{},
 		&models.ContractTemplate{},
 		&models.ExpenseTemplate{},
@@ -102,12 +103,36 @@ func AutoMigrate(db *gorm.DB) error {
 	// Data migration: set default role for existing project members
 	db.Exec(`UPDATE project_members SET role = 'member' WHERE role IS NULL OR role = ''`)
 
-	// Data migration: ensure is_metered is set correctly for existing utilities (force, not just NULL)
-	db.Exec(`UPDATE utilities SET is_metered = 1 WHERE type IN ('electricity', 'gas', 'water', 'waste')`)
-	db.Exec(`UPDATE utilities SET is_metered = 0 WHERE type IN ('internet', 'insurance', 'affitto', 'mutuo')`)
+	// Data migration: mark existing metered services. Guarded, because this runs
+	// on every start: unguarded it would discard an explicit is_metered=false,
+	// which a metered service is allowed to carry (a flat-rate water contract).
+	runOnce(db, "2026-08-utility-metered-classification", func(tx *gorm.DB) error {
+		return tx.Exec(`UPDATE utilities SET is_metered = 1 WHERE type IN ('electricity', 'gas', 'water')`).Error
+	})
+
+	// Not guarded, unlike the backfill above: for a fixed-cost type is_metered=0
+	// is an invariant rather than a user choice — there is no meter on a mortgage
+	// or a TARI bill, so re-asserting it every boot cannot discard anything the
+	// user picked. It self-heals rows written by a build that still took
+	// is_metered from the client (see handlers.UtilityHandler.Create).
+	db.Exec(`UPDATE utilities SET is_metered = 0 WHERE type IN ? AND is_metered = 1`, models.FixedCostTypes())
 	// Default billing frequency for existing utilities
 	db.Exec(`UPDATE utilities SET billing_interval = 1 WHERE billing_interval IS NULL OR billing_interval = 0`)
 	db.Exec(`UPDATE utilities SET billing_unit = 'month' WHERE billing_unit IS NULL OR billing_unit = ''`)
+
+	// Data migration: backfill SettledAmount for splits settled before the
+	// partial-settlement ledger existed (SettledAmount added as a new column,
+	// defaults to 0 for all pre-existing rows).
+	db.Exec(`UPDATE expense_splits SET settled_amount = amount WHERE is_settled = 1 AND settled_amount = 0`)
+	// Backfill settlement_allocations for legacy fully-settled splits so a
+	// future partial reversal of an old settlement has ledger detail to work
+	// with instead of an orphaned SettlementID. Idempotent: skips splits that
+	// already have an allocation row.
+	db.Exec(`INSERT INTO settlement_allocations (settlement_id, expense_split_id, amount, created_at)
+		SELECT settlement_id, id, amount, COALESCE(settled_at, CURRENT_TIMESTAMP)
+		FROM expense_splits
+		WHERE is_settled = 1 AND settlement_id IS NOT NULL
+		AND id NOT IN (SELECT expense_split_id FROM settlement_allocations)`)
 
 	// Data migration: ensure property owners have admin role on their HouseholdMember
 	// This backfills existing databases where HouseholdMember.Role was not set to "admin"
@@ -173,6 +198,41 @@ func AutoMigrate(db *gorm.DB) error {
 
 	log.Println("✅ Database migrations completed")
 	return nil
+}
+
+// runOnce runs fn the first time it is called for key, then records key in
+// applied_migrations so later boots skip it. Data fixes that overwrite a value
+// the user can set belong here: replayed on every start they silently revert
+// the user's choice. Failures are logged, not fatal — the key stays unrecorded
+// so the next start retries.
+func runOnce(db *gorm.DB, key string, fn func(tx *gorm.DB) error) {
+	if err := db.Exec(`CREATE TABLE IF NOT EXISTS applied_migrations (
+		key TEXT PRIMARY KEY,
+		applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`).Error; err != nil {
+		log.Printf("⚠️  migration %s skipped: %v", key, err)
+		return
+	}
+
+	var applied int64
+	if err := db.Raw(`SELECT COUNT(*) FROM applied_migrations WHERE key = ?`, key).Scan(&applied).Error; err != nil {
+		log.Printf("⚠️  migration %s skipped: %v", key, err)
+		return
+	}
+	if applied > 0 {
+		return
+	}
+
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		if err := fn(tx); err != nil {
+			return err
+		}
+		return tx.Exec(`INSERT INTO applied_migrations (key) VALUES (?)`, key).Error
+	}); err != nil {
+		log.Printf("⚠️  migration %s failed: %v", key, err)
+		return
+	}
+	log.Printf("✅ migration %s applied", key)
 }
 
 // backfillPriceChanges scans existing bills of fixed-cost services and creates

@@ -216,7 +216,7 @@
       />
 
       <!-- Allows Self Reading -->
-      <div v-if="isMetered && form.type !== 'waste'" class="flex items-center gap-3 p-3 bg-surface rounded-lg">
+      <div v-if="isMetered" class="flex items-center gap-3 p-3 bg-surface rounded-lg">
         <input
           type="checkbox"
           id="allows-self-reading"
@@ -234,7 +234,7 @@
       </div>
 
       <!-- Comparison Threshold -->
-      <div v-if="isMetered && form.type !== 'waste'" class="p-3 bg-surface rounded-lg">
+      <div v-if="isMetered" class="p-3 bg-surface rounded-lg">
         <div class="flex items-center justify-between">
           <div>
             <label for="comparison-threshold" class="text-sm font-medium text-ink">
@@ -342,7 +342,7 @@
             <div class="text-xs text-ink-muted">{{ t('utilities.addUtilityModal.domiciledHint') }}</div>
           </div>
         </label>
-        <label class="flex items-start gap-3 cursor-pointer">
+        <label v-if="form.type !== 'mutuo'" class="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
             v-model="form.is_installment_based"
@@ -467,10 +467,11 @@ const meteredTypes = computed(() => [
   { value: 'electricity', label: typeLabel('electricity'), icon: '⚡', iconClass: 'text-yellow-500', metered: true },
   { value: 'gas', label: typeLabel('gas'), icon: '🔥', iconClass: 'text-orange-500', metered: true },
   { value: 'water', label: typeLabel('water'), icon: '💧', iconClass: 'text-blue-500', metered: true },
-  { value: 'waste', label: typeLabel('waste'), icon: '♻️', iconClass: 'text-green-500', metered: true },
 ])
 
 const fixedTypes = computed(() => [
+  // waste (TARI) is billed on surface area, not on a meter — see Utility.IsMetered.
+  { value: 'waste', label: typeLabel('waste'), icon: '♻️', iconClass: 'text-green-500', metered: false },
   { value: 'internet', label: typeLabel('internet'), icon: '🌐', iconClass: 'text-indigo-500', metered: false },
   { value: 'insurance', label: typeLabel('insurance'), icon: '🛡️', iconClass: 'text-emerald-500', metered: false },
   { value: 'affitto', label: typeLabel('affitto'), icon: '🏠', iconClass: 'text-purple-500', metered: false },
@@ -514,9 +515,22 @@ const frequencyPreview = computed(() => {
     : t('utilities.addUtilityModal.frequencyPreviewPlural', { n, unit: word })
 })
 
+// Always set the type through this: the payload carries is_metered alongside
+// type, so assigning form.type on its own submits the PREVIOUS type's metering
+// — which is how a mutuo reached the API with is_metered=true.
+function applyType(value) {
+  const known = [...meteredTypes.value, ...fixedTypes.value].find(t => t.value === value)
+  form.value.type = value
+  form.value.is_metered = known?.metered ?? false
+}
+
 function selectType(type) {
-  form.value.type = type.value
-  form.value.is_metered = type.metered
+  applyType(type.value)
+  // A mortgage isn't "one bill split into installments" (installmentsHint) —
+  // it already generates one bill per billing period on its own.
+  if (type.value === 'mutuo') {
+    form.value.is_installment_based = false
+  }
 }
 
 const form = ref({
@@ -588,16 +602,16 @@ async function processFile(file) {
       if (data.service_code) {
         form.value.service_code = data.service_code
         if (data.service_code.startsWith('IT') && data.service_code.includes('E')) {
-          form.value.type = 'electricity'
+          applyType('electricity')
         } else if (/^\d+$/.test(data.service_code)) {
-          form.value.type = 'gas'
+          applyType('gas')
         }
       }
       if (data.customer_code) form.value.customer_code = data.customer_code
       if (data.address) form.value.address = data.address
       if (data.power_capacity) {
         form.value.power_capacity = parseFloat(data.power_capacity.replace(',', '.'))
-        form.value.type = 'electricity'
+        applyType('electricity')
       }
     }
   } catch (err) {
