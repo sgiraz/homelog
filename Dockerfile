@@ -13,6 +13,10 @@ RUN APP_VERSION=${APP_VERSION} npm run build
 # Use BUILDPLATFORM so Go compiles natively (no QEMU emulation)
 FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS backend-builder
 ARG TARGETOS TARGETARCH
+# ARG scope is per-stage: without re-declaring it here, ${APP_VERSION} below
+# expands to empty and the binary ships with no version at all — which makes
+# the in-app update check silently report "up to date" forever.
+ARG APP_VERSION=dev
 RUN apk add --no-cache git
 WORKDIR /build
 COPY backend/go.mod backend/go.sum ./

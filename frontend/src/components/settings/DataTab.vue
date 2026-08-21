@@ -40,6 +40,21 @@
             </div>
           </div>
         </div>
+        <!-- The server could not compare: GitHub unreachable, or this build
+             carries no version. Not the same thing as being up to date. -->
+        <div v-else-if="updateResult.check_failed" class="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+          <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          <div>
+            <div class="text-sm font-medium text-amber-800 dark:text-amber-200">
+              {{ t('settings.data.checkUnavailable') }}
+            </div>
+            <div class="text-xs text-amber-700 dark:text-amber-300 mt-1">
+              {{ t('settings.data.checkUnavailableHint') }}
+            </div>
+          </div>
+        </div>
         <div v-else class="flex items-center gap-2 p-3 bg-surface rounded-lg">
           <svg class="w-5 h-5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />

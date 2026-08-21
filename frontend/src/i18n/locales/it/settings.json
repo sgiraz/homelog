@@ -225,6 +225,8 @@
     "viewChangelog": "Vedi le novità",
     "updateInstructions": "Per aggiornare:",
     "upToDate": "Sei aggiornato alla versione più recente.",
+    "checkUnavailable": "Impossibile verificare gli aggiornamenti.",
+    "checkUnavailableHint": "Questa istanza non è riuscita a contattare GitHub, oppure è stata compilata senza numero di versione, quindi non può sapere se esiste una release più recente.",
     "checkError": "Impossibile verificare gli aggiornamenti. Riprova più tardi.",
     "backupTitle": "Backup & Dati",
     "exportTitle": "Esporta Dati",

@@ -19,8 +19,17 @@ import (
 	"github.com/sgiraz/homelog/internal/middleware"
 )
 
-// appVersion is set at build time via -ldflags "-X main.appVersion=..."
+// appVersion is set at build time via -ldflags "-X main.appVersion=...".
+// An -X flag with an empty value overwrites the default with "", so treat that
+// the same as an unversioned build instead of letting it reach the CalVer
+// comparison, where it parses as garbage and mutes the update check.
 var appVersion = "dev"
+
+func init() {
+	if strings.TrimSpace(appVersion) == "" {
+		appVersion = "dev"
+	}
+}
 
 var startTime = time.Now()
 
@@ -125,13 +134,16 @@ func main() {
 		// Version check (public, no auth required)
 		v1.GET("/version", func(c *gin.Context) {
 			latest, latestURL := getLatestRelease()
-			updateAvailable := false
-			if latest != "" && appVersion != "dev" && isVersionNewer(latest, appVersion) {
-				updateAvailable = true
-			}
+			// The comparison concludes anything only when both ends are known:
+			// the latest published release and the version this binary was
+			// built as. When either is missing the answer is "don't know" —
+			// reporting it as "up to date" hides real updates from the user.
+			checkFailed := latest == "" || appVersion == "dev"
+			updateAvailable := !checkFailed && isVersionNewer(latest, appVersion)
 			resp := gin.H{
 				"current":          appVersion,
 				"update_available": updateAvailable,
+				"check_failed":     checkFailed,
 				"demo_mode":        database.IsDemoMode(),
 			}
 			if latest != "" {
@@ -476,7 +488,7 @@ func getLatestRelease() (tag string, url string) {
 		return cachedLatest, cachedLatestURL
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Get("https://api.github.com/repos/sgiraz/homelog/releases/latest")
 	if err != nil {
 		log.Printf("⚠️  Failed to check GitHub releases: %v", err)
@@ -485,6 +497,9 @@ func getLatestRelease() (tag string, url string) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
+		// Worth a line: a 403 here is GitHub's unauthenticated rate limit
+		// (60 req/h per IP), which is otherwise invisible from the UI.
+		log.Printf("⚠️  GitHub release check returned HTTP %d", resp.StatusCode)
 		return cachedLatest, cachedLatestURL
 	}
 

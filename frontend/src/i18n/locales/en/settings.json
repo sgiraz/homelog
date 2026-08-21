@@ -225,6 +225,8 @@
     "viewChangelog": "What's new",
     "updateInstructions": "To update:",
     "upToDate": "You are on the latest version.",
+    "checkUnavailable": "Could not check for updates.",
+    "checkUnavailableHint": "This instance could not reach GitHub, or was built without a version number, so it cannot tell whether a newer release exists.",
     "checkError": "Unable to check for updates. Please try again later.",
     "backupTitle": "Backup & Data",
     "exportTitle": "Export Data",
