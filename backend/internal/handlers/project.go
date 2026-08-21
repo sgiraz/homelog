@@ -282,7 +282,6 @@ func (h *ProjectHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Reload with associations
 	h.db.Preload("SharedWith").Preload("Members").Preload("Members.User").First(&project, project.ID)
 
 	var creator models.User
@@ -409,7 +408,6 @@ func (h *ProjectHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Reload with associations
 	h.db.Preload("SharedWith").Preload("Members").Preload("Members.User").First(&project, project.ID)
 
 	var creator models.User

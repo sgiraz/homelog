@@ -269,7 +269,6 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Load relations
 	h.db.Preload("Property").First(&utility, utility.ID)
 
 	c.JSON(http.StatusCreated, utility)
@@ -534,7 +533,6 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Reload with relations
 	h.db.Preload("Property").
 		Preload("PaidByMember").
 		Preload("DefaultBillTemplate").

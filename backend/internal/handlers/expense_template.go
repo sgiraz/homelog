@@ -76,7 +76,6 @@ func (h *ExpenseTemplateHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Reload with relations
 	h.db.Preload("Category").Preload("Subcategory").Preload("Project").First(&template, template.ID)
 
 	log.Printf("Expense template created: ID=%d, Name=%s", template.ID, template.Name)

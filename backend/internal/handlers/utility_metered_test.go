@@ -12,14 +12,14 @@ import (
 	"github.com/sgiraz/homelog/internal/testutil"
 )
 
-// createUtilityFixture wires just POST /utilities against a property the user
-// owns, which is all these cases need.
 type utilityFixture struct {
 	router *gin.Engine
 	prop   models.Property
 	token  string
 }
 
+// setupUtilityFixture wires just POST /utilities against a property the user
+// owns, which is all these cases need.
 func setupUtilityFixture(t *testing.T) *utilityFixture {
 	t.Helper()
 	t.Setenv("JWT_SECRET", testutil.TestJWTSecret)

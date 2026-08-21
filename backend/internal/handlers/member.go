@@ -53,7 +53,6 @@ func (h *MemberHandler) List(c *gin.Context) {
 		return
 	}
 
-	// Parse property ID
 	propertyIDStr := c.Param("id")
 	propertyID, err := strconv.ParseUint(propertyIDStr, 10, 32)
 	if err != nil {
@@ -153,7 +152,6 @@ func (h *MemberHandler) Get(c *gin.Context) {
 		return
 	}
 
-	// Parse member ID
 	memberIDStr := c.Param("id")
 	memberID, err := strconv.ParseUint(memberIDStr, 10, 32)
 	if err != nil {
@@ -193,7 +191,6 @@ func (h *MemberHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Parse member ID
 	memberIDStr := c.Param("id")
 	memberID, err := strconv.ParseUint(memberIDStr, 10, 32)
 	if err != nil {
@@ -221,7 +218,6 @@ func (h *MemberHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Update fields
 	if req.Name != "" {
 		member.Name = req.Name
 	}
@@ -252,7 +248,6 @@ func (h *MemberHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Parse member ID
 	memberIDStr := c.Param("id")
 	memberID, err := strconv.ParseUint(memberIDStr, 10, 32)
 	if err != nil {

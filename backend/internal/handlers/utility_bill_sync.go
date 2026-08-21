@@ -21,10 +21,6 @@ func (h *UtilityHandler) deleteExpenseForInstallment(inst *models.BillInstallmen
 	log.Printf("🗑️  Auto-deleted expense ID=%d linked to installment ID=%d", linked.ID, inst.ID)
 }
 
-// autoCreateExpenseFromBill creates an expense automatically when a bill is marked as paid.
-// Split logic: uses the paying user's default_split_with_member_ids setting.
-// If no default split configured, expense is created without split.
-// All split members (payer included) get is_settled=false.
 // detectPriceChange compares the new bill's amount with the previous bill
 // and creates a PriceChange record if the amount differs.
 func (h *UtilityHandler) detectPriceChange(utility *models.Utility, newBill *models.Bill) {

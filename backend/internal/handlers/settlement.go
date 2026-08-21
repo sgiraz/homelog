@@ -125,7 +125,6 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Parse date
 	date, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format. Use YYYY-MM-DD"})
@@ -192,10 +191,8 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Start transaction
 	tx := h.db.Begin()
 
-	// Create Settlement record
 	settlement := models.Settlement{
 		PropertyID:      req.PropertyID,
 		FromMemberID:    req.FromMemberID,
@@ -247,14 +244,12 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 
 	log.Printf("✅ SETTLEMENT: Allocated %.2f across %d splits", req.Amount-remaining, touched)
 
-	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
 		log.Printf("ERROR committing transaction: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete settlement"})
 		return
 	}
 
-	// Reload with relations
 	h.db.Preload("FromMember").Preload("ToMember").First(&settlement, settlement.ID)
 
 	c.JSON(http.StatusCreated, settlement)
@@ -269,7 +264,6 @@ func (h *SettlementHandler) List(c *gin.Context) {
 		return
 	}
 
-	// Get property_id from query
 	propertyIDStr := c.Query("property_id")
 	if propertyIDStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "property_id is required"})
@@ -404,7 +398,6 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Start transaction
 	tx := h.db.Begin()
 
 	// Reverse only this settlement's own allocations — a split may have
@@ -475,7 +468,6 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Delete settlement
 	if err := tx.Delete(&settlement).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete settlement"})

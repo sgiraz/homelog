@@ -167,9 +167,9 @@ func AutoMigrate(db *gorm.DB) error {
 	}
 
 	// Data migration: fix payer splits for bill-originated expenses.
-	// Earlier versions of autoCreateExpenseFromBill created the payer's own split with
-	// is_settled=false, which blocked the "fully settled" status after a Settlement run
-	// (the payer split is excluded from Salda queries by design).
+	// Earlier versions of the bill → expense auto-creation left the payer's own
+	// split at is_settled=false, which blocked the "fully settled" status after
+	// a Settlement run (the payer split is excluded from Salda queries by design).
 	db.Exec(`UPDATE expense_splits
 		SET is_settled = 1, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP)
 		WHERE is_settled = 0

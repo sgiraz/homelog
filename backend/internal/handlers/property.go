@@ -196,7 +196,6 @@ func (h *PropertyHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Build updates map
 	updates := make(map[string]any)
 
 	if req.Name != nil {
@@ -226,7 +225,6 @@ func (h *PropertyHandler) Update(c *gin.Context) {
 		}
 	}
 
-	// Reload property
 	h.db.First(&property, id)
 
 	c.JSON(http.StatusOK, property)

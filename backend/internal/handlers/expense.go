@@ -150,7 +150,6 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 		query = query.Where("is_split = ? AND EXISTS (SELECT 1 FROM expense_splits WHERE expense_splits.expense_id = expenses.id AND expense_splits.is_settled = ?)", true, false)
 	}
 
-	// Pagination
 	limit := 50
 	offset := 0
 	if l := c.Query("limit"); l != "" {
@@ -235,7 +234,6 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// LOG REQUEST DATA
 	log.Printf("📝 EXPENSE CREATE REQUEST:")
 	log.Printf("   UserID: %d", userID)
 	log.Printf("   Amount: %.2f", req.Amount)
@@ -246,7 +244,6 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 	log.Printf("   IsSplit: %t", req.IsSplit)
 	log.Printf("   SplitWithMemberIDs: %v", req.SplitWithMemberIDs)
 
-	// Parse date
 	date, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format. Use YYYY-MM-DD"})
@@ -304,7 +301,6 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		}
 	}
 
-	// Start transaction
 	tx := h.db.Begin()
 
 	expense := models.Expense{
@@ -383,7 +379,6 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		log.Printf("ℹ️  No split requested (IsSplit=%t, SplitWithMemberIDs count=%d)", req.IsSplit, len(req.SplitWithMemberIDs))
 	}
 
-	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
 		log.Printf("❌ EXPENSE CREATE: Transaction commit failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save expense"})
@@ -412,7 +407,6 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		}
 	}
 
-	// Reload with relations
 	h.db.Preload("Category").
 		Preload("Property").
 		Preload("Subcategory").
@@ -515,7 +509,6 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Build updates map
 	updates := make(map[string]any)
 
 	// Guardrail for split-amount propagation: reject if any non-payer split has
@@ -637,7 +630,6 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 		}
 	}
 
-	// Reload with relations
 	h.db.Preload("Category").
 		Preload("Property").
 		Preload("Subcategory").

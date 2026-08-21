@@ -13,7 +13,8 @@ import (
 // Demo account credentials. The demo environment exposes a single shared
 // account; the password is intentionally trivial because the whole dataset is
 // wiped on a schedule (see ResetDemoData). NEVER enable DEMO_MODE in a real
-// deployment — it disables destructive-operation guards by design.
+// deployment: it seeds this shared account with a published password and
+// erases every row on each reset.
 const (
 	DemoEmail    = "demo@homelog.app"
 	DemoPassword = "demo"

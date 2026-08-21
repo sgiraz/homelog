@@ -1,17 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Color-theme registry — the single source of truth for the theme LIST.
 //
-// To add or remove a theme you touch exactly TWO places:
-//   1) its palette block in `src/assets/styles/main.css`  ([data-theme="id"])
-//   2) one entry here (id + 3 preview-swatch colors)
+// Adding or removing a theme touches exactly two places: its palette block in
+// `src/assets/styles/main.css` ([data-theme="id"], or :root/.dark for the
+// default) and one entry here. The picker, the settings store, validation and
+// the anti-flash snippet in index.html all derive from this list.
 //
-// Everything else — the picker, the settings store, validation, the default,
-// and the anti-flash snippet in index.html — derives from this list, so no
-// other file needs editing.
-//
-// `swatch` is [light canvas, dark canvas, accent] hexes for the picker
-// preview — showing both backgrounds makes warm vs cool themes obvious at a
-// glance. The real palettes live in main.css.
+// `swatch` is [light canvas, dark canvas, accent] hexes for the picker preview
+// — showing both backgrounds makes warm vs cool obvious at a glance. Changing
+// the DEFAULT theme's swatch also means updating the theme-color metas in
+// index.html, which hardcode it.
 // ─────────────────────────────────────────────────────────────────────────
 export const THEMES = [
   { id: 'paper',  swatch: ['#FBF6EC', '#1A1612', '#D9531E'] },

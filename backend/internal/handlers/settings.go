@@ -263,7 +263,6 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 		settings.OnboardingCompleted = *req.OnboardingCompleted
 	}
 
-	// Save settings
 	if settings.ID == 0 {
 		if err := h.db.Create(&settings).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create settings"})

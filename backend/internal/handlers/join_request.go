@@ -289,7 +289,6 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 		return
 	}
 
-	// Reload with relations
 	h.db.Preload("User").Preload("Property").First(&joinReq, joinReq.ID)
 
 	log.Printf("✅ Join request ID=%d resolved as '%s' by UserID=%d", joinReq.ID, req.Status, userID)

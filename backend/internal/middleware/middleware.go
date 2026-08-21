@@ -211,11 +211,12 @@ func AuthRateLimiter() gin.HandlerFunc {
 	return newRateLimiter(10, time.Minute)
 }
 
-// Logger middleware logs requests
+// Logger replaces Gin's default request logger with one that emits nothing,
+// keeping stdout free for the handlers' own log lines. Give the formatter a
+// real body to turn per-request logging back on.
 func Logger() gin.HandlerFunc {
 	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		return ""
-		// Custom log format if needed
 	})
 }
 

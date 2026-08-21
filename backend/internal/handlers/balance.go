@@ -269,7 +269,7 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 	}
 
 	// Get unsettled splits between these members (long-term debts live in their
-	// own ledger — see GetDebts)
+	// own ledger — see DebtHandler.List)
 	var splits []models.ExpenseSplit
 	err = h.db.
 		Preload("Expense").

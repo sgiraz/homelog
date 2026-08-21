@@ -80,7 +80,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		role = "admin"
 	}
 
-	// Start transaction
 	tx := h.db.Begin()
 
 	// Create user
@@ -211,7 +210,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		log.Printf("✅ User settings created for user ID=%d (no property yet — onboarding pending)", user.ID)
 	}
 
-	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete registration"})
 		return
