@@ -142,18 +142,28 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Fetch outstanding splits between the pair, oldest expense first — the
-	// payment is applied as a ledger, oldest debt paid down before newer ones.
-	query := h.db.
-		Joins("JOIN expenses ON expenses.id = expense_splits.expense_id").
-		Where("expense_splits.is_settled = ?", false).
-		Where("expenses.property_id = ?", req.PropertyID).
-		Where("expenses.deleted_at IS NULL")
+	// Outstanding shares between the pair, oldest expense first — the payment
+	// is applied as a ledger, oldest debt paid down before newer ones.
+	outstanding := func() *gorm.DB {
+		return h.db.
+			Joins("JOIN expenses ON expenses.id = expense_splits.expense_id").
+			Where("expense_splits.is_settled = ?", false).
+			Where("expenses.property_id = ?", req.PropertyID).
+			Where("expenses.deleted_at IS NULL")
+	}
+
+	// debtQuery: shares the payer still owes the recipient — what this payment
+	// actually repays. Only ever this direction: paying Alice must not clear
+	// what Alice owes you.
+	debtQuery := outstanding().
+		Where("expenses.paid_by_member_id = ? AND expense_splits.member_id = ?", req.ToMemberID, req.FromMemberID)
+
+	// credits: shares the recipient owes the payer. No money moves for them —
+	// they cancel against the debts above (see the netting below). Empty for a
+	// payment aimed at a single long-term debt, which is never netted.
+	var credits []models.ExpenseSplit
 
 	if req.TargetExpenseID != nil {
-		// Aimed at one long-term debt: only that expense's share, and only in
-		// the direction the payer actually owes — paying Alice must not clear
-		// what Alice owes you.
 		var target models.Expense
 		if err := h.db.First(&target, *req.TargetExpenseID).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Debito non trovato"})
@@ -163,30 +173,43 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Questa spesa non è un debito a lungo termine"})
 			return
 		}
-		query = query.
-			Where("expenses.id = ?", target.ID).
-			Where("expenses.paid_by_member_id = ? AND expense_splits.member_id = ?", req.ToMemberID, req.FromMemberID)
+		debtQuery = debtQuery.Where("expenses.id = ?", target.ID)
 	} else {
 		// Ordinary balance: long-term debts are repaid explicitly, never swept
 		// up by a generic settlement.
-		query = query.
+		debtQuery = debtQuery.Where("expenses.is_long_term_debt = ?", false)
+
+		if err := outstanding().
 			Where("expenses.is_long_term_debt = ?", false).
-			Where("(expenses.paid_by_member_id = ? AND expense_splits.member_id = ?) OR (expenses.paid_by_member_id = ? AND expense_splits.member_id = ?)",
-				req.ToMemberID, req.FromMemberID, req.FromMemberID, req.ToMemberID)
+			Where("expenses.paid_by_member_id = ? AND expense_splits.member_id = ?", req.FromMemberID, req.ToMemberID).
+			Order("expenses.date ASC").
+			Find(&credits).Error; err != nil {
+			log.Printf("ERROR finding counter-shares to net: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find expense splits"})
+			return
+		}
 	}
 
 	var splits []models.ExpenseSplit
-	if err := query.Order("expenses.date ASC").Find(&splits).Error; err != nil {
+	if err := debtQuery.Order("expenses.date ASC").Find(&splits).Error; err != nil {
 		log.Printf("ERROR finding expense splits to settle: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find expense splits"})
 		return
 	}
 
-	var totalOwed float64
+	var owedByPayer, owedToPayer float64
 	for _, s := range splits {
-		totalOwed += remainingOwed(s)
+		owedByPayer += remainingOwed(s)
 	}
-	if req.Amount > totalOwed+settlementEpsilon {
+	for _, s := range credits {
+		owedToPayer += remainingOwed(s)
+	}
+
+	// The balance between two members is netted (see CalculateBalance), so the
+	// most that can legitimately change hands is the *net* debt. Validating
+	// against the gross total would accept a payment larger than what is owed.
+	netOwed := owedByPayer - owedToPayer
+	if req.Amount > netOwed+settlementEpsilon {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "L'importo supera il debito residuo tra questi membri"})
 		return
 	}
@@ -214,12 +237,35 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 	log.Printf("Settlement created - ID: %d, From: %d, To: %d, Amount: %.2f",
 		settlement.ID, req.FromMemberID, req.ToMemberID, req.Amount)
 
+	now := time.Now()
+
+	// Cancel the counter-shares first. The recipient owes these back to the
+	// payer, so no cash covers them — they are offset against the debts this
+	// settlement repays, exactly as the netted balance already presents them.
+	// Netting them in full always fits (owedByPayer >= req.Amount + owedToPayer)
+	// and leaves the outstanding shares equal to the balance after the payment.
+	netted := 0.0
+	for i := range credits {
+		owed := remainingOwed(credits[i])
+		if owed <= settlementEpsilon {
+			continue
+		}
+		if err := applyAllocation(tx, settlement.ID, credits[i], owed, allocationKindFunding, now); err != nil {
+			tx.Rollback()
+			log.Printf("ERROR netting counter-share split %d: %v", credits[i].ID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to allocate settlement"})
+			return
+		}
+		netted += owed
+	}
+
 	// Apply the payment against the outstanding splits, oldest first. Each
 	// split touched gets a SettlementAllocation recording exactly how much of
 	// this settlement covered it; a split not fully covered stays unsettled
 	// with a reduced remaining balance instead of being force-marked settled.
-	now := time.Now()
-	remaining := req.Amount
+	// The cash is joined by whatever the counter-shares cancelled out.
+	remaining := req.Amount + netted
+	toAllocate := remaining
 	touched := 0
 	for i := range splits {
 		if remaining <= settlementEpsilon {
@@ -242,7 +288,8 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 		touched++
 	}
 
-	log.Printf("✅ SETTLEMENT: Allocated %.2f across %d splits", req.Amount-remaining, touched)
+	log.Printf("✅ SETTLEMENT: Allocated %.2f across %d splits (%.2f cash + %.2f netted from counter-shares)",
+		toAllocate-remaining, touched, req.Amount, netted)
 
 	if err := tx.Commit().Error; err != nil {
 		log.Printf("ERROR committing transaction: %v", err)
