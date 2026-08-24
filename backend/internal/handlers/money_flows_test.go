@@ -517,6 +517,127 @@ func TestSettlement_AmountExceedingOutstanding_Returns400(t *testing.T) {
 	}
 }
 
+// ── 2b-bis. Netting the counter-shares ──────────────────────────────────────
+//
+// The balance between two members is netted, so the "Salda" button offers the
+// *net* figure. The settlement ledger used to apply that net figure FIFO over
+// the outstanding shares in BOTH directions, so a share the recipient owed the
+// payer ate part of the cash: paying the exact net left a residue of twice the
+// counter-share, and the balance never reached zero.
+
+func TestSettlement_NetPayment_ClearsBothDirections(t *testing.T) {
+	f := setupMoneyFixture(t)
+
+	debtID := f.createSplitExpense(t, 200, []uint{f.mBob.ID})                           // bob owes alice 100
+	creditID := f.createSplitExpenseBy(t, f.bobTok, f.mBob.ID, 60, []uint{f.mAlice.ID}) // alice owes bob 30
+
+	if !approx(f.balance(t, f.mAlice.ID, f.mBob.ID), 70) {
+		t.Fatalf("precondition: netted balance should be 70, got %.2f", f.balance(t, f.mAlice.ID, f.mBob.ID))
+	}
+
+	// Bob pays exactly the net balance — nothing may be left owed either way.
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 70.0, "date": "2026-05-03",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("settlement: status %d, body %s", rec.Code, rec.Body.String())
+	}
+
+	if b := f.balance(t, f.mAlice.ID, f.mBob.ID); !approx(b, 0) {
+		t.Errorf("balance after paying the full net = %.2f, want 0", b)
+	}
+	if bob := f.splitFor(t, debtID, f.mBob.ID); !bob.IsSettled {
+		t.Errorf("bob's 100 share must be fully settled, settled_amount = %.2f", bob.SettledAmount)
+	}
+	if alice := f.splitFor(t, creditID, f.mAlice.ID); !alice.IsSettled {
+		t.Errorf("alice's 30 counter-share must be netted away, settled_amount = %.2f", alice.SettledAmount)
+	}
+}
+
+func TestSettlement_PartialPayment_NetsCounterSharesInFull(t *testing.T) {
+	f := setupMoneyFixture(t)
+
+	debtID := f.createSplitExpense(t, 200, []uint{f.mBob.ID})                           // bob owes alice 100
+	creditID := f.createSplitExpenseBy(t, f.bobTok, f.mBob.ID, 60, []uint{f.mAlice.ID}) // alice owes bob 30
+
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 20.0, "date": "2026-05-03",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("settlement: status %d, body %s", rec.Code, rec.Body.String())
+	}
+
+	// 20 in cash + the 30 cancelled out come off bob's share; what is left owed
+	// equals the new balance, so the itemised list and the balance agree.
+	bob := f.splitFor(t, debtID, f.mBob.ID)
+	if !approx(bob.SettledAmount, 50) {
+		t.Errorf("bob.SettledAmount = %.2f, want 50 (20 paid + 30 netted)", bob.SettledAmount)
+	}
+	if bob.IsSettled {
+		t.Error("bob's share is only half covered — it must stay unsettled")
+	}
+	if alice := f.splitFor(t, creditID, f.mAlice.ID); !alice.IsSettled {
+		t.Errorf("alice's counter-share must be netted away, settled_amount = %.2f", alice.SettledAmount)
+	}
+	if b := f.balance(t, f.mAlice.ID, f.mBob.ID); !approx(b, 50) {
+		t.Errorf("balance = %.2f, want 50 (70 net minus the 20 paid)", b)
+	}
+}
+
+// The cap is the net debt, not the gross sum of both directions: bob owes 100
+// but holds a 30 credit, so 100 is more than he owes.
+func TestSettlement_AmountAboveNetButBelowGross_Returns400(t *testing.T) {
+	f := setupMoneyFixture(t)
+
+	f.createSplitExpense(t, 200, []uint{f.mBob.ID})                         // bob owes alice 100
+	f.createSplitExpenseBy(t, f.bobTok, f.mBob.ID, 60, []uint{f.mAlice.ID}) // alice owes bob 30
+
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 100.0, "date": "2026-05-03",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 — 100 exceeds the 70 net owed (body %s)", rec.Code, rec.Body.String())
+	}
+}
+
+// Reversing a settlement must give the netted counter-shares back too.
+func TestSettlement_Delete_ReversesNettedCounterShares(t *testing.T) {
+	f := setupMoneyFixture(t)
+
+	debtID := f.createSplitExpense(t, 200, []uint{f.mBob.ID})
+	creditID := f.createSplitExpenseBy(t, f.bobTok, f.mBob.ID, 60, []uint{f.mAlice.ID})
+
+	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
+		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"amount": 70.0, "date": "2026-05-03",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("settlement: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var s models.Settlement
+	if err := json.Unmarshal(rec.Body.Bytes(), &s); err != nil {
+		t.Fatalf("decode settlement: %v", err)
+	}
+
+	del := doJSON(t, f.router, http.MethodDelete, "/settlements/"+itoa(s.ID), f.aliceTok, nil)
+	if del.Code != http.StatusOK {
+		t.Fatalf("delete settlement: status %d, body %s", del.Code, del.Body.String())
+	}
+
+	if bob := f.splitFor(t, debtID, f.mBob.ID); bob.IsSettled || !approx(bob.SettledAmount, 0) {
+		t.Errorf("bob's share must be fully owed again, settled=%v amount=%.2f", bob.IsSettled, bob.SettledAmount)
+	}
+	if alice := f.splitFor(t, creditID, f.mAlice.ID); alice.IsSettled || !approx(alice.SettledAmount, 0) {
+		t.Errorf("alice's counter-share must come back, settled=%v amount=%.2f", alice.IsSettled, alice.SettledAmount)
+	}
+	if b := f.balance(t, f.mAlice.ID, f.mBob.ID); !approx(b, 70) {
+		t.Errorf("balance = %.2f, want the original 70 net", b)
+	}
+}
+
 // ── 2c. Long-term debts ─────────────────────────────────────────────────────
 //
 // A mortgage down payment is not an ordinary expense: netted into the running
