@@ -18,6 +18,7 @@
   "charts": {
     "categoryByCategory": "Spese per Categoria",
     "categoryBySubcategory": "Spese per Sottocategoria",
+    "backToCategories": "Torna alle categorie",
     "trendDaily": "Trend Giornaliero",
     "trendQuarterly": "Trend Trimestrale",
     "trendMonthly": "Trend Mensile",
