@@ -18,6 +18,7 @@
   "charts": {
     "categoryByCategory": "Expenses by Category",
     "categoryBySubcategory": "Expenses by Subcategory",
+    "backToCategories": "Back to categories",
     "trendDaily": "Daily Trend",
     "trendQuarterly": "Quarterly Trend",
     "trendMonthly": "Monthly Trend",

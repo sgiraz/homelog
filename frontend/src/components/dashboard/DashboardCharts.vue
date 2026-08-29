@@ -1,7 +1,22 @@
 <template>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <Card class="p-6">
-      <h3 class="text-lg font-semibold text-ink mb-4">{{ categoryChartTitle }}</h3>
+      <!-- Back leading il titolo, come le altre viste di dettaglio: chevron
+           icon-only con target 44pt, il titolo dice gia' dove siamo. -->
+      <div class="flex items-center gap-1 mb-4 min-h-[44px]">
+        <button
+          v-if="isSubcategory"
+          @click="emit('back')"
+          class="flex items-center justify-center min-w-[44px] min-h-[44px] -ml-2.5 rounded-lg text-ink-soft hover:text-ink hover:bg-surface-2 active:bg-surface-3 transition-colors shrink-0"
+          :aria-label="t('dashboard.charts.backToCategories')"
+          :title="t('dashboard.charts.backToCategories')"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h3 class="text-lg font-semibold text-ink truncate">{{ categoryChartTitle }}</h3>
+      </div>
       <PieChart
         v-if="hasCategoryData"
         :chartData="categoryChartData"
@@ -15,7 +30,7 @@
     </Card>
 
     <Card class="p-6">
-      <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center justify-between mb-4 min-h-[44px]">
         <h3 class="text-lg font-semibold text-ink">{{ trendChartTitle }}</h3>
         <div class="flex items-center bg-surface-2 rounded-lg p-0.5">
           <button
@@ -113,5 +128,5 @@ defineProps({
   }
 })
 
-const emit = defineEmits(['update:trendChartType', 'slice-click'])
+const emit = defineEmits(['update:trendChartType', 'slice-click', 'back'])
 </script>

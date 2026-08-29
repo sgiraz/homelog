@@ -66,6 +66,7 @@
       :trendChartType="trendChartType"
       @update:trendChartType="trendChartType = $event"
       @slice-click="onPieSliceClick"
+      @back="onPieBack"
     />
 
     <!-- Filtri -->
@@ -538,6 +539,14 @@ function onPieSliceClick(index) {
   const item = stats.value?.by_category?.[index]
   if (!item || !item.category_id) return
   filters.value.categoryId = item.category_id
+  applyFilters()
+}
+
+// Steps back from the subcategory drill-down to the by-category view: clears
+// only the category filter, leaving the others (period, project) untouched.
+function onPieBack() {
+  if (!filters.value.categoryId) return
+  filters.value.categoryId = ''
   applyFilters()
 }
 
