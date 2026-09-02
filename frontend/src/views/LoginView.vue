@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-canvas p-4">
+  <div class="min-h-screen flex flex-col items-center justify-center bg-canvas p-4">
     <Card class="w-full max-w-md p-8">
       <div class="text-center mb-8">
         <h1 class="text-4xl font-bold mb-2 text-ink">HomeLog</h1>
@@ -215,6 +215,15 @@
         </button>
       </div>
     </Card>
+
+    <a
+      :href="privacyUrl(locale)"
+      target="_blank"
+      rel="noopener"
+      class="mt-6 text-xs text-ink-muted hover:text-ink-soft underline underline-offset-2"
+    >
+      {{ t('auth.privacyLink') }}
+    </a>
   </div>
 </template>
 
@@ -225,7 +234,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { authAPI } from '@/api/client'
 import { useDemoMode, DEMO_EMAIL, DEMO_PASSWORD } from '@/composables/useDemoMode'
-import { LINKS as links } from '@/config/links'
+import { LINKS as links, privacyUrl } from '@/config/links'
 import Card from '@/components/common/Card.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'

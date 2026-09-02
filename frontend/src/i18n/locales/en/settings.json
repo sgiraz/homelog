@@ -25,7 +25,8 @@
     "tagline": "HomeLog is free and open-source. If it helps your household, consider supporting its development.",
     "updateAvailable": "Update available",
     "star": "Star on GitHub",
-    "donate": "Donate"
+    "donate": "Donate",
+    "privacy": "Privacy"
   },
   "preferences": {
     "title": "Personal Preferences",
