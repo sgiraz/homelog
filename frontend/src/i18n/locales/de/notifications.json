@@ -1,0 +1,25 @@
+{
+  "title": "Benachrichtigungen",
+  "markAllRead": "Alle als gelesen markieren",
+  "deleteRead": "Gelesene löschen",
+  "filterAll": "Alle",
+  "filterUnread": "Ungelesen",
+  "emptyAll": "Keine Benachrichtigungen",
+  "emptyUnread": "Keine ungelesenen Benachrichtigungen",
+  "important": "WICHTIG",
+  "deleteAria": "Löschen",
+  "types": {
+    "price_change": "Preisänderung",
+    "contract_modification": "Vertragsänderung",
+    "info": "Information",
+    "privacy": "Datenschutz",
+    "join_request": "Zugriffsanfrage",
+    "expense_shared": "Geteilte Ausgabe"
+  },
+  "deleteOneTitle": "Benachrichtigung löschen",
+  "deleteOneMessage": "Möchtest du diese Benachrichtigung löschen?",
+  "deleteOneConfirm": "Löschen",
+  "deleteAllTitle": "Gelesene Benachrichtigungen löschen",
+  "deleteAllMessage": "Möchtest du {n} gelesene Benachrichtigungen löschen?",
+  "deleteAllConfirm": "Alle löschen"
+}

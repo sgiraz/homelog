@@ -1,0 +1,15 @@
+{
+  "back": "Zurück",
+  "clear": "Löschen",
+  "placeholder": "Ausgaben, Rechnungen, Projekte, Dienste suchen",
+  "promptTitle": "Suche starten",
+  "promptHint": "Ausgaben, Rechnungen, Projekte, Dienste",
+  "noResults": "Keine Ergebnisse für „{query}“",
+  "untitled": "(ohne Titel)",
+  "groups": {
+    "expense": "Ausgaben",
+    "bill": "Rechnungen",
+    "project": "Projekte",
+    "utility": "Dienste"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "banner": {
+    "label": "Demo-Modus",
+    "description": "Beispieldaten werden jede Stunde zurückgesetzt – alle Änderungen, die du vornimmst, sind nur vorübergehend.",
+    "selfHost": "Selbst hosten",
+    "reset": "Demodaten zurücksetzen",
+    "resetting": "Wird zurückgesetzt…"
+  },
+  "reset": {
+    "confirmTitle": "Demodaten zurücksetzen?",
+    "confirmMessage": "Dadurch wird der Beispieldatensatz auf seinen ursprünglichen Zustand zurückgesetzt. Alle Änderungen gehen verloren.",
+    "confirmButton": "Jetzt zurücksetzen"
+  },
+  "login": {
+    "title": "Live-Demo ausprobieren",
+    "description": "Erkunde HomeLog mit realistischen Beispieldaten – keine Registrierung erforderlich.",
+    "button": "Demo starten",
+    "selfHostPrompt": "Gefällt dir HomeLog und du möchtest es für dein eigenes Zuhause?",
+    "selfHostLink": "Von GitHub selbst hosten"
+  }
+}

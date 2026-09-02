@@ -1,0 +1,83 @@
+{
+  "stepIndicator": "Schritt {current} von {total}",
+  "steps": {
+    "path": "Auswahl",
+    "join": "Beitreten",
+    "property": "Immobilie",
+    "preferences": "Einstellungen",
+    "discover": "Entdecken"
+  },
+  "back": "← Zurück",
+  "previousButton": "Zurück",
+  "nextButton": "Weiter",
+  "skipButton": "Überspringen",
+  "savingButton": "Wird gespeichert...",
+  "step1": {
+    "title": "Wie möchtest du beginnen?",
+    "subtitle": "Du kannst eine eigene Immobilie erstellen oder einer bestehenden beitreten",
+    "createTitle": "Neues Zuhause erstellen",
+    "createDescription": "Richte deine Immobilie ein und lade Familienmitglieder ein",
+    "joinTitle": "Bestehendem Zuhause beitreten",
+    "joinDescription": "Sende eine Anfrage an einen Administrator"
+  },
+  "step2Create": {
+    "title": "Deine Immobilie erstellen",
+    "subtitle": "Gib die Daten deines Zuhauses ein.",
+    "nameLabel": "Name der Immobilie",
+    "namePlaceholder": "Z. B. Familienhaus, Wohnung im Stadtzentrum...",
+    "addressLabel": "Adresse (optional)",
+    "addressPlaceholder": "Z. B. Hauptstraße 1, Berlin",
+    "nameRequired": "Bitte gib einen Namen für die Immobilie ein.",
+    "createError": "Fehler beim Erstellen der Immobilie."
+  },
+  "step2Join": {
+    "title": "Einem Zuhause beitreten",
+    "subtitle": "Wähle die Immobilie aus, auf die du zugreifen möchtest.",
+    "loading": "Wird geladen...",
+    "noProperties": "Keine Immobilien gefunden. Du kannst selbst eine erstellen!",
+    "createMine": "Eigene erstellen!",
+    "memberCount_one": "{n} Mitglied",
+    "memberCount_other": "{n} Mitglieder",
+    "requestSent": "Anfrage gesendet! Ein Administrator muss deine Anfrage noch genehmigen.",
+    "submitButton": "Anfrage senden",
+    "submittingButton": "Wird gesendet...",
+    "submitError": "Fehler beim Senden der Anfrage.",
+    "submitSuccess": "Anfrage erfolgreich gesendet!"
+  },
+  "step3": {
+    "title": "Einstellungen",
+    "subtitle": "Konfiguriere Sprache, Währung und Erscheinungsbild der App.",
+    "currencyLabel": "Währung",
+    "languageLabel": "Sprache",
+    "themeLabel": "Erscheinungsbild",
+    "themeAuto": "Automatisch",
+    "themeLight": "Hell",
+    "themeDark": "Dunkel",
+    "saveError": "Fehler beim Speichern der Einstellungen."
+  },
+  "step4": {
+    "title": "HomeLog entdecken",
+    "subtitle": "Das kannst du mit deiner neuen App machen.",
+    "completeButton": "Los geht's!",
+    "completingButton": "Wird abgeschlossen...",
+    "completeError": "Fehler beim Abschließen der Einrichtung.",
+    "features": {
+      "pdf": {
+        "title": "Rechnungs-PDFs auslesen",
+        "description": "Lade deine Rechnungen als PDFs hoch und HomeLog extrahiert die Daten automatisch mithilfe konfigurierbarer Vorlagen."
+      },
+      "split": {
+        "title": "Ausgaben aufteilen",
+        "description": "Teile Ausgaben fair auf die Familienmitglieder auf und behalte den Überblick über die jeweiligen Salden."
+      },
+      "consumption": {
+        "title": "Verbrauch von Versorgungsdiensten analysieren",
+        "description": "Vergleiche deine Zählerstände mit denen deines Versorgers und beobachte den Verbrauch über einen längeren Zeitraum."
+      },
+      "projects": {
+        "title": "Projekte verwalten",
+        "description": "Plane Renovierungen, Anschaffungen oder Reisen mit eigenen Budgets und einer übersichtlichen Ausgabenverwaltung."
+      }
+    }
+  }
+}

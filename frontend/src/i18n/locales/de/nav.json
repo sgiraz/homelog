@@ -1,0 +1,31 @@
+{
+  "dashboard": "Dashboard",
+  "dashboardShort": "Startseite",
+  "expenses": "Ausgaben",
+  "expensesShort": "Ausgaben",
+  "utilities": "Versorgungsdienste",
+  "utilitiesShort": "Dienste",
+  "projects": "Projekte",
+  "projectsShort": "Projekte",
+  "settings": "Einstellungen",
+  "search": "Suchen",
+  "logout": "Abmelden",
+  "skipToContent": "Zum Hauptinhalt springen",
+  "themeToggleToLight": "Zum hellen Modus wechseln",
+  "themeToggleToDark": "Zum dunklen Modus wechseln",
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "markAllRead": "Alle als gelesen markieren",
+    "viewAll": "Alle anzeigen",
+    "empty": "Keine Benachrichtigungen",
+    "loading": "Wird geladen...",
+    "fallbackTitle": "Benachrichtigung",
+    "fallbackUtility": "Dienst",
+    "timeAgo": {
+      "now": "Gerade eben",
+      "minutes": "Vor {n} Min.",
+      "hours": "Vor {n} Std.",
+      "days": "Vor {n} Tagen"
+    }
+  }
+}
