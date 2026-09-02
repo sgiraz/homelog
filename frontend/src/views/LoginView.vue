@@ -231,7 +231,7 @@ import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const { isDemoMode } = useDemoMode()
 
@@ -254,7 +254,9 @@ async function handleSubmit() {
   error.value = null
   try {
     if (mode.value === 'register') {
-      await authStore.register(form.value)
+      // The new account starts in the language the signup form is showing,
+      // which resolveInitialLocale() derived from the browser.
+      await authStore.register({ ...form.value, language: locale.value })
     } else {
       await authStore.login(form.value)
     }

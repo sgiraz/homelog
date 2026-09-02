@@ -460,7 +460,9 @@ async function loadUserSettings() {
       theme: data.theme || 'auto',
       color_theme: data.color_theme || 'slate',
       currency: data.currency || 'EUR',
-      language: data.language || 'it',
+      // Locale comes from the store, not the raw payload: on the shared demo
+      // account the stored language belongs to whoever visited last.
+      language: settingsStore.language,
       date_format: data.date_format || 'DD/MM/YYYY'
     }
     notificationRetentionDays.value = data.notification_retention_days ?? 90
@@ -510,19 +512,15 @@ async function updateUserSettings() {
   try {
     // Get current settings to preserve split member IDs
     const { data: currentSettings } = await apiClient.get('/settings')
-    const payload = {
+    // Goes through the store so the locale is remembered per browser and is
+    // never written to the shared demo account.
+    await settingsStore.updateSettings({
       theme: preferences.value.theme,
       currency: preferences.value.currency,
       language: preferences.value.language,
       date_format: preferences.value.date_format,
       default_split_with_member_ids: currentSettings.default_split_with_member_ids || '[]'
-    }
-    await apiClient.put('/settings', payload)
-    settingsStore.theme = preferences.value.theme
-    setTheme(preferences.value.theme)
-    settingsStore.currency = preferences.value.currency
-    settingsStore.language = preferences.value.language
-    settingsStore.dateFormat = preferences.value.date_format
+    })
   } catch (err) {
     console.error('Error updating user settings:', err)
   }
