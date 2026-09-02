@@ -137,6 +137,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { categoriesAPI, projectsAPI, expensesAPI, utilitiesAPI, balanceAPI } from '@/api/client'
 import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import { useConfirm } from '@/composables/useConfirm'
+import { statsCategoryLabel } from '@/utils/categoryLabel'
 import Button from '@/components/common/Button.vue'
 import Card from '@/components/common/Card.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
@@ -222,7 +223,7 @@ const hasCategoryData = computed(() => (stats.value?.by_category?.length ?? 0) >
 const categoryChartData = computed(() => {
   const items = stats.value?.by_category ?? []
   return {
-    labels: items.map(i => i.category_name),
+    labels: items.map(i => statsCategoryLabel(i, t('expenses.modal.subcategoryNone'))),
     datasets: [{
       data: items.map(i => i.amount),
       backgroundColor: categoryColors.slice(0, items.length),

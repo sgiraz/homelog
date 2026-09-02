@@ -121,7 +121,7 @@
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium text-ink truncate">{{ tpl.name }}</div>
             <div class="text-xs text-ink-muted">
-              {{ tpl.category?.name }}<span v-if="tpl.subcategory"> / {{ tpl.subcategory.name }}</span>
+              {{ categoryLabel(tpl.category) }}<span v-if="tpl.subcategory"> / {{ categoryLabel(tpl.subcategory) }}</span>
               <span v-if="tpl.amount"> · {{ formatCurrency(tpl.amount) }}</span>
             </div>
           </div>
@@ -175,7 +175,7 @@
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option v-for="cat in tplCategories" :key="cat.id" :value="cat.id">
-                {{ cat.icon }} {{ cat.name }}
+                {{ cat.icon }} {{ categoryLabel(cat) }}
               </option>
             </select>
           </div>
@@ -190,7 +190,7 @@
           >
             <option :value="null">{{ t('settings.preferences.templates.noSubcategory') }}</option>
             <option v-for="sub in tplSubcategories" :key="sub.id" :value="sub.id">
-              {{ sub.name }}
+              {{ categoryLabel(sub) }}
             </option>
           </select>
         </div>
@@ -317,6 +317,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useDarkMode } from '@/composables/useDarkMode'
 import { useTheme } from '@/composables/useTheme'
 import { THEMES } from '@/config/themes'
+import { categoryLabel } from '@/utils/categoryLabel'
 import { authAPI, expenseTemplatesAPI, categoriesAPI } from '@/api/client'
 import apiClient from '@/api/client'
 import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'

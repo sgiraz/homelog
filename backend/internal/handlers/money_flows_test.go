@@ -20,6 +20,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/database"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 	"github.com/sgiraz/homelog/internal/testutil"
@@ -114,9 +115,9 @@ func setupMoneyFixture(t *testing.T) *moneyFixture {
 
 	mustCreate(t, db, &models.HouseholdSettings{PropertyID: prop.ID, SplitMode: true})
 
-	casa := models.Category{Name: "Casa", IsDefault: true}
+	casa := models.Category{Slug: database.SlugHome, Name: "Casa", IsDefault: true}
 	mustCreate(t, db, &casa)
-	mustCreate(t, db, &models.Subcategory{CategoryID: casa.ID, Name: "Utenze"})
+	mustCreate(t, db, &models.Subcategory{CategoryID: casa.ID, Slug: database.SlugHomeUtilities, Name: "Utenze"})
 
 	return &moneyFixture{
 		router:    wireMoneyRoutes(db),
@@ -1053,7 +1054,7 @@ func setupAccountFixture(t *testing.T, withSecondMember bool) *accountFixture {
 	member := models.HouseholdMember{PropertyID: prop.ID, UserID: &user.ID, Name: "Owner", Role: "admin"}
 	mustCreate(t, db, &member)
 
-	casa := models.Category{Name: "Casa", IsDefault: true}
+	casa := models.Category{Slug: database.SlugHome, Name: "Casa", IsDefault: true}
 	mustCreate(t, db, &casa)
 
 	// Utility + bill (both index into search_index via AfterSave hooks).

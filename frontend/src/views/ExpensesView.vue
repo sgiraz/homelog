@@ -96,7 +96,7 @@
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">{{ t('expenses.filters.allCategoriesLong') }}</option>
-                <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ cat.name }}</option>
+                <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ categoryLabel(cat) }}</option>
               </select>
               <select
                 v-model="filters.projectId"
@@ -185,7 +185,7 @@
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">{{ t('expenses.filters.allCategoriesShort') }}</option>
-              <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ cat.name }}</option>
+              <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ categoryLabel(cat) }}</option>
             </select>
           </div>
 
@@ -322,7 +322,7 @@
                   v-if="expense.category"
                   class="px-2 py-0.5 bg-surface-2 rounded text-xs"
                 >
-                  {{ expense.category.name }}
+                  {{ categoryLabel(expense.category) }}
                 </span>
                 <span
                   v-if="expense.project"
@@ -430,6 +430,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useHighlight } from '@/composables/useHighlight'
 import { useConfirm } from '@/composables/useConfirm'
+import { categoryLabel } from '@/utils/categoryLabel'
 import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import { categoriesAPI, projectsAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
@@ -499,7 +500,7 @@ const activeFiltersCount = computed(() => {
 
 const selectedCategoryName = computed(() => {
   const cat = categories.value.find(c => c.id === filters.value.categoryId)
-  return cat ? `${cat.icon} ${cat.name}` : ''
+  return cat ? `${cat.icon} ${categoryLabel(cat)}` : ''
 })
 
 const selectedProjectName = computed(() => {

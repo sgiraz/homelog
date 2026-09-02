@@ -163,6 +163,13 @@ func (h *CategoryHandler) Update(c *gin.Context) {
 	updates := map[string]any{}
 	if input.Name != nil {
 		updates["name"] = *input.Name
+		// Renaming a built-in category drops its slug: the admin's own label
+		// must win over the translated one, in every language. Without this the
+		// UI would keep rendering t("categories.<slug>") and silently discard
+		// the rename.
+		if cat.Slug != "" && *input.Name != cat.Name {
+			updates["slug"] = ""
+		}
 	}
 	if input.Icon != nil {
 		updates["icon"] = *input.Icon

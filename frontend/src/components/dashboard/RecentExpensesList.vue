@@ -68,7 +68,7 @@
                 v-if="expense.category"
                 class="px-2 py-0.5 bg-surface-2 rounded text-xs"
               >
-                {{ expense.category.name }}
+                {{ categoryLabel(expense.category) }}
               </span>
               <span v-if="expense.is_split && expense.paid_by" class="text-xs flex items-center gap-1 max-w-full overflow-hidden">
                 <span class="hidden sm:inline">{{ t('expenses.paidBy') }}</span>
@@ -127,6 +127,7 @@
 defineOptions({ name: 'RecentExpensesList' })
 
 import { useI18n } from 'vue-i18n'
+import { categoryLabel } from '@/utils/categoryLabel'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 
