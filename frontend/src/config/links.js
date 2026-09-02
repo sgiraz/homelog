@@ -10,3 +10,9 @@ export const LINKS = {
   landing: 'https://homelog.dev',
   docs: 'https://docs.homelog.dev',
 }
+
+// The privacy policy is published per language on the docs site. Takes the
+// active locale so an Italian UI links to the Italian text.
+export function privacyUrl(locale) {
+  return locale === 'it' ? `${LINKS.docs}/it/privacy` : `${LINKS.docs}/privacy`
+}

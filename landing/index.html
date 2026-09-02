@@ -16,9 +16,10 @@
 
   <!-- Body/UI uses the Apple system stack (SF Pro); web fonts only for the
        Fraunces display serif (headlines) and Space Mono (ledger numerals). -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <!-- Self-hosted (scripts/vendor-fonts.mjs): loading these from Google would
+       disclose every visitor's IP to a third party without a legal basis. -->
+  <link rel="preload" href="fonts/fraunces-normal-variable-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="fonts/fonts.css" />
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -416,6 +417,7 @@
         <a href="https://github.com/sgiraz/homelog" class="link-underline hover:text-ink">GitHub</a>
         <a href="https://ko-fi.com/sgiraz" class="link-underline hover:text-ink" data-i18n="footer.donate">Donate</a>
         <a href="https://github.com/sgiraz/homelog/blob/main/LICENSE" class="link-underline hover:text-ink">AGPL-3.0</a>
+        <a href="https://docs.homelog.dev/privacy" class="link-underline hover:text-ink" data-i18n="footer.privacy" data-i18n-href="footer.privacyHref">Privacy</a>
       </nav>
       <p class="font-mono text-xs" data-i18n="footer.tagline">Made with care for the home.</p>
     </div>
@@ -474,6 +476,8 @@
         'cta.support': '❤️ Support the project',
         'footer.docs': 'Docs',
         'footer.donate': 'Donate',
+        'footer.privacy': 'Privacy',
+        'footer.privacyHref': 'https://docs.homelog.dev/privacy',
         'footer.tagline': 'Made with care for the home.',
       },
       it: {
@@ -526,6 +530,8 @@
         'cta.support': '❤️ Sostieni il progetto',
         'footer.docs': 'Documentazione',
         'footer.donate': 'Dona',
+        'footer.privacy': 'Privacy',
+        'footer.privacyHref': 'https://docs.homelog.dev/it/privacy',
         'footer.tagline': 'Fatto con cura per la casa.',
       },
     };
@@ -540,6 +546,12 @@
       document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
         const k = el.getAttribute('data-i18n-html');
         if (dict[k] != null) el.innerHTML = dict[k];
+      });
+      // Locale-specific destinations (the privacy policy lives at /privacy in
+      // English and /it/privacy in Italian).
+      document.querySelectorAll('[data-i18n-href]').forEach(function (el) {
+        const k = el.getAttribute('data-i18n-href');
+        if (dict[k] != null) el.href = dict[k];
       });
       document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
         const k = el.getAttribute('data-i18n-title');
