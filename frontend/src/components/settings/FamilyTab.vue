@@ -198,6 +198,7 @@ import { adminAPI, joinRequestAPI } from '@/api/client'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
+import { DEFAULT_LOCALE } from '@/i18n'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -288,7 +289,7 @@ async function updateUserSettings() {
     const payload = {
       theme: data.theme || 'auto',
       currency: data.currency || 'EUR',
-      language: data.language || 'it',
+      language: data.language || DEFAULT_LOCALE,
       date_format: data.date_format || 'DD/MM/YYYY',
       default_split_with_member_ids: JSON.stringify(defaultSplitMemberIds.value)
     }

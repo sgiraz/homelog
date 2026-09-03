@@ -17,8 +17,35 @@ for (const path in modules) {
   messages[locale][component] = modules[path]
 }
 
-export const SUPPORTED_LOCALES = ['it', 'en']
-export const DEFAULT_LOCALE = 'it'
+// The set of locale directories IS the list of supported languages: dropping
+// frontend/src/i18n/locales/<lang>/ in place is all it takes to add one. No
+// hand-maintained array to forget — that array is why a translation could be
+// merged and never appear in the app. A Go test checks models.SupportedLanguages
+// still agrees with this list.
+export const SUPPORTED_LOCALES = Object.keys(messages).sort()
+
+// English is the canonical source language of every message file and the
+// vue-i18n fallback, so it is also the default for a visitor whose browser
+// asks for a language we do not have.
+export const DEFAULT_LOCALE = 'en'
+
+// Endonyms for the language picker: a language is named in itself, never
+// translated. Falls back to the bare tag for a locale added without an entry.
+const LANGUAGE_ENDONYMS = {
+  it: 'Italiano',
+  en: 'English',
+  de: 'Deutsch',
+  fr: 'Français',
+  es: 'Español',
+}
+
+// Options for the settings language selector, in alphabetical endonym order.
+export function localeOptions() {
+  return SUPPORTED_LOCALES.map((code) => ({
+    code,
+    label: LANGUAGE_ENDONYMS[code] || code.toUpperCase(),
+  })).sort((a, b) => a.label.localeCompare(b.label))
+}
 
 // Per-browser locale memory. Not a server setting: it is what lets pre-login
 // screens and the shared demo account render in the visitor's own language.

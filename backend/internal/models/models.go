@@ -138,15 +138,20 @@ type Expense struct {
 	Splits      []ExpenseSplit   `gorm:"foreignKey:ExpenseID" json:"splits,omitempty"`
 }
 
-// SupportedLanguages is the single source of truth for the UI languages the
-// server accepts. Mirrors SUPPORTED_LOCALES in frontend/src/i18n/index.js.
+// SupportedLanguages is the set of UI languages the server accepts. The real
+// source of truth is the set of directories under
+// frontend/src/i18n/locales/ — languages_test.go fails if this map drifts from
+// it, so a translation cannot be merged and then silently never offered.
 var SupportedLanguages = map[string]bool{
 	"it": true,
 	"en": true,
 }
 
 // DefaultLanguage is used whenever no supported language can be determined.
-const DefaultLanguage = "it"
+// English, not Italian: it is the canonical source language of every message
+// file and the vue-i18n fallback, so a visitor whose language we do not have
+// gets the one language every string is guaranteed to exist in.
+const DefaultLanguage = "en"
 
 // NormalizeLanguage maps a client-supplied language tag onto a supported
 // language, falling back to DefaultLanguage. Accepts regional tags ("en-GB")

@@ -67,8 +67,7 @@
                    bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="it">{{ t('settings.preferences.options.languageIT') }}</option>
-            <option value="en">{{ t('settings.preferences.options.languageEN') }}</option>
+            <option v-for="opt in localeOptions()" :key="opt.code" :value="opt.code">{{ opt.label }}</option>
           </select>
         </div>
 
@@ -325,6 +324,7 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
 import DeleteAccountSection from './DeleteAccountSection.vue'
+import { DEFAULT_LOCALE, localeOptions } from '@/i18n'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -337,7 +337,7 @@ const preferences = ref({
   theme: 'auto',
   color_theme: 'slate',
   currency: 'EUR',
-  language: 'it',
+  language: DEFAULT_LOCALE,
   date_format: 'DD/MM/YYYY'
 })
 
