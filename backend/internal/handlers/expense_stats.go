@@ -21,7 +21,11 @@ type TrendPoint struct {
 
 // CategoryStats represents expense statistics by category
 type CategoryStats struct {
-	CategoryID   uint    `json:"category_id"`
+	CategoryID uint `json:"category_id"`
+	// CategorySlug is set for built-in categories/subcategories; the client
+	// renders t("categories.<slug>") and ignores CategoryName. Empty for
+	// user-created ones, whose CategoryName is the label to show as-is.
+	CategorySlug string  `json:"category_slug,omitempty"`
 	CategoryName string  `json:"category_name"`
 	Amount       float64 `json:"amount"`
 	Count        int     `json:"count"`
@@ -203,12 +207,15 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		// Subcategory breakdown when filtering by category
 		var subResults []struct {
 			SubcategoryID *uint   `json:"subcategory_id"`
+			CategorySlug  string  `json:"category_slug"`
 			CategoryName  string  `json:"category_name"`
 			Amount        float64 `json:"amount"`
 			Count         int     `json:"count"`
 		}
+		// The "no subcategory" bucket comes back with an empty name and a zero
+		// id; the client labels it. Never hardcode a localized string here.
 		h.db.Model(&models.Expense{}).
-			Select("expenses.subcategory_id, COALESCE(subcategories.name, 'Senza sottocategoria') as category_name, SUM(expenses.amount) as amount, COUNT(*) as count").
+			Select("expenses.subcategory_id, COALESCE(subcategories.slug, '') as category_slug, COALESCE(subcategories.name, '') as category_name, SUM(expenses.amount) as amount, COUNT(*) as count").
 			Joins("LEFT JOIN subcategories ON subcategories.id = expenses.subcategory_id").
 			Where(joinWhere, baseArgs...).
 			Group("expenses.subcategory_id").
@@ -230,6 +237,7 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 			}
 			byCategory[i] = CategoryStats{
 				CategoryID:   id,
+				CategorySlug: r.CategorySlug,
 				CategoryName: r.CategoryName,
 				Amount:       r.Amount,
 				Count:        r.Count,
@@ -239,12 +247,13 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 	} else {
 		var categoryResults []struct {
 			CategoryID   uint    `json:"category_id"`
+			CategorySlug string  `json:"category_slug"`
 			CategoryName string  `json:"category_name"`
 			Amount       float64 `json:"amount"`
 			Count        int     `json:"count"`
 		}
 		h.db.Model(&models.Expense{}).
-			Select("expenses.category_id, categories.name as category_name, SUM(expenses.amount) as amount, COUNT(*) as count").
+			Select("expenses.category_id, COALESCE(categories.slug, '') as category_slug, categories.name as category_name, SUM(expenses.amount) as amount, COUNT(*) as count").
 			Joins("JOIN categories ON categories.id = expenses.category_id").
 			Where(joinWhere, baseArgs...).
 			Group("expenses.category_id").
@@ -262,6 +271,7 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 			}
 			byCategory[i] = CategoryStats{
 				CategoryID:   r.CategoryID,
+				CategorySlug: r.CategorySlug,
 				CategoryName: r.CategoryName,
 				Amount:       r.Amount,
 				Count:        r.Count,

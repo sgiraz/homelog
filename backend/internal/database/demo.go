@@ -123,9 +123,10 @@ func seedDemoData(db *gorm.DB) error {
 	if err := SeedDefaultCategories(db); err != nil {
 		return err
 	}
-	catID := func(name string) uint {
+	// Look up built-in categories by slug — the name is a localized label.
+	catID := func(slug string) uint {
 		var c models.Category
-		db.Where("name = ? AND user_id IS NULL", name).First(&c)
+		db.Where("slug = ? AND user_id IS NULL", slug).First(&c)
 		return c.ID
 	}
 
@@ -195,21 +196,21 @@ func seedDemoData(db *gorm.DB) error {
 		UserID: user.ID, PropertyID: property.ID, Type: "electricity", Provider: "Enel Energia",
 		CustomerCode: "IT001E12345678", ServiceCode: "IT001E12345678", Address: property.Address,
 		StartDate: now.AddDate(-3, 0, 0), IsActive: true, IsMetered: true, PowerCapacity: 3.0,
-		DefaultCategoryID: f0(catID("Casa")), PaidByMemberID: &mario.ID,
+		DefaultCategoryID: f0(catID("home")), PaidByMemberID: &mario.ID,
 		BillingInterval: 2, BillingUnit: "month",
 	}
 	gas := models.Utility{
 		UserID: user.ID, PropertyID: property.ID, Type: "gas", Provider: "Eni Plenitude",
 		CustomerCode: "123456789", ServiceCode: "00123456789012", Address: property.Address,
 		StartDate: now.AddDate(-3, 0, 0), IsActive: true, IsMetered: true,
-		DefaultCategoryID: f0(catID("Casa")), PaidByMemberID: &mario.ID,
+		DefaultCategoryID: f0(catID("home")), PaidByMemberID: &mario.ID,
 		BillingInterval: 2, BillingUnit: "month", IsInstallmentBased: true,
 	}
 	water := models.Utility{
 		UserID: user.ID, PropertyID: property.ID, Type: "water", Provider: "MM Servizi Idrici",
 		CustomerCode: "W-998877", Address: property.Address,
 		StartDate: now.AddDate(-3, 0, 0), IsActive: true, IsMetered: true, IsDomiciled: true,
-		DefaultCategoryID: f0(catID("Casa")), PaidByMemberID: &mario.ID,
+		DefaultCategoryID: f0(catID("home")), PaidByMemberID: &mario.ID,
 		BillingInterval: 3, BillingUnit: "month",
 	}
 	internet := models.Utility{
@@ -217,7 +218,7 @@ func seedDemoData(db *gorm.DB) error {
 		CustomerCode: "FW-456123", Address: property.Address,
 		StartDate: now.AddDate(-2, 0, 0), IsActive: true, IsMetered: false,
 		RecurringAmount: f(29.95), BillingInterval: 1, BillingUnit: "month",
-		DefaultCategoryID: f0(catID("Tecnologia")), PaidByMemberID: &mario.ID, IsDomiciled: true,
+		DefaultCategoryID: f0(catID("technology")), PaidByMemberID: &mario.ID, IsDomiciled: true,
 	}
 	for _, u := range []*models.Utility{&elec, &gas, &water, &internet} {
 		if err := db.Create(u).Error; err != nil {
@@ -330,17 +331,17 @@ func seedDemoData(db *gorm.DB) error {
 		e     models.Expense
 		among []uint
 	}{
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("Alimentari e Ristorazione"), Amount: 84.30, Date: daysAgo(3), Description: "Spesa settimanale", PaidByMemberID: mario.ID, IsSplit: true}, all},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("Alimentari e Ristorazione"), Amount: 42.00, Date: daysAgo(10), Description: "Cena fuori", PaidByMemberID: giulia.ID, IsSplit: true}, couple},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("Trasporti"), Amount: 60.00, Date: daysAgo(7), Description: "Carburante", PaidByMemberID: mario.ID, IsSplit: false}, nil},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("Intrattenimento"), Amount: 13.99, Date: daysAgo(15), Description: "Abbonamento streaming", PaidByMemberID: mario.ID, IsSplit: true}, all},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("Famiglia"), Amount: 120.00, Date: daysAgo(22), Description: "Materiale scolastico Luca", PaidByMemberID: giulia.ID, IsSplit: false}, nil},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("Casa"), Amount: 220.00, Date: daysAgo(35), Description: "Idraulico", PaidByMemberID: mario.ID, IsSplit: true}, couple},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("Alimentari e Ristorazione"), Amount: 79.10, Date: daysAgo(45), Description: "Spesa supermercato", PaidByMemberID: mario.ID, IsSplit: true}, all},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 84.30, Date: daysAgo(3), Description: "Spesa settimanale", PaidByMemberID: mario.ID, IsSplit: true}, all},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 42.00, Date: daysAgo(10), Description: "Cena fuori", PaidByMemberID: giulia.ID, IsSplit: true}, couple},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("transport"), Amount: 60.00, Date: daysAgo(7), Description: "Carburante", PaidByMemberID: mario.ID, IsSplit: false}, nil},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("entertainment"), Amount: 13.99, Date: daysAgo(15), Description: "Abbonamento streaming", PaidByMemberID: mario.ID, IsSplit: true}, all},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("family"), Amount: 120.00, Date: daysAgo(22), Description: "Materiale scolastico Luca", PaidByMemberID: giulia.ID, IsSplit: false}, nil},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), Amount: 220.00, Date: daysAgo(35), Description: "Idraulico", PaidByMemberID: mario.ID, IsSplit: true}, couple},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 79.10, Date: daysAgo(45), Description: "Spesa supermercato", PaidByMemberID: mario.ID, IsSplit: true}, all},
 		// Project-linked expenses
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("Casa"), ProjectID: &bagno.ID, Amount: 1850.00, Date: daysAgo(60), Description: "Piastrelle e sanitari", PaidByMemberID: mario.ID, IsSplit: true}, couple},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("Casa"), ProjectID: &bagno.ID, Amount: 900.00, Date: daysAgo(20), Description: "Acconto manodopera", PaidByMemberID: mario.ID, IsSplit: false}, nil},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("Intrattenimento"), ProjectID: &vacanza.ID, Amount: 450.00, Date: daysAgo(12), Description: "Caparra hotel", PaidByMemberID: giulia.ID, IsSplit: true}, all},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), ProjectID: &bagno.ID, Amount: 1850.00, Date: daysAgo(60), Description: "Piastrelle e sanitari", PaidByMemberID: mario.ID, IsSplit: true}, couple},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), ProjectID: &bagno.ID, Amount: 900.00, Date: daysAgo(20), Description: "Acconto manodopera", PaidByMemberID: mario.ID, IsSplit: false}, nil},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("entertainment"), ProjectID: &vacanza.ID, Amount: 450.00, Date: daysAgo(12), Description: "Caparra hotel", PaidByMemberID: giulia.ID, IsSplit: true}, all},
 	}
 	for _, x := range expenses {
 		if err := addExpense(x.e, x.among); err != nil {
@@ -362,7 +363,7 @@ func seedDemoData(db *gorm.DB) error {
 	// lives in its own ledger (Expense.IsLongTermDebt) and Mario pays it back
 	// at his own pace — the Debts tab shows the remainder and the progress.
 	deposit := models.Expense{
-		UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("Casa"),
+		UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"),
 		Amount: 12000, Date: daysAgo(75), Description: "Acconto acquisto casa",
 		PaidByMemberID: giulia.ID, IsSplit: true, IsLongTermDebt: true,
 	}

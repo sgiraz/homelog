@@ -77,7 +77,7 @@
             >
               <span class="text-lg w-6 shrink-0 text-center">{{ cat.icon }}</span>
               <div class="flex-1 min-w-0">
-                <span class="font-medium text-ink truncate block">{{ cat.name }}</span>
+                <span class="font-medium text-ink truncate block">{{ categoryLabel(cat) }}</span>
                 <span class="text-xs text-ink-muted">{{ t('settings.categories.subcategoriesCount', { n: cat.subcategories?.length || 0 }) }}</span>
               </div>
               <div class="flex items-center shrink-0">
@@ -137,7 +137,7 @@
                 class="flex items-center gap-2 px-4 py-2 hover:bg-surface-2"
               >
                 <span class="w-4 h-4 text-ink-faint">·</span>
-                <span class="flex-1 text-sm text-ink-soft">{{ sub.name }}</span>
+                <span class="flex-1 text-sm text-ink-soft">{{ categoryLabel(sub) }}</span>
                 <button
                   v-if="isAdmin"
                   @click="deleteSubcategory(cat, sub)"
@@ -169,7 +169,7 @@
             >
               <span class="text-lg w-6 shrink-0 text-center">{{ cat.icon }}</span>
               <div class="flex-1 min-w-0">
-                <span class="font-medium text-ink truncate block">{{ cat.name }}</span>
+                <span class="font-medium text-ink truncate block">{{ categoryLabel(cat) }}</span>
                 <span class="text-xs text-ink-muted">{{ t('settings.categories.subcategoriesCount', { n: cat.subcategories?.length || 0 }) }}</span>
               </div>
               <div class="flex items-center shrink-0">
@@ -226,7 +226,7 @@
                 class="flex items-center gap-2 px-4 py-2 hover:bg-surface-2"
               >
                 <span class="w-4 h-4 text-ink-faint">·</span>
-                <span class="flex-1 text-sm text-ink-soft">{{ sub.name }}</span>
+                <span class="flex-1 text-sm text-ink-soft">{{ categoryLabel(sub) }}</span>
                 <button
                   @click="deleteSubcategory(cat, sub)"
                   class="p-2 text-red-400 hover:text-red-600 opacity-60 hover:opacity-100"
@@ -257,6 +257,7 @@ import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
 import { categoriesAPI } from '@/api/client'
+import { categoryLabel } from '@/utils/categoryLabel'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 
@@ -320,8 +321,8 @@ async function deleteCategory(cat) {
   const ok = await confirm({
     title: t('settings.categories.deleteCategoryTitle'),
     message: cat.is_default
-      ? t('settings.categories.deleteCategoryMessageDefault', { name: cat.name })
-      : t('settings.categories.deleteCategoryMessagePersonal', { name: cat.name }),
+      ? t('settings.categories.deleteCategoryMessageDefault', { name: categoryLabel(cat) })
+      : t('settings.categories.deleteCategoryMessagePersonal', { name: categoryLabel(cat) }),
     confirmText: t('settings.categories.deleteCategoryConfirm'),
     variant: 'danger'
   })
@@ -360,7 +361,7 @@ async function saveSubcategory(catId) {
 async function deleteSubcategory(cat, sub) {
   const ok = await confirm({
     title: t('settings.categories.deleteSubcategoryTitle'),
-    message: t('settings.categories.deleteSubcategoryMessage', { name: sub.name }),
+    message: t('settings.categories.deleteSubcategoryMessage', { name: categoryLabel(sub) }),
     confirmText: t('settings.categories.deleteCategoryConfirm'),
     variant: 'danger'
   })

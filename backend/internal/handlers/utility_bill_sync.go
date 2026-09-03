@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/sgiraz/homelog/internal/database"
 	"github.com/sgiraz/homelog/internal/models"
 )
 
@@ -103,15 +104,16 @@ func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *mod
 		}
 	}
 
-	// Find the "Casa" category
-	var casaCategory models.Category
-	if err := h.db.Where("name = ? AND is_default = true", "Casa").First(&casaCategory).Error; err != nil {
-		return fmt.Errorf("could not find 'Casa' category: %w", err)
+	// Find the built-in "home" category by slug — never by name, which is a
+	// localized label the admin can rename.
+	var homeCategory models.Category
+	if err := h.db.Where("slug = ? AND is_default = true", database.SlugHome).First(&homeCategory).Error; err != nil {
+		return fmt.Errorf("could not find the built-in %q category: %w", database.SlugHome, err)
 	}
 
-	// Find the "Utenze" subcategory under Casa
-	var utenzeSubcat models.Subcategory
-	_ = h.db.Where("category_id = ? AND name = ?", casaCategory.ID, "Utenze").First(&utenzeSubcat)
+	// Find the "utilities" subcategory under it
+	var utilitiesSubcat models.Subcategory
+	_ = h.db.Where("category_id = ? AND slug = ?", homeCategory.ID, database.SlugHomeUtilities).First(&utilitiesSubcat)
 
 	// Build description: "Bolletta Luce - Mar 2025"
 	typeNames := map[string]string{
@@ -140,8 +142,8 @@ func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *mod
 
 	// Subcategory ID (optional)
 	var subcatID *uint
-	if utenzeSubcat.ID != 0 {
-		id := utenzeSubcat.ID
+	if utilitiesSubcat.ID != 0 {
+		id := utilitiesSubcat.ID
 		subcatID = &id
 	}
 
@@ -204,7 +206,7 @@ func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *mod
 	expense := models.Expense{
 		UserID:            userID, // logged-in user for visibility; PaidByMemberID tracks the actual payer
 		PropertyID:        &propID,
-		CategoryID:        casaCategory.ID,
+		CategoryID:        homeCategory.ID,
 		SubcategoryID:     subcatID,
 		BillID:            &billID,
 		BillInstallmentID: &instID,

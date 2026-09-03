@@ -121,7 +121,7 @@
             :key="cat.id"
             :value="cat.id"
           >
-            {{ cat.icon }} {{ cat.name }}
+            {{ cat.icon }} {{ categoryLabel(cat) }}
           </option>
         </select>
       </div>
@@ -143,7 +143,7 @@
             :key="sub.id"
             :value="sub.id"
           >
-            {{ sub.name }}
+            {{ categoryLabel(sub) }}
           </option>
         </select>
       </div>
@@ -300,6 +300,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import apiClient, { categoriesAPI, projectsAPI, expenseTemplatesAPI, exchangeAPI } from '@/api/client'
 import { currencies as allCurrencies } from '@/utils/currencies'
+import { categoryLabel } from '@/utils/categoryLabel'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
