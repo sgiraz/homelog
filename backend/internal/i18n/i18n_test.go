@@ -70,12 +70,22 @@ func TestFormatAmount_DecimalSeparatorFollowsLanguage(t *testing.T) {
 	}
 }
 
-// Every message must exist in every supported language: a gap would silently
-// serve English to a user who chose Italian.
-func TestEveryMessageCoversEverySupportedLanguage(t *testing.T) {
-	for id, byLang := range messages {
-		for lang := range models.SupportedLanguages {
-			text, ok := byLang[lang]
+// The separator is a catalogue entry, so a language that forgets it would
+// silently format like English.
+func TestEveryLanguageDeclaresADecimalSeparator(t *testing.T) {
+	for _, lang := range Languages() {
+		if sep := messages[lang]["format.decimal_separator"]; sep == "" {
+			t.Errorf("language %q declares no format.decimal_separator", lang)
+		}
+	}
+}
+
+// Every message must exist in every embedded language: a gap silently serves
+// English to a user who chose something else.
+func TestEveryMessageCoversEveryLanguage(t *testing.T) {
+	for _, lang := range Languages() {
+		for id := range messages["en"] {
+			text, ok := messages[lang][id]
 			if !ok {
 				t.Errorf("message %q has no %q text", id, lang)
 				continue
@@ -84,15 +94,30 @@ func TestEveryMessageCoversEverySupportedLanguage(t *testing.T) {
 				t.Errorf("message %q is empty in %q", id, lang)
 			}
 		}
+		for id := range messages[lang] {
+			if _, ok := messages["en"][id]; !ok {
+				t.Errorf("message %q exists in %q but not in English", id, lang)
+			}
+		}
+	}
+}
+
+// Every language the server accepts needs a catalogue, or its users read
+// English text the UI has already translated around them.
+func TestEverySupportedLanguageHasACatalogue(t *testing.T) {
+	for lang := range models.SupportedLanguages {
+		if len(messages[lang]) == 0 {
+			t.Errorf("language %q is supported but has no locales/%s.json", lang, lang)
+		}
 	}
 }
 
 // A translation that drops a placeholder would render a broken sentence.
 func TestPlaceholdersMatchAcrossLanguages(t *testing.T) {
-	for id, byLang := range messages {
-		reference := placeholders(byLang["en"])
-		for lang, text := range byLang {
-			if got := placeholders(text); !equalSets(got, reference) {
+	for id, en := range messages["en"] {
+		reference := placeholders(en)
+		for _, lang := range Languages() {
+			if got := placeholders(messages[lang][id]); !equalSets(got, reference) {
 				t.Errorf("message %q: %q has placeholders %v, EN has %v", id, lang, got, reference)
 			}
 		}
