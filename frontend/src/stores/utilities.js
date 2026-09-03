@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { utilitiesAPI } from '@/api/client'
+import { apiErrorMessage } from '@/utils/apiError'
 
 export const useUtilitiesStore = defineStore('utilities', () => {
   const utilities = ref([])
@@ -65,7 +66,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
         utilities.value = data || []
       })
       .catch(err => {
-        error.value = err.response?.data?.error || 'Failed to fetch utilities'
+        error.value = apiErrorMessage(err)
         console.error('Error fetching utilities:', err)
       })
       .finally(() => {
@@ -88,7 +89,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
         return data
       })
       .catch(err => {
-        error.value = err.response?.data?.error || 'Failed to fetch utility'
+        error.value = apiErrorMessage(err)
         console.error('Error fetching utility:', err)
         throw err
       })
@@ -108,7 +109,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       utilities.value.push(data)
       return data
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to create utility'
+      error.value = apiErrorMessage(err)
       console.error('Error creating utility:', err)
       throw err
     } finally {
@@ -128,7 +129,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       }
       return data
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to update utility'
+      error.value = apiErrorMessage(err)
       console.error('Error updating utility:', err)
       throw err
     } finally {
@@ -144,7 +145,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       await utilitiesAPI.delete(id)
       utilities.value = utilities.value.filter(u => u.id !== id)
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to delete utility'
+      error.value = apiErrorMessage(err)
       console.error('Error deleting utility:', err)
       throw err
     } finally {
@@ -162,7 +163,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       await fetchUtility(utilityId)
       return data
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to add bill'
+      error.value = apiErrorMessage(err)
       console.error('Error adding bill:', err)
       throw err
     } finally {
@@ -179,7 +180,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       await fetchUtility(utilityId)
       return data
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to update bill'
+      error.value = apiErrorMessage(err)
       console.error('Error updating bill:', err)
       throw err
     } finally {
@@ -196,7 +197,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       await fetchUtility(utilityId)
       return data
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to update bill'
+      error.value = apiErrorMessage(err)
       console.error('Error updating bill:', err)
       throw err
     } finally {
@@ -212,7 +213,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       await utilitiesAPI.deleteBill(utilityId, billId)
       await fetchUtility(utilityId)
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to delete bill'
+      error.value = apiErrorMessage(err)
       console.error('Error deleting bill:', err)
       throw err
     } finally {
@@ -230,7 +231,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       await fetchUtility(utilityId)
       return data
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to add reading'
+      error.value = apiErrorMessage(err)
       console.error('Error adding reading:', err)
       throw err
     } finally {
@@ -247,7 +248,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       await fetchUtility(utilityId)
       return data
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to update reading'
+      error.value = apiErrorMessage(err)
       console.error('Error updating reading:', err)
       throw err
     } finally {
@@ -263,7 +264,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
       await utilitiesAPI.deleteReading(utilityId, readingId)
       await fetchUtility(utilityId)
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to delete reading'
+      error.value = apiErrorMessage(err)
       console.error('Error deleting reading:', err)
       throw err
     } finally {

@@ -260,6 +260,7 @@ import { categoriesAPI } from '@/api/client'
 import { categoryLabel } from '@/utils/categoryLabel'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
@@ -313,7 +314,7 @@ async function addCategory() {
     showAddCategoryForm.value = false
     await fetchCategories()
   } catch (err) {
-    categoryError.value = err.response?.data?.error || t('settings.categories.createError')
+    categoryError.value = apiErrorMessage(err, t('settings.categories.createError'))
   }
 }
 
@@ -332,7 +333,7 @@ async function deleteCategory(cat) {
     await categoriesAPI.delete(cat.id)
     await fetchCategories()
   } catch (err) {
-    categoryError.value = err.response?.data?.error || t('settings.categories.deleteError')
+    categoryError.value = apiErrorMessage(err, t('settings.categories.deleteError'))
   }
 }
 
@@ -354,7 +355,7 @@ async function saveSubcategory(catId) {
     newSubcategoryName.value = ''
     await fetchCategories()
   } catch (err) {
-    categoryError.value = err.response?.data?.error || t('settings.categories.createError')
+    categoryError.value = apiErrorMessage(err, t('settings.categories.createError'))
   }
 }
 
@@ -371,7 +372,7 @@ async function deleteSubcategory(cat, sub) {
     await categoriesAPI.deleteSubcategory(cat.id, sub.id)
     await fetchCategories()
   } catch (err) {
-    categoryError.value = err.response?.data?.error || t('settings.categories.deleteError')
+    categoryError.value = apiErrorMessage(err, t('settings.categories.deleteError'))
   }
 }
 

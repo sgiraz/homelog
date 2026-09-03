@@ -439,6 +439,7 @@ import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditExpenseModal from '@/components/expenses/EditExpenseModal.vue'
 import BalanceSection from '@/components/balance/BalanceSection.vue'
 import DebtsSection from '@/components/balance/DebtsSection.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -616,7 +617,7 @@ async function deleteExpenseConfirm(id) {
     try {
       await expensesStore.deleteExpense(id)
     } catch (err) {
-      window.$toast?.error(t('expenses.deleteError', { error: err.response?.data?.error || err.message }))
+      window.$toast?.error(t('expenses.deleteError', { error: apiErrorMessage(err) }))
     }
   }
 }

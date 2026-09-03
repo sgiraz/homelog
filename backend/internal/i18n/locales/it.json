@@ -1,8 +1,6 @@
 {
   "bill.expense.description": "Bolletta {type} - {month} {year}",
   "bill.expense.installment": "{description} (Rata {number}/{total})",
-  "error.utility.service_already_active": "Esiste già un servizio {type} attivo per questa proprietà. Disattiva quello esistente prima di crearne uno nuovo.",
-  "error.utility.utility_already_active": "Esiste già un'utenza {type} attiva per questa proprietà. Disattiva quella esistente prima di attivare questa.",
   "format.decimal_separator": ",",
   "month.short.1": "Gen",
   "month.short.10": "Ott",

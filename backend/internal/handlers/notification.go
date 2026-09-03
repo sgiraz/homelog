@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -53,7 +54,7 @@ func createNotification(db *gorm.DB, userID uint, notifType, title, content stri
 func (h *NotificationHandler) List(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -76,7 +77,7 @@ func (h *NotificationHandler) List(c *gin.Context) {
 func (h *NotificationHandler) GetUnreadCount(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -92,13 +93,13 @@ func (h *NotificationHandler) GetUnreadCount(c *gin.Context) {
 func (h *NotificationHandler) MarkRead(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid notification ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_notification_id", "Invalid notification id")
 		return
 	}
 
@@ -107,7 +108,7 @@ func (h *NotificationHandler) MarkRead(c *gin.Context) {
 		Update("is_read", true)
 
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Notification not found"})
+		apierr.Fail(c, http.StatusNotFound, "notification_not_found", "Notification not found")
 		return
 	}
 
@@ -118,7 +119,7 @@ func (h *NotificationHandler) MarkRead(c *gin.Context) {
 func (h *NotificationHandler) MarkAllRead(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -133,19 +134,19 @@ func (h *NotificationHandler) MarkAllRead(c *gin.Context) {
 func (h *NotificationHandler) Delete(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid notification ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_notification_id", "Invalid notification id")
 		return
 	}
 
 	result := h.db.Where("id = ? AND user_id = ?", id, userID).Delete(&models.Notification{})
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Notification not found"})
+		apierr.Fail(c, http.StatusNotFound, "notification_not_found", "Notification not found")
 		return
 	}
 
@@ -156,7 +157,7 @@ func (h *NotificationHandler) Delete(c *gin.Context) {
 func (h *NotificationHandler) DeleteAllRead(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 

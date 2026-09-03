@@ -102,6 +102,7 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { utilitiesAPI, templatesAPI } from '@/api/client'
 import apiClient from '@/api/client'
+import { apiErrorMessage } from '@/utils/apiError'
 
 defineOptions({ name: 'PDFUploadZone' })
 
@@ -200,7 +201,7 @@ async function processFile(file) {
       emit('extracted', result)
     }
   } catch (err) {
-    error.value = err.response?.data?.error || t('utilities.pdfUploadZone.extractError')
+    error.value = apiErrorMessage(err, t('utilities.pdfUploadZone.extractError'))
     console.error('PDF extraction error:', err)
   } finally {
     processing.value = false

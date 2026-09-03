@@ -165,6 +165,7 @@ import { mergeExtendedDateTokens } from '@/utils/tokenizer'
 import WizardStepInfo from './WizardStepInfo.vue'
 import WizardStepMapping from './WizardStepMapping.vue'
 import WizardStepReview from './WizardStepReview.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const props = defineProps({
   existingTemplate: {
@@ -355,7 +356,7 @@ async function processFile(file) {
       extractError.value = t('utilities.templateWizard.invalidPdf')
     }
   } catch (err) {
-    extractError.value = err.response?.data?.error || t('utilities.templateWizard.analyzeError')
+    extractError.value = apiErrorMessage(err, t('utilities.templateWizard.analyzeError'))
     console.error('PDF analysis error:', err)
   } finally {
     extracting.value = false
@@ -649,7 +650,7 @@ async function saveTemplate() {
 
     emit('saved')
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || t('utilities.templateWizard.saveError')
+    error.value = apiErrorMessage(err, t('utilities.templateWizard.saveError'))
   } finally {
     saving.value = false
   }

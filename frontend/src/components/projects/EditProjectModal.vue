@@ -162,6 +162,7 @@ import apiClient from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 const props = defineProps({
@@ -249,7 +250,7 @@ async function handleSubmit() {
     emit('updated')
     emit('close')
   } catch (err) {
-    error.value = err.response?.data?.error || err.message
+    error.value = apiErrorMessage(err)
   } finally {
     loading.value = false
   }

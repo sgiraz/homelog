@@ -304,6 +304,7 @@ import Button from '@/components/common/Button.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditProjectModal from '@/components/projects/EditProjectModal.vue'
 import PieChart from '@/components/charts/PieChart.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const route = useRoute()
 const router = useRouter()
@@ -455,7 +456,7 @@ async function confirmDelete() {
     window.$toast?.success(t('projects.detail.deleteSuccess'))
     router.push('/projects')
   } catch (err) {
-    window.$toast?.error(t('projects.detail.deleteError', { error: err.response?.data?.error || err.message }))
+    window.$toast?.error(t('projects.detail.deleteError', { error: apiErrorMessage(err) }))
   }
 }
 

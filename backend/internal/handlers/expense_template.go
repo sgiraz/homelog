@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
@@ -41,7 +42,7 @@ func (h *ExpenseTemplateHandler) List(c *gin.Context) {
 		Preload("Project").
 		Order("sort_order ASC, name ASC").
 		Find(&templates).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch templates"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch templates")
 		return
 	}
 
@@ -54,7 +55,7 @@ func (h *ExpenseTemplateHandler) Create(c *gin.Context) {
 
 	var req CreateExpenseTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -72,7 +73,7 @@ func (h *ExpenseTemplateHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.db.Create(&template).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create template"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create template")
 		return
 	}
 
@@ -89,13 +90,13 @@ func (h *ExpenseTemplateHandler) Update(c *gin.Context) {
 
 	var template models.ExpenseTemplate
 	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&template).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		apierr.Fail(c, http.StatusNotFound, "template_not_found", "Template not found")
 		return
 	}
 
 	var req CreateExpenseTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -110,7 +111,7 @@ func (h *ExpenseTemplateHandler) Update(c *gin.Context) {
 	template.SortOrder = req.SortOrder
 
 	if err := h.db.Save(&template).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update template"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update template")
 		return
 	}
 
@@ -127,12 +128,12 @@ func (h *ExpenseTemplateHandler) Delete(c *gin.Context) {
 
 	var template models.ExpenseTemplate
 	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&template).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		apierr.Fail(c, http.StatusNotFound, "template_not_found", "Template not found")
 		return
 	}
 
 	if err := h.db.Delete(&template).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete template"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete template")
 		return
 	}
 

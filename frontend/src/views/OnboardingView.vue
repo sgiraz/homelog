@@ -374,6 +374,7 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
 import { DEFAULT_LOCALE } from '@/i18n'
+import { apiErrorMessage } from '@/utils/apiError'
 
 defineOptions({ name: 'OnboardingView' })
 
@@ -520,7 +521,7 @@ async function handleStep2Create() {
     createdPropertyId.value = data.id
     currentStep.value++
   } catch (err) {
-    stepError.value = err.response?.data?.error || t('onboarding.step2Create.createError')
+    stepError.value = apiErrorMessage(err, t('onboarding.step2Create.createError'))
     window.$toast?.error(stepError.value)
   } finally {
     saving.value = false
@@ -537,7 +538,7 @@ async function handleStep2Join() {
     joinRequestSent.value = true
     window.$toast?.success(t('onboarding.step2Join.submitSuccess'))
   } catch (err) {
-    stepError.value = err.response?.data?.error || t('onboarding.step2Join.submitError')
+    stepError.value = apiErrorMessage(err, t('onboarding.step2Join.submitError'))
     window.$toast?.error(stepError.value)
   } finally {
     saving.value = false
@@ -556,7 +557,7 @@ async function handleStep3() {
     })
     currentStep.value++
   } catch (err) {
-    stepError.value = err.response?.data?.error || t('onboarding.step3.saveError')
+    stepError.value = apiErrorMessage(err, t('onboarding.step3.saveError'))
     window.$toast?.error(stepError.value)
   } finally {
     saving.value = false
@@ -573,7 +574,7 @@ async function completeOnboarding() {
     await settingsStore.loadSettings()
     router.push('/')
   } catch (err) {
-    stepError.value = err.response?.data?.error || t('onboarding.step4.completeError')
+    stepError.value = apiErrorMessage(err, t('onboarding.step4.completeError'))
     window.$toast?.error(stepError.value)
   } finally {
     saving.value = false

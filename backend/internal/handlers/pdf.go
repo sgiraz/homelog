@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
@@ -145,13 +146,13 @@ type ExtractedContractData struct {
 func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
@@ -164,26 +165,26 @@ func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
 		First(&utility).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+		apierr.Fail(c, http.StatusNotFound, "utility_not_found", "Service not found")
 		return
 	}
 
 	// Get the uploaded file
 	file, err := c.FormFile("pdf_file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No PDF file uploaded"})
+		apierr.Fail(c, http.StatusBadRequest, "no_pdf_file", "No PDF was uploaded")
 		return
 	}
 
 	// Validate file type
 	if !strings.HasSuffix(strings.ToLower(file.Filename), ".pdf") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Only PDF files are allowed"})
+		apierr.Fail(c, http.StatusBadRequest, "pdf_only", "Only PDF files are allowed")
 		return
 	}
 
 	// Reject oversized uploads before writing to disk.
 	if file.Size > maxPDFUploadSize {
-		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "PDF troppo grande (max 10 MB)"})
+		apierr.Fail(c, http.StatusRequestEntityTooLarge, "pdf_too_large", "The PDF is too large (max 10 MB)")
 		return
 	}
 
@@ -193,7 +194,7 @@ func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 	filepath := filepath.Join(h.uploadsDir, filename)
 
 	if err := c.SaveUploadedFile(file, filepath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to save file")
 		return
 	}
 
@@ -276,25 +277,25 @@ func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 func (h *PDFHandler) UploadContractPDF(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	// Get the uploaded file
 	file, err := c.FormFile("pdf_file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No PDF file uploaded"})
+		apierr.Fail(c, http.StatusBadRequest, "no_pdf_file", "No PDF was uploaded")
 		return
 	}
 
 	// Validate file type
 	if !strings.HasSuffix(strings.ToLower(file.Filename), ".pdf") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Only PDF files are allowed"})
+		apierr.Fail(c, http.StatusBadRequest, "pdf_only", "Only PDF files are allowed")
 		return
 	}
 
 	if file.Size > maxPDFUploadSize {
-		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "PDF troppo grande (max 10 MB)"})
+		apierr.Fail(c, http.StatusRequestEntityTooLarge, "pdf_too_large", "The PDF is too large (max 10 MB)")
 		return
 	}
 
@@ -303,7 +304,7 @@ func (h *PDFHandler) UploadContractPDF(c *gin.Context) {
 	filepath := filepath.Join(h.uploadsDir, filename)
 
 	if err := c.SaveUploadedFile(file, filepath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to save file")
 		return
 	}
 
@@ -334,7 +335,7 @@ func (h *PDFHandler) UploadContractPDF(c *gin.Context) {
 func (h *PDFHandler) ListBillTemplates(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
@@ -349,7 +350,7 @@ func (h *PDFHandler) ListBillTemplates(c *gin.Context) {
 	}
 
 	if err := query.Order("provider ASC, utility_type ASC").Find(&templates).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch templates"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch templates")
 		return
 	}
 
@@ -360,7 +361,7 @@ func (h *PDFHandler) ListBillTemplates(c *gin.Context) {
 func (h *PDFHandler) CreateBillTemplate(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
@@ -373,7 +374,7 @@ func (h *PDFHandler) CreateBillTemplate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -397,7 +398,7 @@ func (h *PDFHandler) CreateBillTemplate(c *gin.Context) {
 	}
 
 	if err := h.db.Create(&template).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create template"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create template")
 		return
 	}
 
@@ -408,19 +409,19 @@ func (h *PDFHandler) CreateBillTemplate(c *gin.Context) {
 func (h *PDFHandler) UpdateBillTemplate(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	templateID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid template ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_template_id", "Invalid template id")
 		return
 	}
 
 	var template models.BillTemplate
 	if err := h.db.Where("id = ? AND user_id = ?", templateID, userID).First(&template).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		apierr.Fail(c, http.StatusNotFound, "template_not_found", "Template not found")
 		return
 	}
 
@@ -433,7 +434,7 @@ func (h *PDFHandler) UpdateBillTemplate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -461,7 +462,7 @@ func (h *PDFHandler) UpdateBillTemplate(c *gin.Context) {
 	template.IsDefault = input.IsDefault
 
 	if err := h.db.Save(&template).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update template"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update template")
 		return
 	}
 
@@ -472,24 +473,24 @@ func (h *PDFHandler) UpdateBillTemplate(c *gin.Context) {
 func (h *PDFHandler) DeleteBillTemplate(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	templateID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid template ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_template_id", "Invalid template id")
 		return
 	}
 
 	result := h.db.Unscoped().Where("id = ? AND user_id = ?", templateID, userID).Delete(&models.BillTemplate{})
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete template"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete template")
 		return
 	}
 
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		apierr.Fail(c, http.StatusNotFound, "template_not_found", "Template not found")
 		return
 	}
 
@@ -524,18 +525,18 @@ type PDFAnalysisResult struct {
 func (h *PDFHandler) AnalyzePDFForTemplate(c *gin.Context) {
 	_, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	file, err := c.FormFile("pdf_file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No PDF file uploaded"})
+		apierr.Fail(c, http.StatusBadRequest, "no_pdf_file", "No PDF was uploaded")
 		return
 	}
 
 	if file.Size > maxPDFUploadSize {
-		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "PDF troppo grande (max 10 MB)"})
+		apierr.Fail(c, http.StatusRequestEntityTooLarge, "pdf_too_large", "The PDF is too large (max 10 MB)")
 		return
 	}
 
@@ -547,7 +548,7 @@ func (h *PDFHandler) AnalyzePDFForTemplate(c *gin.Context) {
 	tag := fmt.Sprintf("%d_%s", timestamp, suffix)
 	pdfFile := filepath.Join(h.uploadsDir, fmt.Sprintf("analyze_%s.pdf", tag))
 	if err := c.SaveUploadedFile(file, pdfFile); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to save file")
 		return
 	}
 	defer os.Remove(pdfFile)
@@ -566,11 +567,11 @@ func (h *PDFHandler) AnalyzePDFForTemplate(c *gin.Context) {
 		// real cause is a timeout on slow hardware or an unreadable PDF).
 		switch {
 		case ppmCtx.Err() == context.DeadlineExceeded:
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Conversione del PDF troppo lenta: il file è troppo complesso o ha troppe pagine. Riprova con un PDF più leggero."})
+			apierr.Fail(c, http.StatusGatewayTimeout, "pdf_render_timeout", "Converting this PDF took too long: it is too complex or has too many pages. Try a lighter PDF.")
 		case errors.Is(err, exec.ErrNotFound):
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Conversione PDF non disponibile sul server: poppler-utils non è installato."})
+			apierr.Fail(c, http.StatusInternalServerError, "pdf_tools_missing", "PDF conversion is unavailable on this server: poppler-utils is not installed.")
 		default:
-			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Impossibile convertire il PDF in immagini: il file potrebbe essere corrotto o non supportato."})
+			apierr.Fail(c, http.StatusUnprocessableEntity, "pdf_render_failed", "This PDF could not be converted to images: it may be corrupted or unsupported.")
 		}
 		return
 	}
@@ -587,7 +588,7 @@ func (h *PDFHandler) AnalyzePDFForTemplate(c *gin.Context) {
 	}
 
 	if len(matches) == 0 {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "No images generated from PDF"})
+		apierr.Fail(c, http.StatusInternalServerError, "pdf_no_images", "No pages could be rendered from this PDF")
 		return
 	}
 
@@ -677,13 +678,13 @@ var analysisTagRe = regexp.MustCompile(`^\d+(?:_[a-f0-9]+)?$`)
 func (h *PDFHandler) CleanupTemplateImages(c *gin.Context) {
 	_, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	tag := c.Param("timestamp")
 	if !analysisTagRe.MatchString(tag) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid cleanup tag"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_cleanup_tag", "Invalid cleanup option")
 		return
 	}
 	pattern := filepath.Join(h.uploadsDir, fmt.Sprintf("template_page_%s_*.png", tag))
@@ -701,18 +702,18 @@ func (h *PDFHandler) CleanupTemplateImages(c *gin.Context) {
 func (h *PDFHandler) GetPDFRawText(c *gin.Context) {
 	_, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	file, err := c.FormFile("pdf_file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No PDF file uploaded"})
+		apierr.Fail(c, http.StatusBadRequest, "no_pdf_file", "No PDF was uploaded")
 		return
 	}
 
 	if file.Size > maxPDFUploadSize {
-		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "PDF troppo grande (max 10 MB)"})
+		apierr.Fail(c, http.StatusRequestEntityTooLarge, "pdf_too_large", "The PDF is too large (max 10 MB)")
 		return
 	}
 
@@ -723,7 +724,7 @@ func (h *PDFHandler) GetPDFRawText(c *gin.Context) {
 	defer os.Remove(tempFile)
 
 	if err := c.SaveUploadedFile(file, tempFile); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to save file")
 		return
 	}
 
@@ -733,7 +734,7 @@ func (h *PDFHandler) GetPDFRawText(c *gin.Context) {
 	if withPositions {
 		result, err := h.extractTextWithPositions(tempFile)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract text: " + err.Error()})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to extract text: "+err.Error())
 			return
 		}
 		c.JSON(http.StatusOK, result)
@@ -743,7 +744,7 @@ func (h *PDFHandler) GetPDFRawText(c *gin.Context) {
 	// Standard extraction without positions
 	text, err := h.extractTextFromPDF(tempFile)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract text: " + err.Error()})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to extract text: "+err.Error())
 		return
 	}
 

@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -44,7 +45,7 @@ type UpdatePropertyRequest struct {
 func (h *PropertyHandler) List(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -63,7 +64,7 @@ func (h *PropertyHandler) List(c *gin.Context) {
 
 	if err := query.Order("is_current DESC, created_at DESC").
 		Find(&properties).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch properties"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch properties")
 		return
 	}
 
@@ -76,13 +77,13 @@ func (h *PropertyHandler) List(c *gin.Context) {
 func (h *PropertyHandler) Create(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	var req CreatePropertyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -107,7 +108,7 @@ func (h *PropertyHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.db.Create(&property).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create property"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create property")
 		return
 	}
 
@@ -142,22 +143,22 @@ func (h *PropertyHandler) Create(c *gin.Context) {
 func (h *PropertyHandler) Get(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
 		return
 	}
 
 	var property models.Property
 	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&property).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Property not found"})
+			apierr.Fail(c, http.StatusNotFound, "property_not_found", "Property not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch property"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch property")
 		}
 		return
 	}
@@ -169,13 +170,13 @@ func (h *PropertyHandler) Get(c *gin.Context) {
 func (h *PropertyHandler) Update(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
 		return
 	}
 
@@ -183,16 +184,16 @@ func (h *PropertyHandler) Update(c *gin.Context) {
 	var property models.Property
 	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&property).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Property not found"})
+			apierr.Fail(c, http.StatusNotFound, "property_not_found", "Property not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch property"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch property")
 		}
 		return
 	}
 
 	var req UpdatePropertyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -220,7 +221,7 @@ func (h *PropertyHandler) Update(c *gin.Context) {
 
 	if len(updates) > 0 {
 		if err := h.db.Model(&property).Updates(updates).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update property"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update property")
 			return
 		}
 	}
@@ -234,25 +235,25 @@ func (h *PropertyHandler) Update(c *gin.Context) {
 func (h *PropertyHandler) Delete(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
 		return
 	}
 
 	// Soft delete
 	result := h.db.Where("id = ? AND user_id = ?", id, userID).Delete(&models.Property{})
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete property"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete property")
 		return
 	}
 
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Property not found"})
+		apierr.Fail(c, http.StatusNotFound, "property_not_found", "Property not found")
 		return
 	}
 

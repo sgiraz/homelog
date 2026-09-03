@@ -417,6 +417,7 @@ import apiClient, { utilitiesAPI, membersAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const props = defineProps({
   defaultPropertyId: {
@@ -606,7 +607,7 @@ async function processFile(file) {
       }
     }
   } catch (err) {
-    pdfError.value = err.response?.data?.error || t('utilities.addUtilityModal.extractError')
+    pdfError.value = apiErrorMessage(err, t('utilities.addUtilityModal.extractError'))
   } finally {
     pdfProcessing.value = false
   }
@@ -668,7 +669,7 @@ async function handleSubmit() {
     window.$toast?.success(t('utilities.addUtilityModal.successToast'))
     emit('created')
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || t('utilities.addUtilityModal.genericError')
+    error.value = apiErrorMessage(err, t('utilities.addUtilityModal.genericError'))
   } finally {
     loading.value = false
   }

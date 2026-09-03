@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/sgiraz/homelog/internal/database"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -53,24 +54,21 @@ type TokenResponse struct {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-			"hint":  "Password must be at least 6 characters",
-		})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_registration", err.Error())
 		return
 	}
 
 	// Check if email already exists
 	var existingUser models.User
 	if err := h.db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "Email already registered"})
+		apierr.Fail(c, http.StatusConflict, "email_already_registered", "This email is already registered")
 		return
 	}
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to hash password")
 		return
 	}
 
@@ -100,7 +98,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	if err := tx.Create(&user).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create user")
 		return
 	}
 
@@ -123,7 +121,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		if err := tx.Create(&property).Error; err != nil {
 			tx.Rollback()
 			log.Printf("ERROR creating default property: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create default property"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create default property")
 			return
 		}
 
@@ -139,7 +137,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		if err := tx.Create(&householdSettings).Error; err != nil {
 			tx.Rollback()
 			log.Printf("ERROR creating household settings: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create household settings"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create household settings")
 			return
 		}
 
@@ -160,7 +158,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		if err := tx.Create(&userSettings).Error; err != nil {
 			tx.Rollback()
 			log.Printf("ERROR creating user settings: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user settings"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create user settings")
 			return
 		}
 
@@ -178,7 +176,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		if err := tx.Create(&adminMember).Error; err != nil {
 			tx.Rollback()
 			log.Printf("ERROR creating household member: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create household member"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create household member")
 			return
 		}
 
@@ -188,7 +186,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		if err := database.SeedDefaultCategories(tx); err != nil {
 			tx.Rollback()
 			log.Printf("ERROR seeding default categories: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to seed default categories"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to seed default categories")
 			return
 		}
 		log.Printf("✅ Default categories seeded")
@@ -210,7 +208,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		if err := tx.Create(&userSettings).Error; err != nil {
 			tx.Rollback()
 			log.Printf("ERROR creating user settings: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user settings"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create user settings")
 			return
 		}
 
@@ -218,14 +216,14 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete registration"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to complete registration")
 		return
 	}
 
 	// Generate tokens
 	token, refreshToken, err := h.generateTokens(&user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to generate tokens")
 		return
 	}
 
@@ -240,33 +238,33 @@ func (h *AuthHandler) Register(c *gin.Context) {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
 	// Find user
 	var user models.User
 	if err := h.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		apierr.Fail(c, http.StatusUnauthorized, "invalid_credentials", "Invalid email or password")
 		return
 	}
 
 	// Check if user is active
 	if !user.IsActive {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Account is inactive"})
+		apierr.Fail(c, http.StatusForbidden, "account_inactive", "This account is inactive")
 		return
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		apierr.Fail(c, http.StatusUnauthorized, "invalid_credentials", "Invalid email or password")
 		return
 	}
 
 	// Generate tokens
 	token, refreshToken, err := h.generateTokens(&user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to generate tokens")
 		return
 	}
 
@@ -284,7 +282,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -296,27 +294,27 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	})
 
 	if err != nil || !token.Valid {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+		apierr.Fail(c, http.StatusUnauthorized, "invalid_refresh_token", "Invalid refresh token")
 		return
 	}
 
 	claims, ok := token.Claims.(*middleware.JWTClaims)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+		apierr.Fail(c, http.StatusUnauthorized, "invalid_token_claims", "Invalid token")
 		return
 	}
 
 	// Get user
 	var user models.User
 	if err := h.db.First(&user, claims.UserID).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		apierr.Fail(c, http.StatusUnauthorized, "user_not_found", "User not found")
 		return
 	}
 
 	// Generate new tokens
 	newToken, newRefreshToken, err := h.generateTokens(&user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to generate tokens")
 		return
 	}
 
@@ -380,29 +378,29 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 
 	var req ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
 	var user models.User
 	if err := h.db.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		apierr.Fail(c, http.StatusNotFound, "user_not_found", "User not found")
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Password attuale non corretta"})
+		apierr.Fail(c, http.StatusUnauthorized, "current_password_wrong", "The current password is not correct")
 		return
 	}
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to hash password")
 		return
 	}
 
 	if err := h.db.Model(&user).Update("password_hash", string(hashed)).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update password")
 		return
 	}
 
@@ -422,7 +420,7 @@ type ForgotPasswordRequest struct {
 func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	var req ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -439,7 +437,7 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	// Generate a cryptographically secure 32-byte token
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to generate token")
 		return
 	}
 	token := hex.EncodeToString(tokenBytes)
@@ -449,7 +447,7 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 		"password_reset_token":   token,
 		"password_reset_expires": expires,
 	}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save reset token"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to save reset token")
 		return
 	}
 
@@ -480,24 +478,24 @@ type ResetPasswordRequest struct {
 func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	var req ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
 	var user models.User
 	if err := h.db.Where("password_reset_token = ?", req.Token).First(&user).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Token non valido o scaduto"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_or_expired_token", "Invalid or expired token")
 		return
 	}
 
 	if user.PasswordResetExpires == nil || time.Now().After(*user.PasswordResetExpires) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Token scaduto. Richiedi un nuovo reset."})
+		apierr.Fail(c, http.StatusBadRequest, "reset_token_expired", "This link has expired. Request a new password reset.")
 		return
 	}
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to hash password")
 		return
 	}
 
@@ -506,7 +504,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		"password_reset_token":   "",
 		"password_reset_expires": nil,
 	}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset password"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to reset password")
 		return
 	}
 

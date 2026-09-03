@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -15,13 +16,13 @@ import (
 func (h *UtilityHandler) GetCommunications(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
@@ -33,7 +34,7 @@ func (h *UtilityHandler) GetCommunications(c *gin.Context) {
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
 		First(&utility).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+		apierr.Fail(c, http.StatusNotFound, "utility_not_found", "Service not found")
 		return
 	}
 
@@ -47,13 +48,13 @@ func (h *UtilityHandler) GetCommunications(c *gin.Context) {
 func (h *UtilityHandler) AddCommunication(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
@@ -65,7 +66,7 @@ func (h *UtilityHandler) AddCommunication(c *gin.Context) {
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
 		First(&utility).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+		apierr.Fail(c, http.StatusNotFound, "utility_not_found", "Service not found")
 		return
 	}
 
@@ -79,7 +80,7 @@ func (h *UtilityHandler) AddCommunication(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -94,7 +95,7 @@ func (h *UtilityHandler) AddCommunication(c *gin.Context) {
 	}
 
 	if err := h.db.Create(&comm).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create communication"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create communication")
 		return
 	}
 
@@ -105,30 +106,30 @@ func (h *UtilityHandler) AddCommunication(c *gin.Context) {
 func (h *UtilityHandler) MarkCommunicationRead(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
 	commID, err := strconv.ParseUint(c.Param("commId"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid communication ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_communication_id", "Invalid communication id")
 		return
 	}
 
 	var comm models.ServiceCommunication
 	if err := h.db.First(&comm, commID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Communication not found"})
+		apierr.Fail(c, http.StatusNotFound, "communication_not_found", "Communication not found")
 		return
 	}
 
 	if comm.UtilityID != uint(utilityID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Communication does not belong to this utility"})
+		apierr.Fail(c, http.StatusBadRequest, "communication_not_in_utility", "This communication belongs to another service")
 		return
 	}
 
@@ -140,14 +141,14 @@ func (h *UtilityHandler) MarkCommunicationRead(c *gin.Context) {
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", comm.UtilityID, memberPropertyIDs).
 		First(&utility).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized"})
+		apierr.Fail(c, http.StatusForbidden, "not_authorized", "You are not authorized to do this")
 		return
 	}
 
 	if err := h.db.Model(&models.ServiceCommunication{}).
 		Where("id = ?", comm.ID).
 		Update("is_read", true).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to mark as read"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to mark as read")
 		return
 	}
 	comm.IsRead = true
@@ -159,30 +160,30 @@ func (h *UtilityHandler) MarkCommunicationRead(c *gin.Context) {
 func (h *UtilityHandler) DeleteCommunication(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
 	commID, err := strconv.ParseUint(c.Param("commId"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid communication ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_communication_id", "Invalid communication id")
 		return
 	}
 
 	var comm models.ServiceCommunication
 	if err := h.db.First(&comm, commID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Communication not found"})
+		apierr.Fail(c, http.StatusNotFound, "communication_not_found", "Communication not found")
 		return
 	}
 
 	if comm.UtilityID != uint(utilityID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Communication does not belong to this utility"})
+		apierr.Fail(c, http.StatusBadRequest, "communication_not_in_utility", "This communication belongs to another service")
 		return
 	}
 
@@ -194,7 +195,7 @@ func (h *UtilityHandler) DeleteCommunication(c *gin.Context) {
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", comm.UtilityID, memberPropertyIDs).
 		First(&utility).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized"})
+		apierr.Fail(c, http.StatusForbidden, "not_authorized", "You are not authorized to do this")
 		return
 	}
 
@@ -206,7 +207,7 @@ func (h *UtilityHandler) DeleteCommunication(c *gin.Context) {
 func (h *UtilityHandler) DeleteReadCommunications(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
@@ -232,7 +233,7 @@ func (h *UtilityHandler) DeleteReadCommunications(c *gin.Context) {
 func (h *UtilityHandler) GetAllCommunications(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
@@ -286,7 +287,7 @@ func (h *UtilityHandler) GetAllCommunications(c *gin.Context) {
 func (h *UtilityHandler) GetUnreadCount(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 

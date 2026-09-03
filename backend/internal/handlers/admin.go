@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
@@ -25,18 +26,18 @@ func NewAdminHandler(db *gorm.DB) *AdminHandler {
 func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	adminUserID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	targetUserID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_user_id", "Invalid user id")
 		return
 	}
 
 	if adminUserID == uint(targetUserID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Non puoi eliminare il tuo stesso account"})
+		apierr.Fail(c, http.StatusBadRequest, "cannot_delete_own_account", "You cannot delete your own account from here")
 		return
 	}
 
@@ -49,7 +50,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 		var orphanCount int64
 		h.db.Unscoped().Model(&models.HouseholdMember{}).Where("user_id = ?", targetUserID).Count(&orphanCount)
 		if orphanCount == 0 {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Utente non trovato"})
+			apierr.Fail(c, http.StatusNotFound, "user_not_found", "User not found")
 			return
 		}
 		userFound = false
@@ -59,7 +60,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	// Begin transaction
 	tx := h.db.Begin()
 	if tx.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore interno"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Internal error")
 		return
 	}
 
@@ -108,7 +109,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	if len(memberIDs) > 0 {
 		if err := tx.Unscoped().Where("member_id IN ?", memberIDs).Delete(&models.ExpenseSplit{}).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione split spese"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete expense splits")
 			return
 		}
 	}
@@ -118,7 +119,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	if len(userExpenseIDs) > 0 {
 		if err := tx.Unscoped().Where("expense_id IN ?", userExpenseIDs).Delete(&models.ExpenseSplit{}).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione split spese"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete expense splits")
 			return
 		}
 	}
@@ -127,7 +128,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	if len(propertyIDs) > 0 {
 		if err := tx.Unscoped().Where("property_id IN ?", propertyIDs).Delete(&models.Settlement{}).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione pagamenti"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete settlements")
 			return
 		}
 	}
@@ -135,7 +136,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	// 3. Expenses
 	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.Expense{}).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione spese"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete expenses")
 		return
 	}
 
@@ -143,7 +144,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	if len(utilityIDs) > 0 {
 		if err := tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.Bill{}).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione bollette"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete bills")
 			return
 		}
 	}
@@ -152,7 +153,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	if len(utilityIDs) > 0 {
 		if err := tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.MeterReading{}).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione letture"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete readings")
 			return
 		}
 	}
@@ -161,7 +162,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	if len(utilityIDs) > 0 {
 		if err := tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.UtilityRate{}).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione tariffe"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete rates")
 			return
 		}
 	}
@@ -170,7 +171,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	if len(propertyIDs) > 0 {
 		if err := tx.Unscoped().Where("property_id IN ?", propertyIDs).Delete(&models.Utility{}).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione utenze"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete utilities")
 			return
 		}
 	}
@@ -179,7 +180,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	if len(propertyIDs) > 0 {
 		if err := tx.Unscoped().Where("property_id IN ?", propertyIDs).Delete(&models.HouseholdSettings{}).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione impostazioni famiglia"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete household settings")
 			return
 		}
 	}
@@ -192,7 +193,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 		}
 		if err := tx.Unscoped().Where("id IN ?", memberIDs).Delete(&models.HouseholdMember{}).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione membri"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete members")
 			return
 		}
 	}
@@ -200,21 +201,21 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	// 10. Properties
 	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.Property{}).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione proprietà"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete properties")
 		return
 	}
 
 	// 11. project_members join table (no GORM model)
 	if err := tx.Exec("DELETE FROM project_members WHERE user_id = ?", targetID).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione associazioni progetti"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete project associations")
 		return
 	}
 
 	// 12. Projects
 	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.Project{}).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione progetti"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete projects")
 		return
 	}
 
@@ -224,7 +225,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	if len(categoryIDs) > 0 {
 		if err := tx.Unscoped().Where("category_id IN ?", categoryIDs).Delete(&models.Subcategory{}).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione sottocategorie"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete subcategories")
 			return
 		}
 	}
@@ -232,28 +233,28 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	// 14. Categories (user-created only)
 	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.Category{}).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione categorie"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete categories")
 		return
 	}
 
 	// 15. BillTemplates
 	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.BillTemplate{}).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione template bollette"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete bill templates")
 		return
 	}
 
 	// 16. ContractTemplates
 	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.ContractTemplate{}).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione template contratti"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete contract templates")
 		return
 	}
 
 	// 17. UserSettings
 	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.UserSettings{}).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione impostazioni utente"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete user settings")
 		return
 	}
 
@@ -261,13 +262,13 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	if userFound {
 		if err := tx.Unscoped().Delete(&models.User{}, targetID).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione utente"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete user")
 			return
 		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore commit transazione"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to commit transaction")
 		return
 	}
 
@@ -279,18 +280,18 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 func (h *AdminHandler) ToggleAdmin(c *gin.Context) {
 	adminUserID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	targetUserID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_user_id", "Invalid user id")
 		return
 	}
 
 	if adminUserID == uint(targetUserID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Non puoi modificare il tuo stesso ruolo"})
+		apierr.Fail(c, http.StatusBadRequest, "cannot_change_own_role", "You cannot change your own role")
 		return
 	}
 
@@ -298,18 +299,18 @@ func (h *AdminHandler) ToggleAdmin(c *gin.Context) {
 		Role string `json:"role" binding:"required,oneof=admin user"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Ruolo non valido. Usa 'admin' o 'user'"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_role", "Invalid role: use 'admin' or 'user'")
 		return
 	}
 
 	var targetUser models.User
 	if err := h.db.First(&targetUser, targetUserID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utente non trovato"})
+		apierr.Fail(c, http.StatusNotFound, "user_not_found", "User not found")
 		return
 	}
 
 	if err := h.db.Model(&targetUser).Update("role", req.Role).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore aggiornamento ruolo"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update role")
 		return
 	}
 

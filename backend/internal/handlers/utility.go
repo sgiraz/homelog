@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sgiraz/homelog/internal/i18n"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
@@ -25,7 +25,7 @@ func NewUtilityHandler(db *gorm.DB) *UtilityHandler {
 func (h *UtilityHandler) List(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
@@ -84,7 +84,7 @@ func (h *UtilityHandler) List(c *gin.Context) {
 		}).
 		Order("type ASC, provider ASC").
 		Find(&utilities).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch utilities"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch utilities")
 		return
 	}
 
@@ -99,7 +99,7 @@ func (h *UtilityHandler) List(c *gin.Context) {
 func (h *UtilityHandler) Create(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -149,7 +149,7 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 			Where("id = ? AND property_id = ?", *input.PaidByMemberID, input.PropertyID).
 			Count(&payerCount)
 		if payerCount == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Payer member does not belong to this property"})
+			apierr.Fail(c, http.StatusBadRequest, "payer_not_in_property", "The payer is not a member of this property")
 			return
 		}
 	}
@@ -158,11 +158,11 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 	if input.SplitOverride == "custom" && input.SplitMemberIDs != "" {
 		var memberIDs []uint
 		if err := json.Unmarshal([]byte(input.SplitMemberIDs), &memberIDs); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "split_member_ids must be a valid JSON array of member IDs"})
+			apierr.Fail(c, http.StatusBadRequest, "split_members_invalid", "The selected members are not valid")
 			return
 		}
 		if len(memberIDs) == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "split_member_ids cannot be empty when split_override is custom"})
+			apierr.Fail(c, http.StatusBadRequest, "split_members_required", "Select at least one member for a custom split")
 			return
 		}
 		var validCount int64
@@ -170,7 +170,7 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 			Where("id IN ? AND property_id = ?", memberIDs, input.PropertyID).
 			Count(&validCount)
 		if validCount != int64(len(memberIDs)) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Some split member IDs do not belong to this property"})
+			apierr.Fail(c, http.StatusBadRequest, "split_members_not_in_property", "Some of the selected members do not belong to this property")
 			return
 		}
 	}
@@ -192,11 +192,9 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		Count(&existingCount)
 
 	if existingCount > 0 {
-		lang := i18n.UserLanguage(h.db, userID)
-		c.JSON(http.StatusConflict, gin.H{
-			"error": i18n.T(lang, "error.utility.service_already_active",
-				"type", i18n.UtilityType(lang, input.Type)),
-		})
+		apierr.FailWith(c, http.StatusConflict, "service_already_active",
+			"A service of this type is already active for this property",
+			map[string]string{"type": input.Type})
 		return
 	}
 
@@ -259,7 +257,7 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.db.Create(&utility).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create utility"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create utility")
 		return
 	}
 
@@ -272,13 +270,13 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 func (h *UtilityHandler) Get(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
@@ -307,9 +305,9 @@ func (h *UtilityHandler) Get(c *gin.Context) {
 		}).
 		First(&utility).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+			apierr.Fail(c, http.StatusNotFound, "utility_not_found", "Service not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch utility"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch utility")
 		}
 		return
 	}
@@ -323,22 +321,22 @@ func (h *UtilityHandler) Get(c *gin.Context) {
 func (h *UtilityHandler) Update(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
 	var utility models.Utility
 	if err := h.db.First(&utility, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+			apierr.Fail(c, http.StatusNotFound, "utility_not_found", "Service not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch utility"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch utility")
 		}
 		return
 	}
@@ -375,7 +373,7 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -385,7 +383,7 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 		case "", "no_split", "custom":
 			// valid
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": "split_override must be '', 'no_split', or 'custom'"})
+			apierr.Fail(c, http.StatusBadRequest, "split_override_invalid", "Invalid split setting")
 			return
 		}
 	}
@@ -397,7 +395,7 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 			Where("id = ? AND property_id = ?", *input.PaidByMemberID, utility.PropertyID).
 			Count(&payerCount)
 		if payerCount == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Payer member does not belong to this property"})
+			apierr.Fail(c, http.StatusBadRequest, "payer_not_in_property", "The payer is not a member of this property")
 			return
 		}
 	}
@@ -410,11 +408,11 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	if effectiveSplitOverride == "custom" && input.SplitMemberIDs != nil && *input.SplitMemberIDs != "" {
 		var memberIDs []uint
 		if err := json.Unmarshal([]byte(*input.SplitMemberIDs), &memberIDs); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "split_member_ids must be a valid JSON array of member IDs"})
+			apierr.Fail(c, http.StatusBadRequest, "split_members_invalid", "The selected members are not valid")
 			return
 		}
 		if len(memberIDs) == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "split_member_ids cannot be empty when split_override is custom"})
+			apierr.Fail(c, http.StatusBadRequest, "split_members_required", "Select at least one member for a custom split")
 			return
 		}
 		var validCount int64
@@ -422,7 +420,7 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 			Where("id IN ? AND property_id = ?", memberIDs, utility.PropertyID).
 			Count(&validCount)
 		if validCount != int64(len(memberIDs)) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Some split member IDs do not belong to this property"})
+			apierr.Fail(c, http.StatusBadRequest, "split_members_not_in_property", "Some of the selected members do not belong to this property")
 			return
 		}
 	}
@@ -454,11 +452,9 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 				Count(&existingCount)
 
 			if existingCount > 0 {
-				lang := i18n.UserLanguage(h.db, userID)
-				c.JSON(http.StatusConflict, gin.H{
-					"error": i18n.T(lang, "error.utility.utility_already_active",
-						"type", i18n.UtilityType(lang, utility.Type)),
-				})
+				apierr.FailWith(c, http.StatusConflict, "utility_already_active",
+					"A service of this type is already active for this property",
+					map[string]string{"type": utility.Type})
 				return
 			}
 		}
@@ -506,16 +502,15 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	}
 	if input.Currency != nil && *input.Currency != utility.Currency {
 		if h.isUtilityCurrencyLocked(utility.ID) {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": "Non puoi cambiare la valuta di un servizio con bollette già saldate: la conversione non può essere propagata sullo storico.",
-			})
+			apierr.Fail(c, http.StatusConflict, "utility_currency_locked",
+				"The currency of a service with settled bills cannot be changed: the conversion cannot be applied to past records.")
 			return
 		}
 		utility.Currency = *input.Currency
 	}
 
 	if err := h.db.Save(&utility).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update utility"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update utility")
 		return
 	}
 
@@ -541,22 +536,22 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 func (h *UtilityHandler) Delete(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
 	var utility models.Utility
 	if err := h.db.First(&utility, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+			apierr.Fail(c, http.StatusNotFound, "utility_not_found", "Service not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch utility"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch utility")
 		}
 		return
 	}
@@ -566,7 +561,7 @@ func (h *UtilityHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.db.Delete(&utility).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete utility"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete utility")
 		return
 	}
 

@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -106,13 +107,13 @@ func resolveMemberPair(db *gorm.DB, userID, propertyID uint, otherMemberIDStr st
 func (h *DebtHandler) List(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	propertyIDParsed, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
 		return
 	}
 	propertyID := uint(propertyIDParsed)
@@ -128,7 +129,7 @@ func (h *DebtHandler) List(c *gin.Context) {
 	case err == nil:
 		// Pair resolved — fall through to the ledger below.
 	case errors.Is(err, errInvalidOtherMember):
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid other_member_id"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_other_member_id", "Invalid other member id")
 		return
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		// No member profile or no counterpart yet — nothing to owe anyone.
@@ -136,7 +137,7 @@ func (h *DebtHandler) List(c *gin.Context) {
 		return
 	default:
 		log.Printf("ERROR resolving member pair for property %d: %v", propertyID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch debts"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch debts")
 		return
 	}
 
@@ -160,7 +161,7 @@ func (h *DebtHandler) List(c *gin.Context) {
 		Find(&splits).Error
 	if err != nil {
 		log.Printf("ERROR fetching long-term debts: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch debts"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch debts")
 		return
 	}
 
@@ -287,41 +288,41 @@ type SetLongTermDebtRequest struct {
 func (h *DebtHandler) SetLongTermDebt(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	expenseID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expense ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_expense_id", "Invalid expense id")
 		return
 	}
 
 	var req SetLongTermDebtRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
 	var expense models.Expense
 	if err := h.db.First(&expense, expenseID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})
+			apierr.Fail(c, http.StatusNotFound, "expense_not_found", "Expense not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load expense"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to load expense")
 		}
 		return
 	}
 
 	if expense.PropertyID == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Solo le spese di una casa possono diventare debiti a lungo termine"})
+		apierr.Fail(c, http.StatusBadRequest, "long_term_debt_property_only", "Only household expenses can become long-term debts")
 		return
 	}
 	if !requirePropertyMember(c, h.db, userID, *expense.PropertyID) {
 		return
 	}
 	if !expense.IsSplit {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Solo le spese divise possono diventare debiti a lungo termine"})
+		apierr.Fail(c, http.StatusBadRequest, "long_term_debt_split_only", "Only split expenses can become long-term debts")
 		return
 	}
 
@@ -332,14 +333,13 @@ func (h *DebtHandler) SetLongTermDebt(c *gin.Context) {
 		Where("expense_id = ? AND member_id <> ? AND settled_amount > 0", expense.ID, expense.PaidByMemberID).
 		Count(&alreadyPaid)
 	if alreadyPaid > 0 {
-		c.JSON(http.StatusConflict, gin.H{
-			"error": "Ci sono già pagamenti registrati su questa spesa. Annullali prima di spostarla.",
-		})
+		apierr.Fail(c, http.StatusConflict, "expense_has_payments",
+			"This expense already has payments recorded. Undo them before moving it.")
 		return
 	}
 
 	if err := h.db.Model(&expense).Update("is_long_term_debt", *req.IsLongTermDebt).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update expense"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update expense")
 		return
 	}
 
