@@ -135,7 +135,7 @@ import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { categoriesAPI, projectsAPI, expensesAPI, utilitiesAPI, balanceAPI } from '@/api/client'
-import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
+import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatTrendLabel, yearOf } from '@/utils/dateFormatter'
 import { useConfirm } from '@/composables/useConfirm'
 import { statsCategoryLabel } from '@/utils/categoryLabel'
 import Button from '@/components/common/Button.vue'
@@ -242,19 +242,16 @@ const trendChartTitle = computed(() => {
   }
 })
 
+// The API ships a raw ISO date per bucket; the label is built here so it
+// follows the user's language. The year is repeated only when it changes.
 function abbreviateTrendLabels(items) {
+  const granularity = stats.value?.granularity || 'month'
   let lastYear = null
   return items.map(i => {
-    const parts = i.label.split(' ')
-    if (parts.length === 2) {
-      const [month, year] = parts
-      if (year !== lastYear) {
-        lastYear = year
-        return `${month} '${year.slice(-2)}`
-      }
-      return month
-    }
-    return i.label
+    const year = yearOf(i.date)
+    const withYear = granularity === 'month' && year !== lastYear
+    lastYear = year
+    return formatTrendLabel(i.date, granularity, settingsStore.formatSettings, { withYear })
   })
 }
 

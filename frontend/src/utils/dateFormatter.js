@@ -181,3 +181,51 @@ export function formatDiff(value, settings = {}) {
   }).format(value)
   return formatted
 }
+
+/**
+ * Format one trend-chart bucket for the user's locale.
+ *
+ * The API returns an ISO date per bucket plus the response granularity; the
+ * label is built here so it follows the user's language instead of whatever
+ * the server happened to hardcode.
+ *
+ * @param {string} dateStr - ISO date of the first day of the bucket
+ * @param {'day'|'month'|'quarter'} granularity
+ * @param {object} settings - { language: 'it' }
+ * @param {object} [options] - { withYear: boolean } to append a short year
+ * @returns {string}
+ */
+export function formatTrendLabel(dateStr, granularity, settings = {}, options = {}) {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return ''
+
+  const locale = getLocale(settings.language || 'it')
+  const year = String(date.getFullYear())
+
+  if (granularity === 'day') {
+    return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(date)
+  }
+
+  if (granularity === 'quarter') {
+    // Intl has no quarter formatter; the number is language-neutral, the
+    // caller supplies the surrounding wording.
+    const quarter = Math.floor(date.getMonth() / 3) + 1
+    return `Q${quarter} ${year}`
+  }
+
+  const month = new Intl.DateTimeFormat(locale, { month: 'short' }).format(date)
+  return options.withYear ? `${month} '${year.slice(-2)}` : month
+}
+
+/**
+ * Year of an ISO date string, as a string. Used to decide when a trend label
+ * needs to repeat the year.
+ *
+ * @param {string} dateStr
+ * @returns {string}
+ */
+export function yearOf(dateStr) {
+  const date = new Date(dateStr)
+  return isNaN(date.getTime()) ? '' : String(date.getFullYear())
+}

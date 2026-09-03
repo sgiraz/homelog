@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/i18n"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
@@ -192,16 +192,10 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		Count(&existingCount)
 
 	if existingCount > 0 {
-		typeLabels := map[string]string{
-			"electricity": "Luce", "gas": "Gas", "water": "Acqua", "waste": "Rifiuti",
-			"internet": "Internet", "insurance": "Assicurazione", "affitto": "Affitto", "mutuo": "Mutuo",
-		}
-		label := typeLabels[input.Type]
-		if label == "" {
-			label = input.Type
-		}
+		lang := i18n.UserLanguage(h.db, userID)
 		c.JSON(http.StatusConflict, gin.H{
-			"error": fmt.Sprintf("Esiste già un servizio %s attivo per questa proprietà. Disattiva quello esistente prima di crearne uno nuovo.", label),
+			"error": i18n.T(lang, "error.utility.service_already_active",
+				"type", i18n.UtilityType(lang, input.Type)),
 		})
 		return
 	}
@@ -460,18 +454,10 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 				Count(&existingCount)
 
 			if existingCount > 0 {
-				typeLabels := map[string]string{
-					"electricity": "Luce",
-					"gas":         "Gas",
-					"water":       "Acqua",
-					"waste":       "Rifiuti",
-				}
-				label := typeLabels[utility.Type]
-				if label == "" {
-					label = utility.Type
-				}
+				lang := i18n.UserLanguage(h.db, userID)
 				c.JSON(http.StatusConflict, gin.H{
-					"error": fmt.Sprintf("Esiste già un'utenza %s attiva per questa proprietà. Disattiva quella esistente prima di attivare questa.", label),
+					"error": i18n.T(lang, "error.utility.utility_already_active",
+						"type", i18n.UtilityType(lang, utility.Type)),
 				})
 				return
 			}
