@@ -12,9 +12,12 @@ import (
 	"github.com/sgiraz/homelog/internal/models"
 )
 
-// TrendPoint represents a single data point in the trend chart (day/month/quarter)
+// TrendPoint is a single bucket of the trend chart. Date is the first day of
+// the bucket in ISO form; the client formats it for the user's locale together
+// with the response's granularity. The server ships no localized label — it
+// used to emit Italian month names, which stayed Italian in every language.
 type TrendPoint struct {
-	Label  string  `json:"label"`
+	Date   string  `json:"date"`
 	Amount float64 `json:"amount"`
 	Count  int     `json:"count"`
 }
@@ -131,7 +134,6 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		granularity = "quarter"
 	}
 
-	itMonths := []string{"", "Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"}
 	var trend []TrendPoint
 
 	switch granularity {
@@ -151,11 +153,11 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 			Scan(&rows)
 		trend = make([]TrendPoint, len(rows))
 		for i, r := range rows {
-			mon := ""
-			if r.Month >= 1 && r.Month <= 12 {
-				mon = itMonths[r.Month]
+			trend[i] = TrendPoint{
+				Date:   fmt.Sprintf("%04d-%02d-%02d", r.Year, r.Month, r.Day),
+				Amount: r.Amount,
+				Count:  r.Count,
 			}
-			trend[i] = TrendPoint{Label: fmt.Sprintf("%d %s", r.Day, mon), Amount: r.Amount, Count: r.Count}
 		}
 
 	case "quarter":
@@ -173,7 +175,12 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 			Scan(&rows)
 		trend = make([]TrendPoint, len(rows))
 		for i, r := range rows {
-			trend[i] = TrendPoint{Label: fmt.Sprintf("Q%d %d", r.Quarter, r.Year), Amount: r.Amount, Count: r.Count}
+			// First day of the quarter: Q1 -> January, Q2 -> April, ...
+			trend[i] = TrendPoint{
+				Date:   fmt.Sprintf("%04d-%02d-01", r.Year, (r.Quarter-1)*3+1),
+				Amount: r.Amount,
+				Count:  r.Count,
+			}
 		}
 
 	default: // month
@@ -191,11 +198,11 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 			Scan(&rows)
 		trend = make([]TrendPoint, len(rows))
 		for i, r := range rows {
-			mon := ""
-			if r.Month >= 1 && r.Month <= 12 {
-				mon = itMonths[r.Month]
+			trend[i] = TrendPoint{
+				Date:   fmt.Sprintf("%04d-%02d-01", r.Year, r.Month),
+				Amount: r.Amount,
+				Count:  r.Count,
 			}
-			trend[i] = TrendPoint{Label: fmt.Sprintf("%s %d", mon, r.Year), Amount: r.Amount, Count: r.Count}
 		}
 	}
 

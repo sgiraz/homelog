@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sgiraz/homelog/internal/database"
+	"github.com/sgiraz/homelog/internal/i18n"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
@@ -79,7 +80,7 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 		timestamp := time.Now().Format("2006-01-02_15-04-05")
 		filename := fmt.Sprintf("homelog_spese_%s.csv", timestamp)
 		headers := []string{"Date", "Description", "Amount", "Category", "Project", "Paid By", "Split", "Notes"}
-		lang := h.userLanguage(userID)
+		lang := i18n.UserLanguage(h.db, userID)
 		rows := make([][]string, 0, len(expenses))
 		for _, e := range expenses {
 			rows = append(rows, expenseToCSVRow(e, lang))
@@ -165,16 +166,6 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 	c.JSON(http.StatusOK, data)
 }
 
-// userLanguage returns the export language for a user. CSV headers are already
-// English; only the built-in category names need resolving.
-func (h *ExportHandler) userLanguage(userID uint) string {
-	var settings models.UserSettings
-	if err := h.db.Where("user_id = ?", userID).First(&settings).Error; err != nil {
-		return models.DefaultLanguage
-	}
-	return models.NormalizeLanguage(settings.Language)
-}
-
 // expenseToCSVRow converts an Expense to a slice of strings for CSV output.
 // lang localizes built-in category names; user-created ones export as stored.
 func expenseToCSVRow(e models.Expense, lang string) []string {
@@ -222,7 +213,7 @@ func (h *ExportHandler) ExportExpenses(c *gin.Context) {
 	if c.Query("format") == "csv" {
 		filename := fmt.Sprintf("homelog_expenses_%s.csv", timestamp)
 		headers := []string{"Date", "Description", "Amount", "Category", "Project", "Paid By", "Split", "Notes"}
-		lang := h.userLanguage(userID)
+		lang := i18n.UserLanguage(h.db, userID)
 		rows := make([][]string, 0, len(expenses))
 		for _, e := range expenses {
 			rows = append(rows, expenseToCSVRow(e, lang))

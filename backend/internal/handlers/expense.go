@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -10,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/i18n"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -400,9 +400,14 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 				continue
 			}
 			relID := expense.ID
+			// Written in the recipient's language, not the payer's: this is
+			// server-generated text, and each member may read a different one.
+			lang := i18n.UserLanguage(h.db, *member.UserID)
 			createNotification(h.db, *member.UserID, "expense_shared",
-				fmt.Sprintf("Nuova spesa condivisa: %s", req.Description),
-				fmt.Sprintf("%s ha inserito una spesa. La tua quota: %.2f.", payer.Name, splitAmount),
+				i18n.T(lang, "notification.expense_shared.title", "description", req.Description),
+				i18n.T(lang, "notification.expense_shared.body",
+					"payer", payer.Name,
+					"amount", i18n.FormatAmount(lang, splitAmount)),
 				&relID, expense.PropertyID)
 		}
 	}
