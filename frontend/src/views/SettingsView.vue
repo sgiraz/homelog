@@ -131,6 +131,7 @@ import PreferencesTab from '@/components/settings/PreferencesTab.vue'
 import CategoriesTab from '@/components/settings/CategoriesTab.vue'
 import DataTab from '@/components/settings/DataTab.vue'
 import AboutSupportCard from '@/components/settings/AboutSupportCard.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -186,7 +187,7 @@ async function onAvatarCropped(file) {
     authStore.updateUser(data.user)
     window.$toast?.success(t('settings.profile.avatarUploaded'))
   } catch (err) {
-    window.$toast?.error(err.response?.data?.error || t('settings.profile.avatarUploadError'))
+    window.$toast?.error(apiErrorMessage(err, t('settings.profile.avatarUploadError')))
   } finally {
     avatarUploading.value = false
   }

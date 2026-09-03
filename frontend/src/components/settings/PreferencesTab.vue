@@ -325,6 +325,7 @@ import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
 import DeleteAccountSection from './DeleteAccountSection.vue'
 import { DEFAULT_LOCALE, localeOptions } from '@/i18n'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -550,7 +551,7 @@ async function handleChangePassword() {
     pwForm.value = { current: '', newPw: '', confirm: '' }
     setTimeout(() => { showChangePassword.value = false; pwSuccess.value = null }, 2000)
   } catch (err) {
-    pwError.value = err.response?.data?.error || t('settings.preferences.account.genericError')
+    pwError.value = apiErrorMessage(err, t('settings.preferences.account.genericError'))
   } finally {
     pwLoading.value = false
   }

@@ -238,6 +238,7 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import SettlementModal from '@/components/balance/SettlementModal.vue'
 import CompensateModal from '@/components/balance/CompensateModal.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 const emit = defineEmits(['settlement-created'])
@@ -304,7 +305,7 @@ async function moveToDebts(split) {
     actionsFor.value = null
     window.$toast?.success(t('balance.unsettled.moveToDebtsToast'))
   } catch (err) {
-    window.$toast?.error(err.response?.data?.error || t('balance.settlement.genericError'))
+    window.$toast?.error(apiErrorMessage(err, t('balance.settlement.genericError')))
   }
 }
 

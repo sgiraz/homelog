@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
@@ -163,7 +164,7 @@ func (h *ProjectHandler) List(c *gin.Context) {
 		Preload("Members.User").
 		Order("status ASC, start_date DESC").
 		Find(&projects).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch projects"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch projects")
 		return
 	}
 
@@ -211,24 +212,24 @@ func (h *ProjectHandler) Create(c *gin.Context) {
 
 	var req CreateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
 	startDate, err := time.Parse("2006-01-02", req.StartDate)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_date_from", "Invalid start date format")
 		return
 	}
 
 	endDate, err := time.Parse("2006-01-02", req.EndDate)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_date_to", "Invalid end date format")
 		return
 	}
 
 	if endDate.Before(startDate) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "End date must be after start date"})
+		apierr.Fail(c, http.StatusBadRequest, "end_before_start", "The end date must come after the start date")
 		return
 	}
 
@@ -246,7 +247,7 @@ func (h *ProjectHandler) Create(c *gin.Context) {
 		}
 	}
 	if !isValidStatus {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Must be: planned, active, completed, cancelled"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_project_status", "Invalid status")
 		return
 	}
 
@@ -266,19 +267,19 @@ func (h *ProjectHandler) Create(c *gin.Context) {
 
 	if err := tx.Create(&project).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create project"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create project")
 		return
 	}
 
 	// Add shared members with roles
 	if err := h.setProjectMembers(tx, &project, req, userID); err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to set project members"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to set project members")
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create project"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create project")
 		return
 	}
 
@@ -314,9 +315,9 @@ func (h *ProjectHandler) Get(c *gin.Context) {
 		Preload("Members.User").
 		First(&project).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+			apierr.Fail(c, http.StatusNotFound, "project_not_found", "Project not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch project"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch project")
 		}
 		return
 	}
@@ -347,33 +348,33 @@ func (h *ProjectHandler) Update(c *gin.Context) {
 	project, err := h.canManageProject(projectID, userID)
 	if err != nil {
 		if errors.Is(err, errBadProjectID) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+			apierr.Fail(c, http.StatusBadRequest, "invalid_project_id", "Invalid project id")
 		} else {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Only the project creator or co-owners can edit"})
+			apierr.Fail(c, http.StatusForbidden, "project_edit_owner_only", "Only the project creator or a co-owner can edit it")
 		}
 		return
 	}
 
 	var req CreateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
 	startDate, err := time.Parse("2006-01-02", req.StartDate)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_date_from", "Invalid start date format")
 		return
 	}
 
 	endDate, err := time.Parse("2006-01-02", req.EndDate)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_date_to", "Invalid end date format")
 		return
 	}
 
 	if endDate.Before(startDate) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "End date must be after start date"})
+		apierr.Fail(c, http.StatusBadRequest, "end_before_start", "The end date must come after the start date")
 		return
 	}
 
@@ -392,19 +393,19 @@ func (h *ProjectHandler) Update(c *gin.Context) {
 
 	if err := tx.Save(&project).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update project"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update project")
 		return
 	}
 
 	// Replace members with roles
 	if err := h.setProjectMembers(tx, &project, req, project.UserID); err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update project members"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update project members")
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update project"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update project")
 		return
 	}
 
@@ -431,9 +432,9 @@ func (h *ProjectHandler) Delete(c *gin.Context) {
 	project, err := h.canManageProject(projectID, userID)
 	if err != nil {
 		if errors.Is(err, errBadProjectID) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+			apierr.Fail(c, http.StatusBadRequest, "invalid_project_id", "Invalid project id")
 		} else {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Only the project creator or co-owners can delete"})
+			apierr.Fail(c, http.StatusForbidden, "project_delete_owner_only", "Only the project creator or a co-owner can delete it")
 		}
 		return
 	}
@@ -442,11 +443,9 @@ func (h *ProjectHandler) Delete(c *gin.Context) {
 	h.db.Model(&models.Expense{}).Where("project_id = ?", projectID).Count(&expenseCount)
 
 	if expenseCount > 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Cannot delete project with associated expenses",
-			"message": "Remove or reassign expenses first",
-			"count":   expenseCount,
-		})
+		apierr.FailWith(c, http.StatusBadRequest, "project_has_expenses",
+			"This project has expenses and cannot be deleted",
+			map[string]string{"count": strconv.FormatInt(expenseCount, 10)})
 		return
 	}
 
@@ -455,7 +454,7 @@ func (h *ProjectHandler) Delete(c *gin.Context) {
 	h.db.Model(&project).Association("SharedWith").Clear()
 
 	if err := h.db.Delete(&project).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete project"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete project")
 		return
 	}
 

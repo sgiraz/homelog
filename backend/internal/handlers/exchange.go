@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/apierr"
 )
 
 // ExchangeHandler handles currency exchange rate requests
@@ -53,7 +54,7 @@ func (h *ExchangeHandler) GetRate(c *gin.Context) {
 	amountStr := c.DefaultQuery("amount", "1")
 
 	if from == "" || to == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "from and to parameters are required"})
+		apierr.Fail(c, http.StatusBadRequest, "exchange_params_required", "Both currencies are required")
 		return
 	}
 
@@ -67,7 +68,7 @@ func (h *ExchangeHandler) GetRate(c *gin.Context) {
 
 	amount, err := strconv.ParseFloat(amountStr, 64)
 	if err != nil || amount <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid amount"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_amount", "Invalid amount")
 		return
 	}
 
@@ -89,25 +90,27 @@ func (h *ExchangeHandler) GetRate(c *gin.Context) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Tasso di cambio non disponibile. Inserisci il tasso manualmente."})
+		apierr.Fail(c, http.StatusServiceUnavailable, "exchange_rate_unavailable", "The exchange rate is unavailable. Enter it manually.")
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Tasso di cambio non disponibile. Inserisci il tasso manualmente."})
+		apierr.Fail(c, http.StatusServiceUnavailable, "exchange_rate_unavailable", "The exchange rate is unavailable. Enter it manually.")
 		return
 	}
 
 	var fResp frankfurterResponse
 	if err := json.NewDecoder(resp.Body).Decode(&fResp); err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Errore nella risposta del servizio cambi."})
+		apierr.Fail(c, http.StatusServiceUnavailable, "exchange_service_error", "The exchange-rate service returned an unusable response.")
 		return
 	}
 
 	rate, ok := fResp.Rates[to]
 	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Valuta '%s' non supportata", to)})
+		apierr.FailWith(c, http.StatusBadRequest, "currency_not_supported",
+			fmt.Sprintf("Currency %q is not supported", to),
+			map[string]string{"currency": to})
 		return
 	}
 

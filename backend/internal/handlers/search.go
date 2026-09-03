@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -48,7 +49,7 @@ type SearchHit struct {
 func (h *SearchHandler) Query(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -116,7 +117,7 @@ func (h *SearchHandler) Query(c *gin.Context) {
 	`, match, propertyIDs, userID).Scan(&rows).Error
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
+		apierr.Fail(c, http.StatusInternalServerError, apierr.CodeServerError, "Search failed")
 		return
 	}
 

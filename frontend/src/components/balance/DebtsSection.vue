@@ -199,6 +199,7 @@ import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import SettlementModal from '@/components/balance/SettlementModal.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 const balanceStore = useBalanceStore()
@@ -254,7 +255,7 @@ async function moveBackToBalance(debt) {
     await balanceStore.setLongTermDebt(debt.expense_id, false, propertyId.value)
     window.$toast?.success(t('balance.debts.moveBackToast'))
   } catch (err) {
-    window.$toast?.error(err.response?.data?.error || t('balance.debts.genericError'))
+    window.$toast?.error(apiErrorMessage(err, t('balance.debts.genericError')))
   }
 }
 

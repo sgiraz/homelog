@@ -10,6 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -94,7 +95,7 @@ func (h *SettingsHandler) computeDeleteCheck(userID uint) DeleteAccountCheckResp
 func (h *SettingsHandler) DeleteAccountCheck(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -111,13 +112,13 @@ type PromoteAdminRequest struct {
 func (h *SettingsHandler) PromoteAdmin(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	var req PromoteAdminRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -127,7 +128,7 @@ func (h *SettingsHandler) PromoteAdmin(c *gin.Context) {
 		Where("user_id = ? AND property_id = ? AND role = 'admin'", userID, req.PropertyID).
 		Count(&adminCount)
 	if adminCount == 0 {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Non sei admin di questa proprietà"})
+		apierr.Fail(c, http.StatusForbidden, "not_property_admin", "You are not an admin of this property")
 		return
 	}
 
@@ -135,12 +136,12 @@ func (h *SettingsHandler) PromoteAdmin(c *gin.Context) {
 	var target models.HouseholdMember
 	if err := h.db.Where("id = ? AND property_id = ? AND is_virtual = false", req.MemberID, req.PropertyID).
 		First(&target).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Membro non trovato"})
+		apierr.Fail(c, http.StatusNotFound, "member_not_found", "Member not found")
 		return
 	}
 
 	if err := h.db.Model(&target).Update("role", "admin").Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore promozione admin"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to promote admin")
 		return
 	}
 
@@ -157,32 +158,35 @@ type DeleteAccountRequest struct {
 func (h *SettingsHandler) DeleteAccount(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	var req DeleteAccountRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
 	// Verify password
 	var user models.User
 	if err := h.db.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utente non trovato"})
+		apierr.Fail(c, http.StatusNotFound, "user_not_found", "User not found")
 		return
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Password non corretta"})
+		apierr.Fail(c, http.StatusUnauthorized, "password_wrong", "The password is not correct")
 		return
 	}
 
 	// Re-run delete check
 	check := h.computeDeleteCheck(userID)
 	if !check.CanDelete {
+		// Carries the blocking properties alongside the standard error shape,
+		// so the UI can name them; apierr.Response only models string params.
 		c.JSON(http.StatusConflict, gin.H{
-			"error":               "Devi nominare un admin per ogni proprietà prima di eliminare l'account",
+			"error":               "Appoint an admin for every property before deleting your account",
+			"error_code":          "admin_successor_required",
 			"blocking_properties": check.BlockingProperties,
 		})
 		return
@@ -191,7 +195,7 @@ func (h *SettingsHandler) DeleteAccount(c *gin.Context) {
 	// Begin transaction
 	tx := h.db.Begin()
 	if tx.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore interno"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Internal error")
 		return
 	}
 	defer func() {
@@ -221,7 +225,7 @@ func (h *SettingsHandler) DeleteAccount(c *gin.Context) {
 			if err := h.cascadeDeleteProperty(tx, member.PropertyID); err != nil {
 				tx.Rollback()
 				log.Printf("❌ Error cascade deleting property %d: %v", member.PropertyID, err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione proprietà"})
+				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete properties")
 				return
 			}
 			// Delete the member record itself
@@ -334,12 +338,12 @@ func (h *SettingsHandler) DeleteAccount(c *gin.Context) {
 	// Delete User
 	if err := tx.Unscoped().Delete(&models.User{}, userID).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore eliminazione utente"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete user")
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore commit transazione"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to commit transaction")
 		return
 	}
 

@@ -148,6 +148,7 @@ import DashboardCharts from '@/components/dashboard/DashboardCharts.vue'
 import DashboardFilters from '@/components/dashboard/DashboardFilters.vue'
 import RecentExpensesList from '@/components/dashboard/RecentExpensesList.vue'
 import SettlementModal from '@/components/balance/SettlementModal.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 const expensesStore = useExpensesStore()
@@ -604,7 +605,7 @@ async function deleteExpenseConfirm(id) {
       await expensesStore.deleteExpense(id)
       refreshBrief()
     } catch (err) {
-      window.$toast?.error(t('expenses.deleteError', { error: err.response?.data?.error || err.message }))
+      window.$toast?.error(t('expenses.deleteError', { error: apiErrorMessage(err) }))
     }
   }
 }

@@ -229,6 +229,7 @@ import { LINKS as links } from '@/config/links'
 import Card from '@/components/common/Card.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -293,7 +294,7 @@ async function handleForgotPassword() {
       resetForm.value.token = data.reset_token
     }
   } catch (err) {
-    error.value = err.response?.data?.error || t('auth.forgot.error')
+    error.value = apiErrorMessage(err, t('auth.forgot.error'))
   } finally {
     loading.value = false
   }
@@ -329,7 +330,7 @@ async function handleResetPassword() {
       resetForm.value = { token: '', newPassword: '', confirmPassword: '' }
     }, 2000)
   } catch (err) {
-    error.value = err.response?.data?.error || t('auth.reset.error')
+    error.value = apiErrorMessage(err, t('auth.reset.error'))
   } finally {
     loading.value = false
   }

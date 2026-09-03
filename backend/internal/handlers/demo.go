@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"gorm.io/gorm"
 
 	"github.com/sgiraz/homelog/internal/database"
@@ -24,11 +25,11 @@ func NewDemoHandler(db *gorm.DB) *DemoHandler {
 // only data that exists is throwaway, so there is nothing to protect.
 func (h *DemoHandler) Reset(c *gin.Context) {
 	if !database.IsDemoMode() {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Demo mode not enabled"})
+		apierr.Fail(c, http.StatusForbidden, "demo_mode_disabled", "Demo mode is not enabled on this instance")
 		return
 	}
 	if err := database.ResetDemoData(h.db); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset demo data"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to reset demo data")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Demo data reset"})

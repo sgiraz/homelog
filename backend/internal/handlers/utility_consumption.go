@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -95,13 +96,13 @@ type ConsumptionSummary struct {
 func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
@@ -114,7 +115,7 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
 		First(&utility).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+		apierr.Fail(c, http.StatusNotFound, "utility_not_found", "Service not found")
 		return
 	}
 

@@ -71,6 +71,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Button from '@/components/common/Button.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 
@@ -128,7 +129,7 @@ async function handleSubmit() {
     emit('created')
     emit('close')
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || t('balance.settlement.genericError')
+    error.value = apiErrorMessage(err, t('balance.settlement.genericError'))
   } finally {
     loading.value = false
   }

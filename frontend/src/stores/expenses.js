@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { expensesAPI } from '@/api/client'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const PAGE_SIZE = 20
 
@@ -46,7 +47,7 @@ export const useExpensesStore = defineStore('expenses', () => {
         hasMore.value = fetched.length === PAGE_SIZE
         page.value = p
       } catch (err) {
-        error.value = err.response?.data?.error || err.message
+        error.value = apiErrorMessage(err)
         throw err
       } finally {
         loading.value = false
@@ -89,7 +90,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       }
       return data
     } catch (err) {
-      error.value = err.response?.data?.error || err.message
+      error.value = apiErrorMessage(err)
       return null
     }
   }
@@ -103,7 +104,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       total.value++
       return data
     } catch (err) {
-      error.value = err.response?.data?.error || err.message
+      error.value = apiErrorMessage(err)
       throw err
     } finally {
       saving.value = false
@@ -121,7 +122,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       }
       return data
     } catch (err) {
-      error.value = err.response?.data?.error || err.message
+      error.value = apiErrorMessage(err)
       throw err
     } finally {
       saving.value = false
@@ -136,7 +137,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       expenses.value = expenses.value.filter(e => e.id !== id)
       total.value--
     } catch (err) {
-      error.value = err.response?.data?.error || err.message
+      error.value = apiErrorMessage(err)
       throw err
     } finally {
       saving.value = false

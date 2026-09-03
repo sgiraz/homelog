@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authAPI } from '@/api/client'
+import { apiErrorMessage } from '@/utils/apiError'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
@@ -25,7 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('user', JSON.stringify(data.user))
       return data
     } catch (error) {
-      throw new Error(error.response?.data?.error || 'Login failed', { cause: error })
+      throw new Error(apiErrorMessage(error), { cause: error })
     }
   }
 
@@ -39,7 +40,7 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('user', JSON.stringify(data.user))
       return data
     } catch (error) {
-      throw new Error(error.response?.data?.error || 'Registration failed', { cause: error })
+      throw new Error(apiErrorMessage(error), { cause: error })
     }
   }
 

@@ -174,6 +174,7 @@ import { useI18n } from 'vue-i18n'
 import { exportAPI, versionAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 const currentVersion = __APP_VERSION__
@@ -224,7 +225,7 @@ async function doExport(type) {
     triggerDownload(res.data, `homelog_${nameMap[type]}_${timestamp}.${ext}`)
     window.$toast?.success(t('settings.data.exportSuccess'))
   } catch (err) {
-    window.$toast?.error(t('settings.data.exportError', { error: err.response?.data?.error || err.message }))
+    window.$toast?.error(t('settings.data.exportError', { error: apiErrorMessage(err) }))
   } finally {
     exportLoading.value = null
   }
@@ -277,7 +278,7 @@ async function doImport() {
     if (err instanceof SyntaxError) {
       window.$toast?.error(t('settings.data.invalidJson'))
     } else {
-      window.$toast?.error(err.response?.data?.error || t('settings.data.importError', { error: err.message }))
+      window.$toast?.error(apiErrorMessage(err, t('settings.data.importError', { error: err.message })))
     }
   } finally {
     importLoading.value = false

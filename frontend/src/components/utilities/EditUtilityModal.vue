@@ -411,6 +411,7 @@ import { utilitiesAPI, membersAPI, templatesAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const props = defineProps({
   utility: {
@@ -616,7 +617,7 @@ async function handleSubmit() {
     const { data } = await utilitiesAPI.update(props.utility.id, updateData)
     emit('updated', data)
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || t('utilities.addUtilityModal.genericError')
+    error.value = apiErrorMessage(err, t('utilities.addUtilityModal.genericError'))
   } finally {
     loading.value = false
   }

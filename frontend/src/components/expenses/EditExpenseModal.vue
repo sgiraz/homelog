@@ -162,6 +162,7 @@ import { categoriesAPI, projectsAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 
@@ -257,7 +258,7 @@ async function handleSubmit() {
     emit('updated')
     emit('close')
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || t('expenses.modal.genericSaveError')
+    error.value = apiErrorMessage(err, t('expenses.modal.genericSaveError'))
   } finally {
     loading.value = false
   }

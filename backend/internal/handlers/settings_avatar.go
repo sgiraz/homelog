@@ -15,6 +15,7 @@ import (
 	"golang.org/x/image/draw"
 	_ "golang.org/x/image/webp"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -23,20 +24,20 @@ import (
 func (h *SettingsHandler) UploadAvatar(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	file, header, err := c.Request.FormFile("avatar")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No file provided"})
+		apierr.Fail(c, http.StatusBadRequest, "no_file", "No file was uploaded")
 		return
 	}
 	defer file.Close()
 
 	// Validate file size (max 5MB)
 	if header.Size > 5*1024*1024 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File too large (max 5MB)"})
+		apierr.Fail(c, http.StatusBadRequest, "file_too_large", "The file is too large (max 5 MB)")
 		return
 	}
 
@@ -44,13 +45,13 @@ func (h *SettingsHandler) UploadAvatar(c *gin.Context) {
 	buf := make([]byte, 512)
 	n, err := file.Read(buf)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read file"})
+		apierr.Fail(c, http.StatusBadRequest, "file_unreadable", "The file could not be read")
 		return
 	}
 	contentType := http.DetectContentType(buf[:n])
 	allowed := map[string]bool{"image/jpeg": true, "image/png": true, "image/webp": true}
 	if !allowed[contentType] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File must be an image (JPEG, PNG, or WebP)"})
+		apierr.Fail(c, http.StatusBadRequest, "image_type_invalid", "The file must be an image (JPEG, PNG or WebP)")
 		return
 	}
 
@@ -62,7 +63,7 @@ func (h *SettingsHandler) UploadAvatar(c *gin.Context) {
 	// Decode image
 	src, _, err := image.Decode(file)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to decode image"})
+		apierr.Fail(c, http.StatusBadRequest, "image_unreadable", "The image could not be read")
 		return
 	}
 
@@ -97,7 +98,7 @@ func (h *SettingsHandler) UploadAvatar(c *gin.Context) {
 	// Ensure avatars directory exists (derive from DB_PATH for consistent paths across dev/prod)
 	avatarDir := filepath.Join(dataDir(), "avatars")
 	if err := os.MkdirAll(avatarDir, 0755); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create avatar directory"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create avatar directory")
 		return
 	}
 
@@ -108,20 +109,20 @@ func (h *SettingsHandler) UploadAvatar(c *gin.Context) {
 
 	outFile, err := os.Create(avatarPath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save avatar"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to save avatar")
 		return
 	}
 	defer outFile.Close()
 
 	if err := jpeg.Encode(outFile, dst, &jpeg.Options{Quality: 85}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to encode avatar"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to encode avatar")
 		return
 	}
 
 	// Delete old avatar if exists
 	var user models.User
 	if err := h.db.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
+		apierr.Fail(c, http.StatusInternalServerError, "user_not_found", "User not found")
 		return
 	}
 	if user.AvatarPath != "" {
@@ -132,7 +133,7 @@ func (h *SettingsHandler) UploadAvatar(c *gin.Context) {
 	// Update user in DB
 	relativePath := "avatars/" + filename
 	if err := h.db.Model(&user).Update("avatar_path", relativePath).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update user")
 		return
 	}
 	user.AvatarPath = relativePath
@@ -144,13 +145,13 @@ func (h *SettingsHandler) UploadAvatar(c *gin.Context) {
 func (h *SettingsHandler) DeleteAvatar(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	var user models.User
 	if err := h.db.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
+		apierr.Fail(c, http.StatusInternalServerError, "user_not_found", "User not found")
 		return
 	}
 
@@ -162,7 +163,7 @@ func (h *SettingsHandler) DeleteAvatar(c *gin.Context) {
 
 	// Clear in DB
 	if err := h.db.Model(&user).Update("avatar_path", "").Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update user")
 		return
 	}
 	user.AvatarPath = ""

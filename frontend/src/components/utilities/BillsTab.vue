@@ -205,6 +205,7 @@ import { useHighlight } from '@/composables/useHighlight'
 import { formatDate as _formatDate, formatPeriod as _formatPeriod, formatNumber as _formatNumber, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import Button from '@/components/common/Button.vue'
 import AddBillModal from '@/components/utilities/AddBillModal.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 defineOptions({ name: 'BillsTab' })
 
@@ -262,7 +263,7 @@ async function toggleInstallmentPaid(bill, inst, newValue) {
     if (err?.response?.status === 409) {
       await confirm({
         title: t('utilities.billsTab.operationBlocked'),
-        message: err.response.data?.error || lockedHint.value,
+        message: apiErrorMessage(err, lockedHint.value),
         confirmText: t('utilities.billsTab.understood'),
         variant: 'info'
       })
@@ -374,7 +375,7 @@ async function markBillAsPaid(bill) {
     if (err?.response?.status === 409) {
       await confirm({
         title: t('utilities.billsTab.operationBlocked'),
-        message: err.response.data?.error || lockedHint.value,
+        message: apiErrorMessage(err, lockedHint.value),
         confirmText: t('utilities.billsTab.understood'),
         variant: 'info'
       })
@@ -399,7 +400,7 @@ async function confirmDeleteBill(bill) {
     if (err?.response?.status === 409) {
       await confirm({
         title: t('utilities.billsTab.operationBlocked'),
-        message: err.response.data?.error || lockedHint.value,
+        message: apiErrorMessage(err, lockedHint.value),
         confirmText: t('utilities.billsTab.understood'),
         variant: 'info'
       })
