@@ -31,6 +31,10 @@ const FORMAT_CONFIG = {
 }
 
 // Map language code → Intl locale string
+// Regional defaults for languages where the bare tag would pick formats we do
+// not want. Anything not listed uses the language tag itself, which Intl
+// resolves on its own — so a new language needs an entry here only to override
+// that choice.
 const LANGUAGE_LOCALE = {
   it: 'it-IT',
   en: 'en-US'
@@ -42,14 +46,14 @@ const LANGUAGE_LOCALE = {
  * @returns {string}
  */
 function getLocale(language) {
-  return LANGUAGE_LOCALE[language] || language || 'it-IT'
+  return LANGUAGE_LOCALE[language] || language || 'en-US'
 }
 
 /**
  * Format a date string for display.
  *
  * @param {string|Date} dateStr - ISO date string or Date object
- * @param {object} settings - { date_format: 'DD/MM/YYYY', language: 'it' }
+ * @param {object} settings - { date_format: 'DD/MM/YYYY', language: 'en' }
  * @returns {string} Formatted date string, or '-' if input is falsy
  */
 export function formatDate(dateStr, settings = {}) {
@@ -59,7 +63,7 @@ export function formatDate(dateStr, settings = {}) {
   if (isNaN(date.getTime())) return '-'
 
   const dateFormat = settings.date_format || 'DD/MM/YYYY'
-  const language = settings.language || 'it'
+  const language = settings.language || 'en'
 
   const config = FORMAT_CONFIG[dateFormat] || FORMAT_CONFIG['DD/MM/YYYY']
   const locale = config.locale || getLocale(language)
@@ -73,13 +77,13 @@ export function formatDate(dateStr, settings = {}) {
  *
  * @param {string|Date} start - Period start
  * @param {string|Date} end - Period end
- * @param {object} settings - { language: 'it' }
+ * @param {object} settings - { language: 'en' }
  * @returns {string}
  */
 export function formatPeriod(start, end, settings = {}) {
   if (!start || !end) return '-'
 
-  const language = settings.language || 'it'
+  const language = settings.language || 'en'
   const locale = getLocale(language)
   const options = { month: 'short', year: 'numeric' }
 
@@ -97,13 +101,13 @@ export function formatPeriod(start, end, settings = {}) {
  *
  * @param {string|Date} start
  * @param {string|Date} end
- * @param {object} settings - { language: 'it' }
+ * @param {object} settings - { language: 'en' }
  * @returns {string}
  */
 export function formatPeriodCompact(start, end, settings = {}) {
   if (!start || !end) return '-'
 
-  const language = settings.language || 'it'
+  const language = settings.language || 'en'
   const locale = getLocale(language)
 
   const startDate = start instanceof Date ? start : new Date(start)
@@ -130,13 +134,13 @@ const CURRENCY_MAP = {
  * Format a number respecting user locale.
  *
  * @param {number} value
- * @param {object} settings - { language: 'it' }
+ * @param {object} settings - { language: 'en' }
  * @param {object} options - Intl.NumberFormat options override
  * @returns {string}
  */
 export function formatNumber(value, settings = {}, options = {}) {
   if (value == null) return '-'
-  const locale = getLocale(settings.language || 'it')
+  const locale = getLocale(settings.language || 'en')
   return new Intl.NumberFormat(locale, {
     maximumFractionDigits: 3,
     ...options
@@ -147,12 +151,12 @@ export function formatNumber(value, settings = {}, options = {}) {
  * Format a currency value respecting user locale and currency setting.
  *
  * @param {number} value
- * @param {object} settings - { language: 'it', currency: 'EUR' }
+ * @param {object} settings - { language: 'en', currency: 'EUR' }
  * @param {object} options - Intl.NumberFormat options override
  * @returns {string}
  */
 export function formatCurrency(value, settings = {}, options = {}) {
-  const locale = getLocale(settings.language || 'it')
+  const locale = getLocale(settings.language || 'en')
   const currency = CURRENCY_MAP[settings.currency] || settings.currency || 'EUR'
   return new Intl.NumberFormat(locale, {
     style: 'currency',
@@ -165,12 +169,12 @@ export function formatCurrency(value, settings = {}, options = {}) {
  * Format a difference value with +/- sign.
  *
  * @param {number} value
- * @param {object} settings - { language: 'it' }
+ * @param {object} settings - { language: 'en' }
  * @returns {string}
  */
 export function formatDiff(value, settings = {}) {
   if (value == null) return '-'
-  const locale = getLocale(settings.language || 'it')
+  const locale = getLocale(settings.language || 'en')
   const formatted = new Intl.NumberFormat(locale, {
     maximumFractionDigits: 3,
     signDisplay: 'exceptZero'

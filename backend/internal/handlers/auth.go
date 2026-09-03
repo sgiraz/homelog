@@ -31,6 +31,9 @@ type RegisterRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6"`
 	Name     string `json:"name" binding:"required"`
+	// Language is the browser locale the signup form was rendered in. Optional
+	// and best-effort: anything unsupported falls back to models.DefaultLanguage.
+	Language string `json:"language"`
 }
 
 // LoginRequest represents login input
@@ -79,6 +82,10 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	if isFirstUser {
 		role = "admin"
 	}
+
+	// A new account starts in the language the user is registering in, not in a
+	// hardcoded default.
+	language := models.NormalizeLanguage(req.Language)
 
 	tx := h.db.Begin()
 
@@ -141,7 +148,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		// Create user settings
 		userSettings := models.UserSettings{
 			UserID:                    user.ID,
-			Language:                  "it",
+			Language:                  language,
 			Currency:                  "EUR",
 			Theme:                     "auto",
 			DateFormat:                "DD/MM/YYYY",
@@ -191,7 +198,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		// to either create a new property or request to join an existing one.
 		userSettings := models.UserSettings{
 			UserID:                    user.ID,
-			Language:                  "it",
+			Language:                  language,
 			Currency:                  "EUR",
 			Theme:                     "auto",
 			DateFormat:                "DD/MM/YYYY",

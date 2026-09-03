@@ -373,6 +373,7 @@ import { useSettingsStore } from '@/stores/settings'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
+import { DEFAULT_LOCALE } from '@/i18n'
 
 defineOptions({ name: 'OnboardingView' })
 
@@ -401,7 +402,7 @@ const joinRequestSent = ref(false)
 // Step 3 — preferences
 const preferences = ref({
   currency: 'EUR',
-  language: 'it',
+  language: DEFAULT_LOCALE,
   theme: 'auto'
 })
 
@@ -452,7 +453,7 @@ onMounted(async () => {
   }
   // Pre-fill preferences from current settings
   preferences.value.currency = settingsStore.currency || 'EUR'
-  preferences.value.language = settingsStore.language || 'it'
+  preferences.value.language = settingsStore.language || DEFAULT_LOCALE
   preferences.value.theme = settingsStore.theme || 'auto'
 })
 

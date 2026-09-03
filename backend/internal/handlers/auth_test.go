@@ -128,3 +128,50 @@ func TestLogin_WrongPassword(t *testing.T) {
 		t.Fatalf("status = %d, want 401", rec.Code)
 	}
 }
+
+// A new account must start in the language the signup form was rendered in,
+// and must fall back to the app default when the client sends nothing or
+// something unsupported.
+func TestRegister_InheritsBrowserLanguage(t *testing.T) {
+	cases := []struct {
+		name  string
+		sent  any
+		want  string
+		email string
+	}{
+		{name: "regional tag", sent: "en-GB", want: "en", email: "en@example.com"},
+		{name: "plain tag", sent: "it", want: "it", email: "it@example.com"},
+		{name: "unsupported", sent: "de", want: models.DefaultLanguage, email: "de@example.com"},
+		{name: "omitted", sent: nil, want: models.DefaultLanguage, email: "none@example.com"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("JWT_SECRET", testutil.TestJWTSecret)
+			db := testutil.NewDB(t)
+			h := NewAuthHandler(db)
+			r := gin.New()
+			r.POST("/auth/register", h.Register)
+
+			body := map[string]any{"email": tc.email, "password": "secret123", "name": "Test"}
+			if tc.sent != nil {
+				body["language"] = tc.sent
+			}
+			if rec := postJSON(t, r, "/auth/register", body); rec.Code != http.StatusCreated {
+				t.Fatalf("register: status %d, body %s", rec.Code, rec.Body.String())
+			}
+
+			var user models.User
+			if err := db.Where("email = ?", tc.email).First(&user).Error; err != nil {
+				t.Fatalf("user not created: %v", err)
+			}
+			var settings models.UserSettings
+			if err := db.Where("user_id = ?", user.ID).First(&settings).Error; err != nil {
+				t.Fatalf("settings not created: %v", err)
+			}
+			if settings.Language != tc.want {
+				t.Errorf("language = %q, want %q", settings.Language, tc.want)
+			}
+		})
+	}
+}
