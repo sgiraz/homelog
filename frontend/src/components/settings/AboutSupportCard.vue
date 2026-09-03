@@ -41,6 +41,16 @@
           >
             ❤️ {{ t('settings.about.donate') }}
           </a>
+          <a
+            :href="privacyUrl(locale)"
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
+                   bg-surface-2 text-ink-soft
+                   hover:bg-surface-3 transition-colors"
+          >
+            {{ t('settings.about.privacy') }}
+          </a>
         </div>
       </div>
     </div>
@@ -50,10 +60,10 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
 import { useDemoMode } from '@/composables/useDemoMode'
-import { LINKS as links } from '@/config/links'
+import { LINKS as links, privacyUrl } from '@/config/links'
 import Card from '@/components/common/Card.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 // Version/update info comes from the single /version fetch done at app startup.
 const { appVersion, updateAvailable, latestUrl } = useDemoMode()
 </script>
