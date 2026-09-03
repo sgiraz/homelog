@@ -1,11 +1,58 @@
 package database
 
 import (
+	"embed"
+	"encoding/json"
+	"fmt"
+	"io/fs"
 	"log"
+	"strings"
 
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
 )
+
+// Built-in category labels, one file per language, keyed by slug. These are
+// copies: the canonical strings live in frontend/src/i18n/locales/<lang>/
+// categories.json — that is what Weblate edits and what the UI renders — and
+// scripts/sync-category-names.mjs brings them here, because go:embed cannot
+// reach outside the module. categories_names_test.go fails if they drift.
+//
+//go:embed locales/categories.*.json
+var localeFiles embed.FS
+
+// categoryNames is language -> slug -> label.
+var categoryNames = loadCategoryNames()
+
+func loadCategoryNames() map[string]map[string]string {
+	entries, err := fs.Glob(localeFiles, "locales/categories.*.json")
+	if err != nil {
+		panic(fmt.Sprintf("category names: %v", err))
+	}
+	names := make(map[string]map[string]string, len(entries))
+	for _, path := range entries {
+		lang := strings.TrimSuffix(strings.TrimPrefix(path, "locales/categories."), ".json")
+		raw, err := localeFiles.ReadFile(path)
+		if err != nil {
+			panic(fmt.Sprintf("category names %s: %v", path, err))
+		}
+		var bySlug map[string]string
+		if err := json.Unmarshal(raw, &bySlug); err != nil {
+			panic(fmt.Sprintf("category names %s: %v", path, err))
+		}
+		names[lang] = bySlug
+	}
+	return names
+}
+
+// LocalizedCategoryLanguages lists the languages the embedded catalogue covers.
+func LocalizedCategoryLanguages() []string {
+	langs := make([]string, 0, len(categoryNames))
+	for lang := range categoryNames {
+		langs = append(langs, lang)
+	}
+	return langs
+}
 
 // Slugs of built-in categories/subcategories that backend code needs to look
 // up by hand. Never match a default category by its Name — the name is a
@@ -17,109 +64,113 @@ const (
 
 // SubcategorySpec describes one built-in subcategory.
 type SubcategorySpec struct {
-	Slug   string
-	NameIT string
-	NameEN string
+	Slug string
+	// SeedName is the row written to subcategories.name. See CategorySpec.SeedName.
+	SeedName string
 }
 
-// CategorySpec describes one built-in category.
+// CategorySpec describes one built-in category. It deliberately carries no
+// translations: those live in the embedded locale files, keyed by Slug, so
+// adding a language never touches this file.
 type CategorySpec struct {
-	Slug   string
-	NameIT string
-	NameEN string
-	Icon   string
-	Color  string
-	Subs   []SubcategorySpec
+	Slug string
+	// SeedName is the row written to categories.name at seed time. It stays
+	// Italian on purpose: it is what pre-slug databases were seeded with, and
+	// therefore the key MigrateDefaultCategorySlugs matches legacy rows on.
+	// Nothing displays it for a row that has a slug.
+	SeedName string
+	Icon     string
+	Color    string
+	Subs     []SubcategorySpec
 }
 
-// DefaultCategories is the catalogue of built-in categories. NameIT is what
-// lands in the categories.name column at seed time (and what old clients and
-// raw DB queries see); the UI never shows it for a row that has a slug — it
-// renders t("categories.<slug>") instead. NameEN exists only so server-side
-// output (CSV export) can be localized without a second table.
+// DefaultCategories is the catalogue of built-in categories: the slugs, the
+// structure and the presentation bits. The labels are NOT here — they live in
+// the locale files keyed by slug, so adding a language is a data change and
+// never touches this list.
 //
 // Keep the slugs in sync with frontend/src/i18n/locales/*/categories.json.
 var DefaultCategories = []CategorySpec{
 	{
-		Slug: SlugHome, NameIT: "Casa", NameEN: "Home", Icon: "🏠", Color: "#3B82F6",
+		Slug: SlugHome, SeedName: "Casa", Icon: "🏠", Color: "#3B82F6",
 		Subs: []SubcategorySpec{
-			{Slug: SlugHomeUtilities, NameIT: "Utenze", NameEN: "Utilities"},
-			{Slug: "home_ordinary_maintenance", NameIT: "Manutenzione ordinaria", NameEN: "Routine maintenance"},
-			{Slug: "home_major_works", NameIT: "Lavori straordinari", NameEN: "Major works"},
-			{Slug: "home_furniture", NameIT: "Arredamento", NameEN: "Furniture"},
-			{Slug: "home_appliances", NameIT: "Elettrodomestici", NameEN: "Appliances"},
+			{Slug: SlugHomeUtilities, SeedName: "Utenze"},
+			{Slug: "home_ordinary_maintenance", SeedName: "Manutenzione ordinaria"},
+			{Slug: "home_major_works", SeedName: "Lavori straordinari"},
+			{Slug: "home_furniture", SeedName: "Arredamento"},
+			{Slug: "home_appliances", SeedName: "Elettrodomestici"},
 		},
 	},
 	{
-		Slug: "food_dining", NameIT: "Alimentari e Ristorazione", NameEN: "Food & Dining", Icon: "🍕", Color: "#10B981",
+		Slug: "food_dining", SeedName: "Alimentari e Ristorazione", Icon: "🍕", Color: "#10B981",
 		Subs: []SubcategorySpec{
-			{Slug: "food_groceries", NameIT: "Spesa supermercato", NameEN: "Groceries"},
-			{Slug: "food_restaurants", NameIT: "Ristoranti/Pizzerie", NameEN: "Restaurants"},
-			{Slug: "food_cafes", NameIT: "Bar/Caffè", NameEN: "Cafés"},
-			{Slug: "food_delivery", NameIT: "Delivery", NameEN: "Delivery"},
+			{Slug: "food_groceries", SeedName: "Spesa supermercato"},
+			{Slug: "food_restaurants", SeedName: "Ristoranti/Pizzerie"},
+			{Slug: "food_cafes", SeedName: "Bar/Caffè"},
+			{Slug: "food_delivery", SeedName: "Delivery"},
 		},
 	},
 	{
-		Slug: "transport", NameIT: "Trasporti", NameEN: "Transport", Icon: "🚗", Color: "#F59E0B",
+		Slug: "transport", SeedName: "Trasporti", Icon: "🚗", Color: "#F59E0B",
 		Subs: []SubcategorySpec{
-			{Slug: "transport_fuel", NameIT: "Carburante", NameEN: "Fuel"},
-			{Slug: "transport_car_maintenance", NameIT: "Manutenzione auto", NameEN: "Car maintenance"},
-			{Slug: "transport_insurance", NameIT: "Assicurazione", NameEN: "Insurance"},
-			{Slug: "transport_parking_tolls", NameIT: "Parcheggi/Pedaggi", NameEN: "Parking & tolls"},
-			{Slug: "transport_public", NameIT: "Trasporti pubblici", NameEN: "Public transport"},
+			{Slug: "transport_fuel", SeedName: "Carburante"},
+			{Slug: "transport_car_maintenance", SeedName: "Manutenzione auto"},
+			{Slug: "transport_insurance", SeedName: "Assicurazione"},
+			{Slug: "transport_parking_tolls", SeedName: "Parcheggi/Pedaggi"},
+			{Slug: "transport_public", SeedName: "Trasporti pubblici"},
 		},
 	},
 	{
-		Slug: "entertainment", NameIT: "Intrattenimento", NameEN: "Entertainment", Icon: "🎬", Color: "#EC4899",
+		Slug: "entertainment", SeedName: "Intrattenimento", Icon: "🎬", Color: "#EC4899",
 		Subs: []SubcategorySpec{
-			{Slug: "entertainment_cinema_theatre", NameIT: "Cinema/Teatro", NameEN: "Cinema & theatre"},
-			{Slug: "entertainment_streaming", NameIT: "Streaming/Abbonamenti", NameEN: "Streaming & subscriptions"},
-			{Slug: "entertainment_books", NameIT: "Libri/Riviste", NameEN: "Books & magazines"},
-			{Slug: "entertainment_travel", NameIT: "Viaggi/Vacanze", NameEN: "Travel & holidays"},
+			{Slug: "entertainment_cinema_theatre", SeedName: "Cinema/Teatro"},
+			{Slug: "entertainment_streaming", SeedName: "Streaming/Abbonamenti"},
+			{Slug: "entertainment_books", SeedName: "Libri/Riviste"},
+			{Slug: "entertainment_travel", SeedName: "Viaggi/Vacanze"},
 		},
 	},
 	{
-		Slug: "family", NameIT: "Famiglia", NameEN: "Family", Icon: "👶", Color: "#14B8A6",
+		Slug: "family", SeedName: "Famiglia", Icon: "👶", Color: "#14B8A6",
 		Subs: []SubcategorySpec{
-			{Slug: "family_kids_clothing", NameIT: "Abbigliamento bambini", NameEN: "Kids clothing"},
-			{Slug: "family_school", NameIT: "Scuola/Asilo", NameEN: "School & daycare"},
-			{Slug: "family_toys", NameIT: "Giochi/Attrezzature", NameEN: "Toys & equipment"},
-			{Slug: "family_health", NameIT: "Salute", NameEN: "Health"},
+			{Slug: "family_kids_clothing", SeedName: "Abbigliamento bambini"},
+			{Slug: "family_school", SeedName: "Scuola/Asilo"},
+			{Slug: "family_toys", SeedName: "Giochi/Attrezzature"},
+			{Slug: "family_health", SeedName: "Salute"},
 		},
 	},
 	{
-		Slug: "clothing_personal_care", NameIT: "Abbigliamento e Cura Personale", NameEN: "Clothing & Personal Care", Icon: "👕", Color: "#F97316",
+		Slug: "clothing_personal_care", SeedName: "Abbigliamento e Cura Personale", Icon: "👕", Color: "#F97316",
 		Subs: []SubcategorySpec{
-			{Slug: "clothing_adults", NameIT: "Abbigliamento adulti", NameEN: "Adult clothing"},
-			{Slug: "clothing_hairdresser", NameIT: "Parrucchiere/Barbiere", NameEN: "Hairdresser & barber"},
-			{Slug: "clothing_personal_products", NameIT: "Prodotti cura personale", NameEN: "Personal care products"},
+			{Slug: "clothing_adults", SeedName: "Abbigliamento adulti"},
+			{Slug: "clothing_hairdresser", SeedName: "Parrucchiere/Barbiere"},
+			{Slug: "clothing_personal_products", SeedName: "Prodotti cura personale"},
 		},
 	},
 	{
-		Slug: "education", NameIT: "Istruzione", NameEN: "Education", Icon: "🎓", Color: "#6366F1",
+		Slug: "education", SeedName: "Istruzione", Icon: "🎓", Color: "#6366F1",
 		Subs: []SubcategorySpec{
-			{Slug: "education_courses", NameIT: "Corsi/Formazione", NameEN: "Courses & training"},
-			{Slug: "education_textbooks", NameIT: "Libri di testo", NameEN: "Textbooks"},
-			{Slug: "education_supplies", NameIT: "Materiale scolastico", NameEN: "School supplies"},
+			{Slug: "education_courses", SeedName: "Corsi/Formazione"},
+			{Slug: "education_textbooks", SeedName: "Libri di testo"},
+			{Slug: "education_supplies", SeedName: "Materiale scolastico"},
 		},
 	},
 	{
-		Slug: "technology", NameIT: "Tecnologia", NameEN: "Technology", Icon: "📱", Color: "#0EA5E9",
+		Slug: "technology", SeedName: "Tecnologia", Icon: "📱", Color: "#0EA5E9",
 		Subs: []SubcategorySpec{
-			{Slug: "technology_devices", NameIT: "Dispositivi", NameEN: "Devices"},
-			{Slug: "technology_software", NameIT: "Abbonamenti software", NameEN: "Software subscriptions"},
-			{Slug: "technology_repairs", NameIT: "Riparazioni", NameEN: "Repairs"},
+			{Slug: "technology_devices", SeedName: "Dispositivi"},
+			{Slug: "technology_software", SeedName: "Abbonamenti software"},
+			{Slug: "technology_repairs", SeedName: "Riparazioni"},
 		},
 	},
 	{
-		Slug: "gifts", NameIT: "Regali", NameEN: "Gifts", Icon: "🎁", Color: "#EF4444",
+		Slug: "gifts", SeedName: "Regali", Icon: "🎁", Color: "#EF4444",
 		Subs: []SubcategorySpec{
-			{Slug: "gifts_birthdays", NameIT: "Compleanni", NameEN: "Birthdays"},
-			{Slug: "gifts_christmas", NameIT: "Natale", NameEN: "Christmas"},
-			{Slug: "gifts_anniversaries", NameIT: "Anniversari", NameEN: "Anniversaries"},
-			{Slug: "gifts_valentines", NameIT: "San Valentino", NameEN: "Valentine's Day"},
-			{Slug: "gifts_graduations", NameIT: "Lauree/Diplomi", NameEN: "Graduations"},
-			{Slug: "gifts_births", NameIT: "Nascite/Battesimi", NameEN: "Births & christenings"},
+			{Slug: "gifts_birthdays", SeedName: "Compleanni"},
+			{Slug: "gifts_christmas", SeedName: "Natale"},
+			{Slug: "gifts_anniversaries", SeedName: "Anniversari"},
+			{Slug: "gifts_valentines", SeedName: "San Valentino"},
+			{Slug: "gifts_graduations", SeedName: "Lauree/Diplomi"},
+			{Slug: "gifts_births", SeedName: "Nascite/Battesimi"},
 		},
 	},
 }
@@ -133,18 +184,19 @@ var categorySpecBySlug = func() map[string]CategorySpec {
 	return m
 }()
 
-// DefaultCategoryName returns the built-in name for a category slug in the
-// given language, or "" if the slug is not a built-in one. Used for
-// server-generated output (CSV export) that can't go through vue-i18n.
+// DefaultCategoryName returns the built-in label for a category slug in the
+// given language, or "" if the slug is not a built-in one. Used by
+// server-generated output (the CSV export) that cannot go through vue-i18n.
+// A language with no text for the slug falls back to English, matching the
+// frontend's fallbackLocale.
 func DefaultCategoryName(slug, lang string) string {
-	spec, ok := categorySpecBySlug[slug]
-	if !ok {
+	if _, ok := categorySpecBySlug[slug]; !ok {
 		return ""
 	}
-	if lang == "it" {
-		return spec.NameIT
+	if name := categoryNames[lang][slug]; name != "" {
+		return name
 	}
-	return spec.NameEN
+	return categoryNames["en"][slug]
 }
 
 // SeedDefaultCategories seeds global default categories (called once for first user)
@@ -161,7 +213,7 @@ func SeedDefaultCategories(db *gorm.DB) error {
 	for _, spec := range DefaultCategories {
 		cat := models.Category{
 			Slug:      spec.Slug,
-			Name:      spec.NameIT,
+			Name:      spec.SeedName,
 			Icon:      spec.Icon,
 			Color:     spec.Color,
 			IsDefault: true,
@@ -172,7 +224,7 @@ func SeedDefaultCategories(db *gorm.DB) error {
 
 		subs := make([]models.Subcategory, len(spec.Subs))
 		for i, s := range spec.Subs {
-			subs[i] = models.Subcategory{CategoryID: cat.ID, Slug: s.Slug, Name: s.NameIT}
+			subs[i] = models.Subcategory{CategoryID: cat.ID, Slug: s.Slug, Name: s.SeedName}
 		}
 		if len(subs) > 0 {
 			if err := db.Create(&subs).Error; err != nil {
@@ -199,7 +251,7 @@ func MigrateDefaultCategorySlugs(db *gorm.DB) error {
 
 	nameToSpec := make(map[string]CategorySpec, len(DefaultCategories))
 	for _, spec := range DefaultCategories {
-		nameToSpec[spec.NameIT] = spec
+		nameToSpec[spec.SeedName] = spec
 	}
 
 	for _, cat := range categories {
@@ -227,7 +279,7 @@ func MigrateDefaultCategorySlugs(db *gorm.DB) error {
 		}
 		subNameToSlug := make(map[string]string, len(spec.Subs))
 		for _, s := range spec.Subs {
-			subNameToSlug[s.NameIT] = s.Slug
+			subNameToSlug[s.SeedName] = s.Slug
 		}
 		for _, sub := range cat.Subcategories {
 			if sub.Slug != "" {
@@ -273,10 +325,10 @@ func MigrateDefaultSubcategories(db *gorm.DB) error {
 		}
 
 		for _, s := range spec.Subs {
-			if existing["slug:"+s.Slug] || existing["name:"+s.NameIT] {
+			if existing["slug:"+s.Slug] || existing["name:"+s.SeedName] {
 				continue
 			}
-			sub := models.Subcategory{CategoryID: cat.ID, Slug: s.Slug, Name: s.NameIT}
+			sub := models.Subcategory{CategoryID: cat.ID, Slug: s.Slug, Name: s.SeedName}
 			if err := db.Create(&sub).Error; err != nil {
 				return err
 			}
