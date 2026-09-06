@@ -75,7 +75,8 @@ func TestNormalizeLanguage(t *testing.T) {
 		"en-GB":    "en",
 		"en_US":    "en",
 		"  it  ":   "it",
-		"de":       DefaultLanguage,
+		"de":       "de",
+		"ja":       DefaultLanguage,
 		"":         DefaultLanguage,
 		"nonsense": DefaultLanguage,
 	}

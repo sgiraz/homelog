@@ -1,0 +1,54 @@
+{
+  "actions": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "confirm": "Bestätigen",
+    "close": "Schließen",
+    "back": "zurück",
+    "create": "Erstellen",
+    "update": "Ändern",
+    "add": "Hinzufügen"
+  },
+  "states": {
+    "loading": "Laden...",
+    "saving": "Speichern...",
+    "empty": "Keine Ergebnisse"
+  },
+  "toast": {
+    "dismiss": "Benachrichtigung schließen"
+  },
+  "avatarCrop": {
+    "title": "Foto zuschneiden",
+    "zoomIn": "Reinzoomen",
+    "zoomOut": "Rauszoomen"
+  },
+  "pwa": {
+    "updateAvailable": "Neue Version verfügbar!",
+    "updateHint": "Laden Sie die Seite neu, um die neueste Version von HomeLog zu nutzen.",
+    "update": "Update",
+    "later": "Später"
+  },
+  "currencies": {
+    "EUR": "Euro",
+    "USD": "US Dollar",
+    "GBP": "Britische Pfund",
+    "CHF": "Schweizer Franken",
+    "JPY": "Japanischer Yen",
+    "CAD": "Kanadische Dollar",
+    "AUD": "Australische Dollar",
+    "SEK": "Schwedische Kronen",
+    "NOK": "Norwegische Kronen",
+    "DKK": "Dänische Kronen",
+    "PLN": "Polnische Zloty",
+    "CZK": "Tschechische Kronen",
+    "HUF": "Ungarischer Forint",
+    "TRY": "Türkische Lira",
+    "BRL": "Brasilianischer Real",
+    "CNY": "Chinesischer Yuan",
+    "INR": "Indische Rupien",
+    "KRW": "Südkoreanischer Won",
+    "THB": "Thailändischer Baht"
+  }
+}

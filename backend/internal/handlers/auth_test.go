@@ -141,7 +141,7 @@ func TestRegister_InheritsBrowserLanguage(t *testing.T) {
 	}{
 		{name: "regional tag", sent: "en-GB", want: "en", email: "en@example.com"},
 		{name: "plain tag", sent: "it", want: "it", email: "it@example.com"},
-		{name: "unsupported", sent: "de", want: models.DefaultLanguage, email: "de@example.com"},
+		{name: "unsupported", sent: "ja", want: models.DefaultLanguage, email: "ja@example.com"},
 		{name: "omitted", sent: nil, want: models.DefaultLanguage, email: "none@example.com"},
 	}
 

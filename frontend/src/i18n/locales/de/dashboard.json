@@ -1,0 +1,75 @@
+{
+  "title": "Dashboard",
+  "subtitle": "Ausgabenübersicht",
+  "addExpenseButton": "Ausgabe hinzufügen",
+  "noProperty": {
+    "pendingTitle": "Anfrage ausstehend",
+    "pendingMessage": "Deine Anfrage für den Zugriff auf {name} wartet noch auf die Genehmigung eines Administrators.",
+    "noneTitle": "Keine Immobilie",
+    "noneDescription": "Erstelle eine Immobilie oder tritt einer bestehenden bei, um zu beginnen.\"",
+    "configureButton": "Konfigurieren"
+  },
+  "kpi": {
+    "monthExpenses": "Ausgaben im Monat",
+    "periodCount": "Im Zeitraum",
+    "dailyAverage": "Tagesdurchschnitt",
+    "yearExpenses": "Jährliche Ausgaben"
+  },
+  "charts": {
+    "categoryByCategory": "Ausgaben nach Kategorie",
+    "categoryBySubcategory": "Ausgaben nach Unterkategorie",
+    "backToCategories": "Zurück zu den Kategorien",
+    "trendDaily": "Täglicher Verlauf",
+    "trendQuarterly": "Quartalsverlauf",
+    "trendMonthly": "Monatlicher Verlauf",
+    "datasetLabel": "Ausgaben",
+    "noData": "Keine Daten verfügbar",
+    "lineTooltip": "Liniendiagramm",
+    "barTooltip": "Balkendiagramm"
+  },
+  "filters": {
+    "filtersLabel": "Filter",
+    "reset": "Zurücksetzen",
+    "resetFilters": "Filter zurücksetzen",
+    "categoryLabel": "Kategorie:",
+    "projectLabel": "Projekt:",
+    "fromLabel": "Von:",
+    "toLabel": "Bis:",
+    "allCategoriesShort": "Alle",
+    "allProjectsShort": "Alle",
+    "allCategoriesLong": "Alle Kategorien",
+    "allProjectsLong": "Alle Projekte"
+  },
+  "recent": {
+    "title": "Letzte Ausgaben",
+    "viewAll": "Alle anzeigen",
+    "loading": "Wird geladen...",
+    "empty": "Keine Ausgaben erfasst",
+    "addFirst": "Erste Ausgabe hinzufügen"
+  },
+  "attention": {
+    "title": "Zu erledigen",
+    "subtitle_one": "{n} Aufgabe erfordert Aufmerksamkeit",
+    "subtitle_other": "{n} Aufgaben erfordern Aufmerksamkeit",
+    "allClear": "Alles erledigt",
+    "allClearSub": "Keine Rechnungen fällig, kein offener Saldo",
+    "more_one": "+{n} weitere",
+    "more_other": "+{n} weitere",
+    "open": "Öffnen",
+    "readingsGroup": "{n} Messwerte zu erfassen",
+    "settle": "Ausgleichen",
+    "dueToday": "Heute fällig",
+    "dueIn_one": "Fällig in {n} Tag",
+    "dueIn_other": "Fällig in {n} Tagen",
+    "overdueBy_one": "Seit {n} Tag überfällig",
+    "overdueBy_other": "Seit {n} Tagen überfällig",
+    "readingMissing": "Kein Messwert erfasst",
+    "readingLast_one": "Messwert fällig · letzter vor {n} Tag",
+    "readingLast_other": "Messwert fällig · letzter vor {n} Tagen",
+    "overBudget": "Budget überschritten · {pct}%",
+    "owedToYou": "{name} schuldet dir",
+    "youOwe": "Du schuldest {name}",
+    "lastExpense": "Letzte Ausgabe: {date}",
+    "lastReading": "Letzter Messwert: {date}"
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "loading": "Kontostand wird geladen...",
+  "balanceWith": "Kontostand mit {name}",
+  "partnerFallback": "Partner",
+  "owesYou": "{name} schuldet dir",
+  "youOwe": "Sie schulden {name}",
+  "even": "Ihr seid Quitt",
+  "evenBadge": "Quitt",
+  "receivePayment": "Zahlung erhalten",
+  "settleUp": "Ausgeglichen",
+  "stats": {
+    "unsettledCount": "Offene Ausgaben",
+    "totalSettled": "Insgesamt beglichen"
+  },
+  "unsettled": {
+    "title": "Offene Ausgaben",
+    "totalLabel": "Insgesamt Auszugleichen",
+    "noDescription": "Keine Beschreibung",
+    "paidBy": "Bezhalt von {name}",
+    "partiallyPaid": "{paid} von {total} bezahlt",
+    "actionsLabel": "Weitere Aktionen",
+    "moveToDebts": "Zu langfristigen Schulden verschieben",
+    "moveToDebtsConfirmTitle": "Zu langfristigen Schulden verschieben?",
+    "moveToDebtsConfirmBody": "Der Anteil wird aus dem laufenden Kontostand entfernt und zu einer eigenständigen Schuld. Diese kannst du im Tab „Schulden“ jederzeit und in beliebiger Höhe zurückzahlen. Alltägliche Ausgaben werden weiterhin wie gewohnt aufgeteilt und ausgeglichen.",
+    "moveToDebtsToast": "Zu langfristigen Schulden verschoben",
+    "useForDebt": "Für eine Schuld verwenden"
+  },
+  "compensate": {
+    "title": "Für eine Schuld verwenden",
+    "creditLabel": "Verfügbares Guthaben",
+    "pickDebt": "Auf welche Schuld soll der Betrag angerechnet werden?",
+    "resultHint": "Es fließt kein Geld: {amount} wird von „{debt}“ abgezogen und dieser Anteil als beglichen markiert.",
+    "submit": "Auf Schuld anrechnen",
+    "successToast": "Guthaben auf die Schuld angerechnet."
+  },
+  "history": {
+    "title": "Zahlungsverlauf",
+    "empty": "Keine Zahlungen erfasst"
+  },
+  "paymentMethods": {
+    "bank_transfer": "Überweisung",
+    "cash": "Bar",
+    "satispay": "Satispay",
+    "paypal": "PayPal",
+    "revolut": "Revolut",
+    "compensation": "Verrechnung"
+  },
+  "debts": {
+    "loading": "Schulden werden geladen...",
+    "noDescription": "Keine Beschreibung",
+    "emptyTitle": "Keine langfristigen Schulden",
+    "emptyBody": "Hier werden größere einmalige Ausgaben erfasst – zum Beispiel eine Anzahlung für ein Haus –, die du nicht mit dem alltäglichen Kontostand verrechnen möchtest.",
+    "emptyHint": "So erstellst du eine: Öffne im Tab „Kontostand“ die Aktionen („⋯“) bei einer Ausgabe und wähle „Zu langfristigen Schulden verschieben“.",
+    "totalIOwe": "Du schuldest noch",
+    "totalTheyOwe": "{name} schuldet dir noch",
+    "remainingLabel": "Offener Betrag",
+    "youOwe": "Du schuldest {name}",
+    "owesYou": "{name} schuldet dir",
+    "repaidOf": "{paid} von {total} zurückgezahlt",
+    "payButton": "Zahlung erfassen",
+    "receiveButton": "Eingegangene Zahlung erfassen",
+    "moveBackButton": "Zurück zum Kontostand",
+    "moveBackConfirmTitle": "Zurück zum laufenden Kontostand verschieben?",
+    "moveBackConfirmBody": "Der Anteil wird wieder zu den offenen Ausgaben im laufenden Kontostand hinzugefügt.",
+    "moveBackToast": "Zurück zum laufenden Kontostand verschoben",
+    "repaidTitle": "Beglichene Schulden",
+    "settledBadge": "Beglichen",
+    "historyTitle": "Zahlungsverlauf",
+    "historyEmpty": "Keine Zahlungen erfasst",
+    "fundedBy": "Verrechnet mit: {source}",
+    "repayTitle": "Schuld zurückzahlen",
+    "repayWarning": "Die Zahlung wird von dieser Schuld abgezogen. Wenn sie die Schuld nicht vollständig begleicht, bleibt der Rest offen, bis du ihn später zurückzahlst.",
+    "genericError": "Etwas ist schief gelaufen."
+  },
+  "settlement": {
+    "amountLabel": "Gesamtschuld",
+    "payAmountLabel": "Jetzt zu zahlender Betrag",
+    "payAll": "Alles begleichen",
+    "payAmountHint": "Du kannst nur einen Teil der Gesamtschuld ({total}) bezahlen und den Rest später begleichen.",
+    "invalidAmount": "Gib einen Betrag größer Null ein.",
+    "amountExceedsBalance": "Der Betrag übersteigt den offenen Betrag",
+    "fromOther": "Von {name} erhalten",
+    "toOther": "An {name} zahlen",
+    "dateLabel": "Zahlungsdatum",
+    "methodLabel": "Zahlungsmethode",
+    "methods": {
+      "bank_transfer": "Überweisung",
+      "cash": "Bar",
+      "satispay": "Satispay",
+      "paypal": "PayPal",
+      "revolut": "Revolut"
+    },
+    "noteLabel": "Bemerkung (optional)",
+    "notePlaceholder": "Z.B.: Ausgleich Januar 2026",
+    "warning": "Mit dieser Zahlung wird zuerst die älteste offene Schuld beglichen. Wenn der Betrag nicht ausreicht, bleibt die Ausgabe teilweise offen.",
+    "cancel": "Abbrechen",
+    "submit": "Zahlung bestätigen",
+    "saving": "Speichern...",
+    "missingMembers": "Mitglieder für den Ausgleich konnten nicht ermittelt werden",
+    "genericError": "Fehler beim Speichern",
+    "successToast": "Ausgleich erfolgreich erfasst!"
+  }
+}

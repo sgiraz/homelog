@@ -25,8 +25,8 @@ func TestT_UnsupportedLanguageFallsBackToDefault(t *testing.T) {
 		t.Errorf("en-GB = %q, want %q", got, "Water")
 	}
 	want := T(models.DefaultLanguage, "utility.type.water")
-	if got := T("de", "utility.type.water"); got != want {
-		t.Errorf("de = %q, want %q", got, want)
+	if got := T("ja", "utility.type.water"); got != want {
+		t.Errorf("ja = %q, want %q", got, want)
 	}
 }
 
