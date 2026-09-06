@@ -1,0 +1,56 @@
+{
+  "home": "Casa",
+  "home_utilities": "Utenze",
+  "home_ordinary_maintenance": "Manutenzione ordinaria",
+  "home_major_works": "Lavori straordinari",
+  "home_furniture": "Arredamento",
+  "home_appliances": "Elettrodomestici",
+
+  "food_dining": "Alimentari e Ristorazione",
+  "food_groceries": "Spesa supermercato",
+  "food_restaurants": "Ristoranti/Pizzerie",
+  "food_cafes": "Bar/Caffè",
+  "food_delivery": "Delivery",
+
+  "transport": "Trasporti",
+  "transport_fuel": "Carburante",
+  "transport_car_maintenance": "Manutenzione auto",
+  "transport_insurance": "Assicurazione",
+  "transport_parking_tolls": "Parcheggi/Pedaggi",
+  "transport_public": "Trasporti pubblici",
+
+  "entertainment": "Intrattenimento",
+  "entertainment_cinema_theatre": "Cinema/Teatro",
+  "entertainment_streaming": "Streaming/Abbonamenti",
+  "entertainment_books": "Libri/Riviste",
+  "entertainment_travel": "Viaggi/Vacanze",
+
+  "family": "Famiglia",
+  "family_kids_clothing": "Abbigliamento bambini",
+  "family_school": "Scuola/Asilo",
+  "family_toys": "Giochi/Attrezzature",
+  "family_health": "Salute",
+
+  "clothing_personal_care": "Abbigliamento e Cura Personale",
+  "clothing_adults": "Abbigliamento adulti",
+  "clothing_hairdresser": "Parrucchiere/Barbiere",
+  "clothing_personal_products": "Prodotti cura personale",
+
+  "education": "Istruzione",
+  "education_courses": "Corsi/Formazione",
+  "education_textbooks": "Libri di testo",
+  "education_supplies": "Materiale scolastico",
+
+  "technology": "Tecnologia",
+  "technology_devices": "Dispositivi",
+  "technology_software": "Abbonamenti software",
+  "technology_repairs": "Riparazioni",
+
+  "gifts": "Regali",
+  "gifts_birthdays": "Compleanni",
+  "gifts_christmas": "Natale",
+  "gifts_anniversaries": "Anniversari",
+  "gifts_valentines": "San Valentino",
+  "gifts_graduations": "Lauree/Diplomi",
+  "gifts_births": "Nascite/Battesimi"
+}

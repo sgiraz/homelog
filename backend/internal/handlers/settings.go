@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -116,7 +117,7 @@ func (h *SettingsHandler) getPropertyStatus(userID uint) (hasProperty bool, isPr
 func (h *SettingsHandler) Get(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -148,7 +149,7 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch settings"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch settings")
 		return
 	}
 
@@ -186,13 +187,13 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 func (h *SettingsHandler) Update(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	var req UpdateUserSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", "The request could not be processed")
 		return
 	}
 
@@ -213,7 +214,7 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 				BillDueAlertDays:          3,
 			}
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch settings"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch settings")
 			return
 		}
 	}
@@ -265,12 +266,12 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 
 	if settings.ID == 0 {
 		if err := h.db.Create(&settings).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create settings"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create settings")
 			return
 		}
 	} else {
 		if err := h.db.Save(&settings).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update settings"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update settings")
 			return
 		}
 	}

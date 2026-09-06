@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -44,13 +45,13 @@ type JoinablePropertyResponse struct {
 func (h *JoinRequestHandler) Create(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	var req CreateJoinRequestBody
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -58,9 +59,9 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 	var property models.Property
 	if err := h.db.First(&property, req.PropertyID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Property not found"})
+			apierr.Fail(c, http.StatusNotFound, "property_not_found", "Property not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch property"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch property")
 		}
 		return
 	}
@@ -71,7 +72,7 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 		Where("user_id = ? AND property_id = ?", userID, req.PropertyID).
 		Count(&memberCount)
 	if memberCount > 0 {
-		c.JSON(http.StatusConflict, gin.H{"error": "You are already a member of this property"})
+		apierr.Fail(c, http.StatusConflict, "already_property_member", "You are already a member of this property")
 		return
 	}
 
@@ -81,7 +82,7 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 		Where("user_id = ? AND property_id = ? AND status = 'pending'", userID, req.PropertyID).
 		Count(&existingCount)
 	if existingCount > 0 {
-		c.JSON(http.StatusConflict, gin.H{"error": "A pending join request already exists for this property"})
+		apierr.Fail(c, http.StatusConflict, "join_request_pending", "A join request for this property is already pending")
 		return
 	}
 
@@ -93,7 +94,7 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 
 	if err := h.db.Create(&joinReq).Error; err != nil {
 		log.Printf("❌ Failed to create join request: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create join request"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create join request")
 		return
 	}
 
@@ -127,7 +128,7 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 func (h *JoinRequestHandler) List(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -173,24 +174,24 @@ func (h *JoinRequestHandler) List(c *gin.Context) {
 func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid join request ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_join_request_id", "Invalid join request id")
 		return
 	}
 
 	var req ResolveJoinRequestBody
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
 	if req.Status != "approved" && req.Status != "rejected" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Status must be 'approved' or 'rejected'"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_join_request_status", "Status must be 'approved' or 'rejected'")
 		return
 	}
 
@@ -198,16 +199,16 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 	var joinReq models.PropertyJoinRequest
 	if err := h.db.Preload("Property").First(&joinReq, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Join request not found"})
+			apierr.Fail(c, http.StatusNotFound, "join_request_not_found", "Join request not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch join request"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch join request")
 		}
 		return
 	}
 
 	// Validate: request is still pending
 	if joinReq.Status != "pending" {
-		c.JSON(http.StatusConflict, gin.H{"error": "Join request has already been resolved"})
+		apierr.Fail(c, http.StatusConflict, "join_request_resolved", "This join request has already been resolved")
 		return
 	}
 
@@ -217,7 +218,7 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 		Where("user_id = ? AND property_id = ? AND role = 'admin'", userID, joinReq.PropertyID).
 		Count(&adminMemberCount)
 	if adminMemberCount == 0 {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You are not an admin of this property"})
+		apierr.Fail(c, http.StatusForbidden, "not_property_admin", "You are not an admin of this property")
 		return
 	}
 
@@ -225,7 +226,7 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 
 	tx := h.db.Begin()
 	if tx.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to start transaction")
 		return
 	}
 
@@ -241,7 +242,7 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 			var requestingUser models.User
 			if err := tx.First(&requestingUser, joinReq.UserID).Error; err != nil {
 				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch requesting user"})
+				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch requesting user")
 				return
 			}
 
@@ -256,7 +257,7 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 			if err := tx.Create(&member).Error; err != nil {
 				tx.Rollback()
 				log.Printf("❌ Failed to create household member on join request approval: %v", err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add member to property"})
+				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to add member to property")
 				return
 			}
 
@@ -280,12 +281,12 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 		"resolved_at": now,
 	}).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update join request"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update join request")
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete operation"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to complete operation")
 		return
 	}
 
@@ -300,7 +301,7 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 func (h *JoinRequestHandler) ListJoinable(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -327,7 +328,7 @@ func (h *JoinRequestHandler) ListJoinable(c *gin.Context) {
 		query = query.Where("id NOT IN ?", excludedIDs)
 	}
 	if err := query.Order("name ASC").Find(&properties).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch properties"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch properties")
 		return
 	}
 

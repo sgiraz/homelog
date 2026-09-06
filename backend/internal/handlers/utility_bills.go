@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
@@ -18,13 +19,13 @@ import (
 func (h *UtilityHandler) AddBill(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
@@ -37,7 +38,7 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
 		First(&utility).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+		apierr.Fail(c, http.StatusNotFound, "utility_not_found", "Service not found")
 		return
 	}
 
@@ -93,7 +94,7 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -104,7 +105,7 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 			sum += in.Amount
 		}
 		if math.Abs(sum-input.AmountTotal) > 0.01 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Installment amounts do not sum to bill total"})
+			apierr.Fail(c, http.StatusBadRequest, "installments_do_not_sum", "The instalments do not add up to the bill total")
 			return
 		}
 		// Bill due_date = first installment due_date
@@ -150,7 +151,7 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 	}
 
 	if err := h.db.Create(&bill).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add bill"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to add bill")
 		return
 	}
 
@@ -341,13 +342,13 @@ func (h *UtilityHandler) populateBillLockState(bills []models.Bill) {
 func (h *UtilityHandler) GetBills(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
@@ -360,7 +361,7 @@ func (h *UtilityHandler) GetBills(c *gin.Context) {
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
 		First(&utility).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+		apierr.Fail(c, http.StatusNotFound, "utility_not_found", "Service not found")
 		return
 	}
 
@@ -370,7 +371,7 @@ func (h *UtilityHandler) GetBills(c *gin.Context) {
 		Preload("Installments", func(db *gorm.DB) *gorm.DB { return db.Order("number ASC") }).
 		Order("period_end DESC").
 		Find(&bills).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bills"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch bills")
 		return
 	}
 
@@ -382,13 +383,13 @@ func (h *UtilityHandler) GetBills(c *gin.Context) {
 func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid bill ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_bill_id", "Invalid bill id")
 		return
 	}
 
@@ -401,12 +402,12 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 	// Find the bill and verify access through utility
 	var bill models.Bill
 	if err := h.db.Preload("Utility").First(&bill, billID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Bill not found"})
+		apierr.Fail(c, http.StatusNotFound, "bill_not_found", "Bill not found")
 		return
 	}
 
 	if !slices.Contains(memberPropertyIDs, bill.Utility.PropertyID) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to update this bill"})
+		apierr.Fail(c, http.StatusForbidden, "bill_update_not_authorized", "You are not authorized to edit this bill")
 		return
 	}
 
@@ -416,7 +417,7 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -457,7 +458,7 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 		}
 	} else if !*input.IsPaid && wasPaid {
 		if h.isInstallmentLocked(inst.ID) {
-			c.JSON(http.StatusConflict, gin.H{"error": "La spesa collegata è già stata saldata da uno o più membri. Annulla i pagamenti dal Bilancio prima di modificare lo stato della bolletta."})
+			apierr.Fail(c, http.StatusConflict, "bill_expense_settled_status", "The linked expense has already been settled by one or more members. Undo the payments from Balance before changing the bill status.")
 			return
 		}
 		inst.IsPaid = false
@@ -476,13 +477,13 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 func (h *UtilityHandler) DeleteBill(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid bill ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_bill_id", "Invalid bill id")
 		return
 	}
 
@@ -495,22 +496,22 @@ func (h *UtilityHandler) DeleteBill(c *gin.Context) {
 	// Find the bill and verify access through utility
 	var bill models.Bill
 	if err := h.db.Preload("Utility").First(&bill, billID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Bill not found"})
+		apierr.Fail(c, http.StatusNotFound, "bill_not_found", "Bill not found")
 		return
 	}
 
 	if !slices.Contains(memberPropertyIDs, bill.Utility.PropertyID) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to delete this bill"})
+		apierr.Fail(c, http.StatusForbidden, "bill_delete_not_authorized", "You are not authorized to delete this bill")
 		return
 	}
 
 	if h.isBillLocked(bill.ID) {
-		c.JSON(http.StatusConflict, gin.H{"error": "La spesa collegata a questa bolletta è già stata saldata. Annulla i pagamenti dal Bilancio prima di eliminare la bolletta."})
+		apierr.Fail(c, http.StatusConflict, "bill_expense_settled_delete", "The expense linked to this bill is already settled. Undo the payments from Balance before deleting the bill.")
 		return
 	}
 
 	if err := h.db.Delete(&bill).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete bill"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete bill")
 		return
 	}
 
@@ -535,18 +536,18 @@ func (h *UtilityHandler) DeleteBill(c *gin.Context) {
 func (h *UtilityHandler) UpdateBillInstallment(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid bill ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_bill_id", "Invalid bill id")
 		return
 	}
 	instID, err := strconv.ParseUint(c.Param("instId"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid installment ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_installment_id", "Invalid instalment id")
 		return
 	}
 
@@ -557,17 +558,17 @@ func (h *UtilityHandler) UpdateBillInstallment(c *gin.Context) {
 
 	var bill models.Bill
 	if err := h.db.Preload("Utility").First(&bill, billID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Bill not found"})
+		apierr.Fail(c, http.StatusNotFound, "bill_not_found", "Bill not found")
 		return
 	}
 	if !slices.Contains(memberPropertyIDs, bill.Utility.PropertyID) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized"})
+		apierr.Fail(c, http.StatusForbidden, "not_authorized", "You are not authorized to do this")
 		return
 	}
 
 	var inst models.BillInstallment
 	if err := h.db.Where("id = ? AND bill_id = ?", instID, billID).First(&inst).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Installment not found"})
+		apierr.Fail(c, http.StatusNotFound, "installment_not_found", "Instalment not found")
 		return
 	}
 
@@ -576,7 +577,7 @@ func (h *UtilityHandler) UpdateBillInstallment(c *gin.Context) {
 		PaidAt *time.Time `json:"paid_at"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -595,7 +596,7 @@ func (h *UtilityHandler) UpdateBillInstallment(c *gin.Context) {
 		}
 	} else if !input.IsPaid && wasPaid {
 		if h.isInstallmentLocked(inst.ID) {
-			c.JSON(http.StatusConflict, gin.H{"error": "La spesa collegata a questa rata è già stata saldata da uno o più membri. Annulla i pagamenti dal Bilancio prima di modificare lo stato della rata."})
+			apierr.Fail(c, http.StatusConflict, "installment_expense_settled_status", "The expense linked to this instalment has already been settled by one or more members. Undo the payments from Balance before changing the instalment status.")
 			return
 		}
 		inst.IsPaid = false
@@ -615,13 +616,13 @@ func (h *UtilityHandler) UpdateBillInstallment(c *gin.Context) {
 func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid bill ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_bill_id", "Invalid bill id")
 		return
 	}
 
@@ -634,12 +635,12 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	// Find the bill and verify access through utility
 	var bill models.Bill
 	if err := h.db.Preload("Utility").First(&bill, billID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Bill not found"})
+		apierr.Fail(c, http.StatusNotFound, "bill_not_found", "Bill not found")
 		return
 	}
 
 	if !slices.Contains(memberPropertyIDs, bill.Utility.PropertyID) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to update this bill"})
+		apierr.Fail(c, http.StatusForbidden, "bill_update_not_authorized", "You are not authorized to edit this bill")
 		return
 	}
 
@@ -671,7 +672,7 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -684,11 +685,11 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	// paid toggle would corrupt already-settled splits.
 	if h.isBillLocked(bill.ID) {
 		if input.AmountTotal != bill.AmountTotal {
-			c.JSON(http.StatusConflict, gin.H{"error": "Bolletta saldata: l'importo totale non può essere modificato. Annulla i pagamenti dal Bilancio per sbloccare il campo."})
+			apierr.Fail(c, http.StatusConflict, "bill_settled_amount_locked", "This bill is settled: the total cannot be changed. Undo the payments from Balance to unlock it.")
 			return
 		}
 		if len(installments) <= 1 && input.IsPaid != bill.IsPaid {
-			c.JSON(http.StatusConflict, gin.H{"error": "Bolletta saldata: lo stato di pagamento non può essere modificato. Annulla i pagamenti dal Bilancio per sbloccarlo."})
+			apierr.Fail(c, http.StatusConflict, "bill_settled_status_locked", "This bill is settled: its payment status cannot be changed. Undo the payments from Balance to unlock it.")
 			return
 		}
 	}
@@ -716,7 +717,7 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	bill.ProviderReading = input.ProviderReading
 
 	if err := h.db.Save(&bill).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update bill"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update bill")
 		return
 	}
 

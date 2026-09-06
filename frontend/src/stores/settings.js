@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import apiClient from '@/api/client'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { useDemoMode } from '@/composables/useDemoMode'
+import { DEFAULT_LOCALE, persistLocale, resolveInitialLocale } from '@/i18n'
 import { useTheme } from '@/composables/useTheme'
 import { DEFAULT_THEME, isValidTheme } from '@/config/themes'
 
@@ -10,7 +12,10 @@ export const useSettingsStore = defineStore('settings', () => {
   const theme = ref('auto')
   const colorTheme = ref(DEFAULT_THEME)
   const currency = ref('EUR')
-  const language = ref('it')
+  // Starts from this browser's own locale (explicit past choice, else the
+  // system language) so pre-login screens are already in the right language.
+  // A server-stored preference overrides it as soon as settings load.
+  const language = ref(resolveInitialLocale())
   const dateFormat = ref('DD/MM/YYYY')
   const defaultSplitWithMemberIds = ref([])
   const defaultTemplates = ref({})
@@ -51,7 +56,14 @@ export const useSettingsStore = defineStore('settings', () => {
       theme.value = data.theme || 'auto'
       colorTheme.value = isValidTheme(data.color_theme) ? data.color_theme : DEFAULT_THEME
       currency.value = data.currency || 'EUR'
-      language.value = data.language || 'it'
+      // The demo runs on one shared account, so its stored language is
+      // whatever the previous visitor left behind. Each visitor keeps their
+      // own locale instead.
+      const { isDemoMode, initDemoMode } = useDemoMode()
+      await initDemoMode()
+      language.value = isDemoMode.value
+        ? resolveInitialLocale()
+        : (data.language || DEFAULT_LOCALE)
       dateFormat.value = data.date_format || 'DD/MM/YYYY'
       emailNotifications.value = data.email_notifications ?? true
       billReminders.value = data.bill_reminders ?? true
@@ -137,7 +149,17 @@ export const useSettingsStore = defineStore('settings', () => {
         setColorTheme(payload.color_theme)
       }
       if (payload.currency !== undefined) currency.value = payload.currency
-      if (payload.language !== undefined) language.value = payload.language
+      if (payload.language !== undefined) {
+        language.value = payload.language
+        // Remember the choice per browser: it is what the login screen uses,
+        // and in demo mode it is the only place it is kept.
+        persistLocale(payload.language)
+        if (useDemoMode().isDemoMode.value) {
+          // Never write a language to the shared demo account — it would
+          // switch the UI for every other visitor.
+          delete payload.language
+        }
+      }
       if (payload.date_format !== undefined) dateFormat.value = payload.date_format
 
       // Serialize arrays/objects for API
@@ -159,7 +181,7 @@ export const useSettingsStore = defineStore('settings', () => {
     theme.value = 'auto'
     colorTheme.value = DEFAULT_THEME
     currency.value = 'EUR'
-    language.value = 'it'
+    language.value = resolveInitialLocale()
     dateFormat.value = 'DD/MM/YYYY'
     defaultSplitWithMemberIds.value = []
     defaultTemplates.value = {}

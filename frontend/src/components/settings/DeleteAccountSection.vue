@@ -111,6 +111,7 @@ import { accountAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -155,7 +156,7 @@ async function handlePromoteAdmin(propertyId) {
     window.$toast?.success(t('settings.deleteAccount.promoteSuccess'))
     await startDeleteAccount()
   } catch (err) {
-    window.$toast?.error(err.response?.data?.error || t('settings.deleteAccount.promoteError'))
+    window.$toast?.error(apiErrorMessage(err, t('settings.deleteAccount.promoteError')))
   } finally {
     promotingProperty.value = null
   }
@@ -170,7 +171,7 @@ async function handleDeleteAccount() {
     router.push('/login')
     window.$toast?.success(t('settings.deleteAccount.accountDeleted'))
   } catch (err) {
-    deleteError.value = err.response?.data?.error || t('settings.deleteAccount.deleteGenericError')
+    deleteError.value = apiErrorMessage(err, t('settings.deleteAccount.deleteGenericError'))
   } finally {
     deleteLoading.value = false
   }

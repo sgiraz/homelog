@@ -198,6 +198,8 @@ import { adminAPI, joinRequestAPI } from '@/api/client'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
+import { DEFAULT_LOCALE } from '@/i18n'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -288,7 +290,7 @@ async function updateUserSettings() {
     const payload = {
       theme: data.theme || 'auto',
       currency: data.currency || 'EUR',
-      language: data.language || 'it',
+      language: data.language || DEFAULT_LOCALE,
       date_format: data.date_format || 'DD/MM/YYYY',
       default_split_with_member_ids: JSON.stringify(defaultSplitMemberIds.value)
     }
@@ -333,9 +335,7 @@ async function deleteMember(memberId) {
     await fetchHouseholdMembers()
   } catch (err) {
     console.error('Error deleting member:', err)
-    if (err.response?.data?.error) {
-      window.$toast?.error(err.response.data.error)
-    }
+    window.$toast?.error(apiErrorMessage(err))
   }
 }
 
@@ -354,7 +354,7 @@ async function deleteUserAccount(member) {
     await fetchHouseholdMembers()
   } catch (err) {
     console.error('Error deleting user account:', err)
-    window.$toast?.error(err.response?.data?.error || t('settings.family.deleteUserError'))
+    window.$toast?.error(apiErrorMessage(err, t('settings.family.deleteUserError')))
   }
 }
 
@@ -376,7 +376,7 @@ async function toggleAdminRole(member) {
     await fetchHouseholdMembers()
   } catch (err) {
     console.error('Error toggling admin role:', err)
-    window.$toast?.error(err.response?.data?.error || t('settings.family.roleError'))
+    window.$toast?.error(apiErrorMessage(err, t('settings.family.roleError')))
   }
 }
 
@@ -398,7 +398,7 @@ async function resolveRequest(requestId, status) {
     await fetchPendingRequests()
     await fetchHouseholdMembers()
   } catch (err) {
-    window.$toast?.error(err.response?.data?.error || t('settings.family.requestError'))
+    window.$toast?.error(apiErrorMessage(err, t('settings.family.requestError')))
   } finally {
     resolvingRequest.value = null
   }

@@ -135,8 +135,9 @@ import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { categoriesAPI, projectsAPI, expensesAPI, utilitiesAPI, balanceAPI } from '@/api/client'
-import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
+import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatTrendLabel, yearOf } from '@/utils/dateFormatter'
 import { useConfirm } from '@/composables/useConfirm'
+import { statsCategoryLabel } from '@/utils/categoryLabel'
 import Button from '@/components/common/Button.vue'
 import Card from '@/components/common/Card.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
@@ -147,6 +148,7 @@ import DashboardCharts from '@/components/dashboard/DashboardCharts.vue'
 import DashboardFilters from '@/components/dashboard/DashboardFilters.vue'
 import RecentExpensesList from '@/components/dashboard/RecentExpensesList.vue'
 import SettlementModal from '@/components/balance/SettlementModal.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 const expensesStore = useExpensesStore()
@@ -222,7 +224,7 @@ const hasCategoryData = computed(() => (stats.value?.by_category?.length ?? 0) >
 const categoryChartData = computed(() => {
   const items = stats.value?.by_category ?? []
   return {
-    labels: items.map(i => i.category_name),
+    labels: items.map(i => statsCategoryLabel(i, t('expenses.modal.subcategoryNone'))),
     datasets: [{
       data: items.map(i => i.amount),
       backgroundColor: categoryColors.slice(0, items.length),
@@ -241,19 +243,16 @@ const trendChartTitle = computed(() => {
   }
 })
 
+// The API ships a raw ISO date per bucket; the label is built here so it
+// follows the user's language. The year is repeated only when it changes.
 function abbreviateTrendLabels(items) {
+  const granularity = stats.value?.granularity || 'month'
   let lastYear = null
   return items.map(i => {
-    const parts = i.label.split(' ')
-    if (parts.length === 2) {
-      const [month, year] = parts
-      if (year !== lastYear) {
-        lastYear = year
-        return `${month} '${year.slice(-2)}`
-      }
-      return month
-    }
-    return i.label
+    const year = yearOf(i.date)
+    const withYear = granularity === 'month' && year !== lastYear
+    lastYear = year
+    return formatTrendLabel(i.date, granularity, settingsStore.formatSettings, { withYear })
   })
 }
 
@@ -606,7 +605,7 @@ async function deleteExpenseConfirm(id) {
       await expensesStore.deleteExpense(id)
       refreshBrief()
     } catch (err) {
-      window.$toast?.error(t('expenses.deleteError', { error: err.response?.data?.error || err.message }))
+      window.$toast?.error(t('expenses.deleteError', { error: apiErrorMessage(err) }))
     }
   }
 }

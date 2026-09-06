@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -95,39 +96,39 @@ type CreateSettlementRequest struct {
 func (h *SettlementHandler) Create(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	var req CreateSettlementRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("ERROR binding settlement JSON: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
 	// Validate: from_member != to_member
 	if req.FromMemberID == req.ToMemberID {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "FromMemberID and ToMemberID cannot be the same"})
+		apierr.Fail(c, http.StatusBadRequest, "settlement_same_member", "A settlement needs two different members")
 		return
 	}
 
 	// Find the current user's member for this property
 	var currentMember models.HouseholdMember
 	if err := h.db.Where("property_id = ? AND user_id = ?", req.PropertyID, userID).First(&currentMember).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You must be a member of this property"})
+		apierr.Fail(c, http.StatusForbidden, "not_property_member", "You are not a member of this property")
 		return
 	}
 
 	// Validate: current user's member is involved in the settlement
 	if currentMember.ID != req.FromMemberID && currentMember.ID != req.ToMemberID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You must be involved in the settlement"})
+		apierr.Fail(c, http.StatusForbidden, "not_in_settlement", "You are not involved in this settlement")
 		return
 	}
 
 	date, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format. Use YYYY-MM-DD"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_date", "Invalid date format")
 		return
 	}
 
@@ -135,9 +136,9 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 	var property models.Property
 	if err := h.db.First(&property, req.PropertyID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Property not found"})
+			apierr.Fail(c, http.StatusNotFound, "property_not_found", "Property not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify property"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to verify property")
 		}
 		return
 	}
@@ -166,11 +167,11 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 	if req.TargetExpenseID != nil {
 		var target models.Expense
 		if err := h.db.First(&target, *req.TargetExpenseID).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Debito non trovato"})
+			apierr.Fail(c, http.StatusNotFound, "debt_not_found", "Debt not found")
 			return
 		}
 		if !target.IsLongTermDebt {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Questa spesa non è un debito a lungo termine"})
+			apierr.Fail(c, http.StatusBadRequest, "expense_not_long_term_debt", "This expense is not a long-term debt")
 			return
 		}
 		debtQuery = debtQuery.Where("expenses.id = ?", target.ID)
@@ -185,7 +186,7 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 			Order("expenses.date ASC").
 			Find(&credits).Error; err != nil {
 			log.Printf("ERROR finding counter-shares to net: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find expense splits"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to find expense splits")
 			return
 		}
 	}
@@ -193,7 +194,7 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 	var splits []models.ExpenseSplit
 	if err := debtQuery.Order("expenses.date ASC").Find(&splits).Error; err != nil {
 		log.Printf("ERROR finding expense splits to settle: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find expense splits"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to find expense splits")
 		return
 	}
 
@@ -210,7 +211,7 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 	// against the gross total would accept a payment larger than what is owed.
 	netOwed := owedByPayer - owedToPayer
 	if req.Amount > netOwed+settlementEpsilon {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "L'importo supera il debito residuo tra questi membri"})
+		apierr.Fail(c, http.StatusBadRequest, "amount_exceeds_debt", "The amount is larger than the debt left between these members")
 		return
 	}
 
@@ -230,7 +231,7 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 	if err := tx.Create(&settlement).Error; err != nil {
 		tx.Rollback()
 		log.Printf("ERROR creating settlement: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create settlement"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create settlement")
 		return
 	}
 
@@ -253,7 +254,7 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 		if err := applyAllocation(tx, settlement.ID, credits[i], owed, allocationKindFunding, now); err != nil {
 			tx.Rollback()
 			log.Printf("ERROR netting counter-share split %d: %v", credits[i].ID, err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to allocate settlement"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to allocate settlement")
 			return
 		}
 		netted += owed
@@ -280,7 +281,7 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 		if err := applyAllocation(tx, settlement.ID, splits[i], alloc, allocationKindPayment, now); err != nil {
 			tx.Rollback()
 			log.Printf("ERROR allocating settlement to split %d: %v", splits[i].ID, err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to allocate settlement"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to allocate settlement")
 			return
 		}
 
@@ -293,7 +294,7 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 
 	if err := tx.Commit().Error; err != nil {
 		log.Printf("ERROR committing transaction: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete settlement"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to complete settlement")
 		return
 	}
 
@@ -307,19 +308,19 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 func (h *SettlementHandler) List(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	propertyIDStr := c.Query("property_id")
 	if propertyIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "property_id is required"})
+		apierr.Fail(c, http.StatusBadRequest, "property_id_required", "A property is required")
 		return
 	}
 
 	propertyID, err := strconv.ParseUint(propertyIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property_id"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
 		return
 	}
 
@@ -351,7 +352,7 @@ func (h *SettlementHandler) List(c *gin.Context) {
 
 	if err := query.Find(&settlements).Error; err != nil {
 		log.Printf("ERROR fetching settlements: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch settlements"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch settlements")
 		return
 	}
 
@@ -366,13 +367,13 @@ func (h *SettlementHandler) List(c *gin.Context) {
 func (h *SettlementHandler) Get(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid settlement ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_settlement_id", "Invalid settlement id")
 		return
 	}
 
@@ -383,9 +384,9 @@ func (h *SettlementHandler) Get(c *gin.Context) {
 		Preload("Allocations").
 		First(&settlement, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Settlement not found"})
+			apierr.Fail(c, http.StatusNotFound, "settlement_not_found", "Settlement not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch settlement"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch settlement")
 		}
 		return
 	}
@@ -393,13 +394,13 @@ func (h *SettlementHandler) Get(c *gin.Context) {
 	// Find the current user's member for this property
 	var currentMember models.HouseholdMember
 	if err := h.db.Where("property_id = ? AND user_id = ?", settlement.PropertyID, userID).First(&currentMember).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You must be a member of this property"})
+		apierr.Fail(c, http.StatusForbidden, "not_property_member", "You are not a member of this property")
 		return
 	}
 
 	// Verify user is involved
 	if settlement.FromMemberID != currentMember.ID && settlement.ToMemberID != currentMember.ID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You must be involved in the settlement"})
+		apierr.Fail(c, http.StatusForbidden, "not_in_settlement", "You are not involved in this settlement")
 		return
 	}
 
@@ -411,13 +412,13 @@ func (h *SettlementHandler) Get(c *gin.Context) {
 func (h *SettlementHandler) Delete(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid settlement ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_settlement_id", "Invalid settlement id")
 		return
 	}
 
@@ -425,9 +426,9 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 	var settlement models.Settlement
 	if err := h.db.First(&settlement, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Settlement not found"})
+			apierr.Fail(c, http.StatusNotFound, "settlement_not_found", "Settlement not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find settlement"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to find settlement")
 		}
 		return
 	}
@@ -435,13 +436,13 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 	// Find the current user's member for this property
 	var currentMember models.HouseholdMember
 	if err := h.db.Where("property_id = ? AND user_id = ?", settlement.PropertyID, userID).First(&currentMember).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You must be a member of this property"})
+		apierr.Fail(c, http.StatusForbidden, "not_property_member", "You are not a member of this property")
 		return
 	}
 
 	// Verify user is involved
 	if settlement.FromMemberID != currentMember.ID && settlement.ToMemberID != currentMember.ID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You must be involved in the settlement"})
+		apierr.Fail(c, http.StatusForbidden, "not_in_settlement", "You are not involved in this settlement")
 		return
 	}
 
@@ -453,7 +454,7 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 	var allocations []models.SettlementAllocation
 	if err := tx.Where("settlement_id = ?", settlement.ID).Find(&allocations).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load settlement allocations"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to load settlement allocations")
 		return
 	}
 
@@ -461,7 +462,7 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 		var split models.ExpenseSplit
 		if err := tx.First(&split, alloc.ExpenseSplitID).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load expense split"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to load expense split")
 			return
 		}
 
@@ -498,31 +499,31 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 			// This settlement was the split's only funder — fully unsettled.
 		default:
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load remaining allocations"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to load remaining allocations")
 			return
 		}
 
 		if err := tx.Model(&models.ExpenseSplit{}).Where("id = ?", split.ID).Updates(updates).Error; err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unsettle expense split"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to unsettle expense split")
 			return
 		}
 	}
 
 	if err := tx.Where("settlement_id = ?", settlement.ID).Delete(&models.SettlementAllocation{}).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete settlement allocations"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete settlement allocations")
 		return
 	}
 
 	if err := tx.Delete(&settlement).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete settlement"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete settlement")
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete deletion"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to complete deletion")
 		return
 	}
 
@@ -547,13 +548,13 @@ type CompensateRequest struct {
 func (h *SettlementHandler) Compensate(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	var req CompensateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -565,20 +566,20 @@ func (h *SettlementHandler) Compensate(c *gin.Context) {
 	// the expense, and it's that payer's own debt we're about to shrink.
 	var source models.ExpenseSplit
 	if err := h.db.Preload("Expense").First(&source, req.SourceSplitID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Spesa a credito non trovata"})
+		apierr.Fail(c, http.StatusNotFound, "credit_expense_not_found", "Credit expense not found")
 		return
 	}
 	if source.Expense.PropertyID == nil || *source.Expense.PropertyID != req.PropertyID {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "La spesa non appartiene a questa casa"})
+		apierr.Fail(c, http.StatusBadRequest, "expense_not_in_property", "This expense does not belong to this household")
 		return
 	}
 	if source.Expense.IsLongTermDebt {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Un debito a lungo termine non può finanziare una compensazione"})
+		apierr.Fail(c, http.StatusBadRequest, "long_term_debt_cannot_fund", "A long-term debt cannot fund a compensation")
 		return
 	}
 	sourceRemaining := remainingOwed(source)
 	if sourceRemaining <= settlementEpsilon {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Questa quota è già stata saldata"})
+		apierr.Fail(c, http.StatusBadRequest, "share_already_settled", "This share is already settled")
 		return
 	}
 
@@ -588,11 +589,11 @@ func (h *SettlementHandler) Compensate(c *gin.Context) {
 
 	var currentMember models.HouseholdMember
 	if err := h.db.Where("property_id = ? AND user_id = ?", req.PropertyID, userID).First(&currentMember).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You must be a member of this property"})
+		apierr.Fail(c, http.StatusForbidden, "not_property_member", "You are not a member of this property")
 		return
 	}
 	if currentMember.ID != debtorID && currentMember.ID != holderID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You must be involved in the compensation"})
+		apierr.Fail(c, http.StatusForbidden, "not_in_compensation", "You are not involved in this compensation")
 		return
 	}
 
@@ -605,12 +606,12 @@ func (h *SettlementHandler) Compensate(c *gin.Context) {
 		Where("expenses.deleted_at IS NULL").
 		Where("expenses.paid_by_member_id = ? AND expense_splits.member_id = ?", holderID, debtorID).
 		First(&debt).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Debito a lungo termine non trovato per questa coppia"})
+		apierr.Fail(c, http.StatusNotFound, "long_term_debt_not_found", "No long-term debt exists between these two members")
 		return
 	}
 	debtRemaining := remainingOwed(debt)
 	if debtRemaining <= settlementEpsilon {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Questo debito è già estinto"})
+		apierr.Fail(c, http.StatusBadRequest, "debt_already_settled", "This debt is already paid off")
 		return
 	}
 
@@ -620,7 +621,7 @@ func (h *SettlementHandler) Compensate(c *gin.Context) {
 	if req.Date != "" {
 		parsed, err := time.Parse("2006-01-02", req.Date)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format. Use YYYY-MM-DD"})
+			apierr.Fail(c, http.StatusBadRequest, "invalid_date", "Invalid date format")
 			return
 		}
 		date = parsed
@@ -642,7 +643,7 @@ func (h *SettlementHandler) Compensate(c *gin.Context) {
 	if err := tx.Create(&settlement).Error; err != nil {
 		tx.Rollback()
 		log.Printf("ERROR creating compensation settlement: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create compensation"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create compensation")
 		return
 	}
 
@@ -652,18 +653,18 @@ func (h *SettlementHandler) Compensate(c *gin.Context) {
 	if err := applyAllocation(tx, settlement.ID, debt, amount, allocationKindPayment, now); err != nil {
 		tx.Rollback()
 		log.Printf("ERROR allocating compensation to debt split %d: %v", debt.ID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to apply compensation"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to apply compensation")
 		return
 	}
 	if err := applyAllocation(tx, settlement.ID, source, amount, allocationKindFunding, now); err != nil {
 		tx.Rollback()
 		log.Printf("ERROR consuming credit split %d: %v", source.ID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to apply compensation"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to apply compensation")
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete compensation"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to complete compensation")
 		return
 	}
 

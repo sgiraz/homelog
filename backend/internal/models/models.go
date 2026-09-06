@@ -2,6 +2,7 @@ package models
 
 import (
 	"sort"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -67,8 +68,13 @@ type Category struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID    *uint  `gorm:"index" json:"user_id,omitempty"`
-	User      *User  `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	UserID *uint `gorm:"index" json:"user_id,omitempty"`
+	User   *User `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	// Slug identifies a built-in default category (e.g. "home"). It is the
+	// i18n key the frontend translates and the stable handle backend code
+	// matches on. Empty for user-created categories and for default ones an
+	// admin has renamed — those render their raw Name in every language.
+	Slug      string `gorm:"index" json:"slug,omitempty"`
 	Name      string `gorm:"not null" json:"name"`
 	Icon      string `json:"icon"`
 	Color     string `json:"color"`
@@ -83,8 +89,10 @@ type Subcategory struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	CategoryID uint   `gorm:"not null;index" json:"category_id"`
-	Name       string `gorm:"not null" json:"name"`
+	CategoryID uint `gorm:"not null;index" json:"category_id"`
+	// Slug identifies a built-in default subcategory. See Category.Slug.
+	Slug string `gorm:"index" json:"slug,omitempty"`
+	Name string `gorm:"not null" json:"name"`
 }
 
 // Expense represents a single expense
@@ -128,6 +136,35 @@ type Expense struct {
 	Project     *Project         `json:"project,omitempty"`
 	PaidBy      *HouseholdMember `gorm:"foreignKey:PaidByMemberID" json:"paid_by,omitempty"`
 	Splits      []ExpenseSplit   `gorm:"foreignKey:ExpenseID" json:"splits,omitempty"`
+}
+
+// SupportedLanguages is the set of UI languages the server accepts. The real
+// source of truth is the set of directories under
+// frontend/src/i18n/locales/ — languages_test.go fails if this map drifts from
+// it, so a translation cannot be merged and then silently never offered.
+var SupportedLanguages = map[string]bool{
+	"it": true,
+	"en": true,
+}
+
+// DefaultLanguage is used whenever no supported language can be determined.
+// English, not Italian: it is the canonical source language of every message
+// file and the vue-i18n fallback, so a visitor whose language we do not have
+// gets the one language every string is guaranteed to exist in.
+const DefaultLanguage = "en"
+
+// NormalizeLanguage maps a client-supplied language tag onto a supported
+// language, falling back to DefaultLanguage. Accepts regional tags ("en-GB")
+// and any casing, so a raw navigator.language value can be passed straight in.
+func NormalizeLanguage(lang string) string {
+	base := strings.ToLower(strings.TrimSpace(lang))
+	if i := strings.IndexAny(base, "-_"); i >= 0 {
+		base = base[:i]
+	}
+	if SupportedLanguages[base] {
+		return base
+	}
+	return DefaultLanguage
 }
 
 // MeteredByType is the single source of truth for which service types are

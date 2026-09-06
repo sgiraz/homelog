@@ -90,6 +90,7 @@ import { useI18n } from 'vue-i18n'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 const allProperties = ref([])
@@ -122,7 +123,7 @@ async function addProperty() {
     showAddPropertyForm.value = false
     await fetchAllProperties()
   } catch (err) {
-    propertyError.value = err.response?.data?.error || t('settings.properties.createError')
+    propertyError.value = apiErrorMessage(err, t('settings.properties.createError'))
   } finally {
     propertyLoading.value = false
   }

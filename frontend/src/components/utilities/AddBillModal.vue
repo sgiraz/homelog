@@ -298,6 +298,7 @@ import Button from '@/components/common/Button.vue'
 import PDFUploadZone from '@/components/utilities/PDFUploadZone.vue'
 import ProviderReadingsSection from '@/components/utilities/ProviderReadingsSection.vue'
 import InstallmentsSection from '@/components/utilities/InstallmentsSection.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const props = defineProps({
   utility: { type: Object, required: true },
@@ -593,7 +594,7 @@ async function handleSubmit() {
     }
     emit('saved')
   } catch (err) {
-    submitError.value = err.response?.data?.error || err.message || t('utilities.addBillModal.genericError')
+    submitError.value = apiErrorMessage(err, t('utilities.addBillModal.genericError'))
   } finally {
     saving.value = false
   }

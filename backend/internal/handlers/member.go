@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -49,14 +50,14 @@ type UpdateMemberRequest struct {
 func (h *MemberHandler) List(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	propertyIDStr := c.Param("id")
 	propertyID, err := strconv.ParseUint(propertyIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
 		return
 	}
 
@@ -66,7 +67,7 @@ func (h *MemberHandler) List(c *gin.Context) {
 
 	var members []models.HouseholdMember
 	if err := h.db.Preload("User").Where("property_id = ?", propertyID).Find(&members).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch members"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch members")
 		return
 	}
 
@@ -95,7 +96,7 @@ func (h *MemberHandler) List(c *gin.Context) {
 func (h *MemberHandler) Create(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -103,7 +104,7 @@ func (h *MemberHandler) Create(c *gin.Context) {
 	propertyIDStr := c.Param("id")
 	propertyID, err := strconv.ParseUint(propertyIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
 		return
 	}
 
@@ -113,7 +114,7 @@ func (h *MemberHandler) Create(c *gin.Context) {
 
 	var req CreateMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Invalid request body: "+err.Error())
 		return
 	}
 
@@ -128,7 +129,7 @@ func (h *MemberHandler) Create(c *gin.Context) {
 
 	if err := h.db.Create(&member).Error; err != nil {
 		log.Printf("ERROR creating member: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create member"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create member")
 		return
 	}
 
@@ -148,24 +149,24 @@ func (h *MemberHandler) Create(c *gin.Context) {
 func (h *MemberHandler) Get(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	memberIDStr := c.Param("id")
 	memberID, err := strconv.ParseUint(memberIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid member ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_member_id", "Invalid member id")
 		return
 	}
 
 	var member models.HouseholdMember
 	if err := h.db.First(&member, memberID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Member not found"})
+			apierr.Fail(c, http.StatusNotFound, "member_not_found", "Member not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch member"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch member")
 		return
 	}
 
@@ -187,30 +188,30 @@ func (h *MemberHandler) Get(c *gin.Context) {
 func (h *MemberHandler) Update(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	memberIDStr := c.Param("id")
 	memberID, err := strconv.ParseUint(memberIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid member ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_member_id", "Invalid member id")
 		return
 	}
 
 	var req UpdateMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", "The request could not be processed")
 		return
 	}
 
 	var member models.HouseholdMember
 	if err := h.db.First(&member, memberID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Member not found"})
+			apierr.Fail(c, http.StatusNotFound, "member_not_found", "Member not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch member"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch member")
 		return
 	}
 
@@ -226,7 +227,7 @@ func (h *MemberHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.db.Save(&member).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update member"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update member")
 		return
 	}
 
@@ -244,24 +245,24 @@ func (h *MemberHandler) Update(c *gin.Context) {
 func (h *MemberHandler) Delete(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	memberIDStr := c.Param("id")
 	memberID, err := strconv.ParseUint(memberIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid member ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_member_id", "Invalid member id")
 		return
 	}
 
 	var member models.HouseholdMember
 	if err := h.db.First(&member, memberID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Member not found"})
+			apierr.Fail(c, http.StatusNotFound, "member_not_found", "Member not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch member"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch member")
 		return
 	}
 
@@ -271,7 +272,7 @@ func (h *MemberHandler) Delete(c *gin.Context) {
 
 	// Don't allow deleting non-virtual members (linked to User accounts)
 	if !member.IsVirtual {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot delete a member linked to a user account"})
+		apierr.Fail(c, http.StatusForbidden, "member_linked_to_account", "A member linked to a user account cannot be deleted")
 		return
 	}
 
@@ -279,19 +280,19 @@ func (h *MemberHandler) Delete(c *gin.Context) {
 	var expenseCount int64
 	h.db.Model(&models.Expense{}).Where("paid_by_member_id = ?", memberID).Count(&expenseCount)
 	if expenseCount > 0 {
-		c.JSON(http.StatusConflict, gin.H{"error": "Cannot delete member with associated expenses"})
+		apierr.Fail(c, http.StatusConflict, "member_has_expenses", "This member has expenses and cannot be deleted")
 		return
 	}
 
 	var splitCount int64
 	h.db.Model(&models.ExpenseSplit{}).Where("member_id = ?", memberID).Count(&splitCount)
 	if splitCount > 0 {
-		c.JSON(http.StatusConflict, gin.H{"error": "Cannot delete member with associated expense splits"})
+		apierr.Fail(c, http.StatusConflict, "member_has_splits", "This member has expense shares and cannot be deleted")
 		return
 	}
 
 	if err := h.db.Delete(&member).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete member"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete member")
 		return
 	}
 

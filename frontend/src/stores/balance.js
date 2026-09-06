@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { balanceAPI, expensesAPI, settlementsAPI } from '@/api/client'
+import { apiErrorMessage } from '@/utils/apiError'
 
 export const useBalanceStore = defineStore('balance', () => {
   const balance = ref(0)
@@ -38,7 +39,7 @@ export const useBalanceStore = defineStore('balance', () => {
       message.value = data.message || ''
     } catch (err) {
       balance.value = 0
-      error.value = err.response?.data?.error || err.message
+      error.value = apiErrorMessage(err)
     } finally {
       loading.value = false
     }
@@ -60,7 +61,7 @@ export const useBalanceStore = defineStore('balance', () => {
       balance.value = 0
       unsettledSplits.value = []
       settlements.value = []
-      error.value = err.response?.data?.error || err.message
+      error.value = apiErrorMessage(err)
     } finally {
       loading.value = false
     }
@@ -78,7 +79,7 @@ export const useBalanceStore = defineStore('balance', () => {
       if (settlementData.target_expense_id) await fetchDebts(propertyId)
       return data
     } catch (err) {
-      error.value = err.response?.data?.error || err.message
+      error.value = apiErrorMessage(err)
       throw err
     } finally {
       saving.value = false
@@ -91,7 +92,7 @@ export const useBalanceStore = defineStore('balance', () => {
       settlements.value = data.settlements || []
     } catch (err) {
       settlements.value = []
-      error.value = err.response?.data?.error || err.message
+      error.value = apiErrorMessage(err)
     }
   }
 
@@ -111,7 +112,7 @@ export const useBalanceStore = defineStore('balance', () => {
       debts.value = []
       totalIOwe.value = 0
       totalTheyOwe.value = 0
-      error.value = err.response?.data?.error || err.message
+      error.value = apiErrorMessage(err)
     } finally {
       debtsLoading.value = false
     }
@@ -127,7 +128,7 @@ export const useBalanceStore = defineStore('balance', () => {
       await Promise.all([fetchBalanceDetails(propertyId), fetchDebts(propertyId)])
       return data
     } catch (err) {
-      error.value = err.response?.data?.error || err.message
+      error.value = apiErrorMessage(err)
       throw err
     } finally {
       saving.value = false
@@ -143,7 +144,7 @@ export const useBalanceStore = defineStore('balance', () => {
       await Promise.all([fetchBalanceDetails(propertyId), fetchDebts(propertyId)])
       return data
     } catch (err) {
-      error.value = err.response?.data?.error || err.message
+      error.value = apiErrorMessage(err)
       throw err
     } finally {
       saving.value = false

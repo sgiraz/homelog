@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -76,7 +77,7 @@ type BalanceDetailsResponse struct {
 func (h *BalanceHandler) GetBalance(c *gin.Context) {
 	currentUserID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -84,7 +85,7 @@ func (h *BalanceHandler) GetBalance(c *gin.Context) {
 	propertyIDStr := c.Param("id")
 	propertyIDParsed, err := strconv.ParseUint(propertyIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
 		return
 	}
 	propertyID := uint(propertyIDParsed)
@@ -138,12 +139,12 @@ func (h *BalanceHandler) GetBalance(c *gin.Context) {
 	if otherMemberIDStr := c.Query("other_member_id"); otherMemberIDStr != "" {
 		otherMemberIDParsed, err := strconv.ParseUint(otherMemberIDStr, 10, 32)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid other_member_id"})
+			apierr.Fail(c, http.StatusBadRequest, "invalid_other_member_id", "Invalid other member id")
 			return
 		}
 		otherMemberID = uint(otherMemberIDParsed)
 		if err := h.db.First(&otherMember, otherMemberID).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Other member not found"})
+			apierr.Fail(c, http.StatusNotFound, "other_member_not_found", "The other member was not found")
 			return
 		}
 		log.Printf("   Other member specified: ID=%d, Name=%s", otherMember.ID, otherMember.Name)
@@ -171,7 +172,7 @@ func (h *BalanceHandler) GetBalance(c *gin.Context) {
 	balance, err := CalculateBalance(currentMember.ID, otherMemberID, propertyID, h.db)
 	if err != nil {
 		log.Printf("   ❌ Error calculating balance: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to calculate balance"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to calculate balance")
 		return
 	}
 
@@ -202,7 +203,7 @@ func (h *BalanceHandler) GetBalance(c *gin.Context) {
 func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 	currentUserID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -210,7 +211,7 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 	propertyIDStr := c.Param("id")
 	propertyIDParsed, err := strconv.ParseUint(propertyIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
 		return
 	}
 	propertyID := uint(propertyIDParsed)
@@ -236,12 +237,12 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 	if otherMemberIDStr := c.Query("other_member_id"); otherMemberIDStr != "" {
 		otherMemberIDParsed, err := strconv.ParseUint(otherMemberIDStr, 10, 32)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid other_member_id"})
+			apierr.Fail(c, http.StatusBadRequest, "invalid_other_member_id", "Invalid other member id")
 			return
 		}
 		otherMemberID = uint(otherMemberIDParsed)
 		if err := h.db.First(&otherMember, otherMemberID).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Other member not found"})
+			apierr.Fail(c, http.StatusNotFound, "other_member_not_found", "The other member was not found")
 			return
 		}
 	} else {
@@ -264,7 +265,7 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 	// Calculate balance
 	balance, err := CalculateBalance(currentMember.ID, otherMemberID, propertyID, h.db)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to calculate balance"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to calculate balance")
 		return
 	}
 
@@ -285,7 +286,7 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 		Order("expenses.date DESC").
 		Find(&splits).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch unsettled splits"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch unsettled splits")
 		return
 	}
 
@@ -322,7 +323,7 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 		Order("date DESC").
 		Find(&settlements).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch settlements"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch settlements")
 		return
 	}
 

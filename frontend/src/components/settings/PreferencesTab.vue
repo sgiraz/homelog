@@ -67,8 +67,7 @@
                    bg-surface text-ink text-base
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="it">{{ t('settings.preferences.options.languageIT') }}</option>
-            <option value="en">{{ t('settings.preferences.options.languageEN') }}</option>
+            <option v-for="opt in localeOptions()" :key="opt.code" :value="opt.code">{{ opt.label }}</option>
           </select>
         </div>
 
@@ -121,7 +120,7 @@
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium text-ink truncate">{{ tpl.name }}</div>
             <div class="text-xs text-ink-muted">
-              {{ tpl.category?.name }}<span v-if="tpl.subcategory"> / {{ tpl.subcategory.name }}</span>
+              {{ categoryLabel(tpl.category) }}<span v-if="tpl.subcategory"> / {{ categoryLabel(tpl.subcategory) }}</span>
               <span v-if="tpl.amount"> · {{ formatCurrency(tpl.amount) }}</span>
             </div>
           </div>
@@ -175,7 +174,7 @@
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option v-for="cat in tplCategories" :key="cat.id" :value="cat.id">
-                {{ cat.icon }} {{ cat.name }}
+                {{ cat.icon }} {{ categoryLabel(cat) }}
               </option>
             </select>
           </div>
@@ -190,7 +189,7 @@
           >
             <option :value="null">{{ t('settings.preferences.templates.noSubcategory') }}</option>
             <option v-for="sub in tplSubcategories" :key="sub.id" :value="sub.id">
-              {{ sub.name }}
+              {{ categoryLabel(sub) }}
             </option>
           </select>
         </div>
@@ -317,6 +316,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useDarkMode } from '@/composables/useDarkMode'
 import { useTheme } from '@/composables/useTheme'
 import { THEMES } from '@/config/themes'
+import { categoryLabel } from '@/utils/categoryLabel'
 import { authAPI, expenseTemplatesAPI, categoriesAPI } from '@/api/client'
 import apiClient from '@/api/client'
 import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
@@ -324,6 +324,8 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
 import DeleteAccountSection from './DeleteAccountSection.vue'
+import { DEFAULT_LOCALE, localeOptions } from '@/i18n'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -336,7 +338,7 @@ const preferences = ref({
   theme: 'auto',
   color_theme: 'slate',
   currency: 'EUR',
-  language: 'it',
+  language: DEFAULT_LOCALE,
   date_format: 'DD/MM/YYYY'
 })
 
@@ -459,7 +461,9 @@ async function loadUserSettings() {
       theme: data.theme || 'auto',
       color_theme: data.color_theme || 'slate',
       currency: data.currency || 'EUR',
-      language: data.language || 'it',
+      // Locale comes from the store, not the raw payload: on the shared demo
+      // account the stored language belongs to whoever visited last.
+      language: settingsStore.language,
       date_format: data.date_format || 'DD/MM/YYYY'
     }
     notificationRetentionDays.value = data.notification_retention_days ?? 90
@@ -509,19 +513,15 @@ async function updateUserSettings() {
   try {
     // Get current settings to preserve split member IDs
     const { data: currentSettings } = await apiClient.get('/settings')
-    const payload = {
+    // Goes through the store so the locale is remembered per browser and is
+    // never written to the shared demo account.
+    await settingsStore.updateSettings({
       theme: preferences.value.theme,
       currency: preferences.value.currency,
       language: preferences.value.language,
       date_format: preferences.value.date_format,
       default_split_with_member_ids: currentSettings.default_split_with_member_ids || '[]'
-    }
-    await apiClient.put('/settings', payload)
-    settingsStore.theme = preferences.value.theme
-    setTheme(preferences.value.theme)
-    settingsStore.currency = preferences.value.currency
-    settingsStore.language = preferences.value.language
-    settingsStore.dateFormat = preferences.value.date_format
+    })
   } catch (err) {
     console.error('Error updating user settings:', err)
   }
@@ -551,7 +551,7 @@ async function handleChangePassword() {
     pwForm.value = { current: '', newPw: '', confirm: '' }
     setTimeout(() => { showChangePassword.value = false; pwSuccess.value = null }, 2000)
   } catch (err) {
-    pwError.value = err.response?.data?.error || t('settings.preferences.account.genericError')
+    pwError.value = apiErrorMessage(err, t('settings.preferences.account.genericError'))
   } finally {
     pwLoading.value = false
   }

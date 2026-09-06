@@ -229,9 +229,10 @@ import { LINKS as links } from '@/config/links'
 import Card from '@/components/common/Card.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const { isDemoMode } = useDemoMode()
 
@@ -254,7 +255,9 @@ async function handleSubmit() {
   error.value = null
   try {
     if (mode.value === 'register') {
-      await authStore.register(form.value)
+      // The new account starts in the language the signup form is showing,
+      // which resolveInitialLocale() derived from the browser.
+      await authStore.register({ ...form.value, language: locale.value })
     } else {
       await authStore.login(form.value)
     }
@@ -291,7 +294,7 @@ async function handleForgotPassword() {
       resetForm.value.token = data.reset_token
     }
   } catch (err) {
-    error.value = err.response?.data?.error || t('auth.forgot.error')
+    error.value = apiErrorMessage(err, t('auth.forgot.error'))
   } finally {
     loading.value = false
   }
@@ -327,7 +330,7 @@ async function handleResetPassword() {
       resetForm.value = { token: '', newPassword: '', confirmPassword: '' }
     }, 2000)
   } catch (err) {
-    error.value = err.response?.data?.error || t('auth.reset.error')
+    error.value = apiErrorMessage(err, t('auth.reset.error'))
   } finally {
     loading.value = false
   }

@@ -33,7 +33,7 @@
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">{{ t('dashboard.filters.allCategoriesLong') }}</option>
-              <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ cat.name }}</option>
+              <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ categoryLabel(cat) }}</option>
             </select>
             <select
               :value="filters.projectId"
@@ -79,7 +79,7 @@
         >
           <option value="">{{ t('dashboard.filters.allCategoriesShort') }}</option>
           <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-            {{ cat.icon }} {{ cat.name }}
+            {{ cat.icon }} {{ categoryLabel(cat) }}
           </option>
         </select>
       </div>
@@ -133,6 +133,7 @@
 defineOptions({ name: 'DashboardFilters' })
 
 import { useI18n } from 'vue-i18n'
+import { categoryLabel } from '@/utils/categoryLabel'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 

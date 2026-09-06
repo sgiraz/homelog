@@ -253,7 +253,7 @@
                 </div>
                 <div class="text-sm text-ink-soft">
                   {{ _formatDate(expense.date, settingsStore.dateSettings) }}
-                  <span v-if="expense.category"> · {{ expense.category.name }}</span>
+                  <span v-if="expense.category"> · {{ categoryLabel(expense.category) }}</span>
                 </div>
               </div>
               <div class="text-lg font-bold text-ink ml-3 flex-shrink-0">
@@ -298,11 +298,13 @@ import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { formatCurrency as _formatCurrency, formatDate as _formatDate } from '@/utils/dateFormatter'
 import { useConfirm } from '@/composables/useConfirm'
+import { categoryLabel } from '@/utils/categoryLabel'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditProjectModal from '@/components/projects/EditProjectModal.vue'
 import PieChart from '@/components/charts/PieChart.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const route = useRoute()
 const router = useRouter()
@@ -361,7 +363,7 @@ const categoryBreakdown = computed(() => {
     if (!map[catId]) {
       map[catId] = {
         category_id: catId,
-        category_name: exp.category?.name || t('projects.detail.noCategory'),
+        category_name: categoryLabel(exp.category, t('projects.detail.noCategory')),
         category_icon: exp.category?.icon || '📦',
         category_color: exp.category?.color || '#6B7280',
         total: 0,
@@ -454,7 +456,7 @@ async function confirmDelete() {
     window.$toast?.success(t('projects.detail.deleteSuccess'))
     router.push('/projects')
   } catch (err) {
-    window.$toast?.error(t('projects.detail.deleteError', { error: err.response?.data?.error || err.message }))
+    window.$toast?.error(t('projects.detail.deleteError', { error: apiErrorMessage(err) }))
   }
 }
 

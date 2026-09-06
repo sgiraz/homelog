@@ -54,6 +54,7 @@ import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { formatNumber as _formatNumber } from '@/utils/dateFormatter'
 import { utilitiesAPI } from '@/api/client'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const props = defineProps({
   utilityId: { type: [Number, String], required: true },
@@ -105,7 +106,7 @@ async function togglePaid(inst, newValue) {
     emit('installment-updated')
   } catch (err) {
     console.error('Errore toggle rata:', err)
-    emit('error', err.response?.data?.error || t('utilities.installments.updateError'))
+    emit('error', apiErrorMessage(err, t('utilities.installments.updateError')))
   } finally {
     instUpdating.value = null
   }

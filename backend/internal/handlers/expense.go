@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -10,6 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/i18n"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -68,7 +69,7 @@ type MonthlyStats struct {
 func (h *ExpenseHandler) List(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -124,7 +125,7 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	var fromDate, toDate string
 	if from := c.Query("from"); from != "" {
 		if _, err := time.Parse("2006-01-02", from); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid 'from' date format. Use YYYY-MM-DD"})
+			apierr.Fail(c, http.StatusBadRequest, "invalid_date_from", "Invalid start date format")
 			return
 		}
 		fromDate = from
@@ -133,7 +134,7 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 
 	if to := c.Query("to"); to != "" {
 		if _, err := time.Parse("2006-01-02", to); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid 'to' date format. Use YYYY-MM-DD"})
+			apierr.Fail(c, http.StatusBadRequest, "invalid_date_to", "Invalid end date format")
 			return
 		}
 		toDate = to
@@ -206,7 +207,7 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	}
 
 	if err := query.Order(orderClause).Limit(limit).Offset(offset).Find(&expenses).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch expenses")
 		return
 	}
 
@@ -223,14 +224,14 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 func (h *ExpenseHandler) Create(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	var req CreateExpenseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("❌ EXPENSE CREATE: Validation error: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -246,7 +247,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 
 	date, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format. Use YYYY-MM-DD"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_date", "Invalid date format")
 		return
 	}
 
@@ -261,12 +262,12 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 				log.Printf("   ℹ️ Auto-resolved PaidByMemberID: %d", paidByMemberID)
 			} else {
 				log.Printf("❌ EXPENSE CREATE: Could not find member for user %d in property %d", userID, *req.PropertyID)
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Could not find your member profile for this property"})
+				apierr.Fail(c, http.StatusBadRequest, "member_profile_missing", "You have no member profile for this property")
 				return
 			}
 		} else {
 			log.Printf("❌ EXPENSE CREATE: PaidByMemberID required when PropertyID is provided")
-			c.JSON(http.StatusBadRequest, gin.H{"error": "paid_by_member_id is required"})
+			apierr.Fail(c, http.StatusBadRequest, "payer_required", "A payer is required")
 			return
 		}
 	}
@@ -275,7 +276,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 	var category models.Category
 	if err := h.db.Where("id = ? AND (user_id = ? OR user_id IS NULL)", req.CategoryID, userID).First(&category).Error; err != nil {
 		log.Printf("❌ EXPENSE CREATE: Invalid category %d for user %d", req.CategoryID, userID)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_category", "Invalid category")
 		return
 	}
 
@@ -284,7 +285,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		var member models.HouseholdMember
 		if err := h.db.Where("property_id = ? AND user_id = ?", *req.PropertyID, userID).First(&member).Error; err != nil {
 			log.Printf("❌ EXPENSE CREATE: User %d is not a member of property %d", userID, *req.PropertyID)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "You are not a member of this property"})
+			apierr.Fail(c, http.StatusBadRequest, "not_property_member", "You are not a member of this property")
 			return
 		}
 	}
@@ -296,7 +297,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 			"id = ? AND (user_id = ? OR id IN (SELECT project_id FROM project_members WHERE user_id = ?))",
 			*req.ProjectID, userID, userID,
 		).First(&project).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project"})
+			apierr.Fail(c, http.StatusBadRequest, "invalid_project", "Invalid project")
 			return
 		}
 	}
@@ -322,7 +323,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 	if err := tx.Create(&expense).Error; err != nil {
 		tx.Rollback()
 		log.Printf("❌ EXPENSE CREATE: Failed to save expense: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create expense", "details": err.Error()})
+		apierr.Fail(c, http.StatusInternalServerError, apierr.CodeServerError, "Failed to create expense: "+err.Error())
 		return
 	}
 
@@ -352,7 +353,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		if err := tx.Create(&payerSplit).Error; err != nil {
 			tx.Rollback()
 			log.Printf("❌ SPLIT: Failed to create payer split: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create payer split"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create payer split")
 			return
 		}
 		log.Printf("   ✅ Payer split created: MemberID=%d, Amount=%.2f, IsSettled=true", paidByMemberID, splitAmount)
@@ -368,7 +369,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 			if err := tx.Create(&split).Error; err != nil {
 				tx.Rollback()
 				log.Printf("❌ SPLIT: Failed to create split for member %d: %v", otherMemberID, err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create split"})
+				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create split")
 				return
 			}
 			log.Printf("   ✅ Split created: MemberID=%d, Amount=%.2f, IsSettled=false", otherMemberID, splitAmount)
@@ -381,7 +382,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 
 	if err := tx.Commit().Error; err != nil {
 		log.Printf("❌ EXPENSE CREATE: Transaction commit failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save expense"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to save expense")
 		return
 	}
 
@@ -400,9 +401,14 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 				continue
 			}
 			relID := expense.ID
+			// Written in the recipient's language, not the payer's: this is
+			// server-generated text, and each member may read a different one.
+			lang := i18n.UserLanguage(h.db, *member.UserID)
 			createNotification(h.db, *member.UserID, "expense_shared",
-				fmt.Sprintf("Nuova spesa condivisa: %s", req.Description),
-				fmt.Sprintf("%s ha inserito una spesa. La tua quota: %.2f.", payer.Name, splitAmount),
+				i18n.T(lang, "notification.expense_shared.title", "description", req.Description),
+				i18n.T(lang, "notification.expense_shared.body",
+					"payer", payer.Name,
+					"amount", i18n.FormatAmount(lang, splitAmount)),
 				&relID, expense.PropertyID)
 		}
 	}
@@ -424,13 +430,13 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 func (h *ExpenseHandler) Get(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expense ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_expense_id", "Invalid expense id")
 		return
 	}
 
@@ -448,9 +454,9 @@ func (h *ExpenseHandler) Get(c *gin.Context) {
 		Preload("Project").
 		First(&expense).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})
+			apierr.Fail(c, http.StatusNotFound, "expense_not_found", "Expense not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expense"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch expense")
 		}
 		return
 	}
@@ -463,13 +469,13 @@ func (h *ExpenseHandler) Get(c *gin.Context) {
 func (h *ExpenseHandler) Update(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expense ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_expense_id", "Invalid expense id")
 		return
 	}
 
@@ -477,18 +483,17 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 	var expense models.Expense
 	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&expense).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found or you are not the owner"})
+			apierr.Fail(c, http.StatusNotFound, "expense_not_found_or_not_owner", "Expense not found, or you are not its owner")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expense"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch expense")
 		}
 		return
 	}
 
 	// Block editing of auto-created expenses (must be managed via the bill)
 	if expense.BillID != nil {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Questa spesa è stata creata automaticamente dal pagamento di una bolletta. Per modificarla, aggiorna la relativa bolletta dalla sezione Utenze.",
-		})
+		apierr.Fail(c, http.StatusForbidden, "expense_from_bill_edit",
+			"This expense was created automatically when a bill was paid. Edit the bill instead, from the Services section.")
 		return
 	}
 
@@ -505,7 +510,7 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 
 	var req UpdateExpenseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -522,7 +527,7 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 			Where("expense_id = ? AND member_id <> ? AND settled_amount > 0", expense.ID, expense.PaidByMemberID).
 			Count(&settledNonPayer)
 		if settledNonPayer > 0 {
-			c.JSON(http.StatusConflict, gin.H{"error": "Alcune quote sono già state saldate. Annulla i pagamenti dal Bilancio per modificare l'importo."})
+			apierr.Fail(c, http.StatusConflict, "expense_has_settled_shares_amount", "Some shares are already settled. Undo the payments from Balance to change the amount.")
 			return
 		}
 	}
@@ -531,7 +536,7 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 	if !settled {
 		if req.Amount != nil {
 			if *req.Amount <= 0 {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Amount must be greater than 0"})
+				apierr.Fail(c, http.StatusBadRequest, "amount_must_be_positive", "The amount must be greater than zero")
 				return
 			}
 			updates["amount"] = *req.Amount
@@ -546,7 +551,7 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 		if req.PropertyID != nil {
 			var member models.HouseholdMember
 			if err := h.db.Where("property_id = ? AND user_id = ?", *req.PropertyID, userID).First(&member).Error; err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "You are not a member of this property"})
+				apierr.Fail(c, http.StatusBadRequest, "not_property_member", "You are not a member of this property")
 				return
 			}
 			updates["property_id"] = *req.PropertyID
@@ -558,7 +563,7 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 				"id = ? AND (user_id = ? OR id IN (SELECT project_id FROM project_members WHERE user_id = ?))",
 				*req.ProjectID, userID, userID,
 			).First(&project).Error; err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project"})
+				apierr.Fail(c, http.StatusBadRequest, "invalid_project", "Invalid project")
 				return
 			}
 			updates["project_id"] = *req.ProjectID
@@ -567,7 +572,7 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 		if req.Date != nil {
 			date, err := time.Parse("2006-01-02", *req.Date)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format. Use YYYY-MM-DD"})
+				apierr.Fail(c, http.StatusBadRequest, "invalid_date", "Invalid date format")
 				return
 			}
 			updates["date"] = date
@@ -586,7 +591,7 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 	if req.CategoryID != nil {
 		var category models.Category
 		if err := h.db.Where("id = ? AND (is_default = true OR user_id = ?)", *req.CategoryID, userID).First(&category).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category"})
+			apierr.Fail(c, http.StatusBadRequest, "invalid_category", "Invalid category")
 			return
 		}
 		updates["category_id"] = *req.CategoryID
@@ -625,7 +630,7 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 			return nil
 		})
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update expense"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update expense")
 			return
 		}
 	}
@@ -646,28 +651,27 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 func (h *ExpenseHandler) Delete(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expense ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_expense_id", "Invalid expense id")
 		return
 	}
 
 	// Only the creator can delete the expense
 	var expense models.Expense
 	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&expense).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found or you are not the owner"})
+		apierr.Fail(c, http.StatusNotFound, "expense_not_found_or_not_owner", "Expense not found, or you are not its owner")
 		return
 	}
 
 	// Block manual deletion of auto-created expenses (must be managed via the bill)
 	if expense.BillID != nil {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Questa spesa è stata creata automaticamente dal pagamento di una bolletta. Per eliminarla, elimina la relativa bolletta dalla sezione Utenze.",
-		})
+		apierr.Fail(c, http.StatusForbidden, "expense_from_bill_delete",
+			"This expense was created automatically when a bill was paid. Delete the bill instead, from the Services section.")
 		return
 	}
 
@@ -680,15 +684,14 @@ func (h *ExpenseHandler) Delete(c *gin.Context) {
 			Where("expense_id = ? AND member_id <> ? AND settled_amount > 0", expense.ID, expense.PaidByMemberID).
 			Count(&settledNonPayer)
 		if settledNonPayer > 0 {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Questa spesa ha quote già saldate (anche parzialmente) e non può essere eliminata. Annulla i pagamenti dal Bilancio prima di eliminarla.",
-			})
+			apierr.Fail(c, http.StatusForbidden, "expense_has_settled_shares_delete",
+				"This expense has shares that are already settled, even partially, and cannot be deleted. Undo the payments from Balance first.")
 			return
 		}
 	}
 
 	if err := h.db.Delete(&expense).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete expense"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete expense")
 		return
 	}
 

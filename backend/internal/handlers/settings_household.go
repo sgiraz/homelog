@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -25,7 +26,7 @@ type UpdateHouseholdSettingsRequest struct {
 func (h *SettingsHandler) GetHouseholdSettings(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -33,7 +34,7 @@ func (h *SettingsHandler) GetHouseholdSettings(c *gin.Context) {
 	propertyIDStr := c.Param("id")
 	propertyID, err := strconv.ParseUint(propertyIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
 		return
 	}
 
@@ -58,7 +59,7 @@ func (h *SettingsHandler) GetHouseholdSettings(c *gin.Context) {
 				return
 			}
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch settings"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch settings")
 			return
 		}
 	}
@@ -72,7 +73,7 @@ func (h *SettingsHandler) GetHouseholdSettings(c *gin.Context) {
 func (h *SettingsHandler) UpdateHouseholdSettings(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -80,7 +81,7 @@ func (h *SettingsHandler) UpdateHouseholdSettings(c *gin.Context) {
 	propertyIDStr := c.Param("id")
 	propertyID, err := strconv.ParseUint(propertyIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
 		return
 	}
 
@@ -91,7 +92,7 @@ func (h *SettingsHandler) UpdateHouseholdSettings(c *gin.Context) {
 	// Parse request body
 	var req UpdateHouseholdSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", "The request could not be processed")
 		return
 	}
 
@@ -106,18 +107,18 @@ func (h *SettingsHandler) UpdateHouseholdSettings(c *gin.Context) {
 				SplitMode:  req.SplitMode,
 			}
 			if err := h.db.Create(&settings).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create settings"})
+				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create settings")
 				return
 			}
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch settings"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch settings")
 			return
 		}
 	} else {
 		// Update existing settings
 		settings.SplitMode = req.SplitMode
 		if err := h.db.Save(&settings).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update settings"})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update settings")
 			return
 		}
 	}

@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/database"
+	"github.com/sgiraz/homelog/internal/i18n"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
@@ -60,7 +63,7 @@ type ExportData struct {
 func (h *ExportHandler) ExportAll(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
@@ -78,9 +81,10 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 		timestamp := time.Now().Format("2006-01-02_15-04-05")
 		filename := fmt.Sprintf("homelog_spese_%s.csv", timestamp)
 		headers := []string{"Date", "Description", "Amount", "Category", "Project", "Paid By", "Split", "Notes"}
+		lang := i18n.UserLanguage(h.db, userID)
 		rows := make([][]string, 0, len(expenses))
 		for _, e := range expenses {
-			rows = append(rows, expenseToCSVRow(e))
+			rows = append(rows, expenseToCSVRow(e, lang))
 		}
 		log.Printf("✅ CSV export (expenses) done: %d rows for user %d", len(rows), userID)
 		writeCSV(c, filename, headers, rows)
@@ -164,10 +168,14 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 }
 
 // expenseToCSVRow converts an Expense to a slice of strings for CSV output.
-func expenseToCSVRow(e models.Expense) []string {
+// lang localizes built-in category names; user-created ones export as stored.
+func expenseToCSVRow(e models.Expense, lang string) []string {
 	date := e.Date.Format("2006-01-02")
 	amount := fmt.Sprintf("%.2f", e.Amount)
 	category := e.Category.Name
+	if localized := database.DefaultCategoryName(e.Category.Slug, lang); localized != "" {
+		category = localized
+	}
 	project := ""
 	if e.Project != nil {
 		project = e.Project.Name
@@ -188,7 +196,7 @@ func expenseToCSVRow(e models.Expense) []string {
 func (h *ExportHandler) ExportExpenses(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
@@ -206,9 +214,10 @@ func (h *ExportHandler) ExportExpenses(c *gin.Context) {
 	if c.Query("format") == "csv" {
 		filename := fmt.Sprintf("homelog_expenses_%s.csv", timestamp)
 		headers := []string{"Date", "Description", "Amount", "Category", "Project", "Paid By", "Split", "Notes"}
+		lang := i18n.UserLanguage(h.db, userID)
 		rows := make([][]string, 0, len(expenses))
 		for _, e := range expenses {
-			rows = append(rows, expenseToCSVRow(e))
+			rows = append(rows, expenseToCSVRow(e, lang))
 		}
 		log.Printf("✅ Exported %d expenses (CSV) for user %d", len(expenses), userID)
 		writeCSV(c, filename, headers, rows)
@@ -235,7 +244,7 @@ func (h *ExportHandler) ExportExpenses(c *gin.Context) {
 func (h *ExportHandler) ExportUtilities(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
@@ -305,7 +314,7 @@ func (h *ExportHandler) ExportUtilities(c *gin.Context) {
 func (h *ExportHandler) ExportProjects(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
@@ -355,19 +364,19 @@ func (h *ExportHandler) ExportProjects(c *gin.Context) {
 func (h *ExportHandler) ImportData(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	var payload map[string]any
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Formato JSON non valido"})
+		apierr.Fail(c, http.StatusBadRequest, "import_invalid_json", "The file is not valid JSON")
 		return
 	}
 
 	version, _ := payload["version"].(string)
 	if version == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Campo 'version' mancante o non valido"})
+		apierr.Fail(c, http.StatusBadRequest, "import_invalid_version", "The backup is missing a valid 'version' field")
 		return
 	}
 
@@ -380,7 +389,7 @@ func (h *ExportHandler) ImportData(c *gin.Context) {
 
 	tx := h.db.Begin()
 	if tx.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Impossibile avviare la transazione"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to start transaction")
 		return
 	}
 
@@ -399,7 +408,7 @@ func (h *ExportHandler) ImportData(c *gin.Context) {
 			n, err := h.importExpenses(tx, userID, raw)
 			if err != nil {
 				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore import spese: " + err.Error()})
+				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to import expenses: "+err.Error())
 				return
 			}
 			counts["expenses"] = n
@@ -410,7 +419,7 @@ func (h *ExportHandler) ImportData(c *gin.Context) {
 			n, err := h.importUtilities(tx, userID, raw)
 			if err != nil {
 				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore import utenze: " + err.Error()})
+				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to import utilities: "+err.Error())
 				return
 			}
 			counts["utilities"] = n
@@ -421,7 +430,7 @@ func (h *ExportHandler) ImportData(c *gin.Context) {
 			n, err := h.importProjects(tx, userID, raw)
 			if err != nil {
 				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore import progetti: " + err.Error()})
+				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to import projects: "+err.Error())
 				return
 			}
 			counts["projects"] = n
@@ -430,13 +439,13 @@ func (h *ExportHandler) ImportData(c *gin.Context) {
 	default: // full backup
 		if err := h.importFull(tx, userID, payload, counts); err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore import: " + err.Error()})
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Import failed: "+err.Error())
 			return
 		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore commit transazione"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to commit transaction")
 		return
 	}
 

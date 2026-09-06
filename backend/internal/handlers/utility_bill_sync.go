@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
+	"github.com/sgiraz/homelog/internal/database"
+	"github.com/sgiraz/homelog/internal/i18n"
 	"github.com/sgiraz/homelog/internal/models"
 )
 
@@ -103,33 +106,32 @@ func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *mod
 		}
 	}
 
-	// Find the "Casa" category
-	var casaCategory models.Category
-	if err := h.db.Where("name = ? AND is_default = true", "Casa").First(&casaCategory).Error; err != nil {
-		return fmt.Errorf("could not find 'Casa' category: %w", err)
+	// Find the built-in "home" category by slug — never by name, which is a
+	// localized label the admin can rename.
+	var homeCategory models.Category
+	if err := h.db.Where("slug = ? AND is_default = true", database.SlugHome).First(&homeCategory).Error; err != nil {
+		return fmt.Errorf("could not find the built-in %q category: %w", database.SlugHome, err)
 	}
 
-	// Find the "Utenze" subcategory under Casa
-	var utenzeSubcat models.Subcategory
-	_ = h.db.Where("category_id = ? AND name = ?", casaCategory.ID, "Utenze").First(&utenzeSubcat)
+	// Find the "utilities" subcategory under it
+	var utilitiesSubcat models.Subcategory
+	_ = h.db.Where("category_id = ? AND slug = ?", homeCategory.ID, database.SlugHomeUtilities).First(&utilitiesSubcat)
 
-	// Build description: "Bolletta Luce - Mar 2025"
-	typeNames := map[string]string{
-		"electricity": "Luce",
-		"gas":         "Gas",
-		"water":       "Acqua",
-		"waste":       "Rifiuti",
-	}
-	italianMonths := []string{"Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"}
-	typeName := typeNames[utility.Type]
-	if typeName == "" {
-		typeName = utility.Type
-	}
-	month := italianMonths[bill.PeriodEnd.Month()-1]
-	year := bill.PeriodEnd.Year()
-	description := fmt.Sprintf("Bolletta %s - %s %d", typeName, month, year)
+	// Build the description in the owner's language: "Bolletta Luce - Mar 2025"
+	// / "Electricity bill - Mar 2025". It is server-generated app text, not
+	// something the user typed, so it must never be a hardcoded Italian literal.
+	lang := i18n.UserLanguage(h.db, userID)
+	description := i18n.T(lang, "bill.expense.description",
+		"type", i18n.UtilityType(lang, utility.Type),
+		"month", i18n.MonthShort(lang, int(bill.PeriodEnd.Month())),
+		"year", strconv.Itoa(bill.PeriodEnd.Year()),
+	)
 	if installmentCount > 1 {
-		description = fmt.Sprintf("%s (Rata %d/%d)", description, inst.Number, installmentCount)
+		description = i18n.T(lang, "bill.expense.installment",
+			"description", description,
+			"number", strconv.Itoa(inst.Number),
+			"total", strconv.FormatInt(installmentCount, 10),
+		)
 	}
 
 	// Payment date: use installment's paid_at or today
@@ -140,8 +142,8 @@ func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *mod
 
 	// Subcategory ID (optional)
 	var subcatID *uint
-	if utenzeSubcat.ID != 0 {
-		id := utenzeSubcat.ID
+	if utilitiesSubcat.ID != 0 {
+		id := utilitiesSubcat.ID
 		subcatID = &id
 	}
 
@@ -204,7 +206,7 @@ func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *mod
 	expense := models.Expense{
 		UserID:            userID, // logged-in user for visibility; PaidByMemberID tracks the actual payer
 		PropertyID:        &propID,
-		CategoryID:        casaCategory.ID,
+		CategoryID:        homeCategory.ID,
 		SubcategoryID:     subcatID,
 		BillID:            &billID,
 		BillInstallmentID: &instID,

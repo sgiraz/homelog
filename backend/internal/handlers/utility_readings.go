@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -16,13 +17,13 @@ import (
 func (h *UtilityHandler) AddReading(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
@@ -35,7 +36,7 @@ func (h *UtilityHandler) AddReading(c *gin.Context) {
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
 		First(&utility).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+		apierr.Fail(c, http.StatusNotFound, "utility_not_found", "Service not found")
 		return
 	}
 
@@ -51,7 +52,7 @@ func (h *UtilityHandler) AddReading(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -73,7 +74,7 @@ func (h *UtilityHandler) AddReading(c *gin.Context) {
 	}
 
 	if err := h.db.Create(&reading).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add reading"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to add reading")
 		return
 	}
 
@@ -84,13 +85,13 @@ func (h *UtilityHandler) AddReading(c *gin.Context) {
 func (h *UtilityHandler) GetReadings(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
@@ -103,7 +104,7 @@ func (h *UtilityHandler) GetReadings(c *gin.Context) {
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
 		First(&utility).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+		apierr.Fail(c, http.StatusNotFound, "utility_not_found", "Service not found")
 		return
 	}
 
@@ -111,7 +112,7 @@ func (h *UtilityHandler) GetReadings(c *gin.Context) {
 	if err := h.db.Where("utility_id = ?", utilityID).
 		Order("reading_date DESC").
 		Find(&readings).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch readings"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch readings")
 		return
 	}
 
@@ -148,19 +149,19 @@ func (h *UtilityHandler) GetReadings(c *gin.Context) {
 func (h *UtilityHandler) UpdateReading(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
 	readingID, err := strconv.ParseUint(c.Param("readingId"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid reading ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_reading_id", "Invalid reading id")
 		return
 	}
 
@@ -173,25 +174,25 @@ func (h *UtilityHandler) UpdateReading(c *gin.Context) {
 	// Find the reading
 	var reading models.MeterReading
 	if err := h.db.First(&reading, readingID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Reading not found"})
+		apierr.Fail(c, http.StatusNotFound, "reading_not_found", "Reading not found")
 		return
 	}
 
 	// Enforce route contract: the reading must belong to the utility in the URL.
 	if reading.UtilityID != uint(utilityID) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Reading not found"})
+		apierr.Fail(c, http.StatusNotFound, "reading_not_found", "Reading not found")
 		return
 	}
 
 	// Verify access through utility
 	var utility models.Utility
 	if err := h.db.First(&utility, reading.UtilityID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+		apierr.Fail(c, http.StatusNotFound, "utility_not_found", "Service not found")
 		return
 	}
 
 	if !slices.Contains(memberPropertyIDs, utility.PropertyID) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to update this reading"})
+		apierr.Fail(c, http.StatusForbidden, "reading_update_not_authorized", "You are not authorized to edit this reading")
 		return
 	}
 
@@ -206,7 +207,7 @@ func (h *UtilityHandler) UpdateReading(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
@@ -221,7 +222,7 @@ func (h *UtilityHandler) UpdateReading(c *gin.Context) {
 	reading.Notes = input.Notes
 
 	if err := h.db.Save(&reading).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update reading"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update reading")
 		return
 	}
 
@@ -232,19 +233,19 @@ func (h *UtilityHandler) UpdateReading(c *gin.Context) {
 func (h *UtilityHandler) DeleteReading(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
 	}
 
 	utilityID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid utility ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_utility_id", "Invalid service id")
 		return
 	}
 
 	readingID, err := strconv.ParseUint(c.Param("readingId"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid reading ID"})
+		apierr.Fail(c, http.StatusBadRequest, "invalid_reading_id", "Invalid reading id")
 		return
 	}
 
@@ -257,30 +258,30 @@ func (h *UtilityHandler) DeleteReading(c *gin.Context) {
 	// Find the reading
 	var reading models.MeterReading
 	if err := h.db.First(&reading, readingID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Reading not found"})
+		apierr.Fail(c, http.StatusNotFound, "reading_not_found", "Reading not found")
 		return
 	}
 
 	// Enforce route contract: the reading must belong to the utility in the URL.
 	if reading.UtilityID != uint(utilityID) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Reading not found"})
+		apierr.Fail(c, http.StatusNotFound, "reading_not_found", "Reading not found")
 		return
 	}
 
 	// Verify access through utility
 	var utility models.Utility
 	if err := h.db.First(&utility, reading.UtilityID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utility not found"})
+		apierr.Fail(c, http.StatusNotFound, "utility_not_found", "Service not found")
 		return
 	}
 
 	if !slices.Contains(memberPropertyIDs, utility.PropertyID) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to delete this reading"})
+		apierr.Fail(c, http.StatusForbidden, "reading_delete_not_authorized", "You are not authorized to delete this reading")
 		return
 	}
 
 	if err := h.db.Delete(&reading).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete reading"})
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete reading")
 		return
 	}
 

@@ -67,6 +67,10 @@ func main() {
 	if err := database.SeedDefaultCategories(db); err != nil {
 		log.Printf("Warning: failed to seed default categories: %v", err)
 	}
+	// Must run before MigrateDefaultSubcategories — that one matches by slug.
+	if err := database.MigrateDefaultCategorySlugs(db); err != nil {
+		log.Printf("Warning: failed to backfill default category slugs: %v", err)
+	}
 	if err := database.MigrateDefaultSubcategories(db); err != nil {
 		log.Printf("Warning: failed to migrate default subcategories: %v", err)
 	}

@@ -115,6 +115,7 @@ import { useUtilitiesStore } from '@/stores/utilities'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
+import { apiErrorMessage } from '@/utils/apiError'
 
 const props = defineProps({
   utility: {
@@ -189,7 +190,7 @@ async function handleSubmit() {
     }
     emit('saved')
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || t('utilities.addReadingModal.genericError')
+    error.value = apiErrorMessage(err, t('utilities.addReadingModal.genericError'))
   } finally {
     loading.value = false
   }

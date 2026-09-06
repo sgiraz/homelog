@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"gorm.io/gorm"
 
 	"github.com/sgiraz/homelog/internal/models"
@@ -31,7 +32,7 @@ func isPropertyMember(db *gorm.DB, userID uint, propertyID uint) bool {
 // Returns true if authorized, false if the response was already sent.
 func requirePropertyAdmin(c *gin.Context, db *gorm.DB, userID uint, propertyID uint) bool {
 	if !isPropertyAdmin(db, userID, propertyID) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Solo gli amministratori della proprietà possono eseguire questa operazione"})
+		apierr.Fail(c, http.StatusForbidden, "property_admin_only", "Only property admins can do this")
 		return false
 	}
 	return true
@@ -41,7 +42,7 @@ func requirePropertyAdmin(c *gin.Context, db *gorm.DB, userID uint, propertyID u
 // the given property. Use this for read endpoints that any member can access.
 func requirePropertyMember(c *gin.Context, db *gorm.DB, userID uint, propertyID uint) bool {
 	if !isPropertyMember(db, userID, propertyID) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Non sei membro di questa proprietà"})
+		apierr.Fail(c, http.StatusForbidden, "not_property_member", "You are not a member of this property")
 		return false
 	}
 	return true

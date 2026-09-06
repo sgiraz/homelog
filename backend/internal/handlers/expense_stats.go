@@ -8,20 +8,28 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
 
-// TrendPoint represents a single data point in the trend chart (day/month/quarter)
+// TrendPoint is a single bucket of the trend chart. Date is the first day of
+// the bucket in ISO form; the client formats it for the user's locale together
+// with the response's granularity. The server ships no localized label — it
+// used to emit Italian month names, which stayed Italian in every language.
 type TrendPoint struct {
-	Label  string  `json:"label"`
+	Date   string  `json:"date"`
 	Amount float64 `json:"amount"`
 	Count  int     `json:"count"`
 }
 
 // CategoryStats represents expense statistics by category
 type CategoryStats struct {
-	CategoryID   uint    `json:"category_id"`
+	CategoryID uint `json:"category_id"`
+	// CategorySlug is set for built-in categories/subcategories; the client
+	// renders t("categories.<slug>") and ignores CategoryName. Empty for
+	// user-created ones, whose CategoryName is the label to show as-is.
+	CategorySlug string  `json:"category_slug,omitempty"`
 	CategoryName string  `json:"category_name"`
 	Amount       float64 `json:"amount"`
 	Count        int     `json:"count"`
@@ -33,7 +41,7 @@ type CategoryStats struct {
 func (h *ExpenseHandler) GetStats(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
 
@@ -127,7 +135,6 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		granularity = "quarter"
 	}
 
-	itMonths := []string{"", "Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"}
 	var trend []TrendPoint
 
 	switch granularity {
@@ -147,11 +154,11 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 			Scan(&rows)
 		trend = make([]TrendPoint, len(rows))
 		for i, r := range rows {
-			mon := ""
-			if r.Month >= 1 && r.Month <= 12 {
-				mon = itMonths[r.Month]
+			trend[i] = TrendPoint{
+				Date:   fmt.Sprintf("%04d-%02d-%02d", r.Year, r.Month, r.Day),
+				Amount: r.Amount,
+				Count:  r.Count,
 			}
-			trend[i] = TrendPoint{Label: fmt.Sprintf("%d %s", r.Day, mon), Amount: r.Amount, Count: r.Count}
 		}
 
 	case "quarter":
@@ -169,7 +176,12 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 			Scan(&rows)
 		trend = make([]TrendPoint, len(rows))
 		for i, r := range rows {
-			trend[i] = TrendPoint{Label: fmt.Sprintf("Q%d %d", r.Quarter, r.Year), Amount: r.Amount, Count: r.Count}
+			// First day of the quarter: Q1 -> January, Q2 -> April, ...
+			trend[i] = TrendPoint{
+				Date:   fmt.Sprintf("%04d-%02d-01", r.Year, (r.Quarter-1)*3+1),
+				Amount: r.Amount,
+				Count:  r.Count,
+			}
 		}
 
 	default: // month
@@ -187,11 +199,11 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 			Scan(&rows)
 		trend = make([]TrendPoint, len(rows))
 		for i, r := range rows {
-			mon := ""
-			if r.Month >= 1 && r.Month <= 12 {
-				mon = itMonths[r.Month]
+			trend[i] = TrendPoint{
+				Date:   fmt.Sprintf("%04d-%02d-01", r.Year, r.Month),
+				Amount: r.Amount,
+				Count:  r.Count,
 			}
-			trend[i] = TrendPoint{Label: fmt.Sprintf("%s %d", mon, r.Year), Amount: r.Amount, Count: r.Count}
 		}
 	}
 
@@ -203,12 +215,15 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		// Subcategory breakdown when filtering by category
 		var subResults []struct {
 			SubcategoryID *uint   `json:"subcategory_id"`
+			CategorySlug  string  `json:"category_slug"`
 			CategoryName  string  `json:"category_name"`
 			Amount        float64 `json:"amount"`
 			Count         int     `json:"count"`
 		}
+		// The "no subcategory" bucket comes back with an empty name and a zero
+		// id; the client labels it. Never hardcode a localized string here.
 		h.db.Model(&models.Expense{}).
-			Select("expenses.subcategory_id, COALESCE(subcategories.name, 'Senza sottocategoria') as category_name, SUM(expenses.amount) as amount, COUNT(*) as count").
+			Select("expenses.subcategory_id, COALESCE(subcategories.slug, '') as category_slug, COALESCE(subcategories.name, '') as category_name, SUM(expenses.amount) as amount, COUNT(*) as count").
 			Joins("LEFT JOIN subcategories ON subcategories.id = expenses.subcategory_id").
 			Where(joinWhere, baseArgs...).
 			Group("expenses.subcategory_id").
@@ -230,6 +245,7 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 			}
 			byCategory[i] = CategoryStats{
 				CategoryID:   id,
+				CategorySlug: r.CategorySlug,
 				CategoryName: r.CategoryName,
 				Amount:       r.Amount,
 				Count:        r.Count,
@@ -239,12 +255,13 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 	} else {
 		var categoryResults []struct {
 			CategoryID   uint    `json:"category_id"`
+			CategorySlug string  `json:"category_slug"`
 			CategoryName string  `json:"category_name"`
 			Amount       float64 `json:"amount"`
 			Count        int     `json:"count"`
 		}
 		h.db.Model(&models.Expense{}).
-			Select("expenses.category_id, categories.name as category_name, SUM(expenses.amount) as amount, COUNT(*) as count").
+			Select("expenses.category_id, COALESCE(categories.slug, '') as category_slug, categories.name as category_name, SUM(expenses.amount) as amount, COUNT(*) as count").
 			Joins("JOIN categories ON categories.id = expenses.category_id").
 			Where(joinWhere, baseArgs...).
 			Group("expenses.category_id").
@@ -262,6 +279,7 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 			}
 			byCategory[i] = CategoryStats{
 				CategoryID:   r.CategoryID,
+				CategorySlug: r.CategorySlug,
 				CategoryName: r.CategoryName,
 				Amount:       r.Amount,
 				Count:        r.Count,
