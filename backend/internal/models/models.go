@@ -145,6 +145,7 @@ type Expense struct {
 var SupportedLanguages = map[string]bool{
 	"it": true,
 	"en": true,
+	"de": true,
 }
 
 // DefaultLanguage is used whenever no supported language can be determined.
