@@ -99,6 +99,31 @@
   --c-accent: 168 69 110; --c-accent-deep: 154 59 99; --c-accent-soft: 214 130 168; --c-positive: 110 185 145;
 }
 
+/* ───────────────────────────────────────────────────────────────────────────
+   Chart series palette — categorical colours in fixed slot order.
+   Independent of the accent themes above: a chart encodes identity, and
+   identity needs hues that stay apart. Both steppings are machine-checked by
+   `node scripts/check-chart-palette.mjs` (run in CI/tests): >= 3:1 against
+   every theme's card surface, and pairwise CIEDE2000 separation under normal,
+   protan, deutan and tritan vision. Editing a value without re-running that
+   script is how the palette silently rots.
+   Assign slots in order and NEVER cycle: past the last slot the tail folds
+   into --c-series-other (neutral, so it recedes). The slot count is read from
+   these variables at runtime (useChartTheme.js) — adding `--c-series-7` to
+   both blocks is all it takes to widen the palette.
+   Single-series charts encode no identity and use the accent instead.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --c-series-1: #2264ae; --c-series-2: #9b4e27; --c-series-3: #40996c;
+  --c-series-4: #978e06; --c-series-5: #c76e99; --c-series-6: #a56cff;
+  --c-series-other: #6f6061;
+}
+.dark {
+  --c-series-1: #6697f7; --c-series-2: #d1915c; --c-series-3: #72dba4;
+  --c-series-4: #dbcf41; --c-series-5: #ff44ad; --c-series-6: #feb1ea;
+  --c-series-other: #979184;
+}
+
 @theme inline {
   --color-canvas:    rgb(var(--c-canvas));
   --color-surface:   rgb(var(--c-surface));

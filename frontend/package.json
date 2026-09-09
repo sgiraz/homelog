@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run check:palette && vite build",
     "preview": "vite preview",
     "lint": "eslint --fix .",
+    "check:palette": "node scripts/check-chart-palette.mjs",
     "i18n:translate": "node scripts/translate-i18n.mjs",
     "generate-pwa-assets": "pwa-assets-generator"
   },

@@ -304,6 +304,8 @@ import Button from '@/components/common/Button.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditProjectModal from '@/components/projects/EditProjectModal.vue'
 import PieChart from '@/components/charts/PieChart.vue'
+import { useChartTheme } from '@/composables/useChartTheme'
+import { foldSlices, sliceColors } from '@/utils/chartSlices'
 import { apiErrorMessage } from '@/utils/apiError'
 
 const route = useRoute()
@@ -355,6 +357,8 @@ const daysRemaining = computed(() => {
   return Math.ceil((end - now) / (1000 * 60 * 60 * 24))
 })
 
+const chartTheme = useChartTheme()
+
 const categoryBreakdown = computed(() => {
   if (!project.value?.expenses?.length) return []
   const map = {}
@@ -365,7 +369,6 @@ const categoryBreakdown = computed(() => {
         category_id: catId,
         category_name: categoryLabel(exp.category, t('projects.detail.noCategory')),
         category_icon: exp.category?.icon || '📦',
-        category_color: exp.category?.color || '#6B7280',
         total: 0,
         count: 0
       }
@@ -376,14 +379,22 @@ const categoryBreakdown = computed(() => {
   return Object.values(map).sort((a, b) => b.total - a.total)
 })
 
+// Same palette and folding rule as every other pie: a category's own colour is
+// free-form data, never checked for contrast or colour-blind separation, so
+// charts use the validated series slots instead.
+const categorySlices = computed(() =>
+  foldSlices(categoryBreakdown.value, (row) => row.total, chartTheme.value.series.length)
+)
+
 const categoryChartData = computed(() => {
-  const items = categoryBreakdown.value
+  const slices = categorySlices.value
   return {
-    labels: items.map(i => i.category_name),
+    labels: slices.map(s => s.row
+      ? s.row.category_name
+      : t('projects.detail.otherCategories', { count: s.count })),
     datasets: [{
-      data: items.map(i => i.total),
-      backgroundColor: items.map(i => i.category_color),
-      borderWidth: 0
+      data: slices.map(s => s.amount),
+      backgroundColor: sliceColors(slices, chartTheme.value)
     }]
   }
 })

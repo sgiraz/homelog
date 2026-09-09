@@ -11,7 +11,7 @@
   },
   "kpi": {
     "monthExpenses": "Month Expenses",
-    "periodCount": "In Period",
+    "periodCount": "Expenses in Period",
     "dailyAverage": "Daily Avg.",
     "yearExpenses": "Year Expenses"
   },
@@ -23,6 +23,7 @@
     "trendQuarterly": "Quarterly Trend",
     "trendMonthly": "Monthly Trend",
     "datasetLabel": "Expenses",
+    "otherCategories": "Other ({count})",
     "noData": "No data available",
     "lineTooltip": "Line chart",
     "barTooltip": "Bar chart"

@@ -1,8 +1,8 @@
 <template>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <Card class="p-6">
-      <!-- Back leading il titolo, come le altre viste di dettaglio: chevron
-           icon-only con target 44pt, il titolo dice gia' dove siamo. -->
+      <!-- Back leads the title, like the other detail views: icon-only chevron
+           with a 44pt target; the title already says where we are. -->
       <div class="flex items-center gap-1 mb-4 min-h-[44px]">
         <button
           v-if="isSubcategory"

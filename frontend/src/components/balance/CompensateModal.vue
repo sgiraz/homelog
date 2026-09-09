@@ -6,7 +6,7 @@
         {{ split.description || t('balance.unsettled.noDescription') }}
       </div>
       <div class="text-sm text-ink-soft mb-1">{{ t('balance.compensate.creditLabel') }}</div>
-      <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
+      <div class="text-3xl font-bold text-ink">
         {{ formatCurrency(creditAmount) }}
       </div>
     </div>

@@ -166,6 +166,26 @@ export function formatCurrency(value, settings = {}, options = {}) {
 }
 
 /**
+ * Format a currency value short enough for a narrow column (KPI cards on
+ * mobile). Callers must keep the full value reachable (title / sr-only text).
+ * Cents are dropped; compact notation only above a million, since IT/DE CLDR
+ * have no short form for thousands.
+ *
+ * @param {number} value
+ * @param {object} settings - { language: 'en', currency: 'EUR' }
+ * @returns {string}
+ */
+export function formatCurrencyCompact(value, settings = {}) {
+  if (Math.abs(value || 0) >= 1_000_000) {
+    return formatCurrency(value, settings, {
+      notation: 'compact',
+      maximumSignificantDigits: 3
+    })
+  }
+  return formatCurrency(value, settings, { maximumFractionDigits: 0 })
+}
+
+/**
  * Format a difference value with +/- sign.
  *
  * @param {number} value

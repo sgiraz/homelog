@@ -87,6 +87,7 @@
     "addExpenseButton": "Aggiungi Spesa",
     "noExpenses": "Nessuna spesa associata",
     "noCategory": "Senza categoria",
+    "otherCategories": "Altre ({count})",
     "deleteTitle": "Elimina Progetto",
     "deleteMessage": "Eliminare il progetto \"{name}\"?",
     "deleteConfirm": "Elimina",

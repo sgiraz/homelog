@@ -11,7 +11,7 @@
   },
   "kpi": {
     "monthExpenses": "Spese Mese",
-    "periodCount": "Nel Periodo",
+    "periodCount": "Spese nel Periodo",
     "dailyAverage": "Media Giorn.",
     "yearExpenses": "Spese Anno"
   },
@@ -23,6 +23,7 @@
     "trendQuarterly": "Trend Trimestrale",
     "trendMonthly": "Trend Mensile",
     "datasetLabel": "Spese",
+    "otherCategories": "Altre ({count})",
     "noData": "Nessun dato disponibile",
     "lineTooltip": "Grafico a linee",
     "barTooltip": "Grafico a barre"

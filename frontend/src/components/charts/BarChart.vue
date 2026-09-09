@@ -17,11 +17,13 @@ import {
   Legend
 } from 'chart.js'
 import { useSettingsStore } from '@/stores/settings'
+import { useChartTheme } from '@/composables/useChartTheme'
 import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 const settingsStore = useSettingsStore()
+const theme = useChartTheme()
 
 const props = defineProps({
   chartData: {
@@ -50,11 +52,19 @@ const defaultOptions = computed(() => ({
     }
   },
   scales: {
+    x: {
+      ticks: { color: theme.value.tick },
+      grid: { display: false },
+      border: { color: theme.value.grid }
+    },
     y: {
       beginAtZero: true,
       ticks: {
+        color: theme.value.tick,
         callback: (value) => _formatCurrency(value, settingsStore.formatSettings, { maximumFractionDigits: 0 })
-      }
+      },
+      grid: { color: theme.value.grid },
+      border: { display: false }
     }
   }
 }))

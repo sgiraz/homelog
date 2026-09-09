@@ -30,6 +30,7 @@
     "addExpenseButton": "Add Expense",
     "noExpenses": "No expenses associated",
     "noCategory": "Uncategorized",
+    "otherCategories": "Other ({count})",
     "deleteTitle": "Delete Project",
     "deleteMessage": "Delete project \"{name}\"?",
     "deleteConfirm": "Delete",

@@ -256,7 +256,7 @@
               <div class="text-ink-soft">
                 {{ t('expenses.modal.summaryDividedBetween', { n: totalPeople }) }}
               </div>
-              <div class="text-lg font-bold text-blue-600 dark:text-blue-400 mt-2">
+              <div class="text-lg font-bold text-ink mt-2">
                 {{ t('expenses.modal.summaryEach', { amount: formatCurrency(splitAmount) }) }}
               </div>
             </div>

@@ -8,7 +8,7 @@
       <div class="text-sm text-ink-soft mb-1">
         {{ debt ? t('balance.debts.remainingLabel') : t('balance.settlement.amountLabel') }}
       </div>
-      <div class="text-4xl font-bold text-blue-600 dark:text-blue-400">
+      <div class="text-4xl font-bold text-ink">
         {{ formatCurrency(maxAmount) }}
       </div>
       <div class="text-sm text-ink-soft mt-2">

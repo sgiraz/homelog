@@ -43,6 +43,19 @@
       @action="onAttentionAction"
     />
 
+    <DashboardFilters
+      :filters="filters"
+      :categories="categories"
+      :projects="projects"
+      :filtersOpen="filtersOpen"
+      :hasActiveFilters="hasActiveFilters"
+      :activeFiltersCount="activeFiltersCount"
+      @update:filters="filters = $event"
+      @update:filtersOpen="filtersOpen = $event"
+      @apply="applyFilters"
+      @reset="resetFilters"
+    />
+
     <!-- KPI Cards -->
     <KpiCards
       :monthTotal="totalMonth"
@@ -50,6 +63,7 @@
       :dailyAverage="dailyAverage"
       :yearTotal="totalYear"
       :formatCurrency="formatCurrency"
+      :formatCurrencyCompact="formatCurrencyCompact"
     />
 
     <!-- Grafici -->
@@ -67,20 +81,6 @@
       @update:trendChartType="trendChartType = $event"
       @slice-click="onPieSliceClick"
       @back="onPieBack"
-    />
-
-    <!-- Filtri -->
-    <DashboardFilters
-      :filters="filters"
-      :categories="categories"
-      :projects="projects"
-      :filtersOpen="filtersOpen"
-      :hasActiveFilters="hasActiveFilters"
-      :activeFiltersCount="activeFiltersCount"
-      @update:filters="filters = $event"
-      @update:filtersOpen="filtersOpen = $event"
-      @apply="applyFilters"
-      @reset="resetFilters"
     />
 
     <!-- Lista Spese Recenti -->
@@ -135,9 +135,11 @@ import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { categoriesAPI, projectsAPI, expensesAPI, utilitiesAPI, balanceAPI } from '@/api/client'
-import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatTrendLabel, yearOf } from '@/utils/dateFormatter'
+import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatCurrencyCompact as _formatCurrencyCompact, formatTrendLabel, yearOf } from '@/utils/dateFormatter'
 import { useConfirm } from '@/composables/useConfirm'
 import { statsCategoryLabel } from '@/utils/categoryLabel'
+import { foldSlices, sliceColors } from '@/utils/chartSlices'
+import { useChartTheme } from '@/composables/useChartTheme'
 import Button from '@/components/common/Button.vue'
 import Card from '@/components/common/Card.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
@@ -210,10 +212,10 @@ const dailyAverage = computed(() => {
 
 
 // Chart data from stats API
-const categoryColors = [
-  '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
-  '#EC4899', '#14B8A6', '#F97316', '#6366F1'
-]
+// Categorical colours come from the design tokens (see main.css); how many
+// slices we name is the palette's slot count, never a number of our own.
+const chartTheme = useChartTheme()
+const maxNamedSlices = computed(() => chartTheme.value.series.length)
 
 const categoryChartTitle = computed(() =>
   stats.value?.is_subcategory ? t('dashboard.charts.categoryBySubcategory') : t('dashboard.charts.categoryByCategory')
@@ -221,14 +223,21 @@ const categoryChartTitle = computed(() =>
 
 const hasCategoryData = computed(() => (stats.value?.by_category?.length ?? 0) > 0)
 
+// Drawn slices, biggest first. Each keeps its source row so a click resolves to
+// a category id; the folded "Other" bucket has none and is inert.
+const categorySlices = computed(() =>
+  foldSlices(stats.value?.by_category, (row) => row.amount, maxNamedSlices.value)
+)
+
 const categoryChartData = computed(() => {
-  const items = stats.value?.by_category ?? []
+  const slices = categorySlices.value
   return {
-    labels: items.map(i => statsCategoryLabel(i, t('expenses.modal.subcategoryNone'))),
+    labels: slices.map(s => s.row
+      ? statsCategoryLabel(s.row, t('expenses.modal.subcategoryNone'))
+      : t('dashboard.charts.otherCategories', { count: s.count })),
     datasets: [{
-      data: items.map(i => i.amount),
-      backgroundColor: categoryColors.slice(0, items.length),
-      borderWidth: 0
+      data: slices.map(s => s.amount),
+      backgroundColor: sliceColors(slices, chartTheme.value)
     }]
   }
 })
@@ -260,7 +269,7 @@ const trendBarChartData = computed(() => {
   const items = stats.value?.trend ?? []
   return {
     labels: abbreviateTrendLabels(items),
-    datasets: [{ label: t('dashboard.charts.datasetLabel'), data: items.map(i => i.amount), backgroundColor: '#3B82F6', borderRadius: 4 }]
+    datasets: [{ label: t('dashboard.charts.datasetLabel'), data: items.map(i => i.amount), backgroundColor: chartTheme.value.accent, borderRadius: 4 }]
   }
 })
 
@@ -271,11 +280,11 @@ const trendLineChartData = computed(() => {
     datasets: [{
       label: t('dashboard.charts.datasetLabel'),
       data: items.map(i => i.amount),
-      borderColor: '#3B82F6',
-      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      borderColor: chartTheme.value.accent,
+      backgroundColor: chartTheme.value.accentFill,
       fill: true,
-      pointBackgroundColor: '#3B82F6',
-      pointBorderColor: '#fff',
+      pointBackgroundColor: chartTheme.value.accent,
+      pointBorderColor: chartTheme.value.surface,
       pointBorderWidth: 2
     }]
   }
@@ -521,6 +530,10 @@ function formatCurrency(value) {
   return _formatCurrency(value, settingsStore.formatSettings)
 }
 
+function formatCurrencyCompact(value) {
+  return _formatCurrencyCompact(value, settingsStore.formatSettings)
+}
+
 function formatDate(dateStr) {
   return _formatDate(dateStr, settingsStore.dateSettings)
 }
@@ -535,7 +548,8 @@ function buildStatsParams() {
 }
 
 function onPieSliceClick(index) {
-  const item = stats.value?.by_category?.[index]
+  // Index addresses the drawn slices, not the raw rows.
+  const item = categorySlices.value[index]?.row
   if (!item || !item.category_id) return
   filters.value.categoryId = item.category_id
   applyFilters()

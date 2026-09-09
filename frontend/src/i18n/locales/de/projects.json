@@ -30,6 +30,7 @@
     "addExpenseButton": "Ausgabe hinzufügen",
     "noExpenses": "Keine zugeordneten Ausgaben",
     "noCategory": "Nicht kategorisiert",
+    "otherCategories": "Andere ({count})",
     "deleteTitle": "Projekt löschen",
     "deleteMessage": "Projekt „{name}“ löschen?",
     "deleteConfirm": "Löschen",

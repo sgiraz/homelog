@@ -341,7 +341,7 @@
               </div>
             </div>
             <div class="text-right shrink-0">
-              <div class="text-xl font-bold text-blue-600 dark:text-blue-400">
+              <div class="text-xl font-bold text-ink">
                 {{ formatCurrency(expense.amount) }}
               </div>
               <div v-if="expense.original_currency" class="text-xs text-ink-faint">

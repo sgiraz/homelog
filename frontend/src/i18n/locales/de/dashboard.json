@@ -11,7 +11,7 @@
   },
   "kpi": {
     "monthExpenses": "Ausgaben im Monat",
-    "periodCount": "Im Zeitraum",
+    "periodCount": "Ausgaben im Zeitraum",
     "dailyAverage": "Tagesdurchschnitt",
     "yearExpenses": "Jährliche Ausgaben"
   },
@@ -23,6 +23,7 @@
     "trendQuarterly": "Quartalsverlauf",
     "trendMonthly": "Monatlicher Verlauf",
     "datasetLabel": "Ausgaben",
+    "otherCategories": "Andere ({count})",
     "noData": "Keine Daten verfügbar",
     "lineTooltip": "Liniendiagramm",
     "barTooltip": "Balkendiagramm"

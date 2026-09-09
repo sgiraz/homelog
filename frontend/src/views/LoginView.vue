@@ -17,7 +17,7 @@
         <p class="text-xs text-ink-soft">
           {{ t('demo.login.description') }}
         </p>
-        <Button class="w-full" :disabled="loading" @click="enterDemo">
+        <Button variant="secondary" class="w-full" :disabled="loading" @click="enterDemo">
           {{ t('demo.login.button') }}
         </Button>
         <p class="text-xs text-ink-muted pt-1">
