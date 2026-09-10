@@ -76,15 +76,12 @@
 
             <!-- Status + Shared badges -->
           <div class="flex flex-col items-end gap-1">
-            <span :class="[
-              'px-2 py-1 text-xs rounded-full font-medium',
-              getStatusColor(project.status)
-            ]">
+            <Badge :variant="statusVariant(project.status)">
               {{ getStatusLabel(project.status) }}
-            </span>
-            <span v-if="!isOwner(project)" class="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-medium">
+            </Badge>
+            <Badge v-if="!isOwner(project)" variant="neutral">
               {{ t('projects.card.shared') }}
-            </span>
+            </Badge>
           </div>
         </div>
 
@@ -174,6 +171,7 @@ defineOptions({ name: 'ProjectsView' })
 import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import Badge from '@/components/common/Badge.vue'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -250,14 +248,16 @@ function getStatusLabel(status) {
   return t(key) === key ? status : t(key)
 }
 
-function getStatusColor(status) {
+// Project status maps to the shared badge variants, so a status looks the same
+// on the list and on the detail page.
+function statusVariant(status) {
   const map = {
-    planned: 'bg-blue-100 text-blue-700',
-    active: 'bg-green-100 text-green-700',
-    completed: 'bg-surface-2 text-ink-soft',
-    cancelled: 'bg-red-100 text-red-700'
+    planned: 'info',
+    active: 'positive',
+    completed: 'neutral',
+    cancelled: 'danger'
   }
-  return map[status] || 'bg-surface-2 text-ink-soft'
+  return map[status] || 'neutral'
 }
 
 function formatDateRange(start, end) {

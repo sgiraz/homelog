@@ -25,8 +25,8 @@
               :class="[
                 'px-4 py-3 rounded-lg font-medium text-white transition-colors',
                 state.variant === 'danger'
-                  ? 'bg-red-600 hover:bg-red-700'
-                  : 'bg-blue-600 hover:bg-blue-700'
+                  ? 'bg-danger hover:brightness-110'
+                  : 'bg-accent hover:brightness-110'
               ]"
             >
               {{ state.confirmText || t('common.actions.confirm') }}

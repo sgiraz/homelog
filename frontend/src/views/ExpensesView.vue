@@ -298,23 +298,15 @@
                 <span class="font-medium text-ink line-clamp-2">
                   {{ expense.description || t('expenses.noDescription') }}
                 </span>
-                <span
-                  v-if="expense.is_split"
-                  class="px-2 py-0.5 text-xs rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300"
-                >
+                <Badge v-if="expense.is_split" variant="info">
                   {{ t('expenses.splitBadge') }}
-                </span>
-                <span
+                </Badge>
+                <Badge
                   v-if="expense.is_split"
-                  :class="[
-                    'px-2 py-0.5 text-xs rounded-full',
-                    isExpenseSettled(expense)
-                      ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
-                      : 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700'
-                  ]"
+                  :variant="isExpenseSettled(expense) ? 'positive' : 'warning'"
                 >
                   {{ isExpenseSettled(expense) ? t('expenses.settled') : t('expenses.unsettled') }}
-                </span>
+                </Badge>
               </div>
               <div class="text-sm text-ink-soft mt-1 flex flex-wrap items-center gap-2">
                 <span>{{ formatDate(expense.date) }}</span>
@@ -324,12 +316,9 @@
                 >
                   {{ categoryLabel(expense.category) }}
                 </span>
-                <span
-                  v-if="expense.project"
-                  class="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs"
-                >
+                <Badge v-if="expense.project" variant="neutral">
                   {{ expense.project.icon }} {{ expense.project.name }}
-                </span>
+                </Badge>
                 <span v-if="expense.is_split && expense.paid_by" class="text-xs flex items-center gap-1 max-w-full overflow-hidden">
                   <span class="hidden sm:inline">{{ t('expenses.paidBy') }}</span>
                   <span class="truncate">{{ expense.paid_by.name }}</span>
@@ -425,6 +414,7 @@ defineOptions({ name: 'ExpensesView' })
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import Badge from '@/components/common/Badge.vue'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'

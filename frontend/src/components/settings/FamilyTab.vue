@@ -101,7 +101,7 @@
                   </div>
                   <span class="text-ink truncate">{{ member.name }}</span>
                   <span v-if="member.is_virtual" class="text-xs text-ink-muted flex-shrink-0">{{ t('settings.family.memberVirtual') }}</span>
-                  <span v-if="member.user_role === 'admin'" class="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium flex-shrink-0">{{ t('settings.family.memberAdminBadge') }}</span>
+                  <Badge v-if="member.user_role === 'admin'" variant="info" class="flex-shrink-0">{{ t('settings.family.memberAdminBadge') }}</Badge>
                 </div>
                 <div class="flex items-center gap-1 flex-shrink-0">
                   <!-- Admin: toggle admin role -->
@@ -191,6 +191,7 @@ defineOptions({ name: 'FamilyTab' })
 
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Badge from '@/components/common/Badge.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'

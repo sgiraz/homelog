@@ -101,10 +101,10 @@ const showAllMobile = ref(false)
 
 // Tone → chip color classes (the left status chip carries the urgency colour)
 const toneChip = {
-  danger: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300',
-  warn: 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300',
-  info: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300',
-  positive: 'bg-positive/15 text-positive',
+  danger: 'bg-danger/10 text-danger-soft',
+  warn: 'bg-warning/10 text-warning-soft',
+  info: 'bg-info/10 text-info-soft',
+  positive: 'bg-positive/10 text-positive-soft',
   accent: 'bg-accent-soft/15 text-accent-soft',
 }
 

@@ -145,9 +145,9 @@
 
           <!-- Actions -->
           <div class="flex items-center gap-1 flex-shrink-0">
-            <span v-if="bill.is_locked" class="px-2 py-0.5 text-xs rounded-full font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" :title="lockedHint">
+            <Badge v-if="bill.is_locked" variant="warning" :title="lockedHint">
               {{ t('utilities.billsTab.lockedBadge') }}
-            </span>
+            </Badge>
             <button
               v-if="!bill.is_paid && !hasMultipleInstallments(bill) && !bill.is_locked"
               @click="markBillAsPaid(bill)"
@@ -197,6 +197,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Badge from '@/components/common/Badge.vue'
 import { utilitiesAPI } from '@/api/client'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'

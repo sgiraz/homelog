@@ -55,10 +55,10 @@
             <!-- Drop zone content -->
             <div v-if="mappings[field.key]" class="space-y-1">
               <div class="flex items-center gap-2">
-                <span class="px-2 py-1 rounded text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                <Badge variant="positive" class="text-sm">
                   {{ mappings[field.key].token.text }}
-                </span>
-                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                </Badge>
+                <svg class="w-4 h-4 text-positive-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -161,6 +161,7 @@
 
 <script setup>
 import { useI18n } from 'vue-i18n'
+import Badge from '@/components/common/Badge.vue'
 import PDFTextractView from './PDFTextractView.vue'
 import Button from '@/components/common/Button.vue'
 

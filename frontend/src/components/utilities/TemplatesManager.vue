@@ -50,9 +50,9 @@
             <div>
               <div class="flex items-center gap-2">
                 <span class="font-medium text-ink">{{ tpl.name }}</span>
-                <span v-if="tpl.is_default" class="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full">
+                <Badge v-if="tpl.is_default" variant="info">
                   {{ t('utilities.templatesManager.defaultBadge') }}
-                </span>
+                </Badge>
               </div>
               <p class="text-sm text-ink-muted">{{ tpl.provider }}</p>
             </div>
@@ -124,6 +124,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Badge from '@/components/common/Badge.vue'
 import { templatesAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'

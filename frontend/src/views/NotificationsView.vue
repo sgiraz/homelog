@@ -104,12 +104,9 @@
                 <span class="text-sm font-semibold text-ink truncate">
                   {{ notif.title || notif.utility?.provider || t('nav.notifications.fallbackTitle') }}
                 </span>
-                <span
-                  v-if="notif.is_important"
-                  class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
-                >
+                <Badge v-if="notif.is_important" variant="danger" class="font-bold">
                   {{ t('notifications.important') }}
-                </span>
+                </Badge>
                 <span
                   v-if="!notif.is_read"
                   class="w-2.5 h-2.5 bg-blue-500 rounded-full flex-shrink-0"
@@ -162,6 +159,7 @@ defineOptions({ name: 'NotificationsView' })
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import Badge from '@/components/common/Badge.vue'
 import { useSettingsStore } from '@/stores/settings'
 import { communicationsAPI, notificationsAPI, utilitiesAPI } from '@/api/client'
 import { useConfirm } from '@/composables/useConfirm'

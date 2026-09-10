@@ -16,10 +16,10 @@
         class="w-full flex items-center justify-between p-3 sm:p-4 text-left"
       >
         <div class="flex items-center gap-3 min-w-0 flex-1">
-          <div :class="['flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0', getStatusBadgeClasses(comparison.status)]">
+          <Badge :variant="getStatusVariant(comparison.status)" class="flex-shrink-0">
             <component :is="getStatusIcon(comparison.status)" class="w-3.5 h-3.5" />
             <span>{{ getStatusLabel(comparison.status) }}</span>
-          </div>
+          </Badge>
           <div class="min-w-0">
             <span class="text-sm font-medium text-ink">
               {{ comparison.bill_number || '#' + comparison.bill_id }}
@@ -97,13 +97,9 @@
 
         <!-- Reading type indicator -->
         <div class="flex items-center gap-2 text-xs text-ink-muted">
-          <span :class="[
-            'px-2 py-0.5 rounded',
-            comparison.reading_type === 'actual' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-            'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-          ]">
+          <Badge :variant="comparison.reading_type === 'actual' ? 'positive' : 'warning'">
             {{ comparison.reading_type === 'actual' ? t('utilities.comparisonAccordion.actualReading') : t('utilities.comparisonAccordion.estimatedReading') }}
-          </span>
+          </Badge>
           <span v-if="comparison.provider_reading_date">
             {{ t('utilities.comparisonAccordion.ofDate', { date: formatDate(comparison.provider_reading_date) }) }}
           </span>
@@ -116,6 +112,7 @@
 <script setup>
 import { h } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Badge from '@/components/common/Badge.vue'
 
 defineOptions({ name: 'ComparisonAccordion' })
 
@@ -167,16 +164,16 @@ function getStatusClasses(status) {
   }
 }
 
-function getStatusBadgeClasses(status) {
+function getStatusVariant(status) {
   switch (status) {
     case 'alert':
-      return 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+      return 'danger'
     case 'warning':
-      return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300'
+      return 'warning'
     case 'no_data':
-      return 'bg-surface-2 text-ink-soft'
+      return 'neutral'
     default:
-      return 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+      return 'positive'
   }
 }
 

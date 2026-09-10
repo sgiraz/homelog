@@ -1,7 +1,7 @@
 <template>
   <BaseModal :title="modalTitle" @close="$emit('close')">
     <!-- What is being paid: the running balance, or one long-term debt -->
-    <div class="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-6 text-center mb-6">
+    <div class="bg-surface-2 rounded-xl p-6 text-center mb-6">
       <div v-if="debt" class="text-sm font-medium text-ink mb-1 truncate">
         {{ debt.description || t('balance.debts.noDescription') }}
       </div>
@@ -24,7 +24,7 @@
           </label>
           <button
             type="button"
-            class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+            class="text-xs font-medium text-accent-soft hover:underline"
             @click="form.amount = maxAmount"
           >
             {{ t('balance.settlement.payAll') }}
@@ -59,7 +59,7 @@
           v-model="form.payment_method"
           class="w-full px-3 py-3 border border-line rounded-lg
                  bg-surface text-ink text-base
-                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 focus:outline-none focus:ring-2 focus:ring-accent"
         >
           <option value="bank_transfer">{{ t('balance.settlement.methods.bank_transfer') }}</option>
           <option value="cash">{{ t('balance.settlement.methods.cash') }}</option>
@@ -80,17 +80,17 @@
           autocorrect="off"
           class="w-full px-3 py-3 border border-line rounded-lg
                  bg-surface text-ink text-base
-                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 focus:outline-none focus:ring-2 focus:ring-accent"
         />
       </div>
 
-      <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-        <p class="text-sm text-yellow-800 dark:text-yellow-200">
+      <div class="bg-warning/10 border border-warning/30 rounded-lg p-3">
+        <p class="text-sm text-warning-soft">
           {{ debt ? t('balance.debts.repayWarning') : t('balance.settlement.warning') }}
         </p>
       </div>
 
-      <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+      <div v-if="error" class="text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
         {{ error }}
       </div>
 

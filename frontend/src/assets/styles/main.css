@@ -32,7 +32,7 @@
   --c-ink-muted: 104 114 130; /* tertiary text */
   --c-ink-faint: 150 159 174; /* faint text, icons, placeholders */
   --c-line:      219 224 233; /* borders, dividers */
-  --c-accent:      217  83  30; --c-accent-deep: 178  63  18; --c-accent-soft: 217  83  30; --c-positive: 35 78 58;
+  --c-accent:      217  83  30; --c-accent-deep: 178  63  18; --c-accent-soft: 217  83  30; --c-positive: 35 78 58; --c-positive-soft: 35 78 58;
 }
 .dark {
   --c-canvas:     15  19  26; /* cool charcoal */
@@ -44,7 +44,7 @@
   --c-ink-muted: 146 157 173;
   --c-ink-faint: 108 119 135;
   --c-line:       41  50  63;
-  --c-accent:      217  83  30; --c-accent-deep: 178  63  18; --c-accent-soft: 232 137  90; --c-positive: 62 125 92;
+  --c-accent:      217  83  30; --c-accent-deep: 178  63  18; --c-accent-soft: 232 137  90; --c-positive: 62 125 92; --c-positive-soft: 99 142 117;
 }
 
 /* ── Alternate themes. Set via data-theme on <html>; each defines its own
@@ -55,48 +55,48 @@
 [data-theme="paper"] {
   --c-canvas: 251 246 236; --c-surface: 255 255 255; --c-surface-2: 243 244 246; --c-surface-3: 229 231 235;
   --c-ink: 17 24 39; --c-ink-soft: 75 85 99; --c-ink-muted: 107 114 128; --c-ink-faint: 156 163 175; --c-line: 229 231 235;
-  --c-accent: 217 83 30; --c-accent-deep: 178 63 18; --c-accent-soft: 217 83 30; --c-positive: 35 78 58;
+  --c-accent: 217 83 30; --c-accent-deep: 178 63 18; --c-accent-soft: 217 83 30; --c-positive: 35 78 58; --c-positive-soft: 35 78 58;
 }
 .dark[data-theme="paper"] {
   --c-canvas: 26 22 18; --c-surface: 34 29 24; --c-surface-2: 49 42 36; --c-surface-3: 60 52 44;
   --c-ink: 255 255 255; --c-ink-soft: 156 163 175; --c-ink-muted: 156 163 175; --c-ink-faint: 107 114 128; --c-line: 58 50 42;
-  --c-accent: 217 83 30; --c-accent-deep: 178 63 18; --c-accent-soft: 232 137 90; --c-positive: 62 125 92;
+  --c-accent: 217 83 30; --c-accent-deep: 178 63 18; --c-accent-soft: 232 137 90; --c-positive: 62 125 92; --c-positive-soft: 102 143 120;
 }
 
 /* FOREST — warm sage; pine green leads. */
 [data-theme="forest"] {
   --c-canvas: 242 244 238; --c-surface: 251 252 248; --c-surface-2: 234 238 226; --c-surface-3: 219 224 208;
   --c-ink: 30 42 34; --c-ink-soft: 74 88 78; --c-ink-muted: 104 118 108; --c-ink-faint: 150 162 150; --c-line: 219 226 210;
-  --c-accent: 46 107 78; --c-accent-deep: 35 78 58; --c-accent-soft: 46 107 78; --c-positive: 46 107 78;
+  --c-accent: 46 107 78; --c-accent-deep: 35 78 58; --c-accent-soft: 46 107 78; --c-positive: 46 107 78; --c-positive-soft: 46 107 78;
 }
 .dark[data-theme="forest"] {
   --c-canvas: 20 24 19; --c-surface: 28 35 27; --c-surface-2: 40 48 38; --c-surface-3: 52 62 49;
   --c-ink: 232 238 226; --c-ink-soft: 156 168 152; --c-ink-muted: 150 162 146; --c-ink-faint: 108 120 104; --c-line: 46 56 43;
-  --c-accent: 62 125 92; --c-accent-deep: 46 107 78; --c-accent-soft: 110 180 140; --c-positive: 110 180 140;
+  --c-accent: 62 125 92; --c-accent-deep: 46 107 78; --c-accent-soft: 110 180 140; --c-positive: 110 180 140; --c-positive-soft: 110 180 140;
 }
 
 /* OCEAN — cool teal/blue. */
 [data-theme="ocean"] {
   --c-canvas: 240 245 247; --c-surface: 255 255 255; --c-surface-2: 230 238 241; --c-surface-3: 214 226 230;
   --c-ink: 20 36 44; --c-ink-soft: 68 90 100; --c-ink-muted: 100 120 130; --c-ink-faint: 148 166 174; --c-line: 215 226 230;
-  --c-accent: 14 124 134; --c-accent-deep: 11 100 108; --c-accent-soft: 14 124 134; --c-positive: 16 122 96;
+  --c-accent: 14 124 134; --c-accent-deep: 11 100 108; --c-accent-soft: 14 124 134; --c-positive: 16 122 96; --c-positive-soft: 16 122 96;
 }
 .dark[data-theme="ocean"] {
   --c-canvas: 13 22 32; --c-surface: 21 33 44; --c-surface-2: 31 45 58; --c-surface-3: 42 58 72;
   --c-ink: 228 238 243; --c-ink-soft: 150 168 180; --c-ink-muted: 144 162 174; --c-ink-faint: 104 122 136; --c-line: 37 51 62;
-  --c-accent: 20 150 156; --c-accent-deep: 14 124 134; --c-accent-soft: 90 200 205; --c-positive: 90 195 170;
+  --c-accent: 20 150 156; --c-accent-deep: 14 124 134; --c-accent-soft: 90 200 205; --c-positive: 90 195 170; --c-positive-soft: 90 195 170;
 }
 
 /* PLUM — warm wine/aubergine. */
 [data-theme="plum"] {
   --c-canvas: 248 241 240; --c-surface: 255 255 255; --c-surface-2: 244 235 235; --c-surface-3: 234 221 222;
   --c-ink: 42 28 34; --c-ink-soft: 96 78 84; --c-ink-muted: 124 106 112; --c-ink-faint: 168 152 156; --c-line: 236 220 221;
-  --c-accent: 154 59 99; --c-accent-deep: 122 44 76; --c-accent-soft: 154 59 99; --c-positive: 35 110 78;
+  --c-accent: 154 59 99; --c-accent-deep: 122 44 76; --c-accent-soft: 154 59 99; --c-positive: 35 110 78; --c-positive-soft: 35 110 78;
 }
 .dark[data-theme="plum"] {
   --c-canvas: 26 19 24; --c-surface: 34 26 32; --c-surface-2: 48 38 45; --c-surface-3: 60 48 56;
   --c-ink: 241 230 234; --c-ink-soft: 176 158 166; --c-ink-muted: 168 150 158; --c-ink-faint: 122 108 116; --c-line: 58 46 52;
-  --c-accent: 168 69 110; --c-accent-deep: 154 59 99; --c-accent-soft: 214 130 168; --c-positive: 110 185 145;
+  --c-accent: 168 69 110; --c-accent-deep: 154 59 99; --c-accent-soft: 214 130 168; --c-positive: 110 185 145; --c-positive-soft: 110 185 145;
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -113,6 +113,27 @@
    both blocks is all it takes to widen the palette.
    Single-series charts encode no identity and use the accent instead.
    ─────────────────────────────────────────────────────────────────────────── */
+/* ───────────────────────────────────────────────────────────────────────────
+   Status tokens — danger / warning / info. Defined once rather than per
+   theme: unlike the accent, these carry meaning, not mood, and red has to
+   read as red in every palette. Each comes as a pair, the same convention the
+   accent already follows: the base is a fill (>= 3:1 against every surface),
+   the `-soft` variant is the text one (>= 4.5:1). `positive` gained its own
+   `-soft` for the same reason — the fill value sat at 3.4:1 in dark, which is
+   fine behind a badge and unreadable as a label.
+   All of it is machine-checked by scripts/check-color-tokens.mjs.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --c-danger:  217  45  32; --c-danger-soft:  217  45  32;
+  --c-warning: 197 134   4; --c-warning-soft: 157 106   2;
+  --c-info:     21 112 239; --c-info-soft:     21 111 237;
+}
+.dark {
+  --c-danger:  217  45  32; --c-danger-soft:  221  99  94;
+  --c-warning: 202 138   4; --c-warning-soft: 202 138   4;
+  --c-info:     21 112 239; --c-info-soft:     83 132 240;
+}
+
 :root {
   --c-series-1: #2264ae; --c-series-2: #9b4e27; --c-series-3: #40996c;
   --c-series-4: #978e06; --c-series-5: #c76e99; --c-series-6: #a56cff;
@@ -137,7 +158,14 @@
   --color-accent:      rgb(var(--c-accent));
   --color-accent-deep: rgb(var(--c-accent-deep));
   --color-accent-soft: rgb(var(--c-accent-soft));
-  --color-positive:    rgb(var(--c-positive));
+  --color-positive:      rgb(var(--c-positive));
+  --color-positive-soft: rgb(var(--c-positive-soft));
+  --color-danger:        rgb(var(--c-danger));
+  --color-danger-soft:   rgb(var(--c-danger-soft));
+  --color-warning:       rgb(var(--c-warning));
+  --color-warning-soft:  rgb(var(--c-warning-soft));
+  --color-info:          rgb(var(--c-info));
+  --color-info-soft:     rgb(var(--c-info-soft));
 }
 
 @layer base {

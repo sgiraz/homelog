@@ -1,7 +1,7 @@
 <template>
   <BaseModal :title="t('balance.compensate.title')" @close="$emit('close')">
     <!-- The credit being spent -->
-    <div class="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-5 text-center mb-5">
+    <div class="bg-surface-2 rounded-xl p-5 text-center mb-5">
       <div class="text-sm font-medium text-ink mb-1 truncate">
         {{ split.description || t('balance.unsettled.noDescription') }}
       </div>
@@ -26,7 +26,7 @@
           type="radio"
           :value="debt.expense_id"
           v-model="selectedId"
-          class="w-5 h-5 text-blue-600 border-line focus:ring-blue-500"
+          class="w-5 h-5 text-accent border-line focus:ring-accent"
         />
         <div class="min-w-0 flex-1">
           <div class="text-sm font-medium text-ink truncate">
@@ -39,8 +39,8 @@
       </label>
     </div>
 
-    <div v-if="selectedDebt" class="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-      <p class="text-sm text-yellow-800 dark:text-yellow-200">
+    <div v-if="selectedDebt" class="mt-4 bg-warning/10 border border-warning/30 rounded-lg p-3">
+      <p class="text-sm text-warning-soft">
         {{ t('balance.compensate.resultHint', {
           amount: formatCurrency(appliedAmount),
           debt: selectedDebt.description || t('balance.debts.noDescription')
@@ -48,7 +48,7 @@
       </p>
     </div>
 
-    <div v-if="error" class="mt-4 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+    <div v-if="error" class="mt-4 text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
       {{ error }}
     </div>
 

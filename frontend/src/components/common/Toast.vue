@@ -58,10 +58,12 @@ let nextId = 0
 
 function getToastClass(type) {
   const classes = {
-    success: 'bg-green-50 dark:bg-green-900/90 border-green-200 dark:border-green-700 text-green-900 dark:text-green-100',
-    error:   'bg-red-50 dark:bg-red-900/90 border-red-200 dark:border-red-700 text-red-900 dark:text-red-100',
-    warning: 'bg-yellow-50 dark:bg-yellow-900/90 border-yellow-200 dark:border-yellow-700 text-yellow-900 dark:text-yellow-100',
-    info:    'bg-blue-50 dark:bg-blue-900/90 border-blue-200 dark:border-blue-700 text-blue-900 dark:text-blue-100',
+    // Surface plus a tinted border and a readable label: the same base/-soft
+    // pair the badges use, so a state looks the same wherever it surfaces.
+    success: 'bg-surface border border-positive/30 text-positive-soft',
+    error:   'bg-surface border border-danger/30 text-danger-soft',
+    warning: 'bg-surface border border-warning/30 text-warning-soft',
+    info:    'bg-surface border border-info/30 text-info-soft',
   }
   return classes[type] || classes.info
 }

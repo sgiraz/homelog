@@ -145,12 +145,9 @@
         <Card class="p-4 space-y-3">
           <div class="flex items-center justify-between">
             <span class="text-sm text-ink-soft">{{ t('projects.detail.infoStatus') }}</span>
-            <span :class="[
-              'px-2 py-1 text-xs rounded-full font-medium',
-              getStatusColor(project.status)
-            ]">
+            <Badge :variant="statusVariant(project.status)">
               {{ getStatusLabel(project.status) }}
-            </span>
+            </Badge>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-sm text-ink-soft">{{ t('projects.detail.infoStart') }}</span>
@@ -175,18 +172,13 @@
               :key="member.id"
               class="flex items-center gap-3"
             >
-              <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-xs font-medium text-purple-700 dark:text-purple-300">
+              <div class="w-8 h-8 rounded-full bg-surface-2 flex items-center justify-center text-xs font-medium text-ink-soft">
                 {{ member.name?.[0]?.toUpperCase() }}
               </div>
               <span class="text-sm text-ink flex-1">{{ member.name }}</span>
-              <span :class="[
-                'text-xs px-2 py-0.5 rounded-full',
-                member.role === 'creator' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' :
-                member.role === 'owner' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' :
-                'bg-surface-2 text-ink-soft'
-              ]">
+              <Badge :variant="member.role === 'creator' ? 'info' : member.role === 'owner' ? 'positive' : 'neutral'">
                 {{ member.role === 'creator' ? t('projects.detail.roleCreator') : member.role === 'owner' ? t('projects.detail.roleCoOwner') : t('projects.detail.roleMember') }}
-              </span>
+              </Badge>
             </div>
           </div>
         </Card>
@@ -312,6 +304,7 @@ import Button from '@/components/common/Button.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditProjectModal from '@/components/projects/EditProjectModal.vue'
 import CategoryBars from '@/components/charts/CategoryBars.vue'
+import Badge from '@/components/common/Badge.vue'
 import { useChartTheme } from '@/composables/useChartTheme'
 import { foldSlices, sliceColors } from '@/utils/chartSlices'
 import { apiErrorMessage } from '@/utils/apiError'
@@ -430,14 +423,16 @@ function getStatusLabel(status) {
   return t(key) === key ? status : t(key)
 }
 
-function getStatusColor(status) {
+// Same mapping as the project list: a status must not change colour between
+// the card and the page it opens.
+function statusVariant(status) {
   const map = {
-    planned: 'bg-blue-100 text-blue-700',
-    active: 'bg-green-100 text-green-700',
-    completed: 'bg-surface-2 text-ink-soft',
-    cancelled: 'bg-red-100 text-red-700'
+    planned: 'info',
+    active: 'positive',
+    completed: 'neutral',
+    cancelled: 'danger'
   }
-  return map[status] || 'bg-surface-2 text-ink-soft'
+  return map[status] || 'neutral'
 }
 
 function goBack() {

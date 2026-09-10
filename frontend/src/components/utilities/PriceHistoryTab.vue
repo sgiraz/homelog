@@ -38,7 +38,7 @@
                   {{ t('utilities.priceHistoryTab.fromDate', { date: formatDate(change.effective_date) }) }}
                 </div>
                 <div v-if="change.reason" class="text-xs text-ink-faint mt-1">{{ change.reason }}</div>
-                <div v-if="change.cancellation_deadline" class="mt-1 px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs text-yellow-700 dark:text-yellow-300 inline-block">
+                <div v-if="change.cancellation_deadline" class="mt-1 px-2 py-1 bg-warning/10 rounded text-xs text-warning-soft inline-block">
                   {{ t('utilities.priceHistoryTab.cancellationDeadline', { date: formatDate(change.cancellation_deadline) }) }}
                 </div>
               </div>

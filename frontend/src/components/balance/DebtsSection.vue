@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <!-- Loading State -->
     <div v-if="balanceStore.debtsLoading && balanceStore.debts.length === 0" class="text-center py-12">
-      <svg class="animate-spin h-12 w-12 mx-auto text-blue-600" fill="none" viewBox="0 0 24 24">
+      <svg class="animate-spin h-12 w-12 mx-auto text-accent" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
       </svg>
@@ -25,7 +25,7 @@
         <div class="grid grid-cols-2 gap-4">
           <Card class="p-4 sm:p-6 text-center">
             <div class="text-sm text-ink-soft mb-1">{{ t('balance.debts.totalIOwe') }}</div>
-            <div class="text-2xl font-bold text-red-600 dark:text-red-400">
+            <div class="text-2xl font-bold text-danger-soft">
               {{ formatCurrency(balanceStore.totalIOwe) }}
             </div>
           </Card>
@@ -33,7 +33,7 @@
             <div class="text-sm text-ink-soft mb-1">
               {{ t('balance.debts.totalTheyOwe', { name: balanceStore.otherMemberName || t('balance.partnerFallback') }) }}
             </div>
-            <div class="text-2xl font-bold text-green-600 dark:text-green-400">
+            <div class="text-2xl font-bold text-positive-soft">
               {{ formatCurrency(balanceStore.totalTheyOwe) }}
             </div>
           </Card>
@@ -59,7 +59,7 @@
               <div
                 :class="[
                   'text-xl sm:text-2xl font-bold',
-                  debt.i_owe ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                  debt.i_owe ? 'text-danger-soft' : 'text-positive-soft'
                 ]"
               >
                 {{ formatCurrency(debt.remaining_amount) }}
@@ -135,7 +135,7 @@
                 </div>
                 <div class="text-xs text-ink-muted">{{ formatDate(debt.date) }}</div>
               </div>
-              <div class="text-sm font-medium text-green-600 dark:text-green-400 shrink-0">
+              <div class="text-sm font-medium text-positive-soft shrink-0">
                 {{ t('balance.debts.settledBadge') }}
               </div>
             </div>
@@ -166,7 +166,7 @@
                   {{ t('balance.debts.fundedBy', { source: payment.source_label }) }}
                 </div>
               </div>
-              <div class="text-base font-bold text-green-600 dark:text-green-400 shrink-0">
+              <div class="text-base font-bold text-positive-soft shrink-0">
                 {{ formatCurrency(payment.amount) }}
               </div>
             </div>

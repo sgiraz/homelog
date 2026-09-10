@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Validates the chart series palette declared in `src/assets/styles/main.css`.
+ * Validates the colour tokens declared in `src/assets/styles/main.css`.
  *
  * The palette is the one place in the UI where colour carries meaning, so it
  * has to hold up under conditions we cannot see while designing: every theme's
@@ -14,7 +14,13 @@
  *   2. pairwise CIEDE2000 >= MIN_DELTA_E for normal vision, and
  *      >= MIN_DELTA_E_CVD after simulating protanopia/deuteranopia/tritanopia
  *
- * Usage: node scripts/check-chart-palette.mjs
+ * It also checks the semantic status pairs (positive / danger / warning /
+ * info): the base is a fill and must clear MIN_CONTRAST against its own
+ * surface, the `-soft` variant is used as text and must clear
+ * MIN_TEXT_CONTRAST. That second bar is the one `--c-positive` was failing at
+ * 3.4:1 in dark while being used for labels.
+ *
+ * Usage: node scripts/check-color-tokens.mjs
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -23,6 +29,8 @@ import { dirname, join } from 'node:path'
 const CSS_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'assets', 'styles', 'main.css')
 
 const MIN_CONTRAST = 3
+const MIN_TEXT_CONTRAST = 4.5
+const STATUS_TOKENS = ['positive', 'danger', 'warning', 'info']
 const MIN_DELTA_E = 12
 const MIN_DELTA_E_CVD = 9
 
@@ -217,8 +225,45 @@ for (const mode of ['light', 'dark']) {
   }
 }
 
+// ── Semantic status pairs, checked against the surface of their own block ───
+// A block inherits what it does not redefine, so the globals are resolved from
+// :root / .dark before comparing.
+function inherited(mode) {
+  const base = {}
+  for (const { selector, body } of blocks) {
+    if (selector !== (mode === 'dark' ? '.dark' : ':root')) continue
+    Object.assign(base, declarations(body))
+  }
+  return base
+}
+
+for (const { selector, body } of blocks) {
+  const decls = declarations(body)
+  const surfaceValue = decls['--c-surface']
+  if (!surfaceValue) continue
+  const mode = selector.includes('.dark') ? 'dark' : 'light'
+  const resolved = { ...inherited(mode), ...decls }
+  const surface = surfaceValue.split(/\s+/).map(Number)
+
+  for (const token of STATUS_TOKENS) {
+    for (const [suffix, min] of [['', MIN_CONTRAST], ['-soft', MIN_TEXT_CONTRAST]]) {
+      const value = resolved[`--c-${token}${suffix}`]
+      if (!value) {
+        failures.push(`${selector}: --c-${token}${suffix} is not defined`)
+        continue
+      }
+      const ratio = contrast(value.split(/\s+/).map(Number), surface)
+      if (ratio < min) {
+        failures.push(
+          `${selector} --c-${token}${suffix} on its surface: ${ratio.toFixed(2)}:1 < ${min}:1`
+        )
+      }
+    }
+  }
+}
+
 if (failures.length) {
   console.error('Chart palette check FAILED:\n' + failures.map((f) => `  - ${f}`).join('\n'))
   process.exit(1)
 }
-console.log('Chart palette OK: contrast and colour-blind separation hold for every theme surface.')
+console.log('Colour tokens OK: series separation and status contrast hold for every theme surface.')

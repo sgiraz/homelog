@@ -27,7 +27,7 @@
             <div class="font-medium text-ink">{{ prop.name }}</div>
             <div v-if="prop.address" class="text-xs text-ink-muted truncate">{{ prop.address }}</div>
           </div>
-          <span v-if="prop.is_current" class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 font-medium">{{ t('settings.properties.principalBadge') }}</span>
+          <Badge v-if="prop.is_current" variant="positive">{{ t('settings.properties.principalBadge') }}</Badge>
         </div>
       </div>
 
@@ -87,6 +87,7 @@ defineOptions({ name: 'PropertiesTab' })
 
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Badge from '@/components/common/Badge.vue'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'

@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <!-- Loading State -->
     <div v-if="balanceStore.loading" class="text-center py-12">
-      <svg class="animate-spin h-12 w-12 mx-auto text-blue-600" fill="none" viewBox="0 0 24 24">
+      <svg class="animate-spin h-12 w-12 mx-auto text-accent" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
       </svg>
@@ -18,8 +18,8 @@
           </div>
           <div :class="[
             'text-3xl sm:text-5xl font-bold mb-3',
-            balanceStore.balance > 0 ? 'text-green-600 dark:text-green-400' :
-            balanceStore.balance < 0 ? 'text-red-600 dark:text-red-400' :
+            balanceStore.balance > 0 ? 'text-positive-soft' :
+            balanceStore.balance < 0 ? 'text-danger-soft' :
             'text-ink-soft'
           ]">
             {{ balanceStore.balance > 0 ? '+' : '' }}{{ formatCurrency(balanceStore.balance) }}
@@ -53,13 +53,13 @@
       <div class="grid grid-cols-2 gap-4">
         <Card class="p-4 sm:p-6 text-center">
           <div class="text-sm text-ink-soft mb-1">{{ t('balance.stats.unsettledCount') }}</div>
-          <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">
+          <div class="text-2xl font-bold text-warning-soft">
             {{ balanceStore.unsettledSplits.length }}
           </div>
         </Card>
         <Card class="p-4 sm:p-6 text-center">
           <div class="text-sm text-ink-soft mb-1">{{ t('balance.stats.totalSettled') }}</div>
-          <div class="text-2xl font-bold text-green-600 dark:text-green-400">
+          <div class="text-2xl font-bold text-positive-soft">
             {{ formatCurrency(totalSettled) }}
           </div>
         </Card>
@@ -75,9 +75,9 @@
         >
           <h3 class="text-lg font-semibold text-ink flex items-center gap-2">
             {{ t('balance.unsettled.title') }}
-            <span class="text-sm font-normal px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
+            <Badge variant="warning" class="font-normal">
               {{ balanceStore.unsettledSplits.length }}
-            </span>
+            </Badge>
           </h3>
           <svg
             :class="['w-5 h-5 text-ink-faint transition-transform', unsettledOpen ? 'rotate-180' : '']"
@@ -92,7 +92,7 @@
             <!-- Totale da saldare -->
             <div class="text-sm text-ink-soft flex justify-between border-b border-line pb-2">
               <span>{{ t('balance.unsettled.totalLabel') }}</span>
-              <span class="font-semibold text-amber-600 dark:text-amber-400">{{ formatCurrency(totalUnsettled) }}</span>
+              <span class="font-semibold text-warning-soft">{{ formatCurrency(totalUnsettled) }}</span>
             </div>
 
             <div
@@ -113,8 +113,8 @@
                 <div class="flex items-start gap-1 shrink-0">
                   <div class="text-right">
                     <div class="text-lg font-bold" :class="split.paid_by_id === balanceStore.currentMemberId
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-red-600 dark:text-red-400'
+                      ? 'text-positive-soft'
+                      : 'text-danger-soft'
                     ">
                       {{ split.paid_by_id === balanceStore.currentMemberId ? '+' : '-' }}{{ formatCurrency(split.remaining_amount ?? split.amount) }}
                     </div>
@@ -192,7 +192,7 @@
                   "{{ settlement.note }}"
                 </div>
               </div>
-              <div class="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400 shrink-0">
+              <div class="text-lg sm:text-xl font-bold text-positive-soft shrink-0">
                 {{ formatCurrency(settlement.amount) }}
               </div>
             </div>
@@ -228,6 +228,7 @@
 <script setup>
 import { ref, computed, onMounted, onActivated } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Badge from '@/components/common/Badge.vue'
 import { useBalanceStore } from '@/stores/balance'
 import { useSettingsStore } from '@/stores/settings'
 import { useExpensesStore } from '@/stores/expenses'
