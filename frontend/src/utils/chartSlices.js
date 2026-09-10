@@ -31,7 +31,12 @@ export function foldSlices(rows, amountOf, limit) {
   ]
 }
 
-/** Slot colour per slice, with the folded bucket on the neutral token. */
+/**
+ * Slot colour per slice. The folded bucket takes the neutral token, and so does
+ * anything past the last slot (when the user expands a long list): cycling the
+ * palette would give two categories the same colour, which is worse than no
+ * colour at all.
+ */
 export function sliceColors(slices, theme) {
-  return slices.map((slice, i) => (slice.row ? theme.series[i] : theme.seriesOther))
+  return slices.map((slice, i) => (slice.row && theme.series[i]) || theme.seriesOther)
 }

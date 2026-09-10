@@ -1,5 +1,7 @@
 <template>
-  <div class="h-64">
+  <!-- Height comes from the parent: the card decides, so the chart can grow
+       into the space next to a long category list instead of leaving a void. -->
+  <div class="h-full min-h-64">
     <Bar :data="chartData" :options="mergedOptions" />
   </div>
 </template>

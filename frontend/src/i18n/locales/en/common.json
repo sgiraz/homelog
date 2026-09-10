@@ -9,7 +9,9 @@
     "back": "Back",
     "create": "Create",
     "update": "Update",
-    "add": "Add"
+    "add": "Add",
+    "showAll": "Show all ({count})",
+    "showLess": "Show less"
   },
   "states": {
     "loading": "Loading...",

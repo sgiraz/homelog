@@ -10,10 +10,14 @@
     "configureButton": "Configura"
   },
   "kpi": {
-    "monthExpenses": "Spese Mese",
-    "periodCount": "Spese nel Periodo",
-    "dailyAverage": "Media Giorn.",
-    "yearExpenses": "Spese Anno"
+    "dailyAverage": "Media giornaliera",
+    "periodTotal": "Spesa famiglia",
+    "topCategory": "Categoria principale",
+    "deltaVsPrevious": "{delta} sul periodo precedente",
+    "expenseCount_one": "{n} spesa",
+    "expenseCount_other": "{n} spese",
+    "overDays_one": "su {n} giorno",
+    "overDays_other": "su {n} giorni"
   },
   "charts": {
     "categoryByCategory": "Spese per Categoria",
@@ -24,9 +28,8 @@
     "trendMonthly": "Trend Mensile",
     "datasetLabel": "Spese",
     "otherCategories": "Altre ({count})",
-    "noData": "Nessun dato disponibile",
-    "lineTooltip": "Grafico a linee",
-    "barTooltip": "Grafico a barre"
+    "drillDownAria": "Vedi il dettaglio di {category}",
+    "noData": "Nessun dato disponibile"
   },
   "filters": {
     "filtersLabel": "Filtri",
@@ -40,13 +43,6 @@
     "allProjectsShort": "Tutti",
     "allCategoriesLong": "Tutte categorie",
     "allProjectsLong": "Tutti progetti"
-  },
-  "recent": {
-    "title": "Spese Recenti",
-    "viewAll": "Vedi tutte",
-    "loading": "Caricamento...",
-    "empty": "Nessuna spesa registrata",
-    "addFirst": "Aggiungi la tua prima spesa"
   },
   "attention": {
     "title": "Da gestire",
@@ -72,5 +68,12 @@
     "youOwe": "Devi a {name}",
     "lastExpense": "Ultima spesa: {date}",
     "lastReading": "Ultima lettura: {date}"
+  },
+  "period": {
+    "days7": "7 giorni",
+    "days30": "30 giorni",
+    "days90": "90 giorni",
+    "year": "Anno",
+    "custom": "Personalizzato"
   }
 }

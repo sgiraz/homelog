@@ -9,7 +9,9 @@
     "back": "Indietro",
     "create": "Crea",
     "update": "Aggiorna",
-    "add": "Aggiungi"
+    "add": "Aggiungi",
+    "showAll": "Mostra tutte ({count})",
+    "showLess": "Mostra meno"
   },
   "states": {
     "loading": "Caricamento...",

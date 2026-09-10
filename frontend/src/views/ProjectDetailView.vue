@@ -65,7 +65,7 @@
 
         <Card class="p-4">
           <div class="text-xs sm:text-sm text-ink-soft mb-1">{{ t('projects.detail.kpiSpent') }}</div>
-          <div class="text-lg sm:text-2xl font-bold text-blue-600">
+          <div class="text-lg sm:text-2xl font-bold text-ink">
             {{ formatCurrency(stats.total_spent) }}
           </div>
         </Card>
@@ -77,7 +77,7 @@
                available. formatCurrency (Intl) renders the sign locale-aware. -->
           <div :class="[
             'text-lg sm:text-2xl font-bold',
-            stats.remaining >= 0 ? 'text-green-600' : 'text-red-600'
+            stats.remaining >= 0 ? 'text-positive' : 'text-accent-soft'
           ]">
             {{ formatCurrency(stats.remaining) }}
           </div>
@@ -85,7 +85,7 @@
 
         <Card class="p-4">
           <div class="text-xs sm:text-sm text-ink-soft mb-1">{{ t('projects.detail.kpiCompletion') }}</div>
-          <div class="text-lg sm:text-2xl font-bold text-purple-600">
+          <div class="text-lg sm:text-2xl font-bold text-ink">
             {{ stats.percentage_spent.toFixed(1) }}%
           </div>
         </Card>
@@ -97,16 +97,18 @@
           <span class="text-ink-soft">{{ t('projects.detail.progressLabel') }}</span>
           <span :class="[
             'font-medium',
-            stats.percentage_spent > 100 ? 'text-red-600' : 'text-ink'
+            stats.percentage_spent > 100 ? 'text-accent-soft' : 'text-ink'
           ]">
             {{ stats.percentage_spent.toFixed(1) }}%
           </span>
         </div>
+        <!-- Over budget escalates within the accent instead of jumping to a
+             colour the palette does not define. -->
         <div class="w-full bg-surface-3 rounded-full h-3">
           <div
             :class="[
               'h-3 rounded-full transition-all',
-              stats.percentage_spent > 100 ? 'bg-red-600' : 'bg-blue-600'
+              stats.percentage_spent > 100 ? 'bg-accent' : 'bg-accent/50'
             ]"
             :style="{ width: Math.min(stats.percentage_spent, 100) + '%' }"
           ></div>
@@ -224,7 +226,13 @@
             <div class="border-t border-line"></div>
             <div>
               <h4 class="font-medium text-ink mb-3">{{ t('projects.detail.categoryChartTitle') }}</h4>
-              <PieChart :chartData="categoryChartData" />
+              <CategoryBars
+                :rows="categoryRows"
+                :formatCurrency="formatCurrency"
+                :totalCount="categoryBreakdown.length"
+                :expanded="categoriesExpanded"
+                @update:expanded="categoriesExpanded = $event"
+              />
             </div>
           </template>
         </Card>
@@ -303,7 +311,7 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditProjectModal from '@/components/projects/EditProjectModal.vue'
-import PieChart from '@/components/charts/PieChart.vue'
+import CategoryBars from '@/components/charts/CategoryBars.vue'
 import { useChartTheme } from '@/composables/useChartTheme'
 import { foldSlices, sliceColors } from '@/utils/chartSlices'
 import { apiErrorMessage } from '@/utils/apiError'
@@ -379,24 +387,32 @@ const categoryBreakdown = computed(() => {
   return Object.values(map).sort((a, b) => b.total - a.total)
 })
 
-// Same palette and folding rule as every other pie: a category's own colour is
-// free-form data, never checked for contrast or colour-blind separation, so
-// charts use the validated series slots instead.
+// Same ranking, palette and folding rule as the dashboard: one encoding for
+// "where did the money go", wherever it is asked.
+const categoriesExpanded = ref(false)
+
 const categorySlices = computed(() =>
-  foldSlices(categoryBreakdown.value, (row) => row.total, chartTheme.value.series.length)
+  foldSlices(
+    categoryBreakdown.value,
+    (row) => row.total,
+    categoriesExpanded.value ? 0 : chartTheme.value.series.length
+  )
 )
 
-const categoryChartData = computed(() => {
+const categoryRows = computed(() => {
   const slices = categorySlices.value
-  return {
-    labels: slices.map(s => s.row
-      ? s.row.category_name
-      : t('projects.detail.otherCategories', { count: s.count })),
-    datasets: [{
-      data: slices.map(s => s.amount),
-      backgroundColor: sliceColors(slices, chartTheme.value)
-    }]
-  }
+  const colors = sliceColors(slices, chartTheme.value)
+  const total = slices.reduce((sum, s) => sum + s.amount, 0)
+  return slices.map((slice, i) => ({
+    key: slice.row ? `cat-${slice.row.category_id}` : 'other',
+    label: slice.row
+      ? slice.row.category_name
+      : t('projects.detail.otherCategories', { count: slice.count }),
+    amount: slice.amount,
+    share: total > 0 ? (slice.amount / total) * 100 : 0,
+    color: colors[i],
+    clickable: false
+  }))
 })
 
 function formatCurrency(value) {

@@ -10,10 +10,14 @@
     "configureButton": "Configure"
   },
   "kpi": {
-    "monthExpenses": "Month Expenses",
-    "periodCount": "Expenses in Period",
-    "dailyAverage": "Daily Avg.",
-    "yearExpenses": "Year Expenses"
+    "dailyAverage": "Daily average",
+    "periodTotal": "Household spending",
+    "topCategory": "Top category",
+    "deltaVsPrevious": "{delta} vs previous period",
+    "expenseCount_one": "{n} expense",
+    "expenseCount_other": "{n} expenses",
+    "overDays_one": "over {n} day",
+    "overDays_other": "over {n} days"
   },
   "charts": {
     "categoryByCategory": "Expenses by Category",
@@ -24,9 +28,8 @@
     "trendMonthly": "Monthly Trend",
     "datasetLabel": "Expenses",
     "otherCategories": "Other ({count})",
-    "noData": "No data available",
-    "lineTooltip": "Line chart",
-    "barTooltip": "Bar chart"
+    "drillDownAria": "Drill down into {category}",
+    "noData": "No data available"
   },
   "filters": {
     "filtersLabel": "Filters",
@@ -40,13 +43,6 @@
     "allProjectsShort": "All",
     "allCategoriesLong": "All categories",
     "allProjectsLong": "All projects"
-  },
-  "recent": {
-    "title": "Recent Expenses",
-    "viewAll": "View all",
-    "loading": "Loading...",
-    "empty": "No expenses recorded",
-    "addFirst": "Add your first expense"
   },
   "attention": {
     "title": "To do",
@@ -72,5 +68,12 @@
     "youOwe": "You owe {name}",
     "lastExpense": "Last expense: {date}",
     "lastReading": "Last reading: {date}"
+  },
+  "period": {
+    "days7": "7 days",
+    "days30": "30 days",
+    "days90": "90 days",
+    "year": "Year",
+    "custom": "Custom"
   }
 }

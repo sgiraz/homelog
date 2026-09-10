@@ -1,28 +1,49 @@
 <template>
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-    <Card v-for="kpi in kpis" :key="kpi.key" class="p-3 sm:p-6">
-      <div class="flex items-center justify-between gap-2">
-        <div class="min-w-0">
-          <div class="text-xs sm:text-sm text-ink-soft">{{ t(`dashboard.kpi.${kpi.key}`) }}</div>
-          <!-- Compact form on narrow screens; full amount in title + sr-only. -->
-          <div class="text-base sm:text-2xl font-bold text-ink tabular-nums" :title="kpi.full">
-            <span aria-hidden="true" class="sm:hidden">{{ kpi.compact }}</span>
-            <span aria-hidden="true" class="hidden sm:inline">{{ kpi.full }}</span>
-            <span class="sr-only">{{ kpi.full }}</span>
-          </div>
-        </div>
-        <div
-          class="w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0"
-          :class="kpi.primary ? 'bg-accent/10' : 'bg-surface-2'"
-        >
-          <svg
-            class="w-4 h-4 sm:w-6 sm:h-6"
-            :class="kpi.primary ? 'text-accent-soft' : 'text-ink-muted'"
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="kpi.icon" />
-          </svg>
-        </div>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+    <!-- The headline: what the household spent in the window on screen. -->
+    <Card class="p-4 sm:p-6">
+      <div class="text-xs sm:text-sm text-ink-soft">{{ t('dashboard.kpi.periodTotal') }}</div>
+      <!-- Currency never truncates: the compact form shows on narrow screens,
+           the full amount stays in the title and for assistive tech. -->
+      <div class="mt-1 text-2xl sm:text-3xl font-bold text-ink tabular-nums" :title="totalFull">
+        <span aria-hidden="true" class="sm:hidden">{{ totalCompact }}</span>
+        <span aria-hidden="true" class="hidden sm:inline">{{ totalFull }}</span>
+        <span class="sr-only">{{ totalFull }}</span>
+      </div>
+      <div class="mt-2 flex items-center gap-2 text-xs sm:text-sm">
+        <span v-if="delta !== null" :class="delta > 0 ? 'text-accent-soft' : 'text-positive'">
+          {{ deltaLabel }}
+        </span>
+        <span class="text-ink-muted">{{ countLabel }}</span>
+      </div>
+    </Card>
+
+    <Card class="p-4 sm:p-6">
+      <div class="text-xs sm:text-sm text-ink-soft">{{ t('dashboard.kpi.dailyAverage') }}</div>
+      <div class="mt-1 text-2xl sm:text-3xl font-bold text-ink tabular-nums" :title="averageFull">
+        <span aria-hidden="true" class="sm:hidden">{{ averageCompact }}</span>
+        <span aria-hidden="true" class="hidden sm:inline">{{ averageFull }}</span>
+        <span class="sr-only">{{ averageFull }}</span>
+      </div>
+      <div class="mt-2 text-xs sm:text-sm text-ink-muted">
+        {{ daysLabel }}
+      </div>
+    </Card>
+
+    <Card class="p-4 sm:p-6">
+      <div class="text-xs sm:text-sm text-ink-soft">{{ t('dashboard.kpi.topCategory') }}</div>
+      <!-- A category name is text, not a figure: it wraps to a second line
+           rather than being cut, and sits a size below the numbers. -->
+      <div
+        v-if="topCategory"
+        class="mt-1 text-xl sm:text-2xl font-bold text-ink leading-tight line-clamp-2"
+        :title="topCategory.label"
+      >
+        {{ topCategory.label }}
+      </div>
+      <div v-else class="mt-1 text-2xl sm:text-3xl font-bold text-ink-muted">—</div>
+      <div v-if="topCategory" class="mt-2 text-xs sm:text-sm text-ink-muted tabular-nums">
+        {{ formatCurrency(topCategory.amount) }} · {{ Math.round(topCategory.share) }}%
       </div>
     </Card>
   </div>
@@ -38,21 +59,26 @@ import Card from '@/components/common/Card.vue'
 const { t } = useI18n()
 
 const props = defineProps({
-  monthTotal: {
+  periodTotal: {
     type: Number,
     required: true
   },
-  periodCount: {
+  previousTotal: {
+    type: Number,
+    default: null
+  },
+  count: {
     type: Number,
     required: true
   },
-  dailyAverage: {
+  days: {
     type: Number,
     required: true
   },
-  yearTotal: {
-    type: Number,
-    required: true
+  /** Biggest category of the period: { label, amount, share } or null. */
+  topCategory: {
+    type: Object,
+    default: null
   },
   formatCurrency: {
     type: Function,
@@ -64,42 +90,35 @@ const props = defineProps({
   }
 })
 
-const ICONS = {
-  monthExpenses: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-  periodCount: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
-  dailyAverage: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6',
-  yearExpenses: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
-}
+// Plurals follow the repo convention: the suffix is picked here, the message
+// takes {n}. vue-i18n's pipe syntax is off limits.
+const countLabel = computed(() =>
+  t(`dashboard.kpi.expenseCount_${props.count === 1 ? 'one' : 'other'}`, { n: props.count })
+)
+const daysLabel = computed(() =>
+  t(`dashboard.kpi.overDays_${props.days === 1 ? 'one' : 'other'}`, { n: props.days })
+)
 
-// Only the headline KPI wears the accent; the rest stay neutral.
-const kpis = computed(() => [
-  {
-    key: 'monthExpenses',
-    full: props.formatCurrency(props.monthTotal),
-    compact: props.formatCurrencyCompact(props.monthTotal),
-    icon: ICONS.monthExpenses,
-    primary: true
-  },
-  {
-    key: 'periodCount',
-    full: String(props.periodCount),
-    compact: String(props.periodCount),
-    icon: ICONS.periodCount,
-    primary: false
-  },
-  {
-    key: 'dailyAverage',
-    full: props.formatCurrency(props.dailyAverage),
-    compact: props.formatCurrencyCompact(props.dailyAverage),
-    icon: ICONS.dailyAverage,
-    primary: false
-  },
-  {
-    key: 'yearExpenses',
-    full: props.formatCurrency(props.yearTotal),
-    compact: props.formatCurrencyCompact(props.yearTotal),
-    icon: ICONS.yearExpenses,
-    primary: false
-  }
-])
+const totalFull = computed(() => props.formatCurrency(props.periodTotal))
+const totalCompact = computed(() => props.formatCurrencyCompact(props.periodTotal))
+
+const dailyAverage = computed(() => (props.days > 0 ? props.periodTotal / props.days : 0))
+const averageFull = computed(() => props.formatCurrency(dailyAverage.value))
+const averageCompact = computed(() => props.formatCurrencyCompact(dailyAverage.value))
+
+// No previous window, or one with nothing in it, means there is nothing to
+// compare against: "+100%" against zero would be noise, not information.
+const delta = computed(() => {
+  if (!props.previousTotal) return null
+  return ((props.periodTotal - props.previousTotal) / props.previousTotal) * 100
+})
+
+const deltaLabel = computed(() => {
+  const value = delta.value
+  if (value === null) return ''
+  const sign = value > 0 ? '+' : '−'
+  return t('dashboard.kpi.deltaVsPrevious', {
+    delta: `${sign}${Math.abs(Math.round(value))}%`
+  })
+})
 </script>

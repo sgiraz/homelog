@@ -10,10 +10,14 @@
     "configureButton": "Konfigurieren"
   },
   "kpi": {
-    "monthExpenses": "Ausgaben im Monat",
-    "periodCount": "Ausgaben im Zeitraum",
     "dailyAverage": "Tagesdurchschnitt",
-    "yearExpenses": "Jährliche Ausgaben"
+    "periodTotal": "Haushaltsausgaben",
+    "topCategory": "Top-Kategorie",
+    "deltaVsPrevious": "{delta} zum Vorzeitraum",
+    "expenseCount_one": "{n} Ausgabe",
+    "expenseCount_other": "{n} Ausgaben",
+    "overDays_one": "über {n} Tag",
+    "overDays_other": "über {n} Tage"
   },
   "charts": {
     "categoryByCategory": "Ausgaben nach Kategorie",
@@ -24,9 +28,8 @@
     "trendMonthly": "Monatlicher Verlauf",
     "datasetLabel": "Ausgaben",
     "otherCategories": "Andere ({count})",
-    "noData": "Keine Daten verfügbar",
-    "lineTooltip": "Liniendiagramm",
-    "barTooltip": "Balkendiagramm"
+    "drillDownAria": "Details zu {category} anzeigen",
+    "noData": "Keine Daten verfügbar"
   },
   "filters": {
     "filtersLabel": "Filter",
@@ -40,13 +43,6 @@
     "allProjectsShort": "Alle",
     "allCategoriesLong": "Alle Kategorien",
     "allProjectsLong": "Alle Projekte"
-  },
-  "recent": {
-    "title": "Letzte Ausgaben",
-    "viewAll": "Alle anzeigen",
-    "loading": "Wird geladen...",
-    "empty": "Keine Ausgaben erfasst",
-    "addFirst": "Erste Ausgabe hinzufügen"
   },
   "attention": {
     "title": "Zu erledigen",
@@ -72,5 +68,12 @@
     "youOwe": "Du schuldest {name}",
     "lastExpense": "Letzte Ausgabe: {date}",
     "lastReading": "Letzter Messwert: {date}"
+  },
+  "period": {
+    "days7": "7 Tage",
+    "days30": "30 Tage",
+    "days90": "90 Tage",
+    "year": "Jahr",
+    "custom": "Benutzerdefiniert"
   }
 }

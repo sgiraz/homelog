@@ -9,7 +9,9 @@
     "back": "Zurück",
     "create": "Erstellen",
     "update": "Ändern",
-    "add": "Hinzufügen"
+    "add": "Hinzufügen",
+    "showAll": "Alle anzeigen ({count})",
+    "showLess": "Weniger anzeigen"
   },
   "states": {
     "loading": "Laden...",

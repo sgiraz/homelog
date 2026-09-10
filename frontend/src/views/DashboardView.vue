@@ -43,6 +43,16 @@
       @action="onAttentionAction"
     />
 
+    <!-- Quick windows first, full filters behind them: the fast path answers
+         "how much in the last N days" without touching a date picker. -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <PeriodChips
+        :activeDays="activePeriodDays"
+        @select="selectPeriodDays"
+        @open-filters="filtersOpen = true"
+      />
+    </div>
+
     <DashboardFilters
       :filters="filters"
       :categories="categories"
@@ -58,10 +68,11 @@
 
     <!-- KPI Cards -->
     <KpiCards
-      :monthTotal="totalMonth"
-      :periodCount="stats?.count ?? expensesStore.total"
-      :dailyAverage="dailyAverage"
-      :yearTotal="totalYear"
+      :periodTotal="totalPeriod"
+      :previousTotal="previousTotal"
+      :count="periodCount"
+      :days="periodDays"
+      :topCategory="topCategory"
       :formatCurrency="formatCurrency"
       :formatCurrencyCompact="formatCurrencyCompact"
     />
@@ -70,29 +81,18 @@
     <DashboardCharts
       :categoryChartTitle="categoryChartTitle"
       :hasCategoryData="hasCategoryData"
-      :categoryChartData="categoryChartData"
+      :categoryRows="categoryRows"
+      :formatCurrency="formatCurrency"
+      :categoryTotalCount="categoryTotalCount"
+      :categoriesExpanded="categoriesExpanded"
+      @update:categoriesExpanded="categoriesExpanded = $event"
       :currency="settingsStore.currency"
       :isSubcategory="!!stats?.is_subcategory"
       :trendChartTitle="trendChartTitle"
       :hasTrendData="hasTrendData"
       :trendBarChartData="trendBarChartData"
-      :trendLineChartData="trendLineChartData"
-      :trendChartType="trendChartType"
-      @update:trendChartType="trendChartType = $event"
       @slice-click="onPieSliceClick"
       @back="onPieBack"
-    />
-
-    <!-- Lista Spese Recenti -->
-    <RecentExpensesList
-      :expenses="expensesStore.expenses"
-      :loading="expensesStore.loading"
-      :formatCurrency="formatCurrency"
-      :formatDate="formatDate"
-      :currentUserId="authStore.user?.id"
-      @add="showAddExpense = true"
-      @edit="editExpense"
-      @delete="deleteExpenseConfirm"
     />
 
     </template>
@@ -102,14 +102,6 @@
       v-if="showAddExpense"
       @close="showAddExpense = false"
       @created="onExpenseCreated"
-    />
-
-    <!-- Modal Modifica Spesa -->
-    <EditExpenseModal
-      v-if="showEditExpense && editingExpense"
-      :expense="editingExpense"
-      @close="showEditExpense = false; editingExpense = null"
-      @updated="onExpenseUpdated"
     />
 
     <!-- Modal Salda (aperto inline dal pannello "Da gestire") -->
@@ -132,37 +124,28 @@ defineOptions({ name: 'DashboardView' })
 import { ref, computed, onMounted, onActivated, onDeactivated, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useExpensesStore } from '@/stores/expenses'
-import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { categoriesAPI, projectsAPI, expensesAPI, utilitiesAPI, balanceAPI } from '@/api/client'
 import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatCurrencyCompact as _formatCurrencyCompact, formatTrendLabel, yearOf } from '@/utils/dateFormatter'
-import { useConfirm } from '@/composables/useConfirm'
 import { statsCategoryLabel } from '@/utils/categoryLabel'
 import { foldSlices, sliceColors } from '@/utils/chartSlices'
 import { useChartTheme } from '@/composables/useChartTheme'
 import Button from '@/components/common/Button.vue'
 import Card from '@/components/common/Card.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
-import EditExpenseModal from '@/components/expenses/EditExpenseModal.vue'
 import KpiCards from '@/components/dashboard/KpiCards.vue'
+import PeriodChips from '@/components/dashboard/PeriodChips.vue'
 import AttentionPanel from '@/components/dashboard/AttentionPanel.vue'
 import DashboardCharts from '@/components/dashboard/DashboardCharts.vue'
 import DashboardFilters from '@/components/dashboard/DashboardFilters.vue'
-import RecentExpensesList from '@/components/dashboard/RecentExpensesList.vue'
 import SettlementModal from '@/components/balance/SettlementModal.vue'
-import { apiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 const expensesStore = useExpensesStore()
-const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
-const { confirm } = useConfirm()
 
 const showAddExpense = ref(false)
-const showEditExpense = ref(false)
 const showSettle = ref(false)
-const editingExpense = ref(null)
-const trendChartType = ref('line')
 const filtersOpen = ref(false)
 const categories = ref([])
 const projects = ref([])
@@ -202,12 +185,32 @@ const activeFiltersCount = computed(() => {
 // Stats from API (used for KPIs and charts)
 const stats = ref(null)
 
-// KPIs from stats API
-const totalMonth = computed(() => stats.value?.total_month ?? 0)
-const totalYear = computed(() => stats.value?.total_year ?? 0)
-const dailyAverage = computed(() => {
-  if (!stats.value?.total_month) return 0
-  return stats.value.total_month / new Date().getDate()
+// KPIs from stats API. Every one of them reads the selected period: the cards
+// used to mix in absolute calendar windows (this month, this year), which
+// contradicted the filter sitting right above them.
+const totalPeriod = computed(() => stats.value?.total_period ?? 0)
+const previousTotal = computed(() => stats.value?.previous?.total ?? null)
+const periodCount = computed(() => stats.value?.count ?? 0)
+
+const periodDays = computed(() => {
+  const period = stats.value?.period
+  if (!period?.start || !period?.end) return 0
+  const days = Math.round(
+    (new Date(period.end) - new Date(period.start)) / MS_PER_DAY
+  ) + 1
+  return Math.max(days, 1)
+})
+
+// by_category arrives sorted by amount, so the leader is the first row.
+const topCategory = computed(() => {
+  const first = stats.value?.by_category?.[0]
+  if (!first) return null
+  const total = stats.value?.total_period || 0
+  return {
+    label: statsCategoryLabel(first, t('expenses.modal.subcategoryNone')),
+    amount: first.amount,
+    share: total > 0 ? (first.amount / total) * 100 : 0
+  }
 })
 
 
@@ -225,21 +228,44 @@ const hasCategoryData = computed(() => (stats.value?.by_category?.length ?? 0) >
 
 // Drawn slices, biggest first. Each keeps its source row so a click resolves to
 // a category id; the folded "Other" bucket has none and is inert.
+// Expanded, the tail is shown in full and takes the neutral colour; collapsed,
+// it folds into one "Other" row. The limit is the palette's slot count, which
+// is also about as many rows as the card can show without becoming a list.
+const categoriesExpanded = ref(false)
+
+const categoryTotalCount = computed(() => stats.value?.by_category?.length ?? 0)
+
 const categorySlices = computed(() =>
-  foldSlices(stats.value?.by_category, (row) => row.amount, maxNamedSlices.value)
+  foldSlices(
+    stats.value?.by_category,
+    (row) => row.amount,
+    categoriesExpanded.value ? 0 : maxNamedSlices.value
+  )
 )
 
-const categoryChartData = computed(() => {
+// Drilling in or out is a different list: collapse it again.
+watch(() => stats.value?.is_subcategory, () => { categoriesExpanded.value = false })
+
+// Rows for the ranking. The folded bucket carries no source row, so it is not
+// a drill-down target.
+const categoryRows = computed(() => {
   const slices = categorySlices.value
-  return {
-    labels: slices.map(s => s.row
-      ? statsCategoryLabel(s.row, t('expenses.modal.subcategoryNone'))
-      : t('dashboard.charts.otherCategories', { count: s.count })),
-    datasets: [{
-      data: slices.map(s => s.amount),
-      backgroundColor: sliceColors(slices, chartTheme.value)
-    }]
-  }
+  const colors = sliceColors(slices, chartTheme.value)
+  const total = slices.reduce((sum, s) => sum + s.amount, 0)
+  return slices.map((slice, i) => {
+    const label = slice.row
+      ? statsCategoryLabel(slice.row, t('expenses.modal.subcategoryNone'))
+      : t('dashboard.charts.otherCategories', { count: slice.count })
+    return {
+      key: slice.row ? `cat-${slice.row.category_id}` : 'other',
+      label,
+      amount: slice.amount,
+      share: total > 0 ? (slice.amount / total) * 100 : 0,
+      color: colors[i],
+      clickable: !!slice.row && !stats.value?.is_subcategory,
+      aria: t('dashboard.charts.drillDownAria', { category: label })
+    }
+  })
 })
 
 const hasTrendData = computed(() => (stats.value?.trend?.length ?? 0) > 0)
@@ -270,23 +296,6 @@ const trendBarChartData = computed(() => {
   return {
     labels: abbreviateTrendLabels(items),
     datasets: [{ label: t('dashboard.charts.datasetLabel'), data: items.map(i => i.amount), backgroundColor: chartTheme.value.accent, borderRadius: 4 }]
-  }
-})
-
-const trendLineChartData = computed(() => {
-  const items = stats.value?.trend ?? []
-  return {
-    labels: abbreviateTrendLabels(items),
-    datasets: [{
-      label: t('dashboard.charts.datasetLabel'),
-      data: items.map(i => i.amount),
-      borderColor: chartTheme.value.accent,
-      backgroundColor: chartTheme.value.accentFill,
-      fill: true,
-      pointBackgroundColor: chartTheme.value.accent,
-      pointBorderColor: chartTheme.value.surface,
-      pointBorderWidth: 2
-    }]
   }
 })
 
@@ -563,6 +572,28 @@ function onPieBack() {
   applyFilters()
 }
 
+// A chip is active when the current range is exactly that many days long and
+// ends today; anything else is "custom", which is a state, not a preset.
+const activePeriodDays = computed(() => {
+  const { from, to } = filters.value
+  if (!from || !to || to !== todayISO()) return null
+  const days = Math.round((new Date(to) - new Date(from)) / MS_PER_DAY) + 1
+  return [7, 30, 90, 365].includes(days) ? days : null
+})
+
+function todayISO() {
+  return new Date().toISOString().split('T')[0]
+}
+
+function selectPeriodDays(days) {
+  const to = new Date()
+  const from = new Date(to)
+  from.setDate(from.getDate() - (days - 1))
+  filters.value.from = from.toISOString().split('T')[0]
+  filters.value.to = to.toISOString().split('T')[0]
+  applyFilters()
+}
+
 function applyFilters() {
   const params = buildStatsParams()
   expensesStore.fetchExpenses(params)
@@ -581,20 +612,8 @@ async function resetFilters() {
   expensesStore.fetchExpenses(buildStatsParams())
 }
 
-function editExpense(expense) {
-  editingExpense.value = expense
-  showEditExpense.value = true
-}
-
 function onExpenseCreated() {
   showAddExpense.value = false
-  applyFilters()
-  refreshBrief()
-}
-
-function onExpenseUpdated() {
-  showEditExpense.value = false
-  editingExpense.value = null
   applyFilters()
   refreshBrief()
 }
@@ -605,23 +624,6 @@ function onExpenseUpdated() {
 function refreshBrief() {
   fetchProjects()
   fetchActionables()
-}
-
-async function deleteExpenseConfirm(id) {
-  const ok = await confirm({
-    title: t('expenses.deleteConfirmTitle'),
-    message: t('expenses.deleteConfirmMessage'),
-    confirmText: t('expenses.deleteConfirmAction'),
-    variant: 'danger'
-  })
-  if (ok) {
-    try {
-      await expensesStore.deleteExpense(id)
-      refreshBrief()
-    } catch (err) {
-      window.$toast?.error(t('expenses.deleteError', { error: apiErrorMessage(err) }))
-    }
-  }
 }
 
 onMounted(() => {

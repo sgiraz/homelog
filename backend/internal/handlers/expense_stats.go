@@ -324,6 +324,26 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		avgMonth = totalAmount / float64(len(trend))
 	}
 
+	// How many expenses the selected period holds. The client used to count the
+	// rows it had paginated, which is a different number as soon as the list is
+	// longer than one page.
+	var periodCount int64
+	h.db.Model(&models.Expense{}).
+		Where(baseWhere, baseArgs...).
+		Count(&periodCount)
+
+	// Same-length window immediately before the selected one, so the client can
+	// say "-12% vs the previous 30 days". A total on its own is not actionable:
+	// it takes a reference to become a signal.
+	previousEnd := startDate.Add(-time.Second)
+	previousStart := previousEnd.Add(-endDate.Sub(startDate))
+	previousArgs := append([]any{memberPropertyIDs, previousStart, previousEnd}, baseArgs[3:]...)
+	var totalPrevious float64
+	h.db.Model(&models.Expense{}).
+		Where(baseWhere, previousArgs...).
+		Select("COALESCE(SUM(amount), 0)").
+		Scan(&totalPrevious)
+
 	c.JSON(http.StatusOK, gin.H{
 		"trend":          trend,
 		"granularity":    granularity,
@@ -333,9 +353,18 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		"total_year":     totalYear,
 		"total_period":   totalAmount,
 		"average_month":  avgMonth,
+		"count":          periodCount,
 		"period": gin.H{
 			"start": startDate.Format("2006-01-02"),
 			"end":   endDate.Format("2006-01-02"),
+		},
+		// Every sum here is the full expense amount, never the signed-in
+		// member's split share: the dashboard reports what the household spent.
+		"scope": "household",
+		"previous": gin.H{
+			"total": totalPrevious,
+			"start": previousStart.Format("2006-01-02"),
+			"end":   previousEnd.Format("2006-01-02"),
 		},
 	})
 }

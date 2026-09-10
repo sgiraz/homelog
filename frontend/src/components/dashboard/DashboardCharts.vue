@@ -17,57 +17,30 @@
         </button>
         <h3 class="text-lg font-semibold text-ink truncate">{{ categoryChartTitle }}</h3>
       </div>
-      <PieChart
+      <CategoryBars
         v-if="hasCategoryData"
-        :chartData="categoryChartData"
-        :currency="currency"
-        :isSubcategory="isSubcategory"
+        :rows="categoryRows"
+        :formatCurrency="formatCurrency"
+        :totalCount="categoryTotalCount"
+        :expanded="categoriesExpanded"
         @slice-click="(index) => emit('slice-click', index)"
+        @update:expanded="emit('update:categoriesExpanded', $event)"
       />
       <div v-else class="h-64 flex items-center justify-center text-ink-muted">
         {{ t('dashboard.charts.noData') }}
       </div>
     </Card>
 
-    <Card class="p-6">
-      <div class="flex items-center justify-between mb-4 min-h-[44px]">
+    <Card class="p-6 flex flex-col">
+      <div class="flex items-center mb-4 min-h-[44px]">
         <h3 class="text-lg font-semibold text-ink">{{ trendChartTitle }}</h3>
-        <div class="flex items-center bg-surface-2 rounded-lg p-0.5">
-          <button
-            @click="emit('update:trendChartType', 'line')"
-            :class="[
-              'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
-              trendChartType === 'line'
-                ? 'bg-surface text-ink shadow-sm'
-                : 'text-ink-soft hover:text-ink dark:hover:text-white'
-            ]"
-            :title="t('dashboard.charts.lineTooltip')"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
-          </button>
-          <button
-            @click="emit('update:trendChartType', 'bar')"
-            :class="[
-              'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
-              trendChartType === 'bar'
-                ? 'bg-surface text-ink shadow-sm'
-                : 'text-ink-soft hover:text-ink dark:hover:text-white'
-            ]"
-            :title="t('dashboard.charts.barTooltip')"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </button>
-        </div>
       </div>
-      <template v-if="hasTrendData">
-        <LineChart v-if="trendChartType === 'line'" :chartData="trendLineChartData" :currency="currency" />
-        <BarChart v-else :chartData="trendBarChartData" :currency="currency" />
-      </template>
-      <div v-else class="h-64 flex items-center justify-center text-ink-muted">
+      <!-- Always bars: every bucket is a period total, and a line would
+           interpolate between sums that have nothing in between. -->
+      <div v-if="hasTrendData" class="flex-1 min-h-64">
+        <BarChart :chartData="trendBarChartData" :currency="currency" />
+      </div>
+      <div v-else class="flex-1 min-h-64 flex items-center justify-center text-ink-muted">
         {{ t('dashboard.charts.noData') }}
       </div>
     </Card>
@@ -80,8 +53,7 @@ defineOptions({ name: 'DashboardCharts' })
 import { useI18n } from 'vue-i18n'
 import Card from '@/components/common/Card.vue'
 import BarChart from '@/components/charts/BarChart.vue'
-import LineChart from '@/components/charts/LineChart.vue'
-import PieChart from '@/components/charts/PieChart.vue'
+import CategoryBars from '@/components/charts/CategoryBars.vue'
 
 const { t } = useI18n()
 
@@ -94,8 +66,20 @@ defineProps({
     type: Boolean,
     required: true
   },
-  categoryChartData: {
-    type: Object,
+  categoryRows: {
+    type: Array,
+    required: true
+  },
+  formatCurrency: {
+    type: Function,
+    required: true
+  },
+  categoryTotalCount: {
+    type: Number,
+    required: true
+  },
+  categoriesExpanded: {
+    type: Boolean,
     required: true
   },
   currency: {
@@ -117,16 +101,8 @@ defineProps({
   trendBarChartData: {
     type: Object,
     required: true
-  },
-  trendLineChartData: {
-    type: Object,
-    required: true
-  },
-  trendChartType: {
-    type: String,
-    required: true
   }
 })
 
-const emit = defineEmits(['update:trendChartType', 'slice-click', 'back'])
+const emit = defineEmits(['slice-click', 'back', 'update:categoriesExpanded'])
 </script>
