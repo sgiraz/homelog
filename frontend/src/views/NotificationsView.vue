@@ -26,7 +26,7 @@
         <button
           v-if="hasRead"
           @click="handleDeleteAllRead"
-          class="text-sm text-red-600 dark:text-red-400 hover:underline font-medium"
+          class="text-sm text-danger-soft hover:underline font-medium"
         >
           {{ t('notifications.deleteRead') }}
         </button>
@@ -137,7 +137,7 @@
             <!-- Delete button -->
             <button
               @click.stop="handleDelete(notif)"
-              class="p-2 rounded-lg text-ink-faint hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
+              class="p-2 rounded-lg text-ink-faint hover:text-danger-soft hover:bg-danger/10 transition-colors flex-shrink-0"
               :title="t('notifications.deleteAria')"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,6 +157,7 @@
 defineOptions({ name: 'NotificationsView' })
 
 import { ref, computed, onMounted } from 'vue'
+import { notificationIcon as getNotifIcon, notificationTile as getNotifBgClass } from '@/utils/notificationStyle'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Badge from '@/components/common/Badge.vue'
@@ -192,46 +193,6 @@ const filterTabs = computed(() => [
   { value: 'all', label: t('notifications.filterAll'), count: notifications.value.length },
   { value: 'unread', label: t('notifications.filterUnread'), count: notifications.value.filter(n => !n.is_read).length },
 ])
-
-function getUtilityIcon(type) {
-  const icons = {
-    electricity: '⚡', gas: '🔥', water: '💧', waste: '♻️',
-    internet: '🌐', insurance: '🛡️', affitto: '🏠', mutuo: '🏦'
-  }
-  return icons[type] || '📬'
-}
-
-function getUtilityBgClass(type) {
-  const classes = {
-    electricity: 'bg-yellow-100 dark:bg-yellow-900/30',
-    gas: 'bg-orange-100 dark:bg-orange-900/30',
-    water: 'bg-blue-100 dark:bg-blue-900/30',
-    waste: 'bg-green-100 dark:bg-green-900/30',
-    internet: 'bg-indigo-100 dark:bg-indigo-900/30',
-    insurance: 'bg-emerald-100 dark:bg-emerald-900/30',
-    affitto: 'bg-purple-100 dark:bg-purple-900/30',
-    mutuo: 'bg-sky-100 dark:bg-sky-900/30',
-  }
-  return classes[type] || 'bg-surface-2'
-}
-
-function getNotifIcon(notif) {
-  if (notif._source === 'notification') {
-    if (notif.type === 'join_request') return '👤'
-    if (notif.type === 'expense_shared') return '💳'
-    return '🔔'
-  }
-  return getUtilityIcon(notif.utility?.type)
-}
-
-function getNotifBgClass(notif) {
-  if (notif._source === 'notification') {
-    if (notif.type === 'join_request') return 'bg-violet-100 dark:bg-violet-900/30'
-    if (notif.type === 'expense_shared') return 'bg-emerald-100 dark:bg-emerald-900/30'
-    return 'bg-surface-2'
-  }
-  return getUtilityBgClass(notif.utility?.type)
-}
 
 function formatTimeAgo(dateStr) {
   if (!dateStr) return ''

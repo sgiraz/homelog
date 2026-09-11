@@ -65,7 +65,7 @@
           autocomplete="name"
         />
 
-        <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+        <div v-if="error" class="text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
           {{ error }}
         </div>
 
@@ -112,19 +112,19 @@
           autocomplete="email"
         />
 
-        <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+        <div v-if="error" class="text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
           {{ error }}
         </div>
 
         <!-- Token result box (dev mode: server returns the token inline) -->
-        <div v-if="resetToken" class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl space-y-3">
-          <p class="text-sm font-medium text-amber-800 dark:text-amber-300">
+        <div v-if="resetToken" class="p-4 bg-warning/10 border border-warning/30 rounded-xl space-y-3">
+          <p class="text-sm font-medium text-warning-soft">
             {{ t('auth.forgot.tokenGenerated') }}
           </p>
-          <code class="block break-all text-xs bg-surface p-3 rounded-lg border border-amber-200 dark:border-amber-700 text-ink select-all">
+          <code class="block break-all text-xs bg-surface p-3 rounded-lg border border-warning/30 text-ink select-all">
             {{ resetToken }}
           </code>
-          <p class="text-xs text-amber-700 dark:text-amber-400">
+          <p class="text-xs text-warning-soft">
             {{ t('auth.forgot.tokenInstructions') }}
           </p>
           <Button class="w-full" @click="mode = 'reset'; error = null">
@@ -194,11 +194,11 @@
           autocomplete="new-password"
         />
 
-        <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+        <div v-if="error" class="text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
           {{ error }}
         </div>
 
-        <div v-if="success" class="text-green-700 text-sm bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+        <div v-if="success" class="text-positive-soft text-sm bg-positive/10 p-3 rounded-lg">
           {{ success }}
         </div>
 

@@ -28,7 +28,7 @@
               dragOverField === field.key
                 ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                 : mappings[field.key]
-                  ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/10'
+                  ? 'border-positive/30 bg-positive/10'
                   : 'border-line'
             ]"
             @dragover.prevent="emit('update:dragOverField', field.key)"
@@ -38,12 +38,12 @@
             <div class="flex items-center justify-between mb-1">
               <span class="text-sm font-medium text-ink">
                 {{ field.label }}
-                <span v-if="field.required" class="text-red-500">*</span>
+                <span v-if="field.required" class="text-danger-soft">*</span>
               </span>
               <button
                 v-if="mappings[field.key]"
                 @click="emit('clear-mapping', field.key)"
-                class="text-ink-faint hover:text-red-500 transition-colors"
+                class="text-ink-faint hover:text-danger-soft transition-colors"
                 :title="t('utilities.wizardStepMapping.removeMapping')"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,7 +63,7 @@
                 </svg>
               </div>
               <!-- Anchor/strategy feedback -->
-              <div v-if="mappings[field.key].globalSearch" class="text-[10px] text-blue-500 dark:text-blue-400 truncate" :title="t('utilities.wizardStepMapping.globalSearchTitle')">
+              <div v-if="mappings[field.key].globalSearch" class="text-[10px] text-info-soft truncate" :title="t('utilities.wizardStepMapping.globalSearchTitle')">
                 {{ t('utilities.wizardStepMapping.globalSearch') }}
               </div>
               <div v-else-if="mappings[field.key].anchorText" class="text-[10px] text-ink-faint truncate" :title="t('utilities.wizardStepMapping.anchorTooltip', { anchor: mappings[field.key].anchorText, direction: getDirectionLabel(mappings[field.key].anchorDirection) })">
@@ -73,7 +73,7 @@
               <!-- Context Editor (collapsible) -->
               <div v-if="mappings[field.key].allNeighbors" class="mt-1">
                 <button @click="emit('toggle-context-editor', field.key)"
-                        class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1">
+                        class="text-xs text-accent-soft hover:underline flex items-center gap-1">
                   <svg class="w-3 h-3 transition-transform" :class="contextEditorOpen === field.key ? 'rotate-90' : ''"
                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -112,7 +112,7 @@
             >
               {{ field.multiLine ? t('utilities.wizardStepMapping.dropMultiLine') : t('utilities.wizardStepMapping.dropHere') }}
             </div>
-            <div v-if="field.multiLine && mappings[field.key]" class="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
+            <div v-if="field.multiLine && mappings[field.key]" class="text-[10px] text-warning-soft mt-1">
               {{ t('utilities.wizardStepMapping.multiLineNotice') }}
             </div>
           </div>
@@ -139,14 +139,14 @@
       <h5 class="text-sm font-medium text-ink mb-2">{{ t('utilities.wizardStepMapping.testResultsTitle') }}</h5>
       <div v-for="(result, fieldKey) in testResults" :key="fieldKey" class="flex flex-col gap-1 text-sm py-1 border-b border-line last:border-0">
         <div class="flex items-center gap-2">
-          <svg v-if="result.success" class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg v-if="result.success" class="w-4 h-4 text-positive-soft flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
-          <svg v-else class="w-4 h-4 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg v-else class="w-4 h-4 text-warning-soft flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <span class="text-ink-soft">{{ t('utilities.wizardStepMapping.fieldLabel', { field: getFieldLabel(fieldKey) }) }}</span>
-          <span :class="result.success ? 'text-green-600 dark:text-green-400 font-medium' : 'text-orange-600 dark:text-orange-400'">
+          <span :class="result.success ? 'text-positive-soft font-medium' : 'text-warning-soft'">
             {{ result.success ? result.value : testErrorText(result) }}
           </span>
         </div>

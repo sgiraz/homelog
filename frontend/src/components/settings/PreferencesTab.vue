@@ -96,7 +96,7 @@
         <button
           type="button"
           @click="showAddTemplate = true"
-          class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+          class="text-sm text-accent-soft hover:underline font-medium"
         >
           {{ t('settings.preferences.templates.addNew') }}
         </button>
@@ -136,7 +136,7 @@
           <button
             type="button"
             @click="deleteTemplate(tpl)"
-            class="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-ink-faint hover:text-red-500"
+            class="p-1.5 rounded hover:bg-danger/10 text-ink-faint hover:text-danger-soft"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -254,7 +254,7 @@
           <button
             type="button"
             @click="showChangePassword = !showChangePassword; pwError = null; pwSuccess = null"
-            class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+            class="text-sm text-accent-soft hover:underline font-medium"
           >
             {{ showChangePassword ? t('settings.preferences.account.cancelChange') : t('settings.preferences.account.changePassword') }}
           </button>
@@ -282,10 +282,10 @@
               autocomplete="new-password"
             />
 
-            <div v-if="pwError" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+            <div v-if="pwError" class="text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
               {{ pwError }}
             </div>
-            <div v-if="pwSuccess" class="text-green-700 text-sm bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+            <div v-if="pwSuccess" class="text-positive-soft text-sm bg-positive/10 p-3 rounded-lg">
               {{ pwSuccess }}
             </div>
 

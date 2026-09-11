@@ -32,7 +32,7 @@
         </div>
 
         <div v-else-if="uploadedFile" class="flex items-center justify-center gap-3">
-          <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-8 h-8 text-positive-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div class="text-left">
@@ -65,7 +65,7 @@
         </div>
       </div>
 
-      <div v-if="pdfError" class="mt-2 text-sm text-red-600 dark:text-red-400">
+      <div v-if="pdfError" class="mt-2 text-sm text-danger-soft">
         {{ pdfError }}
       </div>
     </div>
@@ -90,7 +90,7 @@
                 : 'border-line hover:border-line'
             ]"
           >
-            <span :class="['text-2xl', type.iconClass]">{{ type.icon }}</span>
+            <span :class="['text-2xl', utilityTypeStyle(type.value).iconColor]">{{ utilityTypeStyle(type.value).icon }}</span>
             <span class="text-sm font-medium text-ink">{{ type.label }}</span>
           </button>
         </div>
@@ -108,7 +108,7 @@
                 : 'border-line hover:border-line'
             ]"
           >
-            <span :class="['text-2xl', type.iconClass]">{{ type.icon }}</span>
+            <span :class="['text-2xl', utilityTypeStyle(type.value).iconColor]">{{ utilityTypeStyle(type.value).icon }}</span>
             <span class="text-sm font-medium text-ink">{{ type.label }}</span>
           </button>
         </div>
@@ -391,7 +391,7 @@
         />
       </div>
 
-      <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+      <div v-if="error" class="text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
         {{ error }}
       </div>
 
@@ -409,6 +409,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { utilityTypeStyle } from '@/config/utilityTypes'
 import { useI18n } from 'vue-i18n'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { currencies, currencyOptionLabel } from '@/utils/currencies'
@@ -456,18 +457,18 @@ function typeLabel(value) {
 }
 
 const meteredTypes = computed(() => [
-  { value: 'electricity', label: typeLabel('electricity'), icon: '⚡', iconClass: 'text-yellow-500', metered: true },
-  { value: 'gas', label: typeLabel('gas'), icon: '🔥', iconClass: 'text-orange-500', metered: true },
-  { value: 'water', label: typeLabel('water'), icon: '💧', iconClass: 'text-blue-500', metered: true },
+  { value: 'electricity', label: typeLabel('electricity'), metered: true },
+  { value: 'gas', label: typeLabel('gas'), metered: true },
+  { value: 'water', label: typeLabel('water'), metered: true },
 ])
 
 const fixedTypes = computed(() => [
   // waste (TARI) is billed on surface area, not on a meter — see Utility.IsMetered.
-  { value: 'waste', label: typeLabel('waste'), icon: '♻️', iconClass: 'text-green-500', metered: false },
-  { value: 'internet', label: typeLabel('internet'), icon: '🌐', iconClass: 'text-indigo-500', metered: false },
-  { value: 'insurance', label: typeLabel('insurance'), icon: '🛡️', iconClass: 'text-emerald-500', metered: false },
-  { value: 'affitto', label: typeLabel('affitto'), icon: '🏠', iconClass: 'text-purple-500', metered: false },
-  { value: 'mutuo', label: typeLabel('mutuo'), icon: '🏦', iconClass: 'text-sky-500', metered: false },
+  { value: 'waste', label: typeLabel('waste'), metered: false },
+  { value: 'internet', label: typeLabel('internet'), metered: false },
+  { value: 'insurance', label: typeLabel('insurance'), metered: false },
+  { value: 'affitto', label: typeLabel('affitto'), metered: false },
+  { value: 'mutuo', label: typeLabel('mutuo'), metered: false },
 ])
 
 const isMetered = computed(() => {

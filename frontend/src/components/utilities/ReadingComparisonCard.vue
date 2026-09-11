@@ -173,9 +173,9 @@ function fmtDiff(value) {
 
 function getDiffClass(value) {
   if (value == null) return 'text-ink-muted'
-  if (Math.abs(value) < 1) return 'text-green-600 dark:text-green-400'
-  if (value > 0) return 'text-red-600 dark:text-red-400'
-  return 'text-green-600 dark:text-green-400'
+  if (Math.abs(value) < 1) return 'text-positive-soft'
+  if (value > 0) return 'text-danger-soft'
+  return 'text-positive-soft'
 }
 
 function getUnit() {

@@ -24,7 +24,18 @@ Open an issue on GitHub. Include your HomeLog version, how to reproduce the bug,
 4. Commit using [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `chore:`, etc.
 5. Open a Pull Request against `main`
 
-See `CLAUDE.md` for architecture details, handler patterns, and known gotchas.
+### Colors
+
+Every color is a design token defined in `frontend/src/assets/styles/main.css` and exposed as a Tailwind class. Don't use palette classes such as `text-red-600` or `bg-green-50` to express meaning — use the token that says what the color means:
+
+- **Neutrals** — `bg-canvas`, `bg-surface`, `bg-surface-2`, `text-ink`, `text-ink-soft`, `text-ink-muted`, `border-line`. They follow light/dark mode and every color theme on their own: no `dark:` variants needed.
+- **Status** — `positive`, `warning`, `danger`, `info`. Each one is a pair: the base token is for fills (`bg-danger`, `bg-danger/10`, `border-danger/30`), the `-soft` variant is for text (`text-danger-soft`). Using a base token as text fails contrast in dark mode.
+- **Accent** — `bg-accent` for primary actions, `text-accent-soft` for inline text actions.
+- **Blue** is reserved for interactive controls: focus rings, active tabs, selection.
+- **Status chips** go through `components/common/Badge.vue` (`neutral`, `positive`, `warning`, `danger`, `info`) instead of hand-rolled classes.
+- **Identity colors** — a color that names a *thing*, not a state — live in a single map each: service types in `config/utilityTypes.js`, PDF template token types in `utils/tokenStyles.js`, notification kinds in `utils/notificationStyle.js`. Chart categories use the `--c-series-N` slots in order and never cycle; the tail folds into `--c-series-other` (see `utils/chartSlices.js`).
+
+`npm run check:colors` (also part of `npm run build`) re-checks every token's contrast against each theme's surfaces and the chart palette's color-blind separation. Run it whenever you touch `main.css`.
 
 ### Running locally
 

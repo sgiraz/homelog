@@ -56,12 +56,12 @@
           <div v-if="rateLoading" class="text-xs text-ink-faint">
             {{ t('expenses.modal.rateLoading') }}
           </div>
-          <div v-else-if="convertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
+          <div v-else-if="convertedAmount != null" class="text-xs text-ink-soft">
             {{ formatOriginal(form.amount, selectedCurrency) }} ≈ {{ formatCurrency(convertedAmount) }}
             <span class="text-ink-faint">{{ t('expenses.modal.rateInfo', { rate: exchangeRate?.toFixed(6) }) }}</span>
           </div>
           <div v-else-if="rateError" class="space-y-1">
-            <p class="text-xs text-amber-600 dark:text-amber-400">
+            <p class="text-xs text-warning-soft">
               {{ t('expenses.modal.rateUnavailable') }}
             </p>
             <div class="flex items-center gap-2">
@@ -79,7 +79,7 @@
               />
               <span class="text-xs text-ink-muted">{{ settingsStore.currency }}</span>
             </div>
-            <div v-if="manualConvertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
+            <div v-if="manualConvertedAmount != null" class="text-xs text-ink-soft">
               {{ formatOriginal(form.amount, selectedCurrency) }} ≈ {{ formatCurrency(manualConvertedAmount) }}
             </div>
           </div>
@@ -249,7 +249,7 @@
                   <template v-if="isForeignCurrency">{{ formatOriginal(form.amount, selectedCurrency) }}</template>
                   <template v-else>{{ formatCurrency(form.amount) }}</template>
                 </span>
-                <span v-if="isForeignCurrency && finalConvertedAmount != null" class="text-xs text-green-600 dark:text-green-400 ml-1">
+                <span v-if="isForeignCurrency && finalConvertedAmount != null" class="text-xs text-ink-soft ml-1">
                   ≈ {{ formatCurrency(finalConvertedAmount) }}
                 </span>
               </div>
@@ -264,7 +264,7 @@
         </div>
       </div>
 
-      <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+      <div v-if="error" class="text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
         {{ error }}
       </div>
 

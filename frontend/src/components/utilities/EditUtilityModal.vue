@@ -332,7 +332,7 @@
             {{ opt.label }}
           </option>
         </select>
-        <p v-if="isCurrencyLocked" class="text-xs text-amber-600 dark:text-amber-400 mt-1">
+        <p v-if="isCurrencyLocked" class="text-xs text-warning-soft mt-1">
           {{ t('utilities.editUtilityModal.currencyLocked') }}
         </p>
         <p v-else class="text-xs text-ink-muted mt-1">
@@ -386,7 +386,7 @@
         />
       </div>
 
-      <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+      <div v-if="error" class="text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
         {{ error }}
       </div>
 

@@ -70,7 +70,7 @@
             <span
               v-if="unreadCount > 0"
               class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center
-                     bg-red-500 text-white text-[10px] font-bold rounded-full px-1 leading-none"
+                     bg-danger text-white text-[10px] font-bold rounded-full px-1 leading-none"
             >
               {{ unreadCount > 9 ? '9+' : unreadCount }}
             </span>
@@ -232,7 +232,7 @@
               <div class="border-t border-line my-1" />
               <button
                 @click="handleLogout"
-                class="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors w-full text-left"
+                class="flex items-center gap-3 px-4 py-2.5 text-sm text-danger-soft hover:bg-danger/10 transition-colors w-full text-left"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -308,6 +308,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { notificationIcon as getNotifIcon, notificationTile as getNotifBgClass } from '@/utils/notificationStyle'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -357,46 +358,6 @@ const userInitials = computed(() => {
   const name = authStore.user?.name || 'U'
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 })
-
-function getUtilityIcon(type) {
-  const icons = {
-    electricity: '\u26A1', gas: '\uD83D\uDD25', water: '\uD83D\uDCA7', waste: '\u267B\uFE0F',
-    internet: '\uD83C\uDF10', insurance: '\uD83D\uDEE1\uFE0F', affitto: '\uD83C\uDFE0', mutuo: '\uD83C\uDFE6'
-  }
-  return icons[type] || '\uD83D\uDCEC'
-}
-
-function getUtilityBgClass(type) {
-  const classes = {
-    electricity: 'bg-yellow-100 dark:bg-yellow-900/30',
-    gas: 'bg-orange-100 dark:bg-orange-900/30',
-    water: 'bg-blue-100 dark:bg-blue-900/30',
-    waste: 'bg-green-100 dark:bg-green-900/30',
-    internet: 'bg-indigo-100 dark:bg-indigo-900/30',
-    insurance: 'bg-emerald-100 dark:bg-emerald-900/30',
-    affitto: 'bg-purple-100 dark:bg-purple-900/30',
-    mutuo: 'bg-sky-100 dark:bg-sky-900/30',
-  }
-  return classes[type] || 'bg-surface-2'
-}
-
-function getNotifIcon(notif) {
-  if (notif._source === 'notification') {
-    if (notif.type === 'join_request') return '\uD83D\uDC64'
-    if (notif.type === 'expense_shared') return '\uD83D\uDCB3'
-    return '\uD83D\uDD14'
-  }
-  return getUtilityIcon(notif.utility?.type)
-}
-
-function getNotifBgClass(notif) {
-  if (notif._source === 'notification') {
-    if (notif.type === 'join_request') return 'bg-violet-100 dark:bg-violet-900/30'
-    if (notif.type === 'expense_shared') return 'bg-emerald-100 dark:bg-emerald-900/30'
-    return 'bg-surface-2'
-  }
-  return getUtilityBgClass(notif.utility?.type)
-}
 
 function getNotifLabel(notif) {
   if (notif._source === 'notification') return notif.title || t('nav.notifications.fallbackTitle')

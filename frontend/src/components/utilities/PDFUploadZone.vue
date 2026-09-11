@@ -57,7 +57,7 @@
         </div>
 
         <div v-else-if="uploadedFile" class="flex items-center justify-center gap-3">
-          <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-8 h-8 text-positive-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div class="text-left">
@@ -90,7 +90,7 @@
         </div>
       </div>
 
-      <div v-if="error" class="mt-2 text-sm text-red-600 dark:text-red-400">
+      <div v-if="error" class="mt-2 text-sm text-danger-soft">
         {{ error }}
       </div>
     </div>

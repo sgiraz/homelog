@@ -43,9 +43,9 @@
           <div class="flex items-center gap-3">
             <div :class="[
               'p-2 rounded-lg',
-              getUtilityBgClass(tpl.utility_type)
+              utilityTypeStyle(tpl.utility_type).tile
             ]">
-              <span class="text-xl">{{ getUtilityIcon(tpl.utility_type) }}</span>
+              <span class="text-xl">{{ utilityTypeStyle(tpl.utility_type).icon }}</span>
             </div>
             <div>
               <div class="flex items-center gap-2">
@@ -70,7 +70,7 @@
             </button>
             <button
               @click="confirmDelete(tpl)"
-              class="p-2 text-ink-faint hover:text-red-500 transition-colors"
+              class="p-2 text-ink-faint hover:text-danger-soft transition-colors"
               :title="t('utilities.templatesManager.deleteTitle')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,6 +123,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { utilityTypeStyle } from '@/config/utilityTypes'
 import { useI18n } from 'vue-i18n'
 import Badge from '@/components/common/Badge.vue'
 import { templatesAPI } from '@/api/client'
@@ -140,28 +141,6 @@ const showWizard = ref(false)
 const editingTemplate = ref(null)
 const templateToDelete = ref(null)
 const deleting = ref(false)
-
-function getUtilityIcon(type) {
-  const icons = {
-    electricity: '⚡', gas: '🔥', water: '💧', waste: '♻️',
-    internet: '🌐', insurance: '🛡️', affitto: '🏠', mutuo: '🏦'
-  }
-  return icons[type] || '⚡'
-}
-
-function getUtilityBgClass(type) {
-  const classes = {
-    electricity: 'bg-yellow-100 dark:bg-yellow-900/30',
-    gas: 'bg-orange-100 dark:bg-orange-900/30',
-    water: 'bg-blue-100 dark:bg-blue-900/30',
-    waste: 'bg-green-100 dark:bg-green-900/30',
-    internet: 'bg-indigo-100 dark:bg-indigo-900/30',
-    insurance: 'bg-emerald-100 dark:bg-emerald-900/30',
-    affitto: 'bg-purple-100 dark:bg-purple-900/30',
-    mutuo: 'bg-sky-100 dark:bg-sky-900/30',
-  }
-  return classes[type] || classes.electricity
-}
 
 async function fetchTemplates() {
   loading.value = true

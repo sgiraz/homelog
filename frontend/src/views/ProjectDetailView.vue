@@ -31,7 +31,7 @@
         </button>
         <button
           @click="confirmDelete"
-          class="p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-ink-faint hover:text-red-500 dark:hover:text-red-400"
+          class="p-2.5 rounded-lg hover:bg-danger/10 text-ink-faint hover:text-danger-soft"
           :title="t('projects.detail.deleteTooltip')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -5,19 +5,19 @@
     :class="[
       'p-4 rounded-lg border-2',
       consumptionSummary.cumulative_alert_level === 'alert'
-        ? 'border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/20'
-        : 'border-yellow-300 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900/20'
+        ? 'border-danger/30 bg-danger/10'
+        : 'border-warning/30 bg-warning/10'
     ]"
   >
     <div class="flex items-start gap-3">
-      <svg class="w-6 h-6 flex-shrink-0" :class="consumptionSummary.cumulative_alert_level === 'alert' ? 'text-red-500' : 'text-yellow-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-6 h-6 flex-shrink-0" :class="consumptionSummary.cumulative_alert_level === 'alert' ? 'text-danger-soft' : 'text-warning-soft'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
       </svg>
       <div>
-        <h4 :class="['font-semibold', consumptionSummary.cumulative_alert_level === 'alert' ? 'text-red-700 dark:text-red-300' : 'text-yellow-700 dark:text-yellow-300']">
+        <h4 :class="['font-semibold', consumptionSummary.cumulative_alert_level === 'alert' ? 'text-danger-soft' : 'text-warning-soft']">
           {{ consumptionSummary.cumulative_alert_level === 'alert' ? t('utilities.consumptionSummary.overcharge') : t('utilities.consumptionSummary.warning') }}
         </h4>
-        <p :class="['text-sm mt-1', consumptionSummary.cumulative_alert_level === 'alert' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400']">
+        <p :class="['text-sm mt-1', consumptionSummary.cumulative_alert_level === 'alert' ? 'text-danger-soft' : 'text-warning-soft']">
           {{ consumptionSummary.cumulative_message }}
         </p>
       </div>
@@ -27,13 +27,13 @@
   <!-- Informational message (provider charged less - not a problem) -->
   <div
     v-else-if="consumptionSummary?.cumulative_message && !consumptionSummary?.has_cumulative_alert"
-    class="p-3 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20"
+    class="p-3 rounded-lg border border-info/30 bg-info/10"
   >
     <div class="flex items-start gap-2">
-      <svg class="w-5 h-5 flex-shrink-0 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-5 h-5 flex-shrink-0 text-info-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
-      <p class="text-sm text-blue-700 dark:text-blue-300">
+      <p class="text-sm text-info-soft">
         {{ consumptionSummary.cumulative_message }}
       </p>
     </div>
@@ -46,9 +46,9 @@
     <div v-if="utilityType === 'electricity'" class="space-y-3">
       <div class="grid grid-cols-4 gap-2 sm:gap-3 text-sm">
         <div></div>
-        <div class="text-center font-medium text-red-600 dark:text-red-400">F1</div>
-        <div class="text-center font-medium text-yellow-600 dark:text-yellow-400">F2</div>
-        <div class="text-center font-medium text-green-600 dark:text-green-400">F3</div>
+        <div class="text-center font-medium text-danger-soft">F1</div>
+        <div class="text-center font-medium text-warning-soft">F2</div>
+        <div class="text-center font-medium text-positive-soft">F3</div>
 
         <div class="text-ink-soft text-xs sm:text-sm">{{ t('utilities.consumptionSummary.selfReadings') }}</div>
         <div class="text-center text-ink text-xs sm:text-sm">{{ fmtNum(consumptionSummary.total_user_f1) }}</div>
@@ -74,7 +74,7 @@
 
       <div :class="[
         'p-3 rounded grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm',
-        consumptionSummary.cumulative_difference > 1 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-surface'
+        consumptionSummary.cumulative_difference > 1 ? 'bg-danger/10' : 'bg-surface'
       ]">
         <div class="text-ink-soft text-xs sm:text-sm sm:text-center">{{ t('utilities.consumptionSummary.total') }}</div>
         <i18n-t keypath="utilities.consumptionSummary.totalSelfWithUnit" tag="div" class="text-ink text-xs sm:text-sm sm:text-center">
@@ -100,7 +100,7 @@
       </div>
       <div :class="[
         'text-center p-3 rounded',
-        consumptionSummary.cumulative_difference > 1 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-surface'
+        consumptionSummary.cumulative_difference > 1 ? 'bg-danger/10' : 'bg-surface'
       ]">
         <p class="text-xs text-ink-muted mb-1">
           {{ consumptionSummary.cumulative_difference > 0 ? t('utilities.consumptionSummary.overchargeShort') : t('utilities.consumptionSummary.difference') }}

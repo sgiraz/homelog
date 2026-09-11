@@ -70,7 +70,7 @@
                 </button>
                 <button
                   @click="confirmDeleteReading(reading)"
-                  class="p-2 rounded-lg text-ink-faint hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  class="p-2 rounded-lg text-ink-faint hover:text-danger-soft hover:bg-danger/10"
                   :title="t('utilities.readingsTab.deleteTitle')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

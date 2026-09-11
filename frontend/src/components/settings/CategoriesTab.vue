@@ -94,7 +94,7 @@
                 <button
                   v-if="isAdmin"
                   @click.stop="deleteCategory(cat)"
-                  class="p-1.5 text-red-400 hover:text-red-600 dark:hover:text-red-400"
+                  class="p-1.5 text-ink-faint hover:text-danger-soft"
                   :aria-label="t('settings.categories.deleteCategoryAria')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +141,7 @@
                 <button
                   v-if="isAdmin"
                   @click="deleteSubcategory(cat, sub)"
-                  class="p-2 text-red-400 hover:text-red-600 opacity-60 hover:opacity-100"
+                  class="p-2 text-danger-soft opacity-60 hover:opacity-100"
                   :aria-label="t('settings.categories.deleteSubcategoryAria')"
                 >
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,7 +184,7 @@
                 </button>
                 <button
                   @click.stop="deleteCategory(cat)"
-                  class="p-1.5 text-red-400 hover:text-red-600 dark:hover:text-red-400"
+                  class="p-1.5 text-ink-faint hover:text-danger-soft"
                   :aria-label="t('settings.categories.deleteCategoryAria')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,7 +229,7 @@
                 <span class="flex-1 text-sm text-ink-soft">{{ categoryLabel(sub) }}</span>
                 <button
                   @click="deleteSubcategory(cat, sub)"
-                  class="p-2 text-red-400 hover:text-red-600 opacity-60 hover:opacity-100"
+                  class="p-2 text-danger-soft opacity-60 hover:opacity-100"
                   :aria-label="t('settings.categories.deleteSubcategoryAria')"
                 >
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -242,7 +242,7 @@
         </div>
       </div>
 
-      <div v-if="categoryError" class="mt-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+      <div v-if="categoryError" class="mt-3 text-sm text-danger-soft bg-danger/10 p-3 rounded-lg">
         {{ categoryError }}
       </div>
     </Card>

@@ -14,7 +14,7 @@
       />
 
       <form @submit.prevent="handleSubmit" class="space-y-4">
-        <div v-if="isLocked" class="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200">
+        <div v-if="isLocked" class="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-warning-soft">
           <span>🔒</span>
           <span>{{ t('utilities.addBillModal.lockedNotice') }}</span>
         </div>
@@ -36,12 +36,12 @@
             <div v-if="rateLoading" class="text-xs text-ink-faint">
               {{ t('utilities.addBillModal.rateConverting') }}
             </div>
-            <div v-else-if="form.original_amount && convertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
+            <div v-else-if="form.original_amount && convertedAmount != null" class="text-xs text-positive-soft">
               {{ formatOriginal(form.original_amount, utility.currency) }} ≈ {{ formatCurrency(convertedAmount) }}
               <span class="text-ink-faint">{{ t('utilities.addBillModal.rateInfo', { rate: exchangeRate?.toFixed(6) }) }}</span>
             </div>
             <div v-else-if="rateError" class="space-y-1">
-              <p class="text-xs text-amber-600 dark:text-amber-400">
+              <p class="text-xs text-warning-soft">
                 {{ t('utilities.addBillModal.rateUnavailable') }}
               </p>
               <div class="flex items-center gap-2">
@@ -59,7 +59,7 @@
                 />
                 <span class="text-xs text-ink-muted">{{ settingsStore.currency }}</span>
               </div>
-              <div v-if="form.original_amount && manualConvertedAmount != null" class="text-xs text-green-600 dark:text-green-400">
+              <div v-if="form.original_amount && manualConvertedAmount != null" class="text-xs text-positive-soft">
                 {{ formatOriginal(form.original_amount, utility.currency) }} ≈ {{ formatCurrency(manualConvertedAmount) }}
               </div>
             </div>
@@ -154,8 +154,8 @@
           </select>
 
           <!-- Inline reading creation -->
-          <div v-if="form.user_reading_id === null" class="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
-            <p class="text-xs text-amber-700 dark:text-amber-300 mb-2">
+          <div v-if="form.user_reading_id === null" class="mt-2 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+            <p class="text-xs text-warning-soft mb-2">
               {{ t('utilities.addBillModal.inlineReadingHint') }}
             </p>
             <div class="flex gap-2 items-center">
@@ -195,7 +195,7 @@
           <div class="flex items-center gap-2">
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" v-model="form.has_estimated"
-                class="w-4 h-4 text-amber-600 rounded border-line focus:ring-amber-500" />
+                class="w-4 h-4 text-warning-soft rounded border-line focus:ring-amber-500" />
               <span class="text-sm text-ink-soft">{{ t('utilities.addBillModal.estimatedToggle') }}</span>
             </label>
             <button type="button" @click="showEstimatedHelp = !showEstimatedHelp"
@@ -204,12 +204,12 @@
               :aria-label="t('utilities.addBillModal.estimatedHelpAria')">?</button>
           </div>
           <div v-if="showEstimatedHelp"
-            class="mt-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-100 space-y-1.5">
+            class="mt-2 p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-warning-soft space-y-1.5">
             <p>{{ t('utilities.addBillModal.estimatedHelp1') }}</p>
             <p>{{ t('utilities.addBillModal.estimatedHelp2') }}</p>
-            <p class="text-amber-700 dark:text-amber-300">{{ t('utilities.addBillModal.estimatedHelp3') }}</p>
+            <p class="text-warning-soft">{{ t('utilities.addBillModal.estimatedHelp3') }}</p>
           </div>
-          <div v-if="form.has_estimated" class="mt-3 space-y-3 pl-4 border-l-2 border-amber-300 dark:border-amber-600">
+          <div v-if="form.has_estimated" class="mt-3 space-y-3 pl-4 border-l-2 border-warning/30">
             <div>
               <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.addBillModal.estimatedDate') }}</label>
               <input v-model="form.estimated_date" type="date"
@@ -219,7 +219,7 @@
               <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.addBillModal.estimatedReading') }}</label>
               <input v-model="form.estimated_reading" type="number" step="0.001" placeholder="0"
                 class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-amber-500" />
-              <p v-if="calculatedEstimatedConsumption != null" class="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              <p v-if="calculatedEstimatedConsumption != null" class="text-xs text-warning-soft mt-1">
                 {{ t('utilities.addBillModal.estimatedConsumption', { value: formatNumber(calculatedEstimatedConsumption), unit: utility.type === 'gas' ? 'Smc' : 'mc' }) }}
               </p>
             </div>
@@ -268,7 +268,7 @@
           </label>
         </div>
 
-        <div v-if="submitError" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+        <div v-if="submitError" class="text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
           {{ submitError }}
         </div>
 

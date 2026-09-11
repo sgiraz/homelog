@@ -63,23 +63,11 @@
         </button>
       </div>
 
-      <!-- Legend -->
+      <!-- Legend: generated from the same list as the highlights -->
       <div class="flex items-center gap-3 text-xs">
-        <span class="flex items-center gap-1">
-          <span class="w-3 h-3 rounded bg-green-400/60 border border-green-500"></span>
-          {{ t('utilities.pdfTextract.legendCurrency') }}
-        </span>
-        <span class="flex items-center gap-1">
-          <span class="w-3 h-3 rounded bg-purple-400/60 border border-purple-500"></span>
-          {{ t('utilities.pdfTextract.legendDate') }}
-        </span>
-        <span class="flex items-center gap-1">
-          <span class="w-3 h-3 rounded bg-blue-400/60 border border-blue-500"></span>
-          {{ t('utilities.pdfTextract.legendNumber') }}
-        </span>
-        <span class="flex items-center gap-1">
-          <span class="w-3 h-3 rounded bg-yellow-400/60 border border-yellow-500"></span>
-          {{ t('utilities.pdfTextract.legendSymbol') }}
+        <span v-for="group in TOKEN_GROUPS" :key="group.key" class="flex items-center gap-1">
+          <span :class="['w-3 h-3 rounded border', group.swatch]"></span>
+          {{ t(`utilities.pdfTextract.${group.labelKey}`) }}
         </span>
       </div>
     </div>
@@ -187,6 +175,7 @@
 </template>
 
 <script setup>
+import { TOKEN_GROUPS, tokenOverlayClass as getWordColorClass, tokenTooltipClass as getTooltipTextColor } from '@/utils/tokenStyles'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { classifyToken, TokenType, findTokenNeighbors } from '@/utils/tokenizer'
@@ -335,38 +324,6 @@ function getTypeLabel(type) {
   const key = map[type]
   if (!key) return type
   return t(`utilities.pdfTextract.tokenTypes.${key}`)
-}
-
-function getTooltipTextColor(type) {
-  switch (type) {
-    case TokenType.CURRENCY: return 'text-green-400'
-    case TokenType.DATE:
-    case TokenType.MONTH: return 'text-purple-400'
-    case TokenType.NUMBER: return 'text-blue-400'
-    case TokenType.SYMBOL: return 'text-yellow-400'
-    case TokenType.POD:
-    case TokenType.PDR: return 'text-orange-400'
-    default: return 'text-gray-200'
-  }
-}
-
-function getWordColorClass(type) {
-  switch (type) {
-    case TokenType.CURRENCY:
-      return 'bg-green-400/60 border-green-500 text-green-900 dark:text-green-100'
-    case TokenType.DATE:
-    case TokenType.MONTH:
-      return 'bg-purple-400/60 border-purple-500 text-purple-900 dark:text-purple-100'
-    case TokenType.NUMBER:
-      return 'bg-blue-400/60 border-blue-500 text-blue-900 dark:text-blue-100'
-    case TokenType.SYMBOL:
-      return 'bg-yellow-400/60 border-yellow-500 text-yellow-900 dark:text-yellow-100'
-    case TokenType.POD:
-    case TokenType.PDR:
-      return 'bg-orange-400/60 border-orange-500 text-orange-900 dark:text-orange-100'
-    default:
-      return 'bg-gray-300/60 border-line text-ink'
-  }
 }
 
 function handleDragStart(event, word) {

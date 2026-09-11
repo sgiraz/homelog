@@ -111,8 +111,8 @@ const toneChip = {
 // Tone → status-line color. Only urgent/actionable tones tint the detail text;
 // 'info' (e.g. readings) stays muted so it doesn't read like a link.
 const toneText = {
-  danger: 'text-red-600 dark:text-red-300',
-  warn: 'text-amber-700 dark:text-amber-300',
+  danger: 'text-danger-soft',
+  warn: 'text-warning-soft',
   positive: 'text-positive',
   accent: 'text-accent-soft',
 }

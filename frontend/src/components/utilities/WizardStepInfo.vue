@@ -79,7 +79,7 @@
       </div>
 
       <div v-else-if="pdfFile" class="flex flex-col items-center gap-2">
-        <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-10 h-10 text-positive-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <p class="text-sm font-medium text-ink">{{ pdfFile.name }}</p>
@@ -99,7 +99,7 @@
       </div>
     </div>
 
-    <div v-if="extractError" class="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+    <div v-if="extractError" class="text-sm text-danger-soft bg-danger/10 p-3 rounded-lg">
       {{ extractError }}
     </div>
   </div>

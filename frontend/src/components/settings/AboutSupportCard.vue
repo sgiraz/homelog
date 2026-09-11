@@ -11,7 +11,7 @@
             :href="latestUrl || links.github"
             target="_blank"
             rel="noopener"
-            class="text-xs font-medium text-amber-600 dark:text-amber-400 hover:underline"
+            class="text-xs font-medium text-accent-soft hover:underline"
           >
             {{ t('settings.about.updateAvailable') }}
           </a>

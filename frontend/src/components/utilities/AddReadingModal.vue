@@ -13,7 +13,7 @@
           <p class="text-sm text-ink-muted">{{ t('utilities.addReadingModal.tariffsLabel') }}</p>
           <div class="grid grid-cols-3 gap-3">
             <div>
-              <label class="block text-xs text-red-600 dark:text-red-400 mb-1 font-medium">{{ t('utilities.addReadingModal.f1Label') }}</label>
+              <label class="block text-xs text-danger-soft mb-1 font-medium">{{ t('utilities.addReadingModal.f1Label') }}</label>
               <Input
                 v-model="form.value_f1"
                 type="number"
@@ -24,7 +24,7 @@
               />
             </div>
             <div>
-              <label class="block text-xs text-yellow-600 dark:text-yellow-400 mb-1 font-medium">{{ t('utilities.addReadingModal.f2Label') }}</label>
+              <label class="block text-xs text-warning-soft mb-1 font-medium">{{ t('utilities.addReadingModal.f2Label') }}</label>
               <Input
                 v-model="form.value_f2"
                 type="number"
@@ -35,7 +35,7 @@
               />
             </div>
             <div>
-              <label class="block text-xs text-green-600 dark:text-green-400 mb-1 font-medium">{{ t('utilities.addReadingModal.f3Label') }}</label>
+              <label class="block text-xs text-positive-soft mb-1 font-medium">{{ t('utilities.addReadingModal.f3Label') }}</label>
               <Input
                 v-model="form.value_f3"
                 type="number"
@@ -92,7 +92,7 @@
           />
         </div>
 
-        <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+        <div v-if="error" class="text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
           {{ error }}
         </div>
 

@@ -20,7 +20,7 @@
       >
         <div class="flex flex-col items-center w-6 flex-shrink-0">
           <div class="w-3 h-3 rounded-full mt-4"
-            :class="change.new_amount > change.old_amount ? 'bg-red-500' : 'bg-green-500'"
+            :class="change.new_amount > change.old_amount ? 'bg-danger' : 'bg-positive'"
           />
           <div v-if="idx < utility.price_changes.length - 1" class="w-px flex-1 bg-surface-3" />
         </div>
@@ -30,7 +30,7 @@
               <div class="min-w-0">
                 <div class="font-medium text-ink">
                   {{ formatCurrency(change.old_amount) }} → {{ formatCurrency(change.new_amount) }}
-                  <span :class="change.new_amount > change.old_amount ? 'text-red-500' : 'text-green-500'" class="text-sm ml-1">
+                  <span :class="change.new_amount > change.old_amount ? 'text-danger-soft' : 'text-positive-soft'" class="text-sm ml-1">
                     ({{ change.new_amount > change.old_amount ? '+' : '' }}{{ formatCurrency(change.new_amount - change.old_amount) }})
                   </span>
                 </div>

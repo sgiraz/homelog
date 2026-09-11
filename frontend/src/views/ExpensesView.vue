@@ -144,7 +144,7 @@
               :class="[
                 'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
                 filters.unsettledOnly
-                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'
+                  ? 'bg-warning/10 text-warning-soft'
                   : 'text-ink-soft hover:bg-surface-2'
               ]"
             >
@@ -248,7 +248,7 @@
             :class="[
               'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
               filters.unsettledOnly
-                ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'
+                ? 'bg-warning/10 text-warning-soft'
                 : 'text-ink-soft hover:bg-surface-2'
             ]"
           >
@@ -339,7 +339,7 @@
               <div v-if="expense.is_split && expense.splits?.length" class="text-xs text-ink-muted">
                 {{ t('expenses.shareEach', { amount: formatCurrency(expense.splits[0]?.amount || 0) }) }}
               </div>
-              <div v-if="expense.bill_id" class="text-xs text-orange-600 dark:text-orange-400 mt-1">
+              <div v-if="expense.bill_id" class="text-xs text-ink-muted mt-1">
                 {{ t('expenses.fromBill') }}
               </div>
               <!-- Actions: on mobile always visible, on desktop hover -->
@@ -359,7 +359,7 @@
                 <button
                   v-if="!(expense.is_split && isExpenseSettled(expense))"
                   @click="deleteExpenseConfirm(expense.id)"
-                  class="p-1.5 text-red-600 hover:text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                  class="p-1.5 text-danger-soft hover:bg-danger/10 rounded"
                   :aria-label="t('expenses.deleteAria')"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -19,38 +19,38 @@
 
       <!-- Update result -->
       <div v-if="updateResult" class="mt-4">
-        <div v-if="updateResult.update_available" class="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-          <svg class="w-5 h-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div v-if="updateResult.update_available" class="flex items-start gap-3 p-3 bg-positive/10 rounded-lg">
+          <svg class="w-5 h-5 text-positive-soft shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
           </svg>
           <div>
-            <div class="text-sm font-medium text-green-800 dark:text-green-200">
+            <div class="text-sm font-medium text-positive-soft">
               {{ t('settings.data.updateAvailable', { version: updateResult.latest }) }}
             </div>
             <a
               :href="updateResult.latest_url"
               target="_blank"
               rel="noopener noreferrer"
-              class="text-sm text-green-700 dark:text-green-300 underline hover:no-underline mt-1 inline-block"
+              class="text-sm text-positive-soft underline hover:no-underline mt-1 inline-block"
             >
               {{ t('settings.data.viewChangelog') }}
             </a>
-            <div class="text-xs text-green-600 dark:text-green-400 mt-2">
-              {{ t('settings.data.updateInstructions') }} <code class="bg-green-100 dark:bg-green-800/50 px-1.5 py-0.5 rounded">docker compose pull &amp;&amp; docker compose up -d</code>
+            <div class="text-xs text-positive-soft mt-2">
+              {{ t('settings.data.updateInstructions') }} <code class="bg-surface-2 text-ink px-1.5 py-0.5 rounded">docker compose pull &amp;&amp; docker compose up -d</code>
             </div>
           </div>
         </div>
         <!-- The server could not compare: GitHub unreachable, or this build
              carries no version. Not the same thing as being up to date. -->
-        <div v-else-if="updateResult.check_failed" class="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-          <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div v-else-if="updateResult.check_failed" class="flex items-start gap-3 p-3 bg-warning/10 rounded-lg">
+          <svg class="w-5 h-5 text-warning-soft shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
           <div>
-            <div class="text-sm font-medium text-amber-800 dark:text-amber-200">
+            <div class="text-sm font-medium text-warning-soft">
               {{ t('settings.data.checkUnavailable') }}
             </div>
-            <div class="text-xs text-amber-700 dark:text-amber-300 mt-1">
+            <div class="text-xs text-warning-soft mt-1">
               {{ t('settings.data.checkUnavailableHint') }}
             </div>
           </div>
@@ -63,7 +63,7 @@
         </div>
       </div>
 
-      <div v-if="checkError" class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-sm text-red-700 dark:text-red-300">
+      <div v-if="checkError" class="mt-4 p-3 bg-danger/10 rounded-lg text-sm text-danger-soft">
         {{ t('settings.data.checkError') }}
       </div>
     </Card>
@@ -152,7 +152,7 @@
           </div>
 
           <div v-if="selectedFile" class="mt-4 space-y-3">
-            <div class="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-sm text-yellow-800 dark:text-yellow-200">
+            <div class="flex items-start gap-2 p-3 bg-warning/10 rounded-lg text-sm text-warning-soft">
               <span class="shrink-0 font-bold">!</span>
               <span>{{ t('settings.data.importWarning') }}</span>
             </div>

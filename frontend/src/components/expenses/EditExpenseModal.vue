@@ -2,11 +2,11 @@
   <BaseModal :title="t('expenses.modal.editTitle')" @close="$emit('close')">
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <!-- Settled expense notice -->
-      <div v-if="isSettled" class="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-        <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div v-if="isSettled" class="flex items-start gap-2 bg-warning/10 border border-warning/30 rounded-lg p-3">
+        <svg class="w-4 h-4 text-warning-soft mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
         </svg>
-        <p class="text-sm text-amber-800 dark:text-amber-200">
+        <p class="text-sm text-warning-soft">
           {{ t('expenses.modal.settledNotice') }}
         </p>
       </div>
@@ -23,7 +23,7 @@
           :required="!amountLocked"
           :disabled="amountLocked"
         />
-        <p v-if="amountLocked && !isSettled" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
+        <p v-if="amountLocked && !isSettled" class="mt-1 text-xs text-warning-soft">
           {{ t('expenses.modal.amountLockedNotice') }}
         </p>
         <p v-if="expense.original_currency" class="mt-1 text-xs text-ink-muted">
@@ -129,13 +129,13 @@
       </div>
 
       <!-- Note about split -->
-      <div v-if="expense.is_split && !isSettled" class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-        <p class="text-sm text-yellow-800 dark:text-yellow-200">
+      <div v-if="expense.is_split && !isSettled" class="bg-warning/10 border border-warning/30 rounded-lg p-3">
+        <p class="text-sm text-warning-soft">
           {{ t('expenses.modal.splitEditNotice') }}
         </p>
       </div>
 
-      <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+      <div v-if="error" class="text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
         {{ error }}
       </div>
 

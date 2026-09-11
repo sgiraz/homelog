@@ -1,11 +1,11 @@
 <template>
-  <div class="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+  <div class="border border-info/30 bg-info/10 rounded-lg p-4">
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 text-info-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
-        <span class="text-sm font-medium text-blue-700 dark:text-blue-300">
+        <span class="text-sm font-medium text-info-soft">
           {{ t('utilities.providerReadings.title') }}
         </span>
       </div>
@@ -22,15 +22,15 @@
     <div v-show="hasReadings && !isEditing">
       <div v-if="utilityType === 'electricity'" class="grid grid-cols-3 gap-2 text-center">
         <div class="bg-surface rounded p-2">
-          <p class="text-xs text-red-600 dark:text-red-400 font-medium">F1</p>
+          <p class="text-xs text-danger-soft font-medium">F1</p>
           <p class="text-sm font-semibold text-ink">{{ fmt(f1) }}</p>
         </div>
         <div class="bg-surface rounded p-2">
-          <p class="text-xs text-yellow-600 dark:text-yellow-400 font-medium">F2</p>
+          <p class="text-xs text-warning-soft font-medium">F2</p>
           <p class="text-sm font-semibold text-ink">{{ fmt(f2) }}</p>
         </div>
         <div class="bg-surface rounded p-2">
-          <p class="text-xs text-green-600 dark:text-green-400 font-medium">F3</p>
+          <p class="text-xs text-positive-soft font-medium">F3</p>
           <p class="text-sm font-semibold text-ink">{{ fmt(f3) }}</p>
         </div>
       </div>
@@ -57,17 +57,17 @@
       <!-- Electricity readings (F1/F2/F3) -->
       <div v-if="utilityType === 'electricity'" class="grid grid-cols-3 gap-2">
         <div>
-          <label class="block text-xs text-red-600 dark:text-red-400 mb-1 font-medium">{{ t('utilities.providerReadings.f1Label') }}</label>
+          <label class="block text-xs text-danger-soft mb-1 font-medium">{{ t('utilities.providerReadings.f1Label') }}</label>
           <input v-model="f1" type="number" step="0.001" placeholder="0"
             class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div>
-          <label class="block text-xs text-yellow-600 dark:text-yellow-400 mb-1 font-medium">{{ t('utilities.providerReadings.f2Label') }}</label>
+          <label class="block text-xs text-warning-soft mb-1 font-medium">{{ t('utilities.providerReadings.f2Label') }}</label>
           <input v-model="f2" type="number" step="0.001" placeholder="0"
             class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div>
-          <label class="block text-xs text-green-600 dark:text-green-400 mb-1 font-medium">{{ t('utilities.providerReadings.f3Label') }}</label>
+          <label class="block text-xs text-positive-soft mb-1 font-medium">{{ t('utilities.providerReadings.f3Label') }}</label>
           <input v-model="f3" type="number" step="0.001" placeholder="0"
             class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>

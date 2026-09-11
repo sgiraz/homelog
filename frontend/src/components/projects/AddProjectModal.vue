@@ -113,7 +113,7 @@
                 @change="toggleMember(member.user_id)"
                 class="w-4 h-4 text-blue-600 rounded border-line focus:ring-blue-500 flex-shrink-0"
               />
-              <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-xs font-medium text-purple-700 dark:text-purple-300 flex-shrink-0">
+              <div class="w-7 h-7 rounded-full bg-surface-2 flex items-center justify-center text-xs font-medium text-ink-soft flex-shrink-0">
                 {{ getInitials(member.name) }}
               </div>
               <span class="text-sm text-ink truncate">{{ member.name }}</span>
@@ -136,7 +136,7 @@
       </div>
 
       <!-- Error -->
-      <div v-if="error" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+      <div v-if="error" class="text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
         {{ error }}
       </div>
 

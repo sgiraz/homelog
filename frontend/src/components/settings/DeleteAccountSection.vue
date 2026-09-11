@@ -1,6 +1,6 @@
 <template>
-  <Card class="p-6 border-red-200 dark:border-red-800">
-    <h2 class="text-xl font-bold text-red-600 dark:text-red-400 mb-2">{{ t('settings.deleteAccount.title') }}</h2>
+  <Card class="p-6 border-danger/30">
+    <h2 class="text-xl font-bold text-danger-soft mb-2">{{ t('settings.deleteAccount.title') }}</h2>
     <p class="text-sm text-ink-soft mb-4">
       {{ t('settings.deleteAccount.description') }}
     </p>
@@ -19,8 +19,8 @@
 
     <!-- Step 1: Blocking — must nominate admins -->
     <div v-else-if="deleteStep === 'blocking'" class="space-y-4">
-      <div class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
-        <p class="text-sm font-medium text-amber-800 dark:text-amber-300 mb-2">
+      <div class="p-3 bg-warning/10 border border-warning/30 rounded-lg">
+        <p class="text-sm font-medium text-warning-soft mb-2">
           {{ t('settings.deleteAccount.blockingHeader') }}
         </p>
       </div>
@@ -58,11 +58,11 @@
     <!-- Step 2: Can delete — confirm -->
     <div v-else-if="deleteStep === 'confirm'" class="space-y-4">
       <div v-if="deleteCheckResult.data_loss_properties?.length > 0"
-           class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
-        <p class="text-sm font-medium text-red-800 dark:text-red-300 mb-1">
+           class="p-3 bg-danger/10 border border-danger/30 rounded-lg">
+        <p class="text-sm font-medium text-danger-soft mb-1">
           {{ t('settings.deleteAccount.confirmHeader') }}
         </p>
-        <ul class="text-sm text-red-700 dark:text-red-400 list-disc list-inside">
+        <ul class="text-sm text-danger-soft list-disc list-inside">
           <li v-for="name in deleteCheckResult.data_loss_properties" :key="name">{{ name }}</li>
         </ul>
       </div>
@@ -82,7 +82,7 @@
         </span>
       </label>
 
-      <div v-if="deleteError" class="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+      <div v-if="deleteError" class="text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
         {{ deleteError }}
       </div>
 

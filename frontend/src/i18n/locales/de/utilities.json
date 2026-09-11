@@ -10,6 +10,7 @@
     "legendDate": "Datum",
     "legendNumber": "Zahl",
     "legendSymbol": "Symbol",
+    "legendCode": "POD/PDR",
     "pageAlt": "Seite {n}",
     "tooltipType": "Typ",
     "tooltipPage": "Seite",

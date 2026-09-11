@@ -57,7 +57,7 @@
             <button
               v-if="authStore.avatarUrl"
               @click="removeAvatar"
-              class="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400"
+              class="text-xs text-danger-soft hover:underline"
             >
               {{ t('settings.profile.removeAvatar') }}
             </button>

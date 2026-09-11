@@ -104,8 +104,8 @@
                 <span class="text-ink font-medium">{{ formatCurrency(inst.amount) }}</span>
                 <span class="text-xs text-ink-faint">{{ t('utilities.billsTab.installmentDue', { date: formatDate(inst.due_date) }) }}</span>
               </label>
-              <span v-if="inst.is_locked" class="text-xs text-amber-600 dark:text-amber-400" :title="lockedHint">{{ t('utilities.billsTab.installmentLocked') }}</span>
-              <span v-else-if="inst.is_paid" class="text-xs text-green-600 dark:text-green-400">{{ t('utilities.billsTab.installmentPaid') }}</span>
+              <span v-if="inst.is_locked" class="text-xs text-warning-soft" :title="lockedHint">{{ t('utilities.billsTab.installmentLocked') }}</span>
+              <span v-else-if="inst.is_paid" class="text-xs text-positive-soft">{{ t('utilities.billsTab.installmentPaid') }}</span>
             </div>
           </div>
         </template>
@@ -125,10 +125,10 @@
               <span :class="[
                 'px-2 py-0.5 text-xs rounded-full font-medium',
                 bill.is_paid
-                  ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
+                  ? 'bg-positive/10 text-positive-soft'
                   : isDueSoon(bill)
-                    ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300'
-                    : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
+                    ? 'bg-warning/10 text-warning-soft'
+                    : 'bg-danger/10 text-danger-soft'
               ]">
                 {{ bill.is_paid ? t('utilities.billsTab.statusPaidBadge') : isDueSoon(bill) ? t('utilities.billsTab.statusDueSoon') : t('utilities.billsTab.statusUnpaidBadge') }}
               </span>
@@ -145,13 +145,13 @@
 
           <!-- Actions -->
           <div class="flex items-center gap-1 flex-shrink-0">
-            <Badge v-if="bill.is_locked" variant="warning" :title="lockedHint">
+            <Badge v-if="bill.is_locked" variant="neutral" :title="lockedHint">
               {{ t('utilities.billsTab.lockedBadge') }}
             </Badge>
             <button
               v-if="!bill.is_paid && !hasMultipleInstallments(bill) && !bill.is_locked"
               @click="markBillAsPaid(bill)"
-              class="p-2.5 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+              class="p-2.5 rounded-lg text-positive-soft hover:bg-positive/10"
               :title="t('utilities.billsTab.markPaidTitle')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,7 +170,7 @@
             <button
               :disabled="bill.is_locked"
               @click="confirmDeleteBill(bill)"
-              class="p-2.5 rounded-lg text-ink-faint hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink-faint"
+              class="p-2.5 rounded-lg text-ink-faint hover:text-danger-soft hover:bg-danger/10 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink-faint"
               :title="bill.is_locked ? lockedHint : t('utilities.billsTab.deleteTitle')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

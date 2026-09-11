@@ -239,6 +239,7 @@
     "legendDate": "Data",
     "legendNumber": "Numero",
     "legendSymbol": "Simbolo",
+    "legendCode": "POD/PDR",
     "pageAlt": "Pagina {n}",
     "tooltipType": "Tipo",
     "tooltipPage": "Pag.",

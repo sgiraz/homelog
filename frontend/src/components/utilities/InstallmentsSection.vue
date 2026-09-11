@@ -33,13 +33,13 @@
           class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-70" />
       </div>
       <button v-if="!isEditing" type="button" @click="removeInstallment(idx)"
-        class="text-red-600 dark:text-red-400 text-xs pb-2 px-1 hover:underline"
+        class="text-danger-soft text-xs pb-2 px-1 hover:underline"
         :disabled="installments.length <= 1">−</button>
-      <span v-else class="text-xs pb-2 px-1" :class="inst.is_paid ? 'text-green-600 dark:text-green-400' : 'text-ink-faint'">
+      <span v-else class="text-xs pb-2 px-1" :class="inst.is_paid ? 'text-positive-soft' : 'text-ink-faint'">
         {{ inst.is_paid ? '✓' : '—' }}
       </span>
     </div>
-    <div v-if="!isEditing && amountMismatch" class="text-xs text-red-600 dark:text-red-400">
+    <div v-if="!isEditing && amountMismatch" class="text-xs text-danger-soft">
       {{ t('utilities.installments.mismatch') }}
     </div>
     <p v-if="isEditing" class="text-xs text-ink-faint">

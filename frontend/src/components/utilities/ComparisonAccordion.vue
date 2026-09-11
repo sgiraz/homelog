@@ -41,14 +41,14 @@
       <!-- Expandable detail -->
       <div v-show="expandedCards.has(comparison.bill_id)" class="px-3 sm:px-4 pb-3 sm:pb-4 space-y-3">
         <!-- Days difference and effective threshold info -->
-        <div v-if="comparison.days_difference > 0" class="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-3 py-2 rounded">
+        <div v-if="comparison.days_difference > 0" class="text-xs bg-info/10 text-info-soft px-3 py-2 rounded">
           <span class="font-medium">{{ t('utilities.comparisonAccordion.daysDifference', { n: comparison.days_difference }) }}</span> {{ t('utilities.comparisonAccordion.daysDifferenceMessage') }}
           {{ t('utilities.comparisonAccordion.effectiveThreshold') }} <span class="font-medium">{{ fmtNum(comparison.effective_threshold) }} {{ getUnit() }}</span>
         </div>
 
         <!-- Alert message if any -->
         <div v-if="comparison.alert_message && comparison.status !== 'ok'" class="text-sm">
-          <span :class="comparison.status === 'alert' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'">
+          <span :class="comparison.status === 'alert' ? 'text-danger-soft' : 'text-warning-soft'">
             {{ comparison.alert_message }}
           </span>
         </div>
@@ -87,8 +87,8 @@
           <div v-if="comparison.difference != null" class="col-span-2 text-center">
             <span :class="[
               'text-sm font-medium',
-              comparison.status === 'alert' ? 'text-red-600' :
-              comparison.status === 'warning' ? 'text-yellow-600' : 'text-green-600'
+              comparison.status === 'alert' ? 'text-danger-soft' :
+              comparison.status === 'warning' ? 'text-warning-soft' : 'text-positive-soft'
             ]">
               {{ t('utilities.comparisonAccordion.differencePrefix') }} {{ fmtDiff(comparison.difference) }} {{ getUnit() }}
             </span>
@@ -154,13 +154,13 @@ defineEmits(['toggle-card'])
 function getStatusClasses(status) {
   switch (status) {
     case 'alert':
-      return 'border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/20'
+      return 'border-danger/30 bg-danger/10'
     case 'warning':
-      return 'border-yellow-300 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900/20'
+      return 'border-warning/30 bg-warning/10'
     case 'no_data':
       return 'border-line bg-surface'
     default:
-      return 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20'
+      return 'border-positive/30 bg-positive/10'
   }
 }
 
@@ -230,9 +230,9 @@ const ReadingBandComparison = {
 
     const getBandColor = () => {
       switch (props.band) {
-        case 'F1': return 'text-red-600 dark:text-red-400'
-        case 'F2': return 'text-yellow-600 dark:text-yellow-400'
-        case 'F3': return 'text-green-600 dark:text-green-400'
+        case 'F1': return 'text-danger-soft'
+        case 'F2': return 'text-warning-soft'
+        case 'F3': return 'text-positive-soft'
         default: return 'text-ink-soft'
       }
     }
@@ -241,9 +241,9 @@ const ReadingBandComparison = {
       if (props.difference == null) return 'text-ink-muted'
       const abs = Math.abs(props.difference)
       const threshold = props.threshold || 2
-      if (abs > threshold * 2) return 'text-red-600'
-      if (abs > threshold) return 'text-yellow-600'
-      return 'text-green-600'
+      if (abs > threshold * 2) return 'text-danger-soft'
+      if (abs > threshold) return 'text-warning-soft'
+      return 'text-positive-soft'
     }
 
     return () => h('div', { class: 'text-center p-2 bg-surface rounded-lg' }, [

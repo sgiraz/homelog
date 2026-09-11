@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-4">
     <div class="text-center py-4">
-      <svg class="w-16 h-16 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-16 h-16 mx-auto text-positive-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
       <h4 class="text-lg font-bold text-ink mt-4">{{ t('utilities.wizardStepReview.ready') }}</h4>

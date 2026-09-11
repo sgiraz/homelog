@@ -27,7 +27,7 @@
               :class="[
                 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors z-10',
                 step > index + 1
-                  ? 'bg-green-500 text-white'
+                  ? 'bg-positive text-white'
                   : step === index + 1
                     ? 'bg-blue-500 text-white'
                     : 'bg-surface-3 text-ink-soft'
@@ -51,7 +51,7 @@
             v-if="index < steps.length - 1"
             :class="[
               'w-16 h-1 mx-2 mb-0',
-              step > index + 1 ? 'bg-green-500' : 'bg-surface-3'
+              step > index + 1 ? 'bg-positive' : 'bg-surface-3'
             ]"
           />
         </div>
@@ -109,7 +109,7 @@
       />
 
       <!-- Error -->
-      <div v-if="error" class="mt-4 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+      <div v-if="error" class="mt-4 text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
         {{ error }}
       </div>
 

@@ -70,7 +70,7 @@
         </Card>
         <Card class="p-4">
           <div class="text-xs text-ink-muted mb-1">{{ t('utilities.kpi.unpaidTotal') }}</div>
-          <div class="text-xl font-bold" :class="dashboardKPIs.unpaidTotal > 0 ? 'text-red-600 dark:text-red-400' : 'text-ink'">
+          <div class="text-xl font-bold" :class="dashboardKPIs.unpaidTotal > 0 ? 'text-danger-soft' : 'text-ink'">
             {{ formatCurrency(dashboardKPIs.unpaidTotal) }}
           </div>
         </Card>
@@ -92,8 +92,8 @@
           :class="[
             'flex items-center gap-3 p-3 rounded-xl border text-sm',
             alert.type === 'warning'
-              ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300'
-              : 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-800 dark:text-orange-300'
+              ? 'bg-warning/10 border-warning/30 text-warning-soft'
+              : 'bg-info/10 border-info/30 text-info-soft'
           ]"
         >
           <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,7 +124,7 @@
           <Card class="p-5 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-800 transition-all h-full">
             <!-- Header -->
             <div class="flex items-center gap-3 mb-3">
-              <div :class="['p-2.5 rounded-xl border', getUtilityColorClasses(utility.type)]">
+              <div :class="['p-2.5 rounded-xl border', utilityTypeStyle(utility.type).tile, utilityTypeStyle(utility.type).iconColor]">
                 <component :is="getUtilityIcon(utility.type)" class="w-6 h-6" />
               </div>
               <div class="flex-1 min-w-0">
@@ -155,7 +155,7 @@
             <!-- Alert (metered only) -->
             <div
               v-if="shouldShowReadingAlert(utility)"
-              class="mt-3 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-xs text-orange-600 dark:text-orange-400"
+              class="mt-3 p-2 bg-info/10 rounded-lg text-xs text-info-soft"
             >
               {{ getReadingAlertMessage(utility) }}
             </div>
@@ -227,6 +227,7 @@
 defineOptions({ name: 'UtilitiesView' })
 
 import { ref, computed, onMounted, onActivated, h } from 'vue'
+import { utilityTypeStyle } from '@/config/utilityTypes'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useUtilitiesStore } from '@/stores/utilities'
@@ -413,20 +414,6 @@ function getUtilityIcon(type) {
     internet: InternetIcon, insurance: InsuranceIcon, affitto: RentIcon, mutuo: MortgageIcon
   }
   return icons[type] || ElectricityIcon
-}
-
-function getUtilityColorClasses(type) {
-  const classes = {
-    electricity: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-500',
-    gas: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-500',
-    water: 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800 text-cyan-500',
-    waste: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-500',
-    internet: 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-500',
-    insurance: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-500',
-    affitto: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800 text-purple-500',
-    mutuo: 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 text-sky-500',
-  }
-  return classes[type] || classes.electricity
 }
 
 function getUtilityName(type) {

@@ -72,7 +72,7 @@
             </label>
           </div>
         </div>
-        <div v-if="propertyError" class="text-sm text-red-600 dark:text-red-400">{{ propertyError }}</div>
+        <div v-if="propertyError" class="text-sm text-danger-soft">{{ propertyError }}</div>
         <Button @click="addProperty" :disabled="!newProperty.name.trim() || propertyLoading">
           {{ propertyLoading ? t('settings.properties.creatingButton') : t('settings.properties.createButton') }}
         </Button>

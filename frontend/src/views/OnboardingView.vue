@@ -16,7 +16,7 @@
               :class="[
                 'w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-colors',
                 currentStep > step.id
-                  ? 'bg-green-500 text-white'
+                  ? 'bg-positive text-white'
                   : currentStep === step.id
                     ? 'bg-blue-600 text-white'
                     : 'bg-surface-3 text-ink-muted'
@@ -34,7 +34,7 @@
             v-if="index < steps.length - 1"
             :class="[
               'flex-1 h-0.5 mx-2 transition-colors',
-              currentStep > step.id ? 'bg-green-400' : 'bg-surface-3'
+              currentStep > step.id ? 'bg-positive' : 'bg-surface-3'
             ]"
           />
         </template>
@@ -85,8 +85,8 @@
                   : 'border-line hover:border-blue-300 dark:hover:border-blue-600 hover:bg-surface-2'
               ]"
             >
-              <div class="flex items-center justify-center w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/50">
-                <svg class="w-7 h-7 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="flex items-center justify-center w-14 h-14 rounded-full bg-positive/10">
+                <svg class="w-7 h-7 text-positive-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
@@ -129,7 +129,7 @@
             />
           </div>
 
-          <div v-if="stepError" class="mt-4 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+          <div v-if="stepError" class="mt-4 text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
             {{ stepError }}
           </div>
 
@@ -206,13 +206,13 @@
           </div>
 
           <!-- Join request sent success -->
-          <div v-if="joinRequestSent" class="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-            <p class="text-green-700 dark:text-green-400 text-sm font-medium">
+          <div v-if="joinRequestSent" class="mt-4 p-4 bg-positive/10 border border-positive/30 rounded-lg">
+            <p class="text-positive-soft text-sm font-medium">
               {{ t('onboarding.step2Join.requestSent') }}
             </p>
           </div>
 
-          <div v-if="stepError" class="mt-4 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+          <div v-if="stepError" class="mt-4 text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
             {{ stepError }}
           </div>
 
@@ -304,7 +304,7 @@
             </div>
           </div>
 
-          <div v-if="stepError" class="mt-4 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+          <div v-if="stepError" class="mt-4 text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
             {{ stepError }}
           </div>
 
@@ -340,7 +340,7 @@
             </div>
           </div>
 
-          <div v-if="stepError" class="mb-4 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+          <div v-if="stepError" class="mb-4 text-danger-soft text-sm bg-danger/10 p-3 rounded-lg">
             {{ stepError }}
           </div>
 
