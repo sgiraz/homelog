@@ -1,6 +1,28 @@
-node_modules/
-backend/cmd/api/static/
+# The Dockerfile copies only frontend/ and backend/, but the whole directory is
+# sent as build context. Keep local artefacts out of it: a developer's own
+# database, binaries and secrets must never reach a builder stage, where a
+# cache export could carry them further than intended.
 .git/
-data/
+.claude/
+.vscode/
 *.md
+
+# Dependencies and build output (rebuilt inside the image)
+**/node_modules/
+**/dist/
+**/dev-dist/
+frontend/.vite/
+backend/cmd/api/static/
+
+# Local data and binaries
+data/
+backend/data/
+**/*.exe
+**/*.db
+**/*.db-*
+
+# Secrets
 .env
+.env.*
+env.local
+*.local

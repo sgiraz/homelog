@@ -52,7 +52,7 @@ un settlement con `payment_method = "compensation"` e due allocazioni (una
 
 ### Problema
 Le famiglie gestiscono le spese in modi diversi:
-- **Split Mode (Simone & Valentina)**: Ogni spesa viene divisa 50/50, si tiene traccia di chi deve cosa, si fanno bonifici per pareggiare
+- **Split Mode (Luca & Anna)**: Ogni spesa viene divisa 50/50, si tiene traccia di chi deve cosa, si fanno bonifici per pareggiare
 - **Shared Mode**: Spese condivise senza debiti, solo per tracking e analytics
 
 ### Soluzione
@@ -386,13 +386,13 @@ Ottieni bilancio corrente per una property
   "balance": 123.45,
   "current_user_id": 1,
   "other_user_id": 2,
-  "current_user_name": "Simone",
-  "other_user_name": "Valentina",
+  "current_user_name": "Luca",
+  "other_user_name": "Anna",
   "currency": "EUR",
   "unsettled_expenses_count": 12,
   "total_you_paid": 450.00,
   "total_other_paid": 326.55,
-  "message": "Valentina ti deve €123.45"
+  "message": "Anna ti deve €123.45"
 }
 ```
 
@@ -410,7 +410,7 @@ Dettagli bilancio (split non saldati + settlements)
       "expense_date": "2025-01-27",
       "expense_category": "Alimentari",
       "paid_by_user_id": 1,
-      "paid_by_name": "Simone",
+      "paid_by_name": "Luca",
       "split_amount": 60.00,
       "my_share": true
     }
@@ -419,8 +419,8 @@ Dettagli bilancio (split non saldati + settlements)
     {
       "id": 3,
       "date": "2025-01-20",
-      "from_user_name": "Valentina",
-      "to_user_name": "Simone",
+      "from_user_name": "Anna",
+      "to_user_name": "Luca",
       "amount": 150.00,
       "payment_method": "bank_transfer",
       "note": "Pareggio gennaio"
@@ -477,8 +477,8 @@ Lista settlements di una property
     {
       "id": 5,
       "date": "2025-01-27",
-      "from_user_name": "Valentina",
-      "to_user_name": "Simone",
+      "from_user_name": "Anna",
+      "to_user_name": "Luca",
       "amount": 123.45,
       "payment_method": "bank_transfer",
       "note": "Pareggio gennaio"
@@ -885,45 +885,45 @@ const SettingsView = () => {
 
 ### Test 1: Split Equo Semplice
 ```
-Given: Split mode attivo, 2 membri (Simone, Valentina)
-When: Simone aggiunge spesa €100, split con Valentina
+Given: Split mode attivo, 2 membri (Luca, Anna)
+When: Luca aggiunge spesa €100, split con Anna
 Then:
-  - Expense.paid_by_user_id = 1 (Simone)
+  - Expense.paid_by_user_id = 1 (Luca)
   - ExpenseSplit.user_id = 1, amount = 50, is_settled = true
   - ExpenseSplit.user_id = 2, amount = 50, is_settled = false
-  - Balance Simone = +€50
-  - Balance Valentina = -€50
+  - Balance Luca = +€50
+  - Balance Anna = -€50
 ```
 
 ### Test 2: Multiple Spese
 ```
 Given: 
-  - Simone paga €100 (split)
-  - Valentina paga €60 (split)
-  - Simone paga €80 (split)
+  - Luca paga €100 (split)
+  - Anna paga €60 (split)
+  - Luca paga €80 (split)
 When: Calcolo bilancio
 Then:
-  - Simone: +€50 (da spesa 1) -€30 (da spesa 2) +€40 (da spesa 3) = +€60
-  - Valentina: -€50 +€30 -€40 = -€60
+  - Luca: +€50 (da spesa 1) -€30 (da spesa 2) +€40 (da spesa 3) = +€60
+  - Anna: -€50 +€30 -€40 = -€60
 ```
 
 ### Test 3: Settlement Completo
 ```
-Given: Valentina deve a Simone €60
-When: Valentina registra settlement di €60
+Given: Anna deve a Luca €60
+When: Anna registra settlement di €60
 Then:
-  - Balance Simone = 0
-  - Balance Valentina = 0
+  - Balance Luca = 0
+  - Balance Anna = 0
   - Tutti gli ExpenseSplit marcati is_settled = true
 ```
 
 ### Test 4: Settlement Parziale
 ```
-Given: Valentina deve a Simone €100
-When: Valentina registra settlement di €50
+Given: Anna deve a Luca €100
+When: Anna registra settlement di €50
 Then:
-  - Balance Simone = +€50
-  - Balance Valentina = -€50
+  - Balance Luca = +€50
+  - Balance Anna = -€50
   - Solo gli split più vecchi per totale €50 marcati is_settled = true
 ```
 
@@ -940,11 +940,11 @@ Then:
 ### Test 6: Cambio Pagatore
 ```
 Given: Split mode attivo
-When: Utente aggiunge spesa e seleziona "Pagato da Valentina"
+When: Utente aggiunge spesa e seleziona "Pagato da Anna"
 Then:
-  - Expense.paid_by_user_id = 2 (Valentina)
-  - Split per Valentina is_settled = true
-  - Split per Simone is_settled = false
+  - Expense.paid_by_user_id = 2 (Anna)
+  - Split per Anna is_settled = true
+  - Split per Luca is_settled = false
   - Balance aggiornato correttamente
 ```
 

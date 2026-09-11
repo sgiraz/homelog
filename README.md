@@ -40,7 +40,10 @@
   </tr>
 </table>
 
-<!-- To update: save screenshots as PNG in docs/screenshots/ with the names above -->
+<!-- To update: never capture from a real account. Run a local instance with
+     DEMO_MODE=true on a throwaway DB_PATH (it seeds fake data), capture at a
+     390x844 phone viewport, and save as JPEG in docs/screenshots/ with the
+     names above. -->
 
 ---
 
