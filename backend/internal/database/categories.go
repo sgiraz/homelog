@@ -79,9 +79,14 @@ type CategorySpec struct {
 	// therefore the key MigrateDefaultCategorySlugs matches legacy rows on.
 	// Nothing displays it for a row that has a slug.
 	SeedName string
-	Icon     string
-	Color    string
-	Subs     []SubcategorySpec
+	// LegacySeedNames are names an earlier catalogue seeded this category
+	// with. A database seeded before the rename still holds the old name, and
+	// without this list the backfill would take it for an admin's rename and
+	// leave the category untranslated forever.
+	LegacySeedNames []string
+	Icon            string
+	Color           string
+	Subs            []SubcategorySpec
 }
 
 // DefaultCategories is the catalogue of built-in categories: the slugs, the
@@ -140,6 +145,9 @@ var DefaultCategories = []CategorySpec{
 	},
 	{
 		Slug: "clothing_personal_care", SeedName: "Abbigliamento e Cura Personale", Icon: "👕", Color: "#F97316",
+		// Seeded as "Abbigliamento" until 2026-02-28; the household database
+		// on the Pi still carries that name.
+		LegacySeedNames: []string{"Abbigliamento"},
 		Subs: []SubcategorySpec{
 			{Slug: "clothing_adults", SeedName: "Abbigliamento adulti"},
 			{Slug: "clothing_hairdresser", SeedName: "Parrucchiere/Barbiere"},
@@ -238,9 +246,11 @@ func SeedDefaultCategories(db *gorm.DB) error {
 }
 
 // MigrateDefaultCategorySlugs backfills the slug column on databases seeded
-// before slugs existed, matching on the Italian name the seed wrote. A default
-// category an admin has since renamed finds no match and keeps an empty slug,
-// which is the intended outcome: the rename wins over the translation.
+// before slugs existed, matching on the Italian name the seed wrote — the
+// current SeedName, or a LegacySeedNames entry for rows seeded before a
+// catalogue rename. A default category an admin has since renamed finds no
+// match and keeps an empty slug, which is the intended outcome: the rename
+// wins over the translation.
 // Safe to call at every startup — it only fills rows whose slug is empty.
 func MigrateDefaultCategorySlugs(db *gorm.DB) error {
 	var categories []models.Category
@@ -250,13 +260,40 @@ func MigrateDefaultCategorySlugs(db *gorm.DB) error {
 	}
 
 	nameToSpec := make(map[string]CategorySpec, len(DefaultCategories))
+	legacyToSpec := make(map[string]CategorySpec)
 	for _, spec := range DefaultCategories {
 		nameToSpec[spec.SeedName] = spec
+		for _, name := range spec.LegacySeedNames {
+			legacyToSpec[name] = spec
+		}
 	}
 
+	var legacyRows []models.Category
 	for _, cat := range categories {
 		spec, ok := nameToSpec[cat.Name]
 		if !ok {
+			if _, isLegacy := legacyToSpec[cat.Name]; isLegacy {
+				legacyRows = append(legacyRows, cat)
+			}
+			continue
+		}
+		if err := db.Model(&models.Category{}).Where("id = ?", cat.ID).
+			Update("slug", spec.Slug).Error; err != nil {
+			return err
+		}
+	}
+
+	// Legacy names go second and only claim a slug nobody holds yet: a
+	// database that somehow has both the old and the new row must not end up
+	// with two categories sharing one identity.
+	for _, cat := range legacyRows {
+		spec := legacyToSpec[cat.Name]
+		var holders int64
+		if err := db.Model(&models.Category{}).Where("slug = ?", spec.Slug).
+			Count(&holders).Error; err != nil {
+			return err
+		}
+		if holders > 0 {
 			continue
 		}
 		if err := db.Model(&models.Category{}).Where("id = ?", cat.ID).

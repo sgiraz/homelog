@@ -77,6 +77,58 @@ func TestMigrateDefaultCategorySlugs_BackfillsLegacyRows(t *testing.T) {
 	}
 }
 
+// A default row seeded under a name the catalogue has since changed is still a
+// built-in, not an admin rename: it must get its slug. This is the household
+// database on the Pi, whose "Abbigliamento" predates the 2026-02-28 rename.
+func TestMigrateDefaultCategorySlugs_BackfillsLegacySeedName(t *testing.T) {
+	db := newTestDB(t)
+
+	legacy := models.Category{Name: "Abbigliamento", IsDefault: true}
+	if err := db.Create(&legacy).Error; err != nil {
+		t.Fatalf("create legacy category: %v", err)
+	}
+
+	if err := MigrateDefaultCategorySlugs(db); err != nil {
+		t.Fatalf("MigrateDefaultCategorySlugs: %v", err)
+	}
+
+	var got models.Category
+	if err := db.First(&got, legacy.ID).Error; err != nil {
+		t.Fatalf("reload category: %v", err)
+	}
+	if got.Slug != "clothing_personal_care" {
+		t.Errorf("legacy-named category slug = %q, want %q", got.Slug, "clothing_personal_care")
+	}
+}
+
+// When both the old and the current row exist, the current name keeps the
+// slug and the legacy row stays unslugged: one identity, one category.
+func TestMigrateDefaultCategorySlugs_LegacyNameYieldsToCurrent(t *testing.T) {
+	db := newTestDB(t)
+
+	old := models.Category{Name: "Abbigliamento", IsDefault: true}
+	current := models.Category{Name: "Abbigliamento e Cura Personale", IsDefault: true}
+	for _, c := range []*models.Category{&old, &current} {
+		if err := db.Create(c).Error; err != nil {
+			t.Fatalf("create category: %v", err)
+		}
+	}
+
+	if err := MigrateDefaultCategorySlugs(db); err != nil {
+		t.Fatalf("MigrateDefaultCategorySlugs: %v", err)
+	}
+
+	var gotOld, gotCurrent models.Category
+	db.First(&gotOld, old.ID)
+	db.First(&gotCurrent, current.ID)
+	if gotCurrent.Slug != "clothing_personal_care" {
+		t.Errorf("current-named category slug = %q, want %q", gotCurrent.Slug, "clothing_personal_care")
+	}
+	if gotOld.Slug != "" {
+		t.Errorf("legacy-named category got slug %q, want none", gotOld.Slug)
+	}
+}
+
 // A default category an admin renamed must keep an empty slug, so the UI shows
 // the admin's label instead of a translated one.
 func TestMigrateDefaultCategorySlugs_SkipsRenamedCategory(t *testing.T) {
