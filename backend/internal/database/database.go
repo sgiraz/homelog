@@ -12,15 +12,27 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+// Path is the SQLite file the app uses: DB_PATH, or ./data/homelog.db.
+func Path() string {
+	if dbPath := os.Getenv("DB_PATH"); dbPath != "" {
+		return dbPath
+	}
+	return "./data/homelog.db"
+}
+
+// DataDir is the directory next to the database, where uploads and avatars
+// live. Every path the app writes to or serves files from must start here:
+// the PDF handler used to hardcode ./data/uploads while the router served
+// DataDir()/uploads, which only coincide when DB_PATH sits in ./data — with
+// any other DB_PATH, template pages and bill attachments answered 404.
+func DataDir() string {
+	return filepath.Dir(Path())
+}
+
 // InitDatabase initializes the SQLite database connection
 func InitDatabase() (*gorm.DB, error) {
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "./data/homelog.db"
-	}
-
-	// Derive data directory from DB_PATH for consistency across dev/prod
-	dataDir := filepath.Dir(dbPath)
+	dbPath := Path()
+	dataDir := DataDir()
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}

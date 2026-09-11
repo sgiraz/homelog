@@ -417,11 +417,8 @@ func main() {
 		}
 	}
 
-	// Serve uploaded files — derive paths from DB_PATH for dev/prod consistency
-	baseDataDir := "./data"
-	if dbPath := os.Getenv("DB_PATH"); dbPath != "" {
-		baseDataDir = filepath.Dir(dbPath)
-	}
+	// Serve uploaded files from the directory the handlers write to.
+	baseDataDir := database.DataDir()
 	router.Static("/uploads", filepath.Join(baseDataDir, "uploads"))
 	router.Static("/avatars", filepath.Join(baseDataDir, "avatars"))
 

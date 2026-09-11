@@ -16,6 +16,7 @@ import (
 	_ "golang.org/x/image/webp"
 
 	"github.com/sgiraz/homelog/internal/apierr"
+	"github.com/sgiraz/homelog/internal/database"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -96,7 +97,7 @@ func (h *SettingsHandler) UploadAvatar(c *gin.Context) {
 	draw.CatmullRom.Scale(dst, dst.Bounds(), cropped, cropped.Bounds(), draw.Over, nil)
 
 	// Ensure avatars directory exists (derive from DB_PATH for consistent paths across dev/prod)
-	avatarDir := filepath.Join(dataDir(), "avatars")
+	avatarDir := filepath.Join(database.DataDir(), "avatars")
 	if err := os.MkdirAll(avatarDir, 0755); err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create avatar directory")
 		return
@@ -126,7 +127,7 @@ func (h *SettingsHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 	if user.AvatarPath != "" {
-		oldPath := filepath.Join(dataDir(), user.AvatarPath)
+		oldPath := filepath.Join(database.DataDir(), user.AvatarPath)
 		os.Remove(oldPath)
 	}
 
@@ -157,7 +158,7 @@ func (h *SettingsHandler) DeleteAvatar(c *gin.Context) {
 
 	// Delete file from disk
 	if user.AvatarPath != "" {
-		oldPath := filepath.Join(dataDir(), user.AvatarPath)
+		oldPath := filepath.Join(database.DataDir(), user.AvatarPath)
 		os.Remove(oldPath)
 	}
 

@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,16 +11,6 @@ import (
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
-
-// dataDir returns the base data directory, derived from DB_PATH for consistency
-// across dev (WORKDIR /app/src) and prod (WORKDIR /app) environments.
-func dataDir() string {
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath != "" {
-		return filepath.Dir(dbPath)
-	}
-	return "./data"
-}
 
 type SettingsHandler struct {
 	db *gorm.DB

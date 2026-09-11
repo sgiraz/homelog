@@ -21,6 +21,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sgiraz/homelog/internal/apierr"
+	"github.com/sgiraz/homelog/internal/database"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
@@ -63,7 +64,7 @@ type PDFHandler struct {
 }
 
 func NewPDFHandler(db *gorm.DB) *PDFHandler {
-	uploadsDir := "./data/uploads"
+	uploadsDir := filepath.Join(database.DataDir(), "uploads")
 	// Ensure uploads directory exists
 	os.MkdirAll(uploadsDir, 0755)
 	return &PDFHandler{db: db, uploadsDir: uploadsDir}

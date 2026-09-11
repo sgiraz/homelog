@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/sgiraz/homelog/internal/apierr"
+	"github.com/sgiraz/homelog/internal/database"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -332,7 +333,7 @@ func (h *SettingsHandler) DeleteAccount(c *gin.Context) {
 
 	// Delete avatar file
 	if user.AvatarPath != "" {
-		os.Remove(filepath.Join(dataDir(), user.AvatarPath))
+		os.Remove(filepath.Join(database.DataDir(), user.AvatarPath))
 	}
 
 	// Delete User
