@@ -119,9 +119,13 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	}
 
 	// Parse date filters once — reused for both query and countQuery.
-	// Compare against the date-only part via SQLite's date() function so the
-	// comparison is independent of the time component and timezone offset
-	// that GORM/glebarez may serialize into the stored RFC3339 value.
+	// Compare against the literal calendar-date prefix of the stored string
+	// (substr, not SQLite's date() function). date() first converts the value
+	// to UTC using any embedded offset, which shifts an expense recorded just
+	// after local midnight (e.g. an auto-created bill-payment expense stamped
+	// with time.Now() at 00:41 +02:00) back onto the previous UTC day — so a
+	// September 1st expense silently counted toward an August filter. substr
+	// takes the date exactly as written/displayed, with no TZ conversion.
 	var fromDate, toDate string
 	if from := c.Query("from"); from != "" {
 		if _, err := time.Parse("2006-01-02", from); err != nil {
@@ -129,7 +133,7 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 			return
 		}
 		fromDate = from
-		query = query.Where("date(date) >= ?", fromDate)
+		query = query.Where("substr(date, 1, 10) >= ?", fromDate)
 	}
 
 	if to := c.Query("to"); to != "" {
@@ -138,7 +142,7 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 			return
 		}
 		toDate = to
-		query = query.Where("date(date) <= ?", toDate)
+		query = query.Where("substr(date, 1, 10) <= ?", toDate)
 	}
 
 	if search := c.Query("search"); search != "" {
@@ -180,10 +184,10 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 		countQuery = countQuery.Where("project_id = ?", projectID)
 	}
 	if fromDate != "" {
-		countQuery = countQuery.Where("date(date) >= ?", fromDate)
+		countQuery = countQuery.Where("substr(date, 1, 10) >= ?", fromDate)
 	}
 	if toDate != "" {
-		countQuery = countQuery.Where("date(date) <= ?", toDate)
+		countQuery = countQuery.Where("substr(date, 1, 10) <= ?", toDate)
 	}
 	if search := c.Query("search"); search != "" {
 		countQuery = countQuery.Where("description LIKE ?", "%"+search+"%")

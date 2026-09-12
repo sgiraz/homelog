@@ -134,10 +134,14 @@ func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *mod
 		)
 	}
 
-	// Payment date: use installment's paid_at or today
-	expenseDate := time.Now()
+	// Payment date: use installment's paid_at or today. Normalized to a
+	// date-only UTC value like every other expense date — PaidAt can carry a
+	// local wall-clock offset (see utility_bills.go), and keeping that
+	// precision here would let a payment made just after local midnight read
+	// as the previous day once the offset is applied.
+	expenseDate := dateOnly(time.Now())
 	if inst.PaidAt != nil {
-		expenseDate = *inst.PaidAt
+		expenseDate = dateOnly(*inst.PaidAt)
 	}
 
 	// Subcategory ID (optional)
@@ -316,9 +320,14 @@ func (h *UtilityHandler) RunDomiciliationSweep() {
 		}
 
 		inst.IsPaid = true
-		paidAt := inst.DueDate
-		if paidAt.After(now) {
-			paidAt = now
+		// dateOnly: due_date is a UTC-midnight date value, but a bill whose
+		// true UTC due instant is still hours away (e.g. local midnight CEST
+		// is 2h before UTC midnight) falls into the `paidAt = now` branch,
+		// which used to store a raw local timestamp — the same
+		// after-local-midnight trap as the manual "mark paid" fallback below.
+		paidAt := dateOnly(inst.DueDate)
+		if inst.DueDate.After(now) {
+			paidAt = dateOnly(now)
 		}
 		inst.PaidAt = &paidAt
 		h.db.Save(inst)

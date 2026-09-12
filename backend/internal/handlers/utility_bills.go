@@ -15,6 +15,17 @@ import (
 	"gorm.io/gorm"
 )
 
+// dateOnly strips the time-of-day and location offset from t, keeping just
+// the calendar date it represents (as a UTC midnight value) — the same
+// representation every explicitly-entered expense/bill date already has.
+// Stamping a fallback "paid today" with time.Now() instead would carry the
+// server's local offset, and a payment recorded just after local midnight
+// would land on the previous day once that offset is applied (e.g. by
+// SQLite's date() function or any other UTC-normalizing comparison).
+func dateOnly(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+}
+
 // AddBill adds a bill for a utility
 func (h *UtilityHandler) AddBill(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
@@ -449,8 +460,8 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 		if input.PaidDate != nil {
 			inst.PaidAt = input.PaidDate
 		} else {
-			now := time.Now()
-			inst.PaidAt = &now
+			today := dateOnly(time.Now())
+			inst.PaidAt = &today
 		}
 		h.db.Save(inst)
 		if err := h.autoCreateExpenseFromInstallment(userID, inst); err != nil {
@@ -587,8 +598,8 @@ func (h *UtilityHandler) UpdateBillInstallment(c *gin.Context) {
 		if input.PaidAt != nil {
 			inst.PaidAt = input.PaidAt
 		} else {
-			now := time.Now()
-			inst.PaidAt = &now
+			today := dateOnly(time.Now())
+			inst.PaidAt = &today
 		}
 		h.db.Save(&inst)
 		if err := h.autoCreateExpenseFromInstallment(userID, &inst); err != nil {
@@ -739,8 +750,8 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 			if input.PaidDate != nil {
 				inst.PaidAt = input.PaidDate
 			} else {
-				now := time.Now()
-				inst.PaidAt = &now
+				today := dateOnly(time.Now())
+				inst.PaidAt = &today
 			}
 			h.db.Save(inst)
 			if err := h.autoCreateExpenseFromInstallment(userID, inst); err != nil {

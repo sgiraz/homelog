@@ -62,6 +62,7 @@ func wireMoneyRoutes(db *gorm.DB) *gin.Engine {
 	r := gin.New()
 	p := r.Group("")
 	p.Use(middleware.AuthRequired())
+	p.GET("/expenses", exp.List)
 	p.POST("/expenses", exp.Create)
 	p.PUT("/expenses/:id", exp.Update)
 	p.DELETE("/expenses/:id", exp.Delete)
@@ -1146,5 +1147,56 @@ func TestDeleteAccount_BlockedWhenSoleAdminWithMembers_409(t *testing.T) {
 	a.db.Model(&models.User{}).Where("id = ?", a.user.ID).Count(&n)
 	if n != 1 {
 		t.Error("user must still exist while deletion is blocked")
+	}
+}
+
+// ── Date-range filter must not convert through UTC ──────────────────────────
+//
+// An auto-created bill-payment expense is stamped with a local wall-clock
+// time (see dateOnly in utility_bills.go / utility_bill_sync.go — this used
+// to be a raw time.Now()). If the /expenses list filter ever goes back to
+// comparing via SQLite's date() function, a September 1st expense paid at
+// 00:41 CEST (September 1st 00:41 +02:00 = August 31st 22:41 UTC) would be
+// swept into an August filter, and dropped from a September one — the exact
+// bug a user reported after noticing August's total included a 1st-of-
+// September expense.
+func TestExpenseList_DateFilter_IgnoresEmbeddedUTCOffset(t *testing.T) {
+	f := setupMoneyFixture(t)
+
+	cest := time.FixedZone("CEST", 2*60*60)
+	borderline := time.Date(2026, 9, 1, 0, 41, 0, 0, cest) // 2026-08-31 22:41 UTC
+	expense := models.Expense{
+		UserID: f.alice.ID, PropertyID: &f.prop.ID, CategoryID: f.casaCatID,
+		PaidByMemberID: f.mAlice.ID,
+		Amount:         29.99, Date: borderline, Description: "Bolletta internet",
+	}
+	mustCreate(t, f.db, &expense)
+
+	august := doJSON(t, f.router, http.MethodGet, "/expenses?from=2026-08-01&to=2026-08-31", f.aliceTok, nil)
+	if august.Code != http.StatusOK {
+		t.Fatalf("list august: status %d, body %s", august.Code, august.Body.String())
+	}
+	var augustOut struct {
+		Total int64 `json:"total"`
+	}
+	if err := json.Unmarshal(august.Body.Bytes(), &augustOut); err != nil {
+		t.Fatalf("decode august response: %v", err)
+	}
+	if augustOut.Total != 0 {
+		t.Errorf("august filter total = %d, want 0 (a September 1st expense leaked into August)", augustOut.Total)
+	}
+
+	september := doJSON(t, f.router, http.MethodGet, "/expenses?from=2026-09-01&to=2026-09-30", f.aliceTok, nil)
+	if september.Code != http.StatusOK {
+		t.Fatalf("list september: status %d, body %s", september.Code, september.Body.String())
+	}
+	var septemberOut struct {
+		Total int64 `json:"total"`
+	}
+	if err := json.Unmarshal(september.Body.Bytes(), &septemberOut); err != nil {
+		t.Fatalf("decode september response: %v", err)
+	}
+	if septemberOut.Total != 1 {
+		t.Errorf("september filter total = %d, want 1", septemberOut.Total)
 	}
 }
