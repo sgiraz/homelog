@@ -116,6 +116,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 import { apiErrorMessage } from '@/utils/apiError'
+import { todayDateOnly } from '@/utils/dateFormatter'
 
 const props = defineProps({
   utility: {
@@ -137,7 +138,7 @@ const error = ref(null)
 
 const isEditing = computed(() => !!props.reading)
 
-const today = new Date().toISOString().split('T')[0]
+const today = todayDateOnly()
 
 const form = ref({
   reading_date: today,

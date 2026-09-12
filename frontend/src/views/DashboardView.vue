@@ -126,7 +126,7 @@ import { useI18n } from 'vue-i18n'
 import { useExpensesStore } from '@/stores/expenses'
 import { useSettingsStore } from '@/stores/settings'
 import { categoriesAPI, projectsAPI, expensesAPI, utilitiesAPI, balanceAPI } from '@/api/client'
-import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatCurrencyCompact as _formatCurrencyCompact, formatTrendLabel, yearOf } from '@/utils/dateFormatter'
+import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatCurrencyCompact as _formatCurrencyCompact, formatTrendLabel, yearOf, dateOnly, todayDateOnly } from '@/utils/dateFormatter'
 import { statsCategoryLabel } from '@/utils/categoryLabel'
 import { foldSlices, sliceColors } from '@/utils/chartSlices'
 import { useChartTheme } from '@/composables/useChartTheme'
@@ -155,8 +155,8 @@ function defaultDateRange() {
   from.setFullYear(from.getFullYear() - 1)
   from.setDate(from.getDate() + 1)
   return {
-    from: from.toISOString().split('T')[0],
-    to: today.toISOString().split('T')[0]
+    from: dateOnly(from),
+    to: dateOnly(today)
   }
 }
 
@@ -576,21 +576,17 @@ function onPieBack() {
 // ends today; anything else is "custom", which is a state, not a preset.
 const activePeriodDays = computed(() => {
   const { from, to } = filters.value
-  if (!from || !to || to !== todayISO()) return null
+  if (!from || !to || to !== todayDateOnly()) return null
   const days = Math.round((new Date(to) - new Date(from)) / MS_PER_DAY) + 1
   return [7, 30, 90, 365].includes(days) ? days : null
 })
-
-function todayISO() {
-  return new Date().toISOString().split('T')[0]
-}
 
 function selectPeriodDays(days) {
   const to = new Date()
   const from = new Date(to)
   from.setDate(from.getDate() - (days - 1))
-  filters.value.from = from.toISOString().split('T')[0]
-  filters.value.to = to.toISOString().split('T')[0]
+  filters.value.from = dateOnly(from)
+  filters.value.to = dateOnly(to)
   applyFilters()
 }
 

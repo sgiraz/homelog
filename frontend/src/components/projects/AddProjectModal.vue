@@ -163,6 +163,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 import { apiErrorMessage } from '@/utils/apiError'
+import { todayDateOnly } from '@/utils/dateFormatter'
 
 const { t } = useI18n()
 const emit = defineEmits(['close', 'created'])
@@ -179,7 +180,7 @@ const form = ref({
   icon: '🏗️',
   description: '',
   budget: null,
-  start_date: new Date().toISOString().split('T')[0],
+  start_date: todayDateOnly(),
   end_date: '',
   status: 'planned',
   property_id: null,

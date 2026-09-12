@@ -111,7 +111,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useBalanceStore } from '@/stores/balance'
 import { useSettingsStore } from '@/stores/settings'
-import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
+import { formatCurrency as _formatCurrency, todayDateOnly } from '@/utils/dateFormatter'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -178,7 +178,7 @@ const directionLabel = computed(() =>
 
 const form = ref({
   amount: maxAmount.value,
-  date: new Date().toISOString().split('T')[0],
+  date: todayDateOnly(),
   payment_method: 'bank_transfer',
   note: ''
 })

@@ -297,7 +297,7 @@ import { useI18n } from 'vue-i18n'
 import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
-import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
+import { formatCurrency as _formatCurrency, todayDateOnly } from '@/utils/dateFormatter'
 import apiClient, { categoriesAPI, projectsAPI, expenseTemplatesAPI, exchangeAPI } from '@/api/client'
 import { currencies as allCurrencies } from '@/utils/currencies'
 import { categoryLabel } from '@/utils/categoryLabel'
@@ -364,7 +364,7 @@ const form = ref({
   description: '',
   category_id: 1,
   subcategory_id: null,
-  date: new Date().toISOString().split('T')[0],
+  date: todayDateOnly(),
   paid_by_member_id: null,
   is_split: false,
   split_with_member_ids: [],
