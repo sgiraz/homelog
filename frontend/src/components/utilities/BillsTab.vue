@@ -203,7 +203,7 @@ import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
 import { useHighlight } from '@/composables/useHighlight'
-import { formatDate as _formatDate, formatPeriod as _formatPeriod, formatNumber as _formatNumber, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
+import { formatDate as _formatDate, formatPeriod as _formatPeriod, formatNumber as _formatNumber, formatCurrency as _formatCurrency, todayDateOnly } from '@/utils/dateFormatter'
 import Button from '@/components/common/Button.vue'
 import AddBillModal from '@/components/utilities/AddBillModal.vue'
 import { apiErrorMessage } from '@/utils/apiError'
@@ -256,7 +256,7 @@ async function toggleInstallmentPaid(bill, inst, newValue) {
   try {
     await utilitiesAPI.updateInstallment(props.utility.id, bill.id, inst.id, {
       is_paid: newValue,
-      paid_at: newValue ? new Date().toISOString() : null
+      paid_at: newValue ? todayDateOnly() : null
     })
     emit('bill-updated')
   } catch (err) {
@@ -368,7 +368,7 @@ async function markBillAsPaid(bill) {
   try {
     await utilitiesStore.updateBill(props.utility.id, bill.id, {
       is_paid: true,
-      paid_date: new Date().toISOString()
+      paid_date: todayDateOnly()
     })
     emit('bill-updated')
   } catch (err) {

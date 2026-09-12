@@ -26,6 +26,24 @@ func dateOnly(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
 
+// parseOptionalDate parses an optional "YYYY-MM-DD" calendar date from client
+// input into a date-only value. Paid/payment dates must travel the wire as a
+// plain date, never a full ISO timestamp: JS's `new Date().toISOString()`
+// always renders in UTC, which silently reports the wrong calendar day
+// whenever the payment happens between local midnight and the UTC day
+// rollover (e.g. 00:41 CEST is still "yesterday" in UTC) — dateOnly() cannot
+// recover the user's intended day from a timestamp that already lost it.
+func parseOptionalDate(s *string) (*time.Time, error) {
+	if s == nil || *s == "" {
+		return nil, nil
+	}
+	t, err := time.Parse("2006-01-02", *s)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
 // AddBill adds a bill for a utility
 func (h *UtilityHandler) AddBill(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
@@ -89,8 +107,10 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		AmountTaxes         *float64   `json:"amount_taxes"`
 		AmountVAT           *float64   `json:"amount_vat"`
 		IsPaid              bool       `json:"is_paid"`
-		PaidDate            *time.Time `json:"paid_date"`
-		PDFURL              string     `json:"pdf_url"`
+		// PaidDate/PaidAt are plain "YYYY-MM-DD" calendar dates, not full
+		// timestamps — see parseOptionalDate.
+		PaidDate            *string `json:"paid_date"`
+		PDFURL              string  `json:"pdf_url"`
 		// Communication (optional note from bill/invoice)
 		CommunicationText string `json:"communication_text"`
 		// Installments: optional — when the utility is installment-based, the client
@@ -100,12 +120,18 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 			DueDate time.Time `json:"due_date"`
 			Amount  float64   `json:"amount"`
 			IsPaid  bool      `json:"is_paid"`
-			PaidAt  *time.Time `json:"paid_at"`
+			PaidAt  *string   `json:"paid_at"`
 		} `json:"installments"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+
+	billPaidDate, err := parseOptionalDate(input.PaidDate)
+	if err != nil {
+		apierr.Fail(c, http.StatusBadRequest, "invalid_date", "Invalid date format")
 		return
 	}
 
@@ -121,6 +147,18 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		}
 		// Bill due_date = first installment due_date
 		input.DueDate = input.Installments[0].DueDate
+	}
+
+	// Parse every installment's paid date up front so a malformed one fails
+	// before the bill row is created, instead of leaving it orphaned.
+	installmentPaidAt := make([]*time.Time, len(input.Installments))
+	for i, in := range input.Installments {
+		paidAt, err := parseOptionalDate(in.PaidAt)
+		if err != nil {
+			apierr.Fail(c, http.StatusBadRequest, "invalid_date", "Invalid date format")
+			return
+		}
+		installmentPaidAt[i] = paidAt
 	}
 
 	bill := models.Bill{
@@ -157,7 +195,7 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		AmountTaxes:           input.AmountTaxes,
 		AmountVAT:             input.AmountVAT,
 		IsPaid:                input.IsPaid,
-		PaidDate:              input.PaidDate,
+		PaidDate:              billPaidDate,
 		PDFURL:                input.PDFURL,
 	}
 
@@ -194,24 +232,24 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 	// is uniform.
 	var installments []models.BillInstallment
 	if utility.IsInstallmentBased && len(input.Installments) > 0 {
-		for _, in := range input.Installments {
+		for i, in := range input.Installments {
 			installments = append(installments, models.BillInstallment{
 				BillID:  bill.ID,
 				Number:  in.Number,
 				DueDate: in.DueDate,
 				Amount:  in.Amount,
 				IsPaid:  in.IsPaid,
-				PaidAt:  in.PaidAt,
+				PaidAt:  installmentPaidAt[i],
 			})
 		}
 	} else {
 		var paidAt *time.Time
 		if input.IsPaid {
-			if input.PaidDate != nil {
-				paidAt = input.PaidDate
+			if billPaidDate != nil {
+				paidAt = billPaidDate
 			} else {
-				now := time.Now()
-				paidAt = &now
+				today := dateOnly(time.Now())
+				paidAt = &today
 			}
 		}
 		installments = append(installments, models.BillInstallment{
@@ -423,8 +461,10 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 	}
 
 	var input struct {
-		IsPaid   *bool      `json:"is_paid"`
-		PaidDate *time.Time `json:"paid_date"`
+		IsPaid *bool `json:"is_paid"`
+		// PaidDate is a plain "YYYY-MM-DD" calendar date, not a full
+		// timestamp — see parseOptionalDate.
+		PaidDate *string `json:"paid_date"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -434,6 +474,12 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 
 	if input.IsPaid == nil {
 		c.JSON(http.StatusOK, bill)
+		return
+	}
+
+	paidDate, err := parseOptionalDate(input.PaidDate)
+	if err != nil {
+		apierr.Fail(c, http.StatusBadRequest, "invalid_date", "Invalid date format")
 		return
 	}
 
@@ -457,8 +503,8 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 	wasPaid := inst.IsPaid
 	if *input.IsPaid && !wasPaid {
 		inst.IsPaid = true
-		if input.PaidDate != nil {
-			inst.PaidAt = input.PaidDate
+		if paidDate != nil {
+			inst.PaidAt = paidDate
 		} else {
 			today := dateOnly(time.Now())
 			inst.PaidAt = &today
@@ -584,19 +630,27 @@ func (h *UtilityHandler) UpdateBillInstallment(c *gin.Context) {
 	}
 
 	var input struct {
-		IsPaid bool       `json:"is_paid"`
-		PaidAt *time.Time `json:"paid_at"`
+		IsPaid bool `json:"is_paid"`
+		// PaidAt is a plain "YYYY-MM-DD" calendar date, not a full timestamp
+		// — see parseOptionalDate.
+		PaidAt *string `json:"paid_at"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
+	paidAt, err := parseOptionalDate(input.PaidAt)
+	if err != nil {
+		apierr.Fail(c, http.StatusBadRequest, "invalid_date", "Invalid date format")
+		return
+	}
+
 	wasPaid := inst.IsPaid
 	if input.IsPaid && !wasPaid {
 		inst.IsPaid = true
-		if input.PaidAt != nil {
-			inst.PaidAt = input.PaidAt
+		if paidAt != nil {
+			inst.PaidAt = paidAt
 		} else {
 			today := dateOnly(time.Now())
 			inst.PaidAt = &today
@@ -672,7 +726,9 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 		EstimatedConsumption *float64   `json:"estimated_consumption"`
 		ReadingType           string     `json:"reading_type"`
 		IsPaid                bool       `json:"is_paid"`
-		PaidDate              *time.Time `json:"paid_date"`
+		// PaidDate is a plain "YYYY-MM-DD" calendar date, not a full
+		// timestamp — see parseOptionalDate.
+		PaidDate              *string    `json:"paid_date"`
 		ProviderReadingDate   *time.Time `json:"provider_reading_date"`
 		ProviderReadingF1     *float64   `json:"provider_reading_f1"`
 		ProviderReadingF2     *float64   `json:"provider_reading_f2"`
@@ -684,6 +740,12 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+
+	paidDate, err := parseOptionalDate(input.PaidDate)
+	if err != nil {
+		apierr.Fail(c, http.StatusBadRequest, "invalid_date", "Invalid date format")
 		return
 	}
 
@@ -747,8 +809,8 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 		wasPaid := inst.IsPaid
 		if input.IsPaid && !wasPaid {
 			inst.IsPaid = true
-			if input.PaidDate != nil {
-				inst.PaidAt = input.PaidDate
+			if paidDate != nil {
+				inst.PaidAt = paidDate
 			} else {
 				today := dateOnly(time.Now())
 				inst.PaidAt = &today

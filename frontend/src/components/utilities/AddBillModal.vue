@@ -289,7 +289,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
-import { formatDate as _formatDate, formatNumber as _formatNumber, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
+import { formatDate as _formatDate, formatNumber as _formatNumber, formatCurrency as _formatCurrency, todayDateOnly } from '@/utils/dateFormatter'
 import { utilitiesAPI, exchangeAPI } from '@/api/client'
 import { useConsumptionCalculation } from '@/composables/useConsumptionCalculation'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -558,7 +558,7 @@ async function handleSubmit() {
       user_reading_id: resolvedReadingId || null,
       reading_type: form.value.reading_type,
       is_paid: form.value.is_paid,
-      paid_date: form.value.is_paid ? new Date().toISOString() : null,
+      paid_date: form.value.is_paid ? todayDateOnly() : null,
       provider_reading_date: form.value.provider_reading_date ? new Date(form.value.provider_reading_date).toISOString() : null,
       provider_reading_f1: form.value.provider_reading_f1 ? parseFloat(form.value.provider_reading_f1) : null,
       provider_reading_f2: form.value.provider_reading_f2 ? parseFloat(form.value.provider_reading_f2) : null,

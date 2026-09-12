@@ -52,7 +52,7 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
-import { formatNumber as _formatNumber } from '@/utils/dateFormatter'
+import { formatNumber as _formatNumber, todayDateOnly } from '@/utils/dateFormatter'
 import { utilitiesAPI } from '@/api/client'
 import { apiErrorMessage } from '@/utils/apiError'
 
@@ -100,7 +100,7 @@ async function togglePaid(inst, newValue) {
   try {
     await utilitiesAPI.updateInstallment(props.utilityId, props.billId, inst.id, {
       is_paid: newValue,
-      paid_at: newValue ? new Date().toISOString() : null
+      paid_at: newValue ? todayDateOnly() : null
     })
     inst.is_paid = newValue
     emit('installment-updated')

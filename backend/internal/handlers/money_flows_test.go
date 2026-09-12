@@ -932,6 +932,48 @@ func TestBillPaid_CreatesSplitExpense_UnpaidDeletesIt(t *testing.T) {
 	}
 }
 
+// TestBillPaid_ExplicitPaidDate_UsesClientCalendarDayVerbatim covers a
+// Copilot review finding on PR #34: paid_date/paid_at must travel the wire
+// as a plain "YYYY-MM-DD" calendar date, never a full ISO timestamp. The
+// server has no way to recover the user's intended local day from a
+// timestamp already normalized to UTC client-side (new Date().toISOString()
+// always renders "Z") — so the contract is now a date-only string, and a
+// legacy full-timestamp payload must be rejected rather than silently
+// misread.
+func TestBillPaid_ExplicitPaidDate_UsesClientCalendarDayVerbatim(t *testing.T) {
+	f := setupMoneyFixture(t)
+	util, bill, _ := f.seedBill(t, "", "", false, 50)
+	inst := models.BillInstallment{BillID: bill.ID, Number: 1, DueDate: bill.DueDate, Amount: 50}
+	mustCreate(t, f.db, &inst)
+	base := "/utilities/" + itoa(util.ID) + "/bills/" + itoa(bill.ID)
+
+	rec := doJSON(t, f.router, http.MethodPut, base, f.aliceTok, map[string]any{
+		"is_paid": true, "paid_date": "2026-09-01",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("mark paid with explicit date: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var exp models.Expense
+	if err := f.db.Where("bill_id = ?", bill.ID).First(&exp).Error; err != nil {
+		t.Fatalf("auto-expense should exist: %v", err)
+	}
+	if got := exp.Date.Format("2006-01-02"); got != "2026-09-01" {
+		t.Errorf("expense date = %s, want 2026-09-01 (the client's calendar day, verbatim)", got)
+	}
+
+	// A full ISO timestamp (the old, now-unsupported payload shape) must be
+	// rejected rather than silently truncated to the wrong UTC day.
+	util2, bill2, _ := f.seedBill(t, "", "", false, 50)
+	inst2 := models.BillInstallment{BillID: bill2.ID, Number: 1, DueDate: bill2.DueDate, Amount: 50}
+	mustCreate(t, f.db, &inst2)
+	rec2 := doJSON(t, f.router, http.MethodPut, "/utilities/"+itoa(util2.ID)+"/bills/"+itoa(bill2.ID), f.aliceTok, map[string]any{
+		"is_paid": true, "paid_date": "2026-08-31T22:41:00.000Z",
+	})
+	if rec2.Code != http.StatusBadRequest {
+		t.Errorf("full ISO timestamp payload: status %d, want 400 invalid_date", rec2.Code)
+	}
+}
+
 func TestBillUnpaid_BlockedWhenLinkedSplitSettled(t *testing.T) {
 	f := setupMoneyFixture(t)
 	util, bill, _ := f.seedBill(t, "custom", "["+itoa(f.mBob.ID)+"]", false, 120)

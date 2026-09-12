@@ -99,7 +99,7 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		var minDateStr string
 		h.db.Model(&models.Expense{}).
 			Where("property_id IN ?", memberPropertyIDs).
-			Select("strftime('%Y-%m-%d', MIN(date))").
+			Select("substr(MIN(date), 1, 10)").
 			Scan(&minDateStr)
 		if minDateStr != "" {
 			if t, err := time.Parse("2006-01-02", minDateStr); err == nil {
@@ -109,10 +109,15 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		endDate = now
 	}
 
-	// Build reusable WHERE conditions shared across all sub-queries
-	baseWhere := "property_id IN ? AND date >= ? AND date <= ?"
-	joinWhere := "expenses.property_id IN ? AND expenses.date >= ? AND expenses.date <= ?"
-	baseArgs := []any{memberPropertyIDs, startDate, endDate}
+	// Build reusable WHERE conditions shared across all sub-queries. Compare
+	// against the literal calendar-date prefix of the stored string (substr),
+	// not SQLite's date()/strftime() functions — those convert through UTC
+	// using any offset embedded in the value first, which shifts a value
+	// recorded just after local midnight onto the previous UTC day. See the
+	// same fix in List/count above for the full explanation.
+	baseWhere := "property_id IN ? AND substr(date, 1, 10) >= ? AND substr(date, 1, 10) <= ?"
+	joinWhere := "expenses.property_id IN ? AND substr(expenses.date, 1, 10) >= ? AND substr(expenses.date, 1, 10) <= ?"
+	baseArgs := []any{memberPropertyIDs, startDate.Format("2006-01-02"), endDate.Format("2006-01-02")}
 
 	categoryID := c.Query("category_id")
 	if categoryID != "" {
@@ -147,9 +152,9 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 			Count  int     `json:"count"`
 		}
 		h.db.Model(&models.Expense{}).
-			Select("CAST(strftime('%d', date) AS INTEGER) as day, CAST(strftime('%m', date) AS INTEGER) as month, CAST(strftime('%Y', date) AS INTEGER) as year, SUM(amount) as amount, COUNT(*) as count").
+			Select("CAST(substr(date, 9, 2) AS INTEGER) as day, CAST(substr(date, 6, 2) AS INTEGER) as month, CAST(substr(date, 1, 4) AS INTEGER) as year, SUM(amount) as amount, COUNT(*) as count").
 			Where(baseWhere, baseArgs...).
-			Group("strftime('%Y-%m-%d', date)").
+			Group("substr(date, 1, 10)").
 			Order("year, month, day").
 			Scan(&rows)
 		trend = make([]TrendPoint, len(rows))
@@ -169,7 +174,7 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 			Count   int     `json:"count"`
 		}
 		h.db.Model(&models.Expense{}).
-			Select("CAST((CAST(strftime('%m', date) AS INTEGER) + 2) / 3 AS INTEGER) as quarter, CAST(strftime('%Y', date) AS INTEGER) as year, SUM(amount) as amount, COUNT(*) as count").
+			Select("CAST((CAST(substr(date, 6, 2) AS INTEGER) + 2) / 3 AS INTEGER) as quarter, CAST(substr(date, 1, 4) AS INTEGER) as year, SUM(amount) as amount, COUNT(*) as count").
 			Where(baseWhere, baseArgs...).
 			Group("year, quarter").
 			Order("year, quarter").
@@ -192,9 +197,9 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 			Count  int     `json:"count"`
 		}
 		h.db.Model(&models.Expense{}).
-			Select("CAST(strftime('%m', date) AS INTEGER) as month, CAST(strftime('%Y', date) AS INTEGER) as year, SUM(amount) as amount, COUNT(*) as count").
+			Select("CAST(substr(date, 6, 2) AS INTEGER) as month, CAST(substr(date, 1, 4) AS INTEGER) as year, SUM(amount) as amount, COUNT(*) as count").
 			Where(baseWhere, baseArgs...).
-			Group("strftime('%Y-%m', date)").
+			Group("substr(date, 1, 7)").
 			Order("year, month").
 			Scan(&rows)
 		trend = make([]TrendPoint, len(rows))
@@ -291,8 +296,8 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 	// Current month total (respects category filter)
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	monthEnd := monthStart.AddDate(0, 1, 0).Add(-time.Second)
-	monthWhere := "property_id IN ? AND date >= ? AND date <= ?"
-	monthArgs := []any{memberPropertyIDs, monthStart, monthEnd}
+	monthWhere := "property_id IN ? AND substr(date, 1, 10) >= ? AND substr(date, 1, 10) <= ?"
+	monthArgs := []any{memberPropertyIDs, monthStart.Format("2006-01-02"), monthEnd.Format("2006-01-02")}
 	if categoryID != "" {
 		monthWhere += " AND category_id = ?"
 		monthArgs = append(monthArgs, categoryID)
@@ -306,8 +311,8 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 	// Year total (respects category filter)
 	yearStart := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.UTC)
 	yearEnd := time.Date(now.Year(), 12, 31, 23, 59, 59, 0, time.UTC)
-	yearWhere := "property_id IN ? AND date >= ? AND date <= ?"
-	yearArgs := []any{memberPropertyIDs, yearStart, yearEnd}
+	yearWhere := "property_id IN ? AND substr(date, 1, 10) >= ? AND substr(date, 1, 10) <= ?"
+	yearArgs := []any{memberPropertyIDs, yearStart.Format("2006-01-02"), yearEnd.Format("2006-01-02")}
 	if categoryID != "" {
 		yearWhere += " AND category_id = ?"
 		yearArgs = append(yearArgs, categoryID)
@@ -337,7 +342,7 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 	// it takes a reference to become a signal.
 	previousEnd := startDate.Add(-time.Second)
 	previousStart := previousEnd.Add(-endDate.Sub(startDate))
-	previousArgs := append([]any{memberPropertyIDs, previousStart, previousEnd}, baseArgs[3:]...)
+	previousArgs := append([]any{memberPropertyIDs, previousStart.Format("2006-01-02"), previousEnd.Format("2006-01-02")}, baseArgs[3:]...)
 	var totalPrevious float64
 	h.db.Model(&models.Expense{}).
 		Where(baseWhere, previousArgs...).
