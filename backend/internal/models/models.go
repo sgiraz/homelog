@@ -432,7 +432,11 @@ type Bill struct {
 	// For non-installment bills IsPaid is the authoritative flag.
 	// For installment bills IsPaid reflects "all installments paid" and is kept in sync
 	// by the installment handlers; clients should still check Installments for per-rata state.
-	IsPaid   bool       `gorm:"not null;default:false" json:"is_paid"`
+	IsPaid bool `gorm:"not null;default:false" json:"is_paid"`
+	// PaidDate: date-only contract on input only (parseOptionalDate in
+	// utility_bills.go rejects anything but "YYYY-MM-DD"). On output it's a
+	// normal time.Time/RFC3339, like every other date field — don't assume
+	// the API round-trips a bare date.
 	PaidDate *time.Time `json:"paid_date,omitempty"`
 
 	// Attachments
@@ -466,7 +470,9 @@ type BillInstallment struct {
 	DueDate time.Time `gorm:"not null;index" json:"due_date"`
 	Amount  float64   `gorm:"not null" json:"amount"`
 
-	IsPaid    bool       `gorm:"not null;default:false" json:"is_paid"`
+	IsPaid bool `gorm:"not null;default:false" json:"is_paid"`
+	// PaidAt: same input-only date-only contract as Bill.PaidDate above —
+	// see that field's comment.
 	PaidAt    *time.Time `json:"paid_at,omitempty"`
 	ExpenseID *uint      `gorm:"index" json:"expense_id,omitempty"` // auto-created expense when marked paid
 
