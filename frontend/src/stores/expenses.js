@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { expensesAPI } from '@/api/client'
 import { apiErrorMessage } from '@/utils/apiError'
+import { trackEvent } from '@/utils/analytics'
 
 const PAGE_SIZE = 20
 
@@ -102,6 +103,7 @@ export const useExpensesStore = defineStore('expenses', () => {
       const { data } = await expensesAPI.create(expense)
       expenses.value.unshift(data)
       total.value++
+      trackEvent('expense_created')
       return data
     } catch (err) {
       error.value = apiErrorMessage(err)

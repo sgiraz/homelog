@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { utilitiesAPI } from '@/api/client'
 import { apiErrorMessage } from '@/utils/apiError'
+import { trackEvent } from '@/utils/analytics'
 
 export const useUtilitiesStore = defineStore('utilities', () => {
   const utilities = ref([])
@@ -107,6 +108,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
     try {
       const { data } = await utilitiesAPI.create(utilityData)
       utilities.value.push(data)
+      trackEvent('utility_created')
       return data
     } catch (err) {
       error.value = apiErrorMessage(err)
@@ -161,6 +163,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
     try {
       const { data } = await utilitiesAPI.addBill(utilityId, billData)
       await fetchUtility(utilityId)
+      trackEvent('bill_added')
       return data
     } catch (err) {
       error.value = apiErrorMessage(err)
@@ -229,6 +232,7 @@ export const useUtilitiesStore = defineStore('utilities', () => {
     try {
       const { data } = await utilitiesAPI.addReading(utilityId, readingData)
       await fetchUtility(utilityId)
+      trackEvent('reading_added')
       return data
     } catch (err) {
       error.value = apiErrorMessage(err)
