@@ -120,12 +120,14 @@ func AuthRequired() gin.HandlerFunc {
 	}
 }
 
-// DemoGuard blocks destructive or account-locking operations when DEMO_MODE is
-// active. The demo runs on a single shared account, so allowing password
-// changes or account deletion would let one visitor lock everyone else out
-// until the next scheduled reset. Returns 403 on the guarded routes; everything
-// else (creating expenses, bills, etc.) stays open so the app is fully
-// explorable, with all changes wiped on the hourly reset.
+// DemoGuard blocks destructive, account-locking, or account-creating
+// operations when DEMO_MODE is active. The demo runs on a single shared
+// account: password changes or account deletion would lock everyone else out
+// until the next scheduled reset, and registration serves no purpose since
+// the login screen already offers a one-click "Enter demo" instead of a
+// signup form. Returns 403 on the guarded routes; everything else (creating
+// expenses, bills, etc.) stays open so the app is fully explorable, with all
+// changes wiped on the hourly reset.
 func DemoGuard() gin.HandlerFunc {
 	demo := os.Getenv("DEMO_MODE") == "true"
 	return func(c *gin.Context) {

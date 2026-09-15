@@ -7,8 +7,11 @@
       </div>
 
       <!-- ── Demo banner (only on demo instances) ── -->
+      <!-- The demo runs on one shared account: manual login/register/reset
+           serve no purpose here, so they're hidden below and this is the
+           only way in. -->
       <div
-        v-if="isDemoMode && mode === 'login'"
+        v-if="isDemoMode"
         class="mb-6 p-4 rounded-xl bg-surface-2 border border-accent-soft/30 space-y-3 text-center"
       >
         <p class="text-sm font-semibold text-accent-soft">
@@ -33,7 +36,8 @@
         </p>
       </div>
 
-      <!-- ── Login / Register ── -->
+      <!-- ── Login / Register / Forgot / Reset (hidden on the demo — see banner above) ── -->
+      <template v-if="!isDemoMode">
       <form v-if="mode === 'login' || mode === 'register'" @submit.prevent="handleSubmit" class="space-y-4">
         <Input
           v-model="form.email"
@@ -214,6 +218,7 @@
           {{ t('auth.reset.backToForgot') }}
         </button>
       </div>
+      </template>
     </Card>
 
     <a
