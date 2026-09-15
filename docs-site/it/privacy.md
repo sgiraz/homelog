@@ -16,7 +16,7 @@ Questa informativa riguarda i tre siti pubblici di HomeLog:
 **Non** riguarda un'istanza di HomeLog installata su un tuo server: in quel caso
 il titolare del trattamento sei tu — vedi [Installazioni self-hosted](#installazioni-self-hosted).
 
-**Ultimo aggiornamento:** 30 agosto 2026
+**Ultimo aggiornamento:** 16 settembre 2026
 
 ## Chi è il titolare
 
@@ -31,7 +31,10 @@ discussione resta pubblica e utile anche ad altri.
 
 ## In breve
 
-- Nessuna analytics, nessuna pubblicità, nessun tracciamento, nessuna profilazione.
+- Nessuna pubblicità, nessun tracciamento, nessuna profilazione.
+  `demo.homelog.dev` conta visite anonime e aggregate — vedi [Statistiche
+  di utilizzo sulla demo](#statistiche-di-utilizzo-sulla-demo) più sotto —
+  nient'altro lo fa.
 - Nessun cookie che richieda consenso — per questo non vedi alcun banner.
 - I siti salvano nel browser alcuni valori tecnici (lingua, tema e, sulla demo,
   un token di accesso). Non lasciano mai il tuo dispositivo.
@@ -77,8 +80,11 @@ siti si tratta di:
 
 - **Caricando `homelog.dev`:** il CDN di Tailwind CSS (`cdn.tailwindcss.com`),
   che serve il motore di fogli di stile con cui la pagina è costruita.
-- **Caricando `docs.homelog.dev` e `demo.homelog.dev`:** nulla oltre al
-  fornitore di hosting.
+- **Caricando `docs.homelog.dev`:** nulla oltre al fornitore di hosting.
+- **Caricando `demo.homelog.dev`:** il fornitore di hosting, più
+  [GoatCounter](https://www.goatcounter.com/) (`goatcounter.com`), un
+  servizio di analytics cookieless — vedi [Statistiche di utilizzo sulla
+  demo](#statistiche-di-utilizzo-sulla-demo) più sotto.
 
 I web font venivano caricati da Google Fonts sui primi due siti. Ora sono
 serviti dai nostri domini, quindi Google non viene più contattato.
@@ -99,6 +105,21 @@ visitatori. Le conseguenze vanno dette chiaramente:
 
 Le credenziali dell'account demo sono pubblicate nella schermata di accesso:
 l'accesso non è quindi una barriera di sicurezza.
+
+## Statistiche di utilizzo sulla demo
+
+`demo.homelog.dev` invia a [GoatCounter](https://www.goatcounter.com/)
+conteggi anonimi e aggregati: quali pagine vengono visitate, i referrer, il
+paese (ricavato dalla richiesta, non conservato), e alcuni eventi con nome
+(es. che *è stata* aggiunta una bolletta, mai quale né da chi). GoatCounter
+non imposta cookie e non conserva alcun identificatore che colleghi due
+visite alla stessa persona: non c'è nulla da cui fare opt-out, perché non
+c'è nulla che ti identifichi. Vedi la [privacy policy di
+GoatCounter](https://www.goatcounter.com/privacy) per come gestisce quei
+dati dal suo lato.
+
+Questo non riguarda `homelog.dev` né `docs.homelog.dev`, e non riguarda mai
+un'installazione self-hosted.
 
 ## Installazioni self-hosted
 
