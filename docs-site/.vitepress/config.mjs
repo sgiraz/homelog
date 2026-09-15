@@ -14,12 +14,13 @@ export default defineConfig({
     ['meta', { name: 'theme-color', content: '#D9531E' }],
     // Shared type with homelog.dev: Apple system stack for body/UI, Fraunces
     // (display serif) for headings. Only Fraunces needs loading.
-    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
-    ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+    // Self-hosted from public/fonts (scripts/vendor-fonts.mjs): loading these
+    // from Google would disclose every visitor's IP to a third party.
     ['link', {
-      rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&display=swap',
+      rel: 'preload', href: '/fonts/fraunces-normal-variable-latin.woff2',
+      as: 'font', type: 'font/woff2', crossorigin: '',
     }],
+    ['link', { rel: 'stylesheet', href: '/fonts/fonts.css' }],
     // First-visit default to the browser language: only on the English home,
     // once per session (so manually switching back to English doesn't loop).
     ['script', {}, `try{
@@ -73,7 +74,9 @@ export default defineConfig({
           text: 'Edit this page on GitHub',
         },
         footer: {
-          message: '🚧 Work in progress · Released under the AGPL-3.0 License.',
+          message:
+            '🚧 Work in progress · Released under the AGPL-3.0 License · ' +
+            '<a href="/privacy">Privacy</a>',
           copyright: 'HomeLog — self-hosted home management.',
         },
       },
@@ -113,7 +116,9 @@ export default defineConfig({
           text: 'Modifica questa pagina su GitHub',
         },
         footer: {
-          message: '🚧 Lavori in corso · Rilasciato sotto licenza AGPL-3.0.',
+          message:
+            '🚧 Lavori in corso · Rilasciato sotto licenza AGPL-3.0 · ' +
+            '<a href="/it/privacy">Privacy</a>',
           copyright: 'HomeLog — gestione domestica self-hosted.',
         },
         docFooter: { prev: 'Precedente', next: 'Successivo' },
