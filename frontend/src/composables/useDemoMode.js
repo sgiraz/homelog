@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { versionAPI, demoAPI } from '@/api/client'
+import { trackEvent } from '@/utils/analytics'
 
 // Module-level state — fetched once and shared across every component.
 const isDemoMode = ref(false)
@@ -44,6 +45,7 @@ export function useDemoMode() {
     isResetting.value = true
     try {
       await demoAPI.reset()
+      trackEvent('demo_reset')
       window.location.reload()
     } catch {
       isResetting.value = false

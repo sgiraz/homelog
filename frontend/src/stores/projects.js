@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { projectsAPI } from '@/api/client'
+import { trackEvent } from '@/utils/analytics'
 
 export const useProjectsStore = defineStore('projects', () => {
   const projects = ref([])
@@ -67,6 +68,7 @@ export const useProjectsStore = defineStore('projects', () => {
         expense_count: 0
       }
       projects.value.push(data)
+      trackEvent('project_created')
       return data
     } catch (err) {
       error.value = err.message
