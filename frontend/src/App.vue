@@ -33,9 +33,11 @@
 
 <script setup>
 import { watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useDemoMode } from '@/composables/useDemoMode'
+import { initAnalytics } from '@/utils/analytics'
 import { setI18nLocale } from '@/i18n'
 import Navbar from '@/components/layout/Navbar.vue'
 import Toast from '@/components/common/Toast.vue'
@@ -45,9 +47,14 @@ import DemoBanner from '@/components/common/DemoBanner.vue'
 
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
+const router = useRouter()
 
 // Detect demo instance once at startup (public endpoint, pre-auth safe).
+const { isDemoMode } = useDemoMode()
 useDemoMode().initDemoMode()
+
+// Cookieless usage stats — only ever activates when isDemoMode is true.
+initAnalytics(router, isDemoMode)
 
 // Cache main views to avoid re-mount flicker on navigation
 const cachedViews = ['DashboardView', 'ExpensesView', 'UtilitiesView', 'ProjectsView', 'SettingsView']

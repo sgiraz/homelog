@@ -164,7 +164,7 @@ func main() {
 		auth.Use(middleware.AuthRateLimiter())
 		{
 			authHandler := handlers.NewAuthHandler(db)
-			auth.POST("/register", authHandler.Register)
+			auth.POST("/register", middleware.DemoGuard(), authHandler.Register)
 			auth.POST("/login", authHandler.Login)
 			auth.POST("/refresh", authHandler.RefreshToken)
 			auth.POST("/forgot-password", authHandler.ForgotPassword)
