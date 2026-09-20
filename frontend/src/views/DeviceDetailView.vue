@@ -154,7 +154,7 @@
             {{ t('devices.detail.purchaseDate') }}
           </p>
           <p class="text-ink">
-            {{ device.purchase_date || '—' }}
+            {{ _formatDate(device.purchase_date) || '—' }}
           </p>
         </div>
 
@@ -163,7 +163,7 @@
             {{ t('devices.detail.purchasePrice') }}
           </p>
           <p class="text-ink">
-            {{ device.purchase_price ?? '—' }}
+            {{ _formatCurrency(device.purchase_price) ?? '—' }}
           </p>
         </div>
 
@@ -172,7 +172,7 @@
             {{ t('devices.detail.warrantyUntil') }}
           </p>
           <p class="text-ink">
-            {{ device.warranty_until || '—' }}
+            {{ _formatDate(device.warranty_until) || '—' }}
           </p>
         </div>
       </div>
@@ -194,12 +194,12 @@
               {{ expense.description || '—' }}
             </p>
             <p class="text-sm text-ink-faint">
-              {{ expense.date }}
+              {{ _formatDate(expense.date) }}
             </p>
           </div>
 
           <p class="text-ink font-medium">
-            {{ Number(expense.amount).toFixed(2) }} €
+            {{ _formatCurrency(expense.amount) }}
           </p>
         </div>
       </div>
@@ -228,6 +228,7 @@ defineOptions({ name: 'DeviceDetailView' })
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import { useDevicesStore } from '@/stores/devices'
 import Card from '@/components/common/Card.vue'
 

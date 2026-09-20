@@ -5,6 +5,8 @@
   "searchPlaceholder": "Cerca dispositivi …",
   "allStatuses": "Tutti gli stati",
   "allCategories": "Tutte le categorie",
+  "add": "+ Aggiungi dispositivo",
+  "deleteConfirm": "Vuoi davvero cancellare i dati dal dispositivo?",
 "card": {
 "location": "Posizione",
 "status": "Stato",
@@ -45,6 +47,10 @@
 "saving": "Salvataggio...",
 "expenses": "Spese",
 "noExpenses": "Nessuna spesa associata a questo dispositivo.",
-"delete": "Elimina"
-}
+"delete": "Elimina",
+  "deleteConfirm": "Vuoi davvero cancellare i dati dal dispositivo?"
+},
+  "form": {
+    "property" : "Proprietà"
+  }
 }

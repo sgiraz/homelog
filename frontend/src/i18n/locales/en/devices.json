@@ -5,6 +5,8 @@
   "searchPlaceholder": "Search devices …",
   "allStatuses": "All statuses",
   "allCategories": "All categories",
+  "add": "+ Add Device",
+  "deleteConfirm": "Do you really want to delete the device?",
 "card": {
 "location": "Location",
 "status": "Status",
@@ -45,6 +47,10 @@
 "saving": "Saving...",
 "expenses": "Expenses",
 "noExpenses": "No expenses are linked to this device.",
-"delete": "Delete"
-}
+"delete": "Delete",
+  "deleteConfirm": "Do you really want to delete the device?"
+},
+  "form": {
+    "property" : "Property"
+  }
 }

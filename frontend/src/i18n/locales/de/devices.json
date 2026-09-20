@@ -5,6 +5,8 @@
   "searchPlaceholder": "Geräte suchen …",
   "allStatuses": "Alle Status",
   "allCategories": "Alle Kategorien",
+  "add": "+ Gerät Hinzufügen",
+  "deleteConfirm": "Soll das Gerät wirklich gelöscht werden?",
   "card": {
     "location": "Standort",
     "status": "Status",
@@ -45,6 +47,10 @@
     "saving": "Wird gespeichert...",
     "expenses": "Ausgaben",
     "noExpenses": "Keine Ausgaben mit diesem Gerät verknüpft.",
-    "delete": "Löschen"
+    "delete": "Löschen",
+    "deleteConfirm": "Soll das Gerät wirklich gelöscht werden?"
+  },
+  "form": {
+    "property" : "Immobilie"
   }
 }
