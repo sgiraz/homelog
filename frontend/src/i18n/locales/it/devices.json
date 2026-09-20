@@ -1,0 +1,9 @@
+{
+  "card": {
+    "location": "Posizione",
+    "status": "Stato",
+    "purchasePrice": "Prezzo di acquisto",
+    "purchaseDate": "Data di acquisto",
+    "property": "Proprietà"
+  }
+}

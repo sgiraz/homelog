@@ -316,6 +316,27 @@ func main() {
 				projects.DELETE("/:id", projHandler.Delete)
 			}
 
+			// Device Categories
+			deviceCategories := protected.Group("/device-categories")
+			{
+				deviceCategoryHandler := handlers.NewDeviceCategoryHandler(db)
+				deviceCategories.GET("", deviceCategoryHandler.List)
+				deviceCategories.POST("", deviceCategoryHandler.Create)
+				deviceCategories.PUT("/:id", deviceCategoryHandler.Update)
+				deviceCategories.DELETE("/:id", deviceCategoryHandler.Delete)
+			}
+
+			// Devices
+			devices := protected.Group("/devices")
+			{
+				deviceHandler := handlers.NewDeviceHandler(db)
+				devices.GET("", deviceHandler.List)
+				devices.POST("", deviceHandler.Create)
+				devices.GET("/:id", deviceHandler.Get)
+				devices.PUT("/:id", deviceHandler.Update)
+				devices.DELETE("/:id", deviceHandler.Delete)
+			}
+
 			// Expense templates
 			expTplHandler := handlers.NewExpenseTemplateHandler(db)
 			expTemplates := protected.Group("/expense-templates")

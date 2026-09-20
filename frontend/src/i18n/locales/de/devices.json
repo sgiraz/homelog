@@ -1,0 +1,44 @@
+{
+  "title": "Geräte",
+  "loading": "Geräte werden geladen...",
+  "empty": "Keine Geräte vorhanden.",
+  "card": {
+    "location": "Standort",
+    "status": "Status",
+    "purchasePrice": "Kaufpreis",
+    "purchaseDate": "Kaufdatum",
+    "property": "Objekt"
+  },
+  "status": {
+    "active": "Aktiv",
+    "repair": "In Reparatur",
+    "broken": "Defekt",
+    "retired": "Ausgemustert",
+    "disposed": "Entsorgt"
+  },
+  "detail": {
+    "title": "Gerät",
+    "category": "Kategorie",
+    "manufacturer": "Hersteller",
+    "model": "Modell",
+    "network": "Netzwerk",
+    "hostname": "Hostname",
+    "ipAddress": "IP-Adresse",
+    "macAddress": "MAC-Adresse",
+    "firmware": "Firmware",
+    "general": "Allgemein",
+    "status": "Status",
+    "location": "Standort",
+    "serialNumber": "Seriennummer",
+    "purchase": "Kauf & Garantie",
+    "purchaseDate": "Kaufdatum",
+    "purchasePrice": "Kaufpreis",
+    "warrantyUntil": "Garantie bis",
+    "notes": "Notizen",
+    "edit": "Bearbeiten",
+    "name": "Name",
+    "managementUrl": "Management-URL",
+    "save": "Speichern",
+    "saving": "Wird gespeichert..."
+  }
+}

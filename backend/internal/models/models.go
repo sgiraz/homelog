@@ -83,6 +83,57 @@ type Category struct {
 	Subcategories []Subcategory `gorm:"foreignKey:CategoryID" json:"subcategories,omitempty"`
 }
 
+// DeviceCategory represents a category for devices
+type DeviceCategory struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	UserID *uint `gorm:"index" json:"user_id,omitempty"`
+	User   *User `gorm:"foreignKey:UserID" json:"user,omitempty"`
+
+	Slug      string `gorm:"index" json:"slug,omitempty"`
+	Name      string `gorm:"not null" json:"name"`
+	Icon      string `json:"icon"`
+	IsDefault bool   `gorm:"not null;default:false" json:"is_default"`
+}
+
+// Device represents a physical device associated with a property
+type Device struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	UserID     uint  `gorm:"not null;index" json:"user_id"`
+	PropertyID uint  `gorm:"not null;index" json:"property_id"`
+	CategoryID *uint `gorm:"index" json:"category_id,omitempty"`
+
+	Name         string `gorm:"not null" json:"name"`
+	Manufacturer string `json:"manufacturer"`
+	Model        string `json:"model,omitempty"`
+	SerialNumber string `json:"serial_number,omitempty"`
+
+	Status   string `gorm:"not null;default:'active';index" json:"status"`
+	Location string `json:"location,omitempty"`
+	Notes    string `gorm:"type:text" json:"notes,omitempty"`
+
+	PurchaseDate  *time.Time `json:"purchase_date,omitempty"`
+	PurchasePrice *float64   `json:"purchase_price,omitempty"`
+	WarrantyUntil *time.Time `json:"warranty_until,omitempty"`
+
+	Hostname      string `json:"hostname,omitempty"`
+	IPAddress     string `json:"ip_address,omitempty"`
+	MACAddress    string `json:"mac_address,omitempty"`
+	Firmware      string `json:"firmware,omitempty"`
+	ManagementURL string `json:"management_url,omitempty"`
+
+	Property Property        `json:"property"`
+	Category *DeviceCategory `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
+	Expenses []Expense       `gorm:"foreignKey:DeviceID" json:"expenses,omitempty"`
+}
+
 // Subcategory represents an expense subcategory
 type Subcategory struct {
 	ID        uint      `gorm:"primarykey" json:"id"`
@@ -109,6 +160,7 @@ type Expense struct {
 	ProjectID         *uint `gorm:"index" json:"project_id,omitempty"`
 	BillID            *uint `gorm:"index" json:"bill_id,omitempty"`             // auto-created from bill payment
 	BillInstallmentID *uint `gorm:"index" json:"bill_installment_id,omitempty"` // specific installment when bill is installment-based
+	DeviceID          *uint `gorm:"index" json:"device_id,omitempty"`
 
 	Amount           float64   `gorm:"not null" json:"amount"`
 	OriginalAmount   *float64  `json:"original_amount,omitempty"`   // amount in original currency (nil if same as user currency)
@@ -134,6 +186,7 @@ type Expense struct {
 	Category    Category         `json:"category"`
 	Subcategory *Subcategory     `json:"subcategory,omitempty"`
 	Project     *Project         `json:"project,omitempty"`
+	Device      *Device          `gorm:"foreignKey:DeviceID" json:"device,omitempty"`
 	PaidBy      *HouseholdMember `gorm:"foreignKey:PaidByMemberID" json:"paid_by,omitempty"`
 	Splits      []ExpenseSplit   `gorm:"foreignKey:ExpenseID" json:"splits,omitempty"`
 }

@@ -114,6 +114,9 @@
                     <path v-else-if="hit.entity_type === 'utility'"
                       stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
                       d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    <path v-else-if="hit.entity_type === 'device'"
+                          stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                          d="M4 6h16v10H4zM8 20h8M10 16v4m4-4v4" />
                   </svg>
                 </div>
                 <div class="flex-1 min-w-0">
@@ -159,6 +162,7 @@ const ICON_BG = {
   bill: 'bg-amber-100 dark:bg-amber-900/30',
   project: 'bg-violet-100 dark:bg-violet-900/30',
   utility: 'bg-blue-100 dark:bg-blue-900/30',
+  device: 'bg-sky-100 dark:bg-sky-900/30',
 }
 
 const ICON_TEXT = {
@@ -166,6 +170,7 @@ const ICON_TEXT = {
   bill: 'text-amber-600 dark:text-amber-300',
   project: 'text-violet-600 dark:text-violet-300',
   utility: 'text-blue-600 dark:text-blue-300',
+  device: 'text-sky-600 dark:text-sky-300',
 }
 
 const groupedHits = computed(() => {
@@ -175,7 +180,7 @@ const groupedHits = computed(() => {
     buckets[h.entity_type].push(h)
   }
   // preserve a stable group ordering
-  const order = ['expense', 'bill', 'utility', 'project']
+  const order = ['expense', 'bill', 'utility', 'project', 'device']
   return order
     .filter((k) => buckets[k]?.length)
     .map((k) => ({ type: k, label: t(`search.groups.${k}`), hits: buckets[k] }))
@@ -288,6 +293,9 @@ function openHit(hit) {
       router.push({ path: '/utilities', query })
       break
     }
+    case 'device':
+      router.push(`/devices/${hit.entity_id}`)
+      break
     default:
       router.push('/')
   }

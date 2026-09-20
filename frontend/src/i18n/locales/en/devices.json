@@ -1,0 +1,9 @@
+{
+  "card": {
+    "location": "Location",
+    "status": "Status",
+    "purchasePrice": "Purchase price",
+    "purchaseDate": "Purchase date",
+    "property": "Property"
+  }
+}

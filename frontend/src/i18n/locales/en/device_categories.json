@@ -1,0 +1,10 @@
+{
+  "network": "Network",
+  "computer": "Computer",
+  "mobile": "Smartphone & Tablet",
+  "tv_audio": "TV & Audio",
+  "appliances": "Home Appliances",
+  "smart_home": "Smart Home",
+  "security": "Security",
+  "other": "Other"
+}
