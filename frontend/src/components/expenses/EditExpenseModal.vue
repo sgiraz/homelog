@@ -285,7 +285,7 @@ async function handleSubmit() {
       }
       expenseData.date = form.value.date
       expenseData.project_id = form.value.project_id
-      expenseData.device_id = form.value.device_id || undefined
+      expenseData.device_id = form.value.device_id || null
     }
 
     await expensesStore.updateExpense(props.expense.id, expenseData)

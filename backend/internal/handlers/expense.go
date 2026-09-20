@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -42,20 +43,41 @@ type CreateExpenseRequest struct {
 	IsSplit            bool     `json:"is_split"`
 	SplitWithMemberIDs []uint   `json:"split_with_member_ids"`
 }
+type OptionalUint struct {
+	Set   bool
+	Value *uint
+}
+
+func (o *OptionalUint) UnmarshalJSON(data []byte) error {
+	o.Set = true
+
+	if string(data) == "null" {
+		o.Value = nil
+		return nil
+	}
+
+	var value uint
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+
+	o.Value = &value
+	return nil
+}
 
 // UpdateExpenseRequest represents the request body for updating an expense
 type UpdateExpenseRequest struct {
-	Amount           *float64 `json:"amount"`
-	OriginalAmount   *float64 `json:"original_amount"`
-	OriginalCurrency *string  `json:"original_currency"`
-	Description      *string  `json:"description"`
-	CategoryID       *uint    `json:"category_id"`
-	PropertyID       *uint    `json:"property_id"`
-	DeviceID         *uint    `json:"device_id"`
-	SubcategoryID    *uint    `json:"subcategory_id"`
-	ProjectID        *uint    `json:"project_id"`
-	Date             *string  `json:"date"`
-	AttachmentURL    *string  `json:"attachment_url"`
+	Amount           *float64     `json:"amount"`
+	OriginalAmount   *float64     `json:"original_amount"`
+	OriginalCurrency *string      `json:"original_currency"`
+	Description      *string      `json:"description"`
+	CategoryID       *uint        `json:"category_id"`
+	PropertyID       *uint        `json:"property_id"`
+	DeviceID         OptionalUint `json:"device_id"`
+	SubcategoryID    *uint        `json:"subcategory_id"`
+	ProjectID        *uint        `json:"project_id"`
+	Date             *string      `json:"date"`
+	AttachmentURL    *string      `json:"attachment_url"`
 }
 
 // MonthlyStats represents monthly expense statistics
@@ -598,26 +620,30 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 			updates["project_id"] = *req.ProjectID
 		}
 
-		if req.DeviceID != nil {
-			var device models.Device
-			if err := h.db.
-				Where("id = ?", *req.DeviceID).
-				First(&device).Error; err != nil {
-				apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Invalid device")
-				return
-			}
+		if req.DeviceID.Set {
+			if req.DeviceID.Value == nil {
+				updates["device_id"] = nil
+			} else {
+				var device models.Device
+				if err := h.db.
+					Where("id = ?", *req.DeviceID.Value).
+					First(&device).Error; err != nil {
+					apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Invalid device")
+					return
+				}
 
-			if !isPropertyMember(h.db, userID, device.PropertyID) {
-				apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Invalid device")
-				return
-			}
+				if !isPropertyMember(h.db, userID, device.PropertyID) {
+					apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Invalid device")
+					return
+				}
 
-			if expense.PropertyID != nil && device.PropertyID != *expense.PropertyID {
-				apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Device does not belong to the expense property")
-				return
-			}
+				if expense.PropertyID != nil && device.PropertyID != *expense.PropertyID {
+					apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Device does not belong to the expense property")
+					return
+				}
 
-			updates["device_id"] = *req.DeviceID
+				updates["device_id"] = *req.DeviceID.Value
+			}
 		}
 
 		if req.Date != nil {
