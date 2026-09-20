@@ -246,6 +246,121 @@
         {{ categoryError }}
       </div>
     </Card>
+    <Card class="p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-xl font-bold text-ink">
+            {{ t('settings.deviceCategories.title') }}
+          </h2>
+          <p class="text-sm text-ink-soft mt-1">
+            {{ t('settings.deviceCategories.subtitle') }}
+          </p>
+        </div>
+
+        <Button
+            v-if="!showAddDeviceCategoryForm"
+            @click="showAddDeviceCategoryForm = true"
+            size="sm"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </Button>
+      </div>
+
+      <div
+          v-if="showAddDeviceCategoryForm"
+          class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800"
+      >
+        <div class="flex gap-2 mb-3">
+          <input
+              v-model="newDeviceCategory.icon"
+              type="text"
+              maxlength="4"
+              :placeholder="t('settings.deviceCategories.iconPlaceholder')"
+              class="w-14 shrink-0 px-2 py-3 border border-line rounded-lg bg-surface text-ink text-center"
+          />
+
+          <input
+              v-model="newDeviceCategory.name"
+              type="text"
+              :placeholder="t('settings.deviceCategories.namePlaceholder')"
+              class="flex-1 min-w-0 px-3 py-3 border border-line rounded-lg bg-surface text-ink"
+              @keyup.enter="addDeviceCategory"
+          />
+        </div>
+
+        <div class="flex gap-2">
+          <Button
+              @click="addDeviceCategory"
+              :disabled="!newDeviceCategory.name.trim()"
+          >
+            {{ t('settings.deviceCategories.save') }}
+          </Button>
+
+          <Button
+              variant="secondary"
+              @click="showAddDeviceCategoryForm = false; newDeviceCategory = { name: '', icon: '' }"
+          >
+            {{ t('settings.deviceCategories.cancel') }}
+          </Button>
+        </div>
+      </div>
+
+      <div v-if="deviceCategoriesLoading" class="text-sm text-ink-muted">
+        {{ t('common.loading') }}
+      </div>
+
+      <div
+          v-else-if="deviceCategories.length === 0"
+          class="text-sm text-ink-muted italic p-4 bg-surface-2 rounded-lg text-center"
+      >
+        {{ t('settings.deviceCategories.empty') }}
+      </div>
+
+      <div v-else class="space-y-2">
+        <div
+            v-for="category in deviceCategories"
+            :key="category.id"
+            class="flex items-center gap-3 p-3 border border-line rounded-xl"
+        >
+      <span class="text-xl w-8 text-center">
+        {{ category.icon || '📦' }}
+      </span>
+
+          <span class="flex-1 font-medium text-ink">
+        {{ category.user_id ? category.name : t(`device_categories.${category.slug}`) }}
+          </span>
+          <Button
+              v-if="category.user_id"
+              variant="secondary"
+              size="sm"
+              @click.stop="updateDeviceCategory(category)">
+            {{ t('settings.deviceCategories.edit') }}
+          </Button>
+          <Button
+              v-if="category.user_id"
+              variant="danger"
+              size="sm"
+              @click.stop="deleteDeviceCategory(category)"
+          >
+            {{ t('settings.deviceCategories.delete') }}
+          </Button>
+        </div>
+      </div>
+
+      <div
+          v-if="deviceCategoryError"
+          class="mt-3 text-sm text-danger-soft bg-danger/10 p-3 rounded-lg"
+      >
+        {{ deviceCategoryError }}
+      </div>
+    </Card>
   </div>
 </template>
 
@@ -256,7 +371,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
-import { categoriesAPI } from '@/api/client'
+import { categoriesAPI, deviceCategoriesAPI } from '@/api/client'
 import { categoryLabel } from '@/utils/categoryLabel'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -274,6 +389,11 @@ const categoryError = ref(null)
 const expandedCategories = ref(new Set())
 const showAddCategoryForm = ref(false)
 const newCategory = ref({ name: '', icon: '', is_default: false })
+const deviceCategories = ref([])
+const deviceCategoriesLoading = ref(false)
+const deviceCategoryError = ref(null)
+const newDeviceCategory = ref({ name: '', icon: '' })
+const showAddDeviceCategoryForm = ref(false)
 const addSubcategoryForCat = ref(null)
 const newSubcategoryName = ref('')
 
@@ -300,7 +420,17 @@ async function fetchCategories() {
     categoriesLoading.value = false
   }
 }
-
+async function fetchDeviceCategories() {
+  deviceCategoriesLoading.value = true
+  try {
+    const { data } = await deviceCategoriesAPI.list()
+    deviceCategories.value = data || []
+  } catch (err) {
+    console.error('Error fetching device categories:', err)
+  } finally {
+    deviceCategoriesLoading.value = false
+  }
+}
 async function addCategory() {
   if (!newCategory.value.name.trim()) return
   categoryError.value = null
@@ -378,5 +508,85 @@ async function deleteSubcategory(cat, sub) {
 
 onMounted(() => {
   fetchCategories()
+  fetchDeviceCategories()
 })
+
+async function addDeviceCategory() {
+  if (!newDeviceCategory.value.name.trim()) return
+
+  deviceCategoryError.value = null
+
+  try {
+    await deviceCategoriesAPI.create({
+      name: newDeviceCategory.value.name.trim(),
+      icon: newDeviceCategory.value.icon.trim() || '📦'
+    })
+
+    newDeviceCategory.value = { name: '', icon: '' }
+    showAddDeviceCategoryForm.value = false
+    await fetchDeviceCategories()
+  } catch (err) {
+    deviceCategoryError.value = apiErrorMessage(
+        err,
+        t('settings.deviceCategories.createError')
+    )
+  }
+}
+async function updateDeviceCategory(category) {
+  const name = window.prompt(
+      t('settings.deviceCategories.editPrompt'),
+      category.user_id ? category.name : t(`device_categories.${category.slug}`)
+  )
+
+  if (name === null || !name.trim()) return
+
+  const icon = window.prompt(
+      t('settings.deviceCategories.iconPlaceholder'),
+      category.icon || '📦'
+  )
+
+  if (icon === null) return
+
+  if (name === null || !name.trim()) return
+
+  deviceCategoryError.value = null
+
+  try {
+    await deviceCategoriesAPI.update(category.id, {
+      name: name.trim(),
+      icon: icon.trim() || '📦'
+    })
+
+    await fetchDeviceCategories()
+  } catch (err) {
+    deviceCategoryError.value = apiErrorMessage(
+        err,
+        t('settings.deviceCategories.updateError')
+    )
+  }
+}
+async function deleteDeviceCategory(category) {
+  const ok = await confirm({
+    title: t('settings.deviceCategories.deleteTitle'),
+    message: t('settings.deviceCategories.deleteMessage', {
+      name: category.name
+    }),
+    confirmText: t('settings.deviceCategories.deleteConfirm'),
+    variant: 'danger'
+  })
+
+  if (!ok) return
+
+  deviceCategoryError.value = null
+
+  try {
+    await deviceCategoriesAPI.delete(category.id)
+    await fetchDeviceCategories()
+  } catch (err) {
+    deviceCategoryError.value = apiErrorMessage(
+        err,
+        t('settings.deviceCategories.deleteError')
+    )
+  }
+}
 </script>

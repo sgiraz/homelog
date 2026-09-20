@@ -127,7 +127,30 @@
           </option>
         </select>
       </div>
-
+      <!-- Device (Optional) -->
+      <div>
+        <label class="block text-sm text-ink-soft mb-1">
+          {{ t('expenses.modal.deviceLabel') }}
+        </label>
+        <select
+            v-model.number="form.device_id"
+            :disabled="isSettled"
+            class="w-full px-3 py-3 border border-line rounded-lg
+           bg-surface text-ink text-base
+           focus:outline-none focus:ring-2 focus:ring-blue-500
+           disabled:opacity-50 disabled:cursor-not-allowed">
+          <option :value="null">{{ t('expenses.modal.deviceNone') }}</option>
+          <option
+              v-for="device in devices"
+              :key="device.id"
+              :value="device.id">
+            {{ device.name }}
+            <template v-if="device.manufacturer || device.model">
+              — {{ [device.manufacturer, device.model].filter(Boolean).join(' ') }}
+            </template>
+          </option>
+        </select>
+      </div>
       <!-- Note about split -->
       <div v-if="expense.is_split && !isSettled" class="bg-warning/10 border border-warning/30 rounded-lg p-3">
         <p class="text-sm text-warning-soft">
@@ -158,7 +181,7 @@ import { useExpensesStore } from '@/stores/expenses'
 import { useSettingsStore } from '@/stores/settings'
 import { formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
 import { categoryLabel } from '@/utils/categoryLabel'
-import { categoriesAPI, projectsAPI } from '@/api/client'
+import { categoriesAPI, projectsAPI, devicesAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -185,6 +208,7 @@ const loading = ref(false)
 const error = ref(null)
 const categories = ref([])
 const activeProjects = ref([])
+const devices = ref([])
 
 const form = ref({
   amount: null,
@@ -233,7 +257,17 @@ async function fetchActiveProjects() {
     console.error('Error fetching projects:', err)
   }
 }
-
+async function fetchDevices() {
+  try {
+    const { data } = await devicesAPI.list({
+      property_id: form.value.property_id
+    })
+    devices.value = data?.devices || []
+  } catch (err) {
+    console.error('Error fetching devices:', err)
+    devices.value = []
+  }
+}
 async function handleSubmit() {
   loading.value = true
   error.value = null
@@ -251,6 +285,7 @@ async function handleSubmit() {
       }
       expenseData.date = form.value.date
       expenseData.project_id = form.value.project_id
+      expenseData.device_id = form.value.device_id || undefined
     }
 
     await expensesStore.updateExpense(props.expense.id, expenseData)
@@ -264,16 +299,20 @@ async function handleSubmit() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   fetchCategories()
   fetchActiveProjects()
+
   form.value = {
     amount: props.expense.amount,
     description: props.expense.description,
     category_id: props.expense.category_id || props.expense.category?.id || 1,
     subcategory_id: props.expense.subcategory_id || null,
     date: props.expense.date ? props.expense.date.split('T')[0] : '',
-    project_id: props.expense.project_id || null
+    project_id: props.expense.project_id || null,
+    device_id: props.expense.device_id || null
   }
+
+  await fetchDevices()
 })
 </script>

@@ -248,5 +248,23 @@
     "importSuccess": "Import abgeschlossen: {summary}.",
     "importEmpty": "keine Daten",
     "importError": "Importfehler: {error}"
+  },
+  "deviceCategories": {
+    "title": "Gerätekategorien",
+    "subtitle": "Eigene Gerätekategorien verwalten",
+    "namePlaceholder": "Name der Kategorie",
+    "iconPlaceholder": "Icon",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "edit": "Bearbeiten",
+    "editPrompt": "Name der Gerätekategorie:",
+    "delete": "Löschen",
+    "deleteTitle": "Gerätekategorie löschen",
+    "deleteMessage": "Möchtest du die Gerätekategorie „{name}“ wirklich löschen?",
+    "deleteConfirm": "Löschen",
+    "createError": "Gerätekategorie konnte nicht erstellt werden.",
+    "updateError": "Gerätekategorie konnte nicht geändert werden.",
+    "deleteError": "Gerätekategorie konnte nicht gelöscht werden.",
+    "empty": "Keine eigenen Gerätekategorien vorhanden."
   }
 }

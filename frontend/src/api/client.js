@@ -241,6 +241,9 @@ export const devicesAPI = {
 }
 export const deviceCategoriesAPI = {
   list: () => apiClient.get('/device-categories'),
+  create: (data) => apiClient.post('/device-categories', data),
+  update: (id, data) => apiClient.put(`/device-categories/${id}`, data),
+  delete: (id) => apiClient.delete(`/device-categories/${id}`),
 }
 
 export const exportAPI = {

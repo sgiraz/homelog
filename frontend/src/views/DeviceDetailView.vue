@@ -177,7 +177,37 @@
         </div>
       </div>
     </Card>
+    <!-- Card for Expenses -->
+    <Card v-if="device" className="p-6">
+      <h2 class="text-lg font-bold text-ink mb-4">
+        {{ t('devices.detail.expenses') }}
+      </h2>
 
+      <div v-if="device.expenses?.length" class="space-y-3">
+        <div
+            v-for="expense in device.expenses"
+            :key="expense.id"
+            class="flex items-center justify-between border-b border-line pb-3 last:border-b-0"
+        >
+          <div>
+            <p class="text-ink font-medium">
+              {{ expense.description || '—' }}
+            </p>
+            <p class="text-sm text-ink-faint">
+              {{ expense.date }}
+            </p>
+          </div>
+
+          <p class="text-ink font-medium">
+            {{ Number(expense.amount).toFixed(2) }} €
+          </p>
+        </div>
+      </div>
+
+      <p v-else class="text-ink-faint">
+        {{ t('devices.detail.noExpenses') }}
+      </p>
+    </Card>
     <!-- Card for Notes -->
     <Card v-if="device" className="p-6">
       <h2 class="text-lg font-bold text-ink mb-4">

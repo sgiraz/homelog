@@ -277,6 +277,7 @@ func (h *DeviceHandler) Get(c *gin.Context) {
 	if err := h.db.
 		Preload("Category").
 		Preload("Property").
+		Preload("Expenses").
 		First(&device, c.Param("id")).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			apierr.Fail(c, http.StatusNotFound, "invalid_request", "Device not found")

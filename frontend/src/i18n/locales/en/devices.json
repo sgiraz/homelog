@@ -5,5 +5,9 @@
     "purchasePrice": "Purchase price",
     "purchaseDate": "Purchase date",
     "property": "Property"
+  },
+  "details": {
+    "expenses": "Expenses",
+    "noExpenses": "No expenses are linked to this device."
   }
 }

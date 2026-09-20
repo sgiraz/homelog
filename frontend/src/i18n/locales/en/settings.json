@@ -249,5 +249,23 @@
     "importSuccess": "Import complete: {summary}.",
     "importEmpty": "no data",
     "importError": "Import error: {error}"
+  },
+  "deviceCategories": {
+    "title": "Device categories",
+    "subtitle": "Manage your own device categories",
+    "namePlaceholder": "Category name",
+    "iconPlaceholder": "Icon",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "editPrompt": "Device category name:",
+    "delete": "Delete",
+    "deleteTitle": "Delete device category",
+    "deleteMessage": "Do you really want to delete the device category “{name}”?",
+    "deleteConfirm": "Delete",
+    "createError": "Could not create the device category.",
+    "updateError": "Could not update the device category.",
+    "deleteError": "Could not delete the device category.",
+    "empty": "No custom device categories available."
   }
 }

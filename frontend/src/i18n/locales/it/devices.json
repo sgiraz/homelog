@@ -5,5 +5,9 @@
     "purchasePrice": "Prezzo di acquisto",
     "purchaseDate": "Data di acquisto",
     "property": "Proprietà"
+  },
+  "details": {
+    "expenses": "Spese",
+    "noExpenses": "Nessuna spesa collegata a questo dispositivo."
   }
 }

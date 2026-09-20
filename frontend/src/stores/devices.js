@@ -53,6 +53,47 @@ export const useDevicesStore = defineStore('devices', () => {
             throw err
         }
     }
+    async function createCategory(data) {
+        saving.value = true
+        error.value = null
+
+        try {
+            const { data: createdCategory } = await deviceCategoriesAPI.create(data)
+            return createdCategory
+        } catch (err) {
+            error.value = err.message
+            throw err
+        } finally {
+            saving.value = false
+        }
+    }
+    async function updateCategory(id, data) {
+        saving.value = true
+        error.value = null
+
+        try {
+            const { data: updatedCategory } = await deviceCategoriesAPI.update(id, data)
+            return updatedCategory
+        } catch (err) {
+            error.value = err.message
+            throw err
+        } finally {
+            saving.value = false
+        }
+    }
+    async function deleteCategory(id) {
+        saving.value = true
+        error.value = null
+
+        try {
+            await deviceCategoriesAPI.delete(id)
+        } catch (err) {
+            error.value = err.message
+            throw err
+        } finally {
+            saving.value = false
+        }
+    }
     async function createDevice(data) {
         saving.value = true
         error.value = null
@@ -108,7 +149,10 @@ export const useDevicesStore = defineStore('devices', () => {
         fetchCategories,
         updateDevice,
         createDevice,
-        deleteDevice
+        deleteDevice,
+        createCategory,
+        updateCategory,
+        deleteCategory,
     }
 
 

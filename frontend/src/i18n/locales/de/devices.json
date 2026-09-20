@@ -39,6 +39,8 @@
     "name": "Name",
     "managementUrl": "Management-URL",
     "save": "Speichern",
-    "saving": "Wird gespeichert..."
+    "saving": "Wird gespeichert...",
+    "expenses": "Ausgaben",
+    "noExpenses": "Keine Ausgaben mit diesem Gerät verknüpft."
   }
 }

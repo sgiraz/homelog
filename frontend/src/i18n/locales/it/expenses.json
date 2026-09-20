@@ -94,6 +94,8 @@
     "originalAmountInfo": "Importo originale: {amount}",
     "originalRateInfo": "(tasso: {rate})",
     "splitEditNotice": "Le persone coinvolte nella divisione non possono essere modificate. Se cambi l'importo, le quote verranno ricalcolate equamente. Per cambiare i membri, elimina e ricrea la spesa.",
-    "saveChanges": "Salva Modifiche"
+    "saveChanges": "Salva Modifiche",
+    "deviceLabel": "Dispositivo",
+    "deviceNone": "Nessun dispositivo"
   }
 }
