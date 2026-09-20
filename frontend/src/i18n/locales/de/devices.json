@@ -2,6 +2,9 @@
   "title": "Geräte",
   "loading": "Geräte werden geladen...",
   "empty": "Keine Geräte vorhanden.",
+  "searchPlaceholder": "Geräte suchen …",
+  "allStatuses": "Alle Status",
+  "allCategories": "Alle Kategorien",
   "card": {
     "location": "Standort",
     "status": "Status",
@@ -41,6 +44,7 @@
     "save": "Speichern",
     "saving": "Wird gespeichert...",
     "expenses": "Ausgaben",
-    "noExpenses": "Keine Ausgaben mit diesem Gerät verknüpft."
+    "noExpenses": "Keine Ausgaben mit diesem Gerät verknüpft.",
+    "delete": "Löschen"
   }
 }

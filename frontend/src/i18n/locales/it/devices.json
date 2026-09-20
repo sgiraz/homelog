@@ -1,13 +1,50 @@
 {
-  "card": {
-    "location": "Posizione",
-    "status": "Stato",
-    "purchasePrice": "Prezzo di acquisto",
-    "purchaseDate": "Data di acquisto",
-    "property": "Proprietà"
-  },
-  "details": {
-    "expenses": "Spese",
-    "noExpenses": "Nessuna spesa collegata a questo dispositivo."
-  }
+"title": "Dispositivi",
+"loading": "Caricamento dei dispositivi...",
+"empty": "Nessun dispositivo disponibile.",
+  "searchPlaceholder": "Cerca dispositivi …",
+  "allStatuses": "Tutti gli stati",
+  "allCategories": "Tutte le categorie",
+"card": {
+"location": "Posizione",
+"status": "Stato",
+"purchasePrice": "Prezzo di acquisto",
+"purchaseDate": "Data di acquisto",
+"property": "Immobile"
+},
+"status": {
+"active": "Attivo",
+"repair": "In riparazione",
+"broken": "Guasto",
+"retired": "Dismesso",
+"disposed": "Smaltito"
+},
+"detail": {
+"title": "Dispositivo",
+"category": "Categoria",
+"manufacturer": "Produttore",
+"model": "Modello",
+"network": "Rete",
+"hostname": "Nome host",
+"ipAddress": "Indirizzo IP",
+"macAddress": "Indirizzo MAC",
+"firmware": "Firmware",
+"general": "Generale",
+"status": "Stato",
+"location": "Posizione",
+"serialNumber": "Numero di serie",
+"purchase": "Acquisto e garanzia",
+"purchaseDate": "Data di acquisto",
+"purchasePrice": "Prezzo di acquisto",
+"warrantyUntil": "Garanzia fino al",
+"notes": "Note",
+"edit": "Modifica",
+"name": "Nome",
+"managementUrl": "URL di gestione",
+"save": "Salva",
+"saving": "Salvataggio...",
+"expenses": "Spese",
+"noExpenses": "Nessuna spesa associata a questo dispositivo.",
+"delete": "Elimina"
+}
 }

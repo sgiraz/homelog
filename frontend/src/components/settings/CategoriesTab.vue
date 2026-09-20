@@ -333,16 +333,56 @@
         {{ category.icon || '📦' }}
       </span>
 
-          <span class="flex-1 font-medium text-ink">
-        {{ category.user_id ? category.name : t(`device_categories.${category.slug}`) }}
-          </span>
-          <Button
-              v-if="category.user_id"
-              variant="secondary"
-              size="sm"
-              @click.stop="updateDeviceCategory(category)">
-            {{ t('settings.deviceCategories.edit') }}
-          </Button>
+          <div v-if="editingDeviceCategory === category.id" class="flex-1 flex gap-2 min-w-0">
+            <input
+                v-model="editDeviceCategory.icon"
+                type="text"
+                maxlength="4"
+                :placeholder="t('settings.deviceCategories.iconPlaceholder')"
+                class="w-14 shrink-0 px-2 py-2 border border-line rounded-lg bg-surface text-ink text-center"
+            />
+
+            <input
+                v-model="editDeviceCategory.name"
+                type="text"
+                :placeholder="t('settings.deviceCategories.namePlaceholder')"
+                class="flex-1 min-w-0 px-3 py-2 border border-line rounded-lg bg-surface text-ink"
+                @keyup.enter="saveDeviceCategory"
+            />
+          </div>
+
+          <span v-else class="flex-1 font-medium text-ink">
+  {{ category.user_id ? category.name : t(`device_categories.${category.slug}`) }}
+</span>
+
+          <template v-if="category.user_id">
+            <Button
+                v-if="editingDeviceCategory !== category.id"
+                variant="secondary"
+                size="sm"
+                @click.stop="startEditDeviceCategory(category)"
+            >
+              {{ t('settings.deviceCategories.edit') }}
+            </Button>
+
+            <template v-else>
+              <Button
+                  size="sm"
+                  :disabled="!editDeviceCategory.name.trim()"
+                  @click.stop="saveDeviceCategory"
+              >
+                {{ t('settings.deviceCategories.save') }}
+              </Button>
+
+              <Button
+                  variant="secondary"
+                  size="sm"
+                  @click.stop="cancelEditDeviceCategory"
+              >
+                {{ t('settings.deviceCategories.cancel') }}
+              </Button>
+            </template>
+          </template>
           <Button
               v-if="category.user_id"
               variant="danger"
@@ -393,6 +433,8 @@ const deviceCategories = ref([])
 const deviceCategoriesLoading = ref(false)
 const deviceCategoryError = ref(null)
 const newDeviceCategory = ref({ name: '', icon: '' })
+const editingDeviceCategory = ref(null)
+const editDeviceCategory = ref({ name: '', icon: '' })
 const showAddDeviceCategoryForm = ref(false)
 const addSubcategoryForCat = ref(null)
 const newSubcategoryName = ref('')
@@ -532,32 +574,32 @@ async function addDeviceCategory() {
     )
   }
 }
-async function updateDeviceCategory(category) {
-  const name = window.prompt(
-      t('settings.deviceCategories.editPrompt'),
-      category.user_id ? category.name : t(`device_categories.${category.slug}`)
-  )
+function startEditDeviceCategory(category) {
+  editingDeviceCategory.value = category.id
+  editDeviceCategory.value = {
+    name: category.name,
+    icon: category.icon || '📦'
+  }
+}
 
-  if (name === null || !name.trim()) return
+function cancelEditDeviceCategory() {
+  editingDeviceCategory.value = null
+  editDeviceCategory.value = { name: '', icon: '' }
+}
 
-  const icon = window.prompt(
-      t('settings.deviceCategories.iconPlaceholder'),
-      category.icon || '📦'
-  )
-
-  if (icon === null) return
-
-  if (name === null || !name.trim()) return
+async function saveDeviceCategory() {
+  if (!editingDeviceCategory.value || !editDeviceCategory.value.name.trim()) return
 
   deviceCategoryError.value = null
 
   try {
-    await deviceCategoriesAPI.update(category.id, {
-      name: name.trim(),
-      icon: icon.trim() || '📦'
+    await deviceCategoriesAPI.update(editingDeviceCategory.value, {
+      name: editDeviceCategory.value.name.trim(),
+      icon: editDeviceCategory.value.icon.trim() || '📦'
     })
 
     await fetchDeviceCategories()
+    cancelEditDeviceCategory()
   } catch (err) {
     deviceCategoryError.value = apiErrorMessage(
         err,

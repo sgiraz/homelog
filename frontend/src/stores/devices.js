@@ -5,6 +5,7 @@ import { devicesAPI, deviceCategoriesAPI } from '@/api/client'
 
 export const useDevicesStore = defineStore('devices', () => {
     const devices = ref([])
+    const categories = ref([])
     const loading = ref(false)
     const saving = ref(false)
     const error = ref(null)
@@ -47,7 +48,8 @@ export const useDevicesStore = defineStore('devices', () => {
     async function fetchCategories() {
         try {
             const { data } = await deviceCategoriesAPI.list()
-            return data
+            categories.value = data || []
+            return categories.value
         } catch (err) {
             error.value = err.message
             throw err
@@ -138,6 +140,7 @@ export const useDevicesStore = defineStore('devices', () => {
 
     return {
         devices,
+        categories,
         loading,
         saving,
         error,
