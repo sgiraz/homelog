@@ -426,6 +426,7 @@ const form = ref({
   estimated_reading: null,
   previous_estimated_consumption: null,
   communication_text: '',
+  pdf_url: '',
   installments: []
 })
 
@@ -495,6 +496,7 @@ function onPDFExtracted(data) {
     form.value.previous_estimated_consumption = data.previous_estimated_consumption
   }
   if (data.communication_text) form.value.communication_text = data.communication_text
+  if (data.pdf_url) form.value.pdf_url = data.pdf_url
 }
 
 async function fetchReadings() {
@@ -570,7 +572,8 @@ async function handleSubmit() {
         ? parseFloat(form.value.estimated_reading) : null,
       estimated_consumption: form.value.has_estimated && calculatedEstimatedConsumption.value != null
         ? calculatedEstimatedConsumption.value : null,
-      communication_text: form.value.communication_text || ''
+      communication_text: form.value.communication_text || '',
+      pdf_url: form.value.pdf_url || ''
     }
 
     if (isInstallmentBased.value && !isEditing.value && form.value.installments.length > 0) {
@@ -625,6 +628,7 @@ onMounted(async () => {
       estimated_reading: props.bill.estimated_reading,
       previous_estimated_consumption: null,
       communication_text: '',
+      pdf_url: props.bill.pdf_url || '',
       installments: (props.bill.installments || []).map(inst => ({
         id: inst.id,
         number: inst.number,

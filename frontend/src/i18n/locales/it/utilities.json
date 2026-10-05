@@ -105,6 +105,7 @@
     "lockedHint": "Spesa già saldata da uno o più membri. Annulla i pagamenti dal Bilancio per modificare la bolletta.",
     "markPaidTitle": "Segna come pagata",
     "viewDetailsTitle": "Visualizza dettagli",
+    "viewPdfTitle": "Visualizza PDF",
     "editTitle": "Modifica",
     "deleteTitle": "Elimina",
     "operationBlocked": "Operazione bloccata",
