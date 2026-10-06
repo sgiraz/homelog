@@ -175,6 +175,10 @@ func main() {
 		protected := v1.Group("")
 		protected.Use(middleware.AuthRequired())
 		{
+			// Uploads write to disk and spawn poppler: 20 per user per minute,
+			// shared by every upload endpoint.
+			uploadLimiter := handlers.UploadRateLimiter(20, time.Minute)
+
 			// Exchange rates
 			exchangeHandler := handlers.NewExchangeHandler()
 			protected.GET("/exchange-rate", exchangeHandler.GetRate)
@@ -271,9 +275,9 @@ func main() {
 				utilities.PATCH("/:id/bills/:billId/installments/:instId", utilHandler.UpdateBillInstallment)
 
 				// PDF upload for bills
-				utilities.POST("/:id/bills/upload", pdfHandler.UploadBillPDF)
+				utilities.POST("/:id/bills/upload", uploadLimiter, pdfHandler.UploadBillPDF)
 				utilities.GET("/:id/bills/:billId/pdf", pdfHandler.ServeBillPDF)
-				utilities.POST("/:id/bills/:billId/pdf", pdfHandler.AttachBillPDF)
+				utilities.POST("/:id/bills/:billId/pdf", uploadLimiter, pdfHandler.AttachBillPDF)
 				utilities.DELETE("/:id/bills/:billId/pdf", pdfHandler.DeleteBillPDF)
 
 				// Reading comparison (autolettura vs lettura fornitore)
@@ -286,7 +290,7 @@ func main() {
 				utilities.DELETE("/:id/communications/:commId", utilHandler.DeleteCommunication)
 
 				// Contract upload (for creating new utilities)
-				utilities.POST("/contract/upload", pdfHandler.UploadContractPDF)
+				utilities.POST("/contract/upload", uploadLimiter, pdfHandler.UploadContractPDF)
 			}
 
 			// Bill extraction templates
@@ -303,8 +307,8 @@ func main() {
 			pdf := protected.Group("/pdf")
 			{
 				pdfHandler := handlers.NewPDFHandler(db)
-				pdf.POST("/extract-text", pdfHandler.GetPDFRawText)
-				pdf.POST("/analyze", pdfHandler.AnalyzePDFForTemplate)
+				pdf.POST("/extract-text", uploadLimiter, pdfHandler.GetPDFRawText)
+				pdf.POST("/analyze", uploadLimiter, pdfHandler.AnalyzePDFForTemplate)
 				pdf.DELETE("/cleanup/:timestamp", pdfHandler.CleanupTemplateImages)
 			}
 
@@ -422,8 +426,20 @@ func main() {
 
 	// Serve uploaded files from the directory the handlers write to.
 	baseDataDir := database.DataDir()
+
+	// Reclaim uploads that never got attached to a record (abandoned flows,
+	// contract PDFs, wizard renders). Once at startup, then hourly.
+	uploadsDir := filepath.Join(baseDataDir, "uploads")
+	go func() {
+		handlers.SweepUploads(db, uploadsDir, 24*time.Hour)
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			handlers.SweepUploads(db, uploadsDir, 24*time.Hour)
+		}
+	}()
 	// Only template page previews are public; PDFs go through the API.
-	uploadsHandler := handlers.PublicUploads(filepath.Join(baseDataDir, "uploads"))
+	uploadsHandler := handlers.PublicUploads(uploadsDir)
 	router.GET("/uploads/:name", uploadsHandler)
 	router.HEAD("/uploads/:name", uploadsHandler)
 	router.Static("/avatars", filepath.Join(baseDataDir, "avatars"))

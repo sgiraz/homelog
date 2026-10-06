@@ -9,6 +9,8 @@
   "bill_expense_settled_status": "La spesa collegata è già stata saldata da uno o più membri. Annulla i pagamenti dal Bilancio prima di modificare lo stato della bolletta.",
   "bill_not_found": "Bolletta non trovata",
   "bill_pdf_not_found": "Questa bolletta non ha un PDF",
+  "too_many_uploads": "Troppi caricamenti: attendi un minuto e riprova",
+  "upload_quota_exceeded": "Lo spazio per i PDF di questa casa ({quota_mb} MB) è esaurito. Rimuovi vecchi PDF per liberare spazio.",
   "bill_settled_amount_locked": "Bolletta saldata: il totale non può essere modificato. Annulla i pagamenti dal Bilancio per sbloccarlo.",
   "bill_settled_status_locked": "Bolletta saldata: lo stato di pagamento non può essere modificato. Annulla i pagamenti dal Bilancio per sbloccarlo.",
   "bill_update_not_authorized": "Non sei autorizzato a modificare questa bolletta",

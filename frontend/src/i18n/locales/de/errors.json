@@ -9,6 +9,8 @@
 "bill_expense_settled_status": "Die verknüpfte Ausgabe wurde bereits von einem oder mehreren Mitgliedern beglichen. Machen Sie die Zahlungen unter „Saldo“ rückgängig, bevor Sie den Rechnungsstatus ändern.",
 "bill_not_found": "Rechnung nicht gefunden",
 "bill_pdf_not_found": "Diese Rechnung hat kein PDF",
+"too_many_uploads": "Zu viele Uploads: bitte eine Minute warten und erneut versuchen",
+"upload_quota_exceeded": "Der PDF-Speicher dieses Haushalts ({quota_mb} MB) ist voll. Entferne alte PDFs, um Platz zu schaffen.",
 "bill_settled_amount_locked": "Diese Rechnung ist beglichen: Der Gesamtbetrag kann nicht geändert werden. Machen Sie die Zahlungen unter „Saldo“ rückgängig, um ihn wieder freizugeben.",
 "bill_settled_status_locked": "Diese Rechnung ist beglichen: Der Zahlungsstatus kann nicht geändert werden. Machen Sie die Zahlungen unter „Saldo“ rückgängig, um ihn wieder freizugeben.",
 "bill_update_not_authorized": "Sie sind nicht berechtigt, diese Rechnung zu bearbeiten",
