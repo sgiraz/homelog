@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -753,4 +754,105 @@ func (h *PDFHandler) GetPDFRawText(c *gin.Context) {
 		"raw_text": text,
 		"length":   len(text),
 	})
+}
+
+// removeUploadedFile deletes the file behind an "/uploads/<name>" URL.
+// Anything that is not a bare file name under /uploads/ is ignored, so a
+// tampered pdf_url can never make the server delete files outside uploads.
+func removeUploadedFile(url string) {
+	name, ok := strings.CutPrefix(url, "/uploads/")
+	if !ok || name == "" || name != filepath.Base(name) {
+		return
+	}
+	path := filepath.Join(database.DataDir(), "uploads", name)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		log.Printf("Warning: could not remove uploaded file %s: %v", name, err)
+	}
+}
+
+// findBillForUser loads a bill and checks the caller belongs to its property.
+// It writes the error response itself and returns false on failure.
+func (h *PDFHandler) findBillForUser(c *gin.Context) (*models.Bill, bool) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
+		return nil, false
+	}
+	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
+	if err != nil {
+		apierr.Fail(c, http.StatusBadRequest, "invalid_bill_id", "Invalid bill id")
+		return nil, false
+	}
+	var memberPropertyIDs []uint
+	h.db.Model(&models.HouseholdMember{}).
+		Where("user_id = ?", userID).
+		Pluck("property_id", &memberPropertyIDs)
+
+	var bill models.Bill
+	if err := h.db.Preload("Utility").First(&bill, billID).Error; err != nil {
+		apierr.Fail(c, http.StatusNotFound, "bill_not_found", "Bill not found")
+		return nil, false
+	}
+	if !slices.Contains(memberPropertyIDs, bill.Utility.PropertyID) {
+		apierr.Fail(c, http.StatusForbidden, "bill_update_not_authorized", "You are not authorized to edit this bill")
+		return nil, false
+	}
+	return &bill, true
+}
+
+// AttachBillPDF - POST /api/v1/utilities/:id/bills/:billId/pdf
+// Stores a PDF on an existing bill (no text extraction), replacing and
+// deleting any previous attachment.
+func (h *PDFHandler) AttachBillPDF(c *gin.Context) {
+	bill, ok := h.findBillForUser(c)
+	if !ok {
+		return
+	}
+
+	file, err := c.FormFile("pdf_file")
+	if err != nil {
+		apierr.Fail(c, http.StatusBadRequest, "no_pdf_file", "No PDF was uploaded")
+		return
+	}
+	if !strings.HasSuffix(strings.ToLower(file.Filename), ".pdf") {
+		apierr.Fail(c, http.StatusBadRequest, "pdf_only", "Only PDF files are allowed")
+		return
+	}
+	if file.Size > maxPDFUploadSize {
+		apierr.Fail(c, http.StatusRequestEntityTooLarge, "pdf_too_large", "The PDF is too large (max 10 MB)")
+		return
+	}
+
+	filename := fmt.Sprintf("bill_%d_%d_%s.pdf", bill.UtilityID, time.Now().Unix(), randomSuffix(16))
+	if err := c.SaveUploadedFile(file, filepath.Join(h.uploadsDir, filename)); err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to save file")
+		return
+	}
+
+	oldURL := bill.PDFURL
+	newURL := "/uploads/" + filename
+	if err := h.db.Model(bill).Update("pdf_url", newURL).Error; err != nil {
+		removeUploadedFile(newURL)
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update bill")
+		return
+	}
+	removeUploadedFile(oldURL)
+
+	c.JSON(http.StatusOK, gin.H{"pdf_url": newURL})
+}
+
+// DeleteBillPDF - DELETE /api/v1/utilities/:id/bills/:billId/pdf
+// Detaches the PDF from a bill and deletes the file.
+func (h *PDFHandler) DeleteBillPDF(c *gin.Context) {
+	bill, ok := h.findBillForUser(c)
+	if !ok {
+		return
+	}
+	oldURL := bill.PDFURL
+	if err := h.db.Model(bill).Update("pdf_url", "").Error; err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update bill")
+		return
+	}
+	removeUploadedFile(oldURL)
+	c.JSON(http.StatusOK, gin.H{"message": "PDF removed"})
 }

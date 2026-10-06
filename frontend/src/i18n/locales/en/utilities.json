@@ -328,6 +328,12 @@
     "foreignAmountRequired": "Enter the amount in {currency}",
     "rateMissing": "Exchange rate missing: please enter a rate manually to convert the amount",
     "genericError": "Error while saving",
+    "pdfLabel": "Bill PDF",
+    "pdfView": "View",
+    "pdfReplace": "Replace",
+    "pdfRemove": "Remove",
+    "pdfAttach": "Attach PDF",
+    "pdfNone": "No PDF attached to this bill.",
     "inlineReadingNote": "Created when entering bill {number}"
   },
   "providerReadings": {

@@ -13,6 +13,23 @@
         @extracted="onPDFExtracted"
       />
 
+      <!-- Attached PDF (existing bills): attach/replace/remove without re-extracting data -->
+      <div v-else class="mb-4 p-3 rounded-lg border border-line flex flex-wrap items-center gap-2">
+        <span class="text-sm text-ink-soft mr-auto">
+          {{ form.pdf_url ? t('utilities.addBillModal.pdfLabel') : t('utilities.addBillModal.pdfNone') }}
+        </span>
+        <a v-if="form.pdf_url" :href="form.pdf_url" target="_blank" rel="noopener"
+          class="text-sm text-blue-600 hover:underline">{{ t('utilities.addBillModal.pdfView') }}</a>
+        <button type="button" :disabled="pdfBusy" @click="pdfInput?.click()"
+          class="text-sm text-blue-600 hover:underline disabled:opacity-50">
+          {{ form.pdf_url ? t('utilities.addBillModal.pdfReplace') : t('utilities.addBillModal.pdfAttach') }}
+        </button>
+        <button v-if="form.pdf_url" type="button" :disabled="pdfBusy" @click="removePdf"
+          class="text-sm text-danger-soft hover:underline disabled:opacity-50">{{ t('utilities.addBillModal.pdfRemove') }}</button>
+        <input ref="pdfInput" type="file" accept="application/pdf,.pdf" class="hidden" @change="attachPdf" />
+        <p v-if="pdfError" class="w-full text-xs text-danger-soft">{{ pdfError }}</p>
+      </div>
+
       <form @submit.prevent="handleSubmit" class="space-y-4">
         <div v-if="isLocked" class="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-warning-soft">
           <span>🔒</span>
@@ -324,6 +341,9 @@ const modalTitle = computed(() => {
 })
 
 const saving = ref(false)
+const pdfInput = ref(null)
+const pdfBusy = ref(false)
+const pdfError = ref(null)
 const submitError = ref(null)
 
 const availableReadings = ref([])
@@ -499,6 +519,39 @@ function onPDFExtracted(data) {
   if (data.pdf_url) form.value.pdf_url = data.pdf_url
 }
 
+// Attach/remove act on the server immediately (the file is the side effect),
+// then refresh the utility so the bills list reflects it even if the modal is cancelled.
+async function attachPdf(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  pdfBusy.value = true
+  pdfError.value = null
+  try {
+    const { data } = await utilitiesAPI.attachBillPDF(props.utility.id, props.bill.id, file)
+    form.value.pdf_url = data.pdf_url
+    await utilitiesStore.fetchUtility(props.utility.id)
+  } catch (err) {
+    pdfError.value = apiErrorMessage(err, t('utilities.addBillModal.genericError'))
+  } finally {
+    pdfBusy.value = false
+  }
+}
+
+async function removePdf() {
+  pdfBusy.value = true
+  pdfError.value = null
+  try {
+    await utilitiesAPI.deleteBillPDF(props.utility.id, props.bill.id)
+    form.value.pdf_url = ''
+    await utilitiesStore.fetchUtility(props.utility.id)
+  } catch (err) {
+    pdfError.value = apiErrorMessage(err, t('utilities.addBillModal.genericError'))
+  } finally {
+    pdfBusy.value = false
+  }
+}
+
 async function fetchReadings() {
   try {
     const { data } = await utilitiesAPI.getReadings(props.utility.id)
@@ -572,9 +625,9 @@ async function handleSubmit() {
         ? parseFloat(form.value.estimated_reading) : null,
       estimated_consumption: form.value.has_estimated && calculatedEstimatedConsumption.value != null
         ? calculatedEstimatedConsumption.value : null,
-      communication_text: form.value.communication_text || '',
-      pdf_url: form.value.pdf_url || ''
+      communication_text: form.value.communication_text || ''
     }
+    if (!isEditing.value) billData.pdf_url = form.value.pdf_url || ''
 
     if (isInstallmentBased.value && !isEditing.value && form.value.installments.length > 0) {
       const first = form.value.installments[0]

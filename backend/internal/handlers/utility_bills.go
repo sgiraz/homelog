@@ -582,6 +582,7 @@ func (h *UtilityHandler) DeleteBill(c *gin.Context) {
 		log.Printf("🗑️  Deleted auto-expense ID=%d linked to bill ID=%d", e.ID, billID)
 	}
 	h.db.Where("bill_id = ?", bid).Delete(&models.BillInstallment{})
+	removeUploadedFile(bill.PDFURL)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Bill deleted successfully"})
 }
@@ -736,9 +737,6 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 		ProviderReading       *float64   `json:"provider_reading"`
 		// Communication (optional note from bill/invoice)
 		CommunicationText string `json:"communication_text"`
-		// PDFURL is only applied when present, so edits that do not touch the
-		// attachment never clear it.
-		PDFURL *string `json:"pdf_url"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -791,9 +789,6 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	bill.ProviderReadingF2 = input.ProviderReadingF2
 	bill.ProviderReadingF3 = input.ProviderReadingF3
 	bill.ProviderReading = input.ProviderReading
-	if input.PDFURL != nil {
-		bill.PDFURL = *input.PDFURL
-	}
 
 	if err := h.db.Save(&bill).Error; err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update bill")
