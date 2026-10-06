@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 
@@ -46,8 +47,14 @@ func (h *PDFHandler) ServeBillPDF(c *gin.Context) {
 		apierr.Fail(c, http.StatusNotFound, "bill_pdf_not_found", "This bill has no PDF")
 		return
 	}
+	path := filepath.Join(h.uploadsDir, name)
+	if _, err := os.Stat(path); err != nil {
+		// The row points at a file that is gone (restored DB, manual cleanup).
+		apierr.Fail(c, http.StatusNotFound, "bill_pdf_not_found", "The PDF file is missing")
+		return
+	}
 	c.Header("Content-Type", "application/pdf")
 	c.Header("Content-Disposition", "inline")
 	c.Header("Cache-Control", "private, no-store")
-	c.File(filepath.Join(h.uploadsDir, name))
+	c.File(path)
 }

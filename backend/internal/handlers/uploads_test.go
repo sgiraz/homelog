@@ -30,6 +30,16 @@ func TestServeBillPDF_OnlyForHouseholdMembers(t *testing.T) {
 	if !strings.HasPrefix(rec.Body.String(), "%PDF-") {
 		t.Errorf("body is not the stored file: %q", rec.Body.String())
 	}
+	// A row pointing at a file that no longer exists answers with the same
+	// translatable code, not a bare 404.
+	stored := f.storedURL(t)
+	if err := os.Remove(filepath.Join(f.uploads, strings.TrimPrefix(stored, "/uploads/"))); err != nil {
+		t.Fatal(err)
+	}
+	rec = doJSON(t, f.router, http.MethodGet, f.path(), f.token, nil)
+	if rec.Code != http.StatusNotFound || errorCode(t, rec) != "bill_pdf_not_found" {
+		t.Errorf("missing file: status %d, body %s", rec.Code, rec.Body.String())
+	}
 	if rec := doJSON(t, f.router, http.MethodGet, f.path(), f.outsider, nil); rec.Code != http.StatusForbidden {
 		t.Errorf("outsider: status %d, want 403", rec.Code)
 	}
