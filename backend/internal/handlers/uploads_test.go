@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -37,7 +38,13 @@ func TestServeBillPDF_OnlyForHouseholdMembers(t *testing.T) {
 		t.Fatal(err)
 	}
 	rec = doJSON(t, f.router, http.MethodGet, f.path(), f.token, nil)
-	if rec.Code != http.StatusNotFound || errorCode(t, rec) != "bill_pdf_not_found" {
+	var body struct {
+		Code string `json:"error_code"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode %q: %v", rec.Body.String(), err)
+	}
+	if rec.Code != http.StatusNotFound || body.Code != "bill_pdf_not_found" {
 		t.Errorf("missing file: status %d, body %s", rec.Code, rec.Body.String())
 	}
 	if rec := doJSON(t, f.router, http.MethodGet, f.path(), f.outsider, nil); rec.Code != http.StatusForbidden {
