@@ -182,6 +182,7 @@ export const utilitiesAPI = {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
+  getBillPDF: (utilityId, billId) => apiClient.get(`/utilities/${utilityId}/bills/${billId}/pdf`, { responseType: 'blob' }),
   deleteBillPDF: (utilityId, billId) => apiClient.delete(`/utilities/${utilityId}/bills/${billId}/pdf`),
   uploadContractPDF: (file) => {
     const formData = new FormData()

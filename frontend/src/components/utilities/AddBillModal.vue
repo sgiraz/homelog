@@ -18,8 +18,8 @@
         <span class="text-sm text-ink-soft mr-auto">
           {{ form.pdf_url ? t('utilities.addBillModal.pdfLabel') : t('utilities.addBillModal.pdfNone') }}
         </span>
-        <a v-if="form.pdf_url" :href="form.pdf_url" target="_blank" rel="noopener"
-          class="text-sm text-blue-600 hover:underline">{{ t('utilities.addBillModal.pdfView') }}</a>
+        <button v-if="form.pdf_url" type="button" @click="viewPdf"
+          class="text-sm text-blue-600 hover:underline">{{ t('utilities.addBillModal.pdfView') }}</button>
         <button type="button" :disabled="pdfBusy" @click="pdfInput?.click()"
           class="text-sm text-blue-600 hover:underline disabled:opacity-50">
           {{ form.pdf_url ? t('utilities.addBillModal.pdfReplace') : t('utilities.addBillModal.pdfAttach') }}
@@ -316,6 +316,7 @@ import PDFUploadZone from '@/components/utilities/PDFUploadZone.vue'
 import ProviderReadingsSection from '@/components/utilities/ProviderReadingsSection.vue'
 import InstallmentsSection from '@/components/utilities/InstallmentsSection.vue'
 import { apiErrorMessage } from '@/utils/apiError'
+import { openBillPdf } from '@/utils/billPdf'
 
 const props = defineProps({
   utility: { type: Object, required: true },
@@ -535,6 +536,15 @@ async function attachPdf(event) {
     pdfError.value = apiErrorMessage(err, t('utilities.addBillModal.genericError'))
   } finally {
     pdfBusy.value = false
+  }
+}
+
+async function viewPdf() {
+  pdfError.value = null
+  try {
+    await openBillPdf(props.utility.id, props.bill.id)
+  } catch (err) {
+    pdfError.value = apiErrorMessage(err, t('utilities.addBillModal.pdfViewError'))
   }
 }
 

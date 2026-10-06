@@ -68,6 +68,7 @@ func setupBillPDFFixture(t *testing.T) *billPDFFixture {
 	g := r.Group("")
 	g.Use(middleware.AuthRequired())
 	pdf := NewPDFHandler(db)
+	g.GET("/utilities/:id/bills/:billId/pdf", pdf.ServeBillPDF)
 	g.POST("/utilities/:id/bills/:billId/pdf", pdf.AttachBillPDF)
 	g.DELETE("/utilities/:id/bills/:billId/pdf", pdf.DeleteBillPDF)
 	g.DELETE("/utilities/:id/bills/:billId", NewUtilityHandler(db).DeleteBill)

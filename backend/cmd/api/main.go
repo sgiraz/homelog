@@ -272,6 +272,7 @@ func main() {
 
 				// PDF upload for bills
 				utilities.POST("/:id/bills/upload", pdfHandler.UploadBillPDF)
+				utilities.GET("/:id/bills/:billId/pdf", pdfHandler.ServeBillPDF)
 				utilities.POST("/:id/bills/:billId/pdf", pdfHandler.AttachBillPDF)
 				utilities.DELETE("/:id/bills/:billId/pdf", pdfHandler.DeleteBillPDF)
 
@@ -421,7 +422,10 @@ func main() {
 
 	// Serve uploaded files from the directory the handlers write to.
 	baseDataDir := database.DataDir()
-	router.Static("/uploads", filepath.Join(baseDataDir, "uploads"))
+	// Only template page previews are public; PDFs go through the API.
+	uploadsHandler := handlers.PublicUploads(filepath.Join(baseDataDir, "uploads"))
+	router.GET("/uploads/:name", uploadsHandler)
+	router.HEAD("/uploads/:name", uploadsHandler)
 	router.Static("/avatars", filepath.Join(baseDataDir, "avatars"))
 
 	// Serve embedded frontend (SPA + static assets)
