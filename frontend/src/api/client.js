@@ -175,6 +175,14 @@ export const utilitiesAPI = {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
+  attachBillPDF: (utilityId, billId, file) => {
+    const formData = new FormData()
+    formData.append('pdf_file', file)
+    return apiClient.post(`/utilities/${utilityId}/bills/${billId}/pdf`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  deleteBillPDF: (utilityId, billId) => apiClient.delete(`/utilities/${utilityId}/bills/${billId}/pdf`),
   uploadContractPDF: (file) => {
     const formData = new FormData()
     formData.append('pdf_file', file)

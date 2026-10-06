@@ -272,6 +272,8 @@ func main() {
 
 				// PDF upload for bills
 				utilities.POST("/:id/bills/upload", pdfHandler.UploadBillPDF)
+				utilities.POST("/:id/bills/:billId/pdf", pdfHandler.AttachBillPDF)
+				utilities.DELETE("/:id/bills/:billId/pdf", pdfHandler.DeleteBillPDF)
 
 				// Reading comparison (autolettura vs lettura fornitore)
 				utilities.GET("/:id/compare-readings", utilHandler.CompareReadings)

@@ -105,6 +105,7 @@
     "lockedHint": "Spesa già saldata da uno o più membri. Annulla i pagamenti dal Bilancio per modificare la bolletta.",
     "markPaidTitle": "Segna come pagata",
     "viewDetailsTitle": "Visualizza dettagli",
+    "viewPdfTitle": "Visualizza PDF",
     "editTitle": "Modifica",
     "deleteTitle": "Elimina",
     "operationBlocked": "Operazione bloccata",
@@ -407,6 +408,12 @@
     "foreignAmountRequired": "Inserisci l'importo in {currency}",
     "rateMissing": "Tasso di cambio mancante: inserisci manualmente un tasso per convertire l'importo",
     "genericError": "Errore durante il salvataggio",
+    "pdfLabel": "PDF della bolletta",
+    "pdfView": "Apri",
+    "pdfReplace": "Sostituisci",
+    "pdfRemove": "Rimuovi",
+    "pdfAttach": "Allega PDF",
+    "pdfNone": "Nessun PDF allegato a questa bolletta.",
     "inlineReadingNote": "Creata in fase di inserimento bolletta {number}"
   },
   "providerReadings": {

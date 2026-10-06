@@ -154,6 +154,7 @@
     "lockedHint": "This bill has already been settled by one or more members. You can view details and edit non-financial fields, but the total amount and payment status of settled installments are locked to protect the balance. Cancel payments from the Balance to unlock.",
     "markPaidTitle": "Mark as paid",
     "viewDetailsTitle": "View details",
+    "viewPdfTitle": "View PDF",
     "editTitle": "Edit",
     "deleteTitle": "Delete",
     "operationBlocked": "Operation blocked",
@@ -327,6 +328,12 @@
     "foreignAmountRequired": "Enter the amount in {currency}",
     "rateMissing": "Exchange rate missing: please enter a rate manually to convert the amount",
     "genericError": "Error while saving",
+    "pdfLabel": "Bill PDF",
+    "pdfView": "View",
+    "pdfReplace": "Replace",
+    "pdfRemove": "Remove",
+    "pdfAttach": "Attach PDF",
+    "pdfNone": "No PDF attached to this bill.",
     "inlineReadingNote": "Created when entering bill {number}"
   },
   "providerReadings": {

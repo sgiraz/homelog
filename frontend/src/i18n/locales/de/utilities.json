@@ -154,6 +154,7 @@
     "lockedHint": "Diese Rechnung wurde bereits von einem oder mehreren Mitgliedern beglichen. Du kannst Details anzeigen und nicht finanzielle Felder bearbeiten, aber der Gesamtbetrag und der Zahlungsstatus beglichener Raten sind zum Schutz des Kontostands gesperrt. Storniere Zahlungen im Kontostand, um die Felder wieder freizugeben.",
     "markPaidTitle": "Als bezahlt markieren",
     "viewDetailsTitle": "Details anzeigen",
+    "viewPdfTitle": "PDF anzeigen",
     "editTitle": "Bearbeiten",
     "deleteTitle": "Löschen",
     "operationBlocked": "Vorgang blockiert",
@@ -327,6 +328,12 @@
     "foreignAmountRequired": "Gib den Betrag in {currency} ein",
     "rateMissing": "Wechselkurs fehlt: Bitte gib manuell einen Kurs ein, um den Betrag umzurechnen",
     "genericError": "Fehler beim Speichern",
+    "pdfLabel": "Rechnungs-PDF",
+    "pdfView": "Öffnen",
+    "pdfReplace": "Ersetzen",
+    "pdfRemove": "Entfernen",
+    "pdfAttach": "PDF anhängen",
+    "pdfNone": "Dieser Rechnung ist kein PDF angehängt.",
     "inlineReadingNote": "Beim Eingeben der Rechnung {number} erstellt"
   },
   "providerReadings": {

@@ -161,6 +161,11 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		installmentPaidAt[i] = paidAt
 	}
 
+	if !validBillPDFURL(h.db, input.PDFURL, uint(utilityID)) {
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Invalid pdf_url")
+		return
+	}
+
 	bill := models.Bill{
 		UtilityID:             uint(utilityID),
 		BillNumber:            input.BillNumber,
@@ -582,6 +587,7 @@ func (h *UtilityHandler) DeleteBill(c *gin.Context) {
 		log.Printf("🗑️  Deleted auto-expense ID=%d linked to bill ID=%d", e.ID, billID)
 	}
 	h.db.Where("bill_id = ?", bid).Delete(&models.BillInstallment{})
+	removeUploadedFile(bill.PDFURL)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Bill deleted successfully"})
 }
