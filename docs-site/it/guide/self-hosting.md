@@ -45,6 +45,7 @@ funziona anche su un Raspberry Pi.
 | --- | --- | --- |
 | `JWT_SECRET` | _(obbligatoria)_ | Segreto usato per firmare i token di autenticazione. |
 | `DB_PATH` | `./data/homelog.db` | Posizione del database SQLite. |
+| `UPLOAD_QUOTA_MB` | `500` | Dimensione massima dei PDF delle bollette conservati per casa, in MB. `0` toglie il limite. |
 | `GIN_MODE` | `debug` | Imposta `release` in produzione. |
 
 ## Approfondire

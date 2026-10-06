@@ -9,6 +9,8 @@
   "bill_expense_settled_status": "The linked expense has already been settled by one or more members. Undo the payments from Balance before changing the bill status.",
   "bill_not_found": "Bill not found",
   "bill_pdf_not_found": "This bill has no PDF",
+  "too_many_uploads": "Too many uploads: wait a minute and try again",
+  "upload_quota_exceeded": "The storage quota for PDFs of this household ({quota_mb} MB) is full. Remove old PDFs to free space.",
   "bill_settled_amount_locked": "This bill is settled: the total cannot be changed. Undo the payments from Balance to unlock it.",
   "bill_settled_status_locked": "This bill is settled: its payment status cannot be changed. Undo the payments from Balance to unlock it.",
   "bill_update_not_authorized": "You are not authorized to edit this bill",

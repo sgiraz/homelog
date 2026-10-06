@@ -221,6 +221,9 @@ func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 	if !ok {
 		return
 	}
+	if !h.withinUploadQuota(c, utility.PropertyID, 0, file.Size) {
+		return
+	}
 
 	// Save the file with an unguessable suffix so /uploads/<name> cannot be
 	// enumerated by guessing (utilityID, timestamp).
@@ -862,6 +865,10 @@ func (h *PDFHandler) AttachBillPDF(c *gin.Context) {
 
 	file, ok := receivePDFUpload(c)
 	if !ok {
+		return
+	}
+	// The PDF being replaced does not count against the quota.
+	if !h.withinUploadQuota(c, bill.Utility.PropertyID, bill.ID, file.Size) {
 		return
 	}
 
