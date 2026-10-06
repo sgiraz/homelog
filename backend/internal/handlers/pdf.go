@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"os/exec"
@@ -57,6 +59,50 @@ func randomSuffix(n int) string {
 		return fmt.Sprintf("%x", time.Now().UnixNano())
 	}
 	return hex.EncodeToString(b)
+}
+
+// pdfUploadBodyLimit caps the raw request body of a single-PDF upload: the file
+// plus a little room for multipart framing and the other form fields. Gin has
+// already read the body by the time file.Size is known, so without this a huge
+// upload is fully received before being rejected.
+const pdfUploadBodyLimit = maxPDFUploadSize + 1<<20
+
+// receivePDFUpload reads the "pdf_file" part of the request and rejects
+// anything that is not a PDF within the size limit: it bounds the body, checks
+// the extension and the %PDF- magic bytes (a renamed file is not a PDF). It
+// writes the error response itself and returns false on failure.
+func receivePDFUpload(c *gin.Context) (*multipart.FileHeader, bool) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, pdfUploadBodyLimit)
+	file, err := c.FormFile("pdf_file")
+	if err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			apierr.Fail(c, http.StatusRequestEntityTooLarge, "pdf_too_large", "The PDF is too large (max 10 MB)")
+			return nil, false
+		}
+		apierr.Fail(c, http.StatusBadRequest, "no_pdf_file", "No PDF was uploaded")
+		return nil, false
+	}
+	if !strings.HasSuffix(strings.ToLower(file.Filename), ".pdf") {
+		apierr.Fail(c, http.StatusBadRequest, "pdf_only", "Only PDF files are allowed")
+		return nil, false
+	}
+	if file.Size > maxPDFUploadSize {
+		apierr.Fail(c, http.StatusRequestEntityTooLarge, "pdf_too_large", "The PDF is too large (max 10 MB)")
+		return nil, false
+	}
+	f, err := file.Open()
+	if err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to read upload")
+		return nil, false
+	}
+	defer f.Close()
+	magic := make([]byte, 5)
+	if _, err := io.ReadFull(f, magic); err != nil || string(magic) != "%PDF-" {
+		apierr.Fail(c, http.StatusBadRequest, "pdf_only", "Only PDF files are allowed")
+		return nil, false
+	}
+	return file, true
 }
 
 type PDFHandler struct {
@@ -171,22 +217,8 @@ func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 		return
 	}
 
-	// Get the uploaded file
-	file, err := c.FormFile("pdf_file")
-	if err != nil {
-		apierr.Fail(c, http.StatusBadRequest, "no_pdf_file", "No PDF was uploaded")
-		return
-	}
-
-	// Validate file type
-	if !strings.HasSuffix(strings.ToLower(file.Filename), ".pdf") {
-		apierr.Fail(c, http.StatusBadRequest, "pdf_only", "Only PDF files are allowed")
-		return
-	}
-
-	// Reject oversized uploads before writing to disk.
-	if file.Size > maxPDFUploadSize {
-		apierr.Fail(c, http.StatusRequestEntityTooLarge, "pdf_too_large", "The PDF is too large (max 10 MB)")
+	file, ok := receivePDFUpload(c)
+	if !ok {
 		return
 	}
 
@@ -283,21 +315,8 @@ func (h *PDFHandler) UploadContractPDF(c *gin.Context) {
 		return
 	}
 
-	// Get the uploaded file
-	file, err := c.FormFile("pdf_file")
-	if err != nil {
-		apierr.Fail(c, http.StatusBadRequest, "no_pdf_file", "No PDF was uploaded")
-		return
-	}
-
-	// Validate file type
-	if !strings.HasSuffix(strings.ToLower(file.Filename), ".pdf") {
-		apierr.Fail(c, http.StatusBadRequest, "pdf_only", "Only PDF files are allowed")
-		return
-	}
-
-	if file.Size > maxPDFUploadSize {
-		apierr.Fail(c, http.StatusRequestEntityTooLarge, "pdf_too_large", "The PDF is too large (max 10 MB)")
+	file, ok := receivePDFUpload(c)
+	if !ok {
 		return
 	}
 
@@ -756,6 +775,27 @@ func (h *PDFHandler) GetPDFRawText(c *gin.Context) {
 	})
 }
 
+// billPDFURLPattern is the only shape of attachment URL this server hands out
+// for a bill (see UploadBillPDF / AttachBillPDF).
+var billPDFURLPattern = regexp.MustCompile(`^/uploads/bill_(\d+)_\d+_[0-9a-f]{32}\.pdf$`)
+
+// validBillPDFURL reports whether url may be stored on a new bill of the given
+// utility: empty, or a bill PDF previously uploaded for that same utility and
+// not already attached to another bill. This stops a client from pointing its
+// bill at someone else's file (and later deleting it with the bill).
+func validBillPDFURL(db *gorm.DB, url string, utilityID uint) bool {
+	if url == "" {
+		return true
+	}
+	m := billPDFURLPattern.FindStringSubmatch(url)
+	if m == nil || m[1] != strconv.FormatUint(uint64(utilityID), 10) {
+		return false
+	}
+	var n int64
+	db.Unscoped().Model(&models.Bill{}).Where("pdf_url = ?", url).Count(&n)
+	return n == 0
+}
+
 // removeUploadedFile deletes the file behind an "/uploads/<name>" URL.
 // Anything that is not a bare file name under /uploads/ is ignored, so a
 // tampered pdf_url can never make the server delete files outside uploads.
@@ -809,17 +849,8 @@ func (h *PDFHandler) AttachBillPDF(c *gin.Context) {
 		return
 	}
 
-	file, err := c.FormFile("pdf_file")
-	if err != nil {
-		apierr.Fail(c, http.StatusBadRequest, "no_pdf_file", "No PDF was uploaded")
-		return
-	}
-	if !strings.HasSuffix(strings.ToLower(file.Filename), ".pdf") {
-		apierr.Fail(c, http.StatusBadRequest, "pdf_only", "Only PDF files are allowed")
-		return
-	}
-	if file.Size > maxPDFUploadSize {
-		apierr.Fail(c, http.StatusRequestEntityTooLarge, "pdf_too_large", "The PDF is too large (max 10 MB)")
+	file, ok := receivePDFUpload(c)
+	if !ok {
 		return
 	}
 

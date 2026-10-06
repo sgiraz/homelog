@@ -161,6 +161,11 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		installmentPaidAt[i] = paidAt
 	}
 
+	if !validBillPDFURL(h.db, input.PDFURL, uint(utilityID)) {
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Invalid pdf_url")
+		return
+	}
+
 	bill := models.Bill{
 		UtilityID:             uint(utilityID),
 		BillNumber:            input.BillNumber,

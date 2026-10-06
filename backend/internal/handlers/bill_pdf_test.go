@@ -71,6 +71,7 @@ func setupBillPDFFixture(t *testing.T) *billPDFFixture {
 	g.POST("/utilities/:id/bills/:billId/pdf", pdf.AttachBillPDF)
 	g.DELETE("/utilities/:id/bills/:billId/pdf", pdf.DeleteBillPDF)
 	g.DELETE("/utilities/:id/bills/:billId", NewUtilityHandler(db).DeleteBill)
+	g.POST("/utilities/:id/bills", NewUtilityHandler(db).AddBill)
 
 	return &billPDFFixture{
 		db: db, router: r, bill: bill, uploads: uploads,
@@ -82,10 +83,15 @@ func (f *billPDFFixture) path() string { return "/utilities/1/bills/" + itoa(f.b
 
 func (f *billPDFFixture) upload(t *testing.T, token, filename string) *httptest.ResponseRecorder {
 	t.Helper()
+	return f.uploadBytes(t, token, filename, []byte("%PDF-1.4 test"))
+}
+
+func (f *billPDFFixture) uploadBytes(t *testing.T, token, filename string, content []byte) *httptest.ResponseRecorder {
+	t.Helper()
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
 	part, _ := w.CreateFormFile("pdf_file", filename)
-	part.Write([]byte("%PDF-1.4 test"))
+	part.Write(content)
 	w.Close()
 	req := httptest.NewRequest(http.MethodPost, f.path(), &buf)
 	req.Header.Set("Content-Type", w.FormDataContentType())
@@ -205,5 +211,66 @@ func TestRemoveUploadedFile_IgnoresPathsOutsideUploads(t *testing.T) {
 	}
 	if _, err := os.Stat(outside); err != nil {
 		t.Errorf("file outside uploads was deleted: %v", err)
+	}
+}
+
+func TestAttachBillPDF_RejectsRenamedNonPDF(t *testing.T) {
+	f := setupBillPDFFixture(t)
+	rec := f.uploadBytes(t, f.token, "bolletta.pdf", []byte("<html><script>alert(1)</script></html>"))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status %d, want 400", rec.Code)
+	}
+	if f.storedURL(t) != "" {
+		t.Error("renamed file was attached")
+	}
+	if entries, _ := os.ReadDir(f.uploads); len(entries) != 0 {
+		t.Errorf("renamed file left on disk (%d entries)", len(entries))
+	}
+}
+
+func TestAttachBillPDF_RejectsOversizedBody(t *testing.T) {
+	f := setupBillPDFFixture(t)
+	big := append([]byte("%PDF-1.4\n"), bytes.Repeat([]byte("a"), pdfUploadBodyLimit+1024)...)
+	rec := f.uploadBytes(t, f.token, "big.pdf", big)
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status %d, want 413, body %s", rec.Code, rec.Body.String())
+	}
+	if entries, _ := os.ReadDir(f.uploads); len(entries) != 0 {
+		t.Errorf("oversized upload left %d file(s) on disk", len(entries))
+	}
+}
+
+func (f *billPDFFixture) addBill(t *testing.T, number, pdfURL string) *httptest.ResponseRecorder {
+	t.Helper()
+	return doJSON(t, f.router, http.MethodPost, "/utilities/1/bills", f.token, map[string]any{
+		"bill_number": number, "amount_total": 10, "pdf_url": pdfURL,
+		"period_start": "2026-01-01T00:00:00Z", "period_end": "2026-02-01T00:00:00Z",
+		"due_date": "2026-03-01T00:00:00Z", "issue_date": "2026-02-05T00:00:00Z",
+	})
+}
+
+func TestAddBill_PDFURLMustBeAnUnusedUploadOfThatUtility(t *testing.T) {
+	f := setupBillPDFFixture(t)
+	f.upload(t, f.token, "a.pdf")
+	own := f.storedURL(t) // already attached to the fixture bill
+
+	for name, url := range map[string]string{
+		"already attached to another bill": own,
+		"other utility":                    "/uploads/bill_99_1791246675_baf0ae955a9e196f451c370ff831a283.pdf",
+		"traversal":                        "/uploads/../homelog.db",
+		"external":                         "https://evil.example/x.pdf",
+		"wrong shape":                      "/uploads/avatar_1.png",
+	} {
+		if rec := f.addBill(t, "N-"+name, url); rec.Code != http.StatusBadRequest {
+			t.Errorf("%s: status %d, want 400", name, rec.Code)
+		}
+	}
+
+	fresh := "/uploads/bill_1_1791246675_baf0ae955a9e196f451c370ff831a283.pdf"
+	if rec := f.addBill(t, "N-ok", fresh); rec.Code != http.StatusCreated && rec.Code != http.StatusOK {
+		t.Errorf("valid url: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	if rec := f.addBill(t, "N-empty", ""); rec.Code != http.StatusCreated && rec.Code != http.StatusOK {
+		t.Errorf("empty url: status %d, body %s", rec.Code, rec.Body.String())
 	}
 }
