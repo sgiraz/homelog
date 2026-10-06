@@ -45,6 +45,7 @@ Raspberry Pi.
 | --- | --- | --- |
 | `JWT_SECRET` | _(required)_ | Secret used to sign auth tokens. |
 | `DB_PATH` | `./data/homelog.db` | SQLite database location. |
+| `UPLOAD_QUOTA_MB` | `500` | Maximum size of the bill PDFs stored per household, in MB. `0` removes the limit. |
 | `GIN_MODE` | `debug` | Set to `release` in production. |
 
 ## Going further

@@ -22,7 +22,7 @@ import (
 // UPLOAD_QUOTA_MB is unset. A scanned bill is well under 1 MB, so this is
 // hundreds of bills, while still bounding what one account can put on the
 // Raspberry Pi's SD card.
-const defaultUploadQuotaMB = 200
+const defaultUploadQuotaMB = 500
 
 // uploadQuotaBytes returns the per-household cap on attached bill PDFs, read
 // from UPLOAD_QUOTA_MB. 0 disables the cap; an unparsable or negative value
