@@ -796,12 +796,23 @@ func validBillPDFURL(db *gorm.DB, url string, utilityID uint) bool {
 	return n == 0
 }
 
+// uploadFileName extracts the bare file name from an "/uploads/<name>" URL.
+// It refuses anything that is not a plain name, so a tampered pdf_url can
+// never resolve to a path outside the uploads directory.
+func uploadFileName(url string) (string, bool) {
+	name, ok := strings.CutPrefix(url, "/uploads/")
+	if !ok || name == "" || name != filepath.Base(name) {
+		return "", false
+	}
+	return name, true
+}
+
 // removeUploadedFile deletes the file behind an "/uploads/<name>" URL.
 // Anything that is not a bare file name under /uploads/ is ignored, so a
 // tampered pdf_url can never make the server delete files outside uploads.
 func removeUploadedFile(url string) {
-	name, ok := strings.CutPrefix(url, "/uploads/")
-	if !ok || name == "" || name != filepath.Base(name) {
+	name, ok := uploadFileName(url)
+	if !ok {
 		return
 	}
 	path := filepath.Join(database.DataDir(), "uploads", name)
