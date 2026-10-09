@@ -60,6 +60,7 @@ func LocalizedCategoryLanguages() []string {
 const (
 	SlugHome          = "home"
 	SlugHomeUtilities = "home_utilities"
+	SlugHomeRentMortgage = "home_rent_mortgage"
 )
 
 // SubcategorySpec describes one built-in subcategory.
@@ -104,6 +105,7 @@ var DefaultCategories = []CategorySpec{
 			{Slug: "home_major_works", SeedName: "Lavori straordinari"},
 			{Slug: "home_furniture", SeedName: "Arredamento"},
 			{Slug: "home_appliances", SeedName: "Elettrodomestici"},
+			{Slug: SlugHomeRentMortgage, SeedName: "Affitto/Mutuo"},
 		},
 	},
 	{

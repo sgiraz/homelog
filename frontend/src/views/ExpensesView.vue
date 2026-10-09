@@ -90,7 +90,7 @@
             <div class="grid grid-cols-2 gap-2">
               <select
                 v-model="filters.categoryId"
-                @change="onFiltersChanged"
+                @change="onCategoryChanged"
                 class="px-3 py-2 border border-line rounded-lg
                        bg-surface text-ink text-base
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -107,6 +107,19 @@
               >
                 <option value="">{{ t('expenses.filters.allProjectsLong') }}</option>
                 <option v-for="proj in projects" :key="proj.id" :value="proj.id">{{ proj.icon }} {{ proj.name }}</option>
+              </select>
+              <select
+                v-model="filters.subcategoryId"
+                @change="onFiltersChanged"
+                :disabled="!filters.categoryId"
+                class="col-span-2 px-3 py-2 border border-line rounded-lg
+                       bg-surface text-ink text-base
+                       focus:outline-none focus:ring-2 focus:ring-blue-500
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">{{ t('expenses.filters.allSubcategoriesLong') }}</option>
+                <option :value="NO_SUBCATEGORY">{{ t('expenses.modal.subcategoryNone') }}</option>
+                <option v-for="sub in subcategoryOptions" :key="sub.id" :value="sub.id">{{ categoryLabel(sub) }}</option>
               </select>
               <input
                 v-model="filters.from"
@@ -179,13 +192,30 @@
             <label class="text-sm text-ink-soft whitespace-nowrap">{{ t('expenses.filters.categoryLabel') }}</label>
             <select
               v-model="filters.categoryId"
-              @change="onFiltersChanged"
+              @change="onCategoryChanged"
               class="px-3 py-2 border border-line rounded-lg
                      bg-surface text-ink text-sm
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">{{ t('expenses.filters.allCategoriesShort') }}</option>
               <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ categoryLabel(cat) }}</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-ink-soft whitespace-nowrap">{{ t('expenses.filters.subcategoryLabel') }}</label>
+            <select
+              v-model="filters.subcategoryId"
+              @change="onFiltersChanged"
+              :disabled="!filters.categoryId"
+              class="px-3 py-2 border border-line rounded-lg
+                     bg-surface text-ink text-sm
+                     focus:outline-none focus:ring-2 focus:ring-blue-500
+                     disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value="">{{ t('expenses.filters.allSubcategoriesShort') }}</option>
+              <option :value="NO_SUBCATEGORY">{{ t('expenses.modal.subcategoryNone') }}</option>
+              <option v-for="sub in subcategoryOptions" :key="sub.id" :value="sub.id">{{ categoryLabel(sub) }}</option>
             </select>
           </div>
 
@@ -268,6 +298,7 @@
           <span v-if="expensesStore.total > 0"> {{ t('expenses.list.ofTotal', { n: expensesStore.total }) }}</span>
           <span v-if="filters.projectId"> {{ t('expenses.list.filterProjectInfo', { name: selectedProjectName }) }}</span>
           <span v-if="filters.categoryId"> {{ t('expenses.list.filterCategoryInfo', { name: selectedCategoryName }) }}</span>
+          <span v-if="filters.subcategoryId"> {{ t('expenses.list.filterSubcategoryInfo', { name: selectedSubcategoryName }) }}</span>
         </div>
       </div>
     </Card>
@@ -459,6 +490,7 @@ const filtersOpen = ref(false)
 const filters = ref({
   search: '',
   categoryId: '',
+  subcategoryId: '',
   projectId: '',
   from: '',
   to: '',
@@ -474,7 +506,7 @@ const currentFilters = ref({})
 watch(sortOption, () => onFiltersChanged())
 
 const hasActiveFilters = computed(() =>
-  filters.value.search || filters.value.categoryId || filters.value.projectId ||
+  filters.value.search || filters.value.categoryId || filters.value.subcategoryId || filters.value.projectId ||
   filters.value.from || filters.value.to || filters.value.unsettledOnly
 )
 
@@ -482,6 +514,7 @@ const activeFiltersCount = computed(() => {
   let count = 0
   if (filters.value.search) count++
   if (filters.value.categoryId) count++
+  if (filters.value.subcategoryId) count++
   if (filters.value.projectId) count++
   if (filters.value.from) count++
   if (filters.value.to) count++
@@ -494,6 +527,22 @@ const selectedCategoryName = computed(() => {
   return cat ? `${cat.icon} ${categoryLabel(cat)}` : ''
 })
 
+// Subcategories of the selected category; the second select only exists once a
+// category is picked, because a subcategory id alone means nothing to the user.
+const subcategoryOptions = computed(() => {
+  const cat = categories.value.find(c => c.id === filters.value.categoryId)
+  return cat?.subcategories ?? []
+})
+
+// Sent as subcategory_id to select expenses filed under no subcategory.
+const NO_SUBCATEGORY = 'none'
+
+const selectedSubcategoryName = computed(() => {
+  if (filters.value.subcategoryId === NO_SUBCATEGORY) return t('expenses.modal.subcategoryNone')
+  const sub = subcategoryOptions.value.find(s => s.id === filters.value.subcategoryId)
+  return sub ? categoryLabel(sub) : ''
+})
+
 const selectedProjectName = computed(() => {
   const proj = projects.value.find(p => p.id === filters.value.projectId)
   return proj ? `${proj.icon || ''} ${proj.name}` : ''
@@ -503,6 +552,7 @@ function buildParams() {
   const params = { sort: sortOption.value }
   if (filters.value.search) params.search = filters.value.search
   if (filters.value.categoryId) params.category_id = filters.value.categoryId
+  if (filters.value.subcategoryId) params.subcategory_id = filters.value.subcategoryId
   if (filters.value.projectId) params.project_id = filters.value.projectId
   if (filters.value.from) params.from = filters.value.from
   if (filters.value.to) params.to = filters.value.to
@@ -512,6 +562,12 @@ function buildParams() {
 
 function toggleUnsettledOnly() {
   filters.value.unsettledOnly = !filters.value.unsettledOnly
+  onFiltersChanged()
+}
+
+// A subcategory belongs to one category: changing the category drops it.
+function onCategoryChanged() {
+  filters.value.subcategoryId = ''
   onFiltersChanged()
 }
 
@@ -526,7 +582,7 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  filters.value = { search: '', categoryId: '', projectId: '', from: '', to: '', unsettledOnly: false }
+  filters.value = { search: '', categoryId: '', subcategoryId: '', projectId: '', from: '', to: '', unsettledOnly: false }
   const params = { sort: sortOption.value }
   currentFilters.value = params
   expensesStore.fetchExpenses(params, { page: 1 })

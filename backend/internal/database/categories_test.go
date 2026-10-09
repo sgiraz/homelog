@@ -195,6 +195,49 @@ func TestMigrateDefaultSubcategories_AddsMissingWithoutDuplicating(t *testing.T)
 	}
 }
 
+// A household that made its own rent/mortgage subcategory before the catalogue
+// had one keeps that row (and the expenses on it): the slug is adopted by name,
+// and the top-up does not insert a second one.
+func TestMigrateDefaultCategorySlugs_AdoptsHandMadeRentMortgage(t *testing.T) {
+	db := newTestDB(t)
+	if err := SeedDefaultCategories(db); err != nil {
+		t.Fatalf("SeedDefaultCategories: %v", err)
+	}
+
+	var home models.Category
+	if err := db.Where("slug = ?", SlugHome).First(&home).Error; err != nil {
+		t.Fatalf("load home category: %v", err)
+	}
+	// Pre-catalogue state: no rent slug row from the seed, one made by hand.
+	if err := db.Where("category_id = ? AND slug = ?", home.ID, SlugHomeRentMortgage).
+		Delete(&models.Subcategory{}).Error; err != nil {
+		t.Fatalf("delete seeded row: %v", err)
+	}
+	handMade := models.Subcategory{CategoryID: home.ID, Name: "Affitto/Mutuo"}
+	if err := db.Create(&handMade).Error; err != nil {
+		t.Fatalf("create hand-made row: %v", err)
+	}
+
+	if err := MigrateDefaultCategorySlugs(db); err != nil {
+		t.Fatalf("MigrateDefaultCategorySlugs: %v", err)
+	}
+	if err := MigrateDefaultSubcategories(db); err != nil {
+		t.Fatalf("MigrateDefaultSubcategories: %v", err)
+	}
+
+	var rows []models.Subcategory
+	if err := db.Where("category_id = ? AND name = ?", home.ID, "Affitto/Mutuo").Find(&rows).Error; err != nil {
+		t.Fatalf("reload rows: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("got %d Affitto/Mutuo rows, want 1", len(rows))
+	}
+	if rows[0].ID != handMade.ID || rows[0].Slug != SlugHomeRentMortgage {
+		t.Errorf("row = id %d slug %q, want the hand-made id %d with slug %q",
+			rows[0].ID, rows[0].Slug, handMade.ID, SlugHomeRentMortgage)
+	}
+}
+
 func TestDefaultCategoryName_LocalizesBuiltInsOnly(t *testing.T) {
 	if got := DefaultCategoryName(SlugHome, "en"); got != "Home" {
 		t.Errorf("EN name for %q = %q, want \"Home\"", SlugHome, got)
