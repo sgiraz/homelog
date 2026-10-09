@@ -42,6 +42,26 @@ type CreateExpenseRequest struct {
 	SplitWithMemberIDs []uint   `json:"split_with_member_ids"`
 }
 
+// noSubcategory is the subcategory_id value that selects expenses with none.
+const noSubcategory = "none"
+
+// subcategoryClause builds the WHERE fragment for the subcategory_id filter:
+// an id matches that subcategory, "none" matches expenses filed under no
+// subcategory (NULL, or the 0 some older clients wrote).
+func subcategoryClause(value string) string {
+	if value == noSubcategory {
+		return "(subcategory_id IS NULL OR subcategory_id = 0)"
+	}
+	return "subcategory_id = ?"
+}
+
+func subcategoryArgs(value string) []any {
+	if value == noSubcategory {
+		return nil
+	}
+	return []any{value}
+}
+
 // UpdateExpenseRequest represents the request body for updating an expense
 type UpdateExpenseRequest struct {
 	Amount           *float64 `json:"amount"`
@@ -65,7 +85,7 @@ type MonthlyStats struct {
 }
 
 // List returns all expenses for properties where the user is a member
-// GET /api/v1/expenses?category_id=1&property_id=1&from=2024-01-01&to=2024-12-31&limit=50&offset=0
+// GET /api/v1/expenses?category_id=1&subcategory_id=2&property_id=1&from=2024-01-01&to=2024-12-31&limit=50&offset=0
 func (h *ExpenseHandler) List(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -108,6 +128,10 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	// Apply optional filters
 	if categoryID := c.Query("category_id"); categoryID != "" {
 		query = query.Where("category_id = ?", categoryID)
+	}
+
+	if subcategoryID := c.Query("subcategory_id"); subcategoryID != "" {
+		query = query.Where(subcategoryClause(subcategoryID), subcategoryArgs(subcategoryID)...)
 	}
 
 	if propertyID := c.Query("property_id"); propertyID != "" {
@@ -176,6 +200,9 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	)
 	if categoryID := c.Query("category_id"); categoryID != "" {
 		countQuery = countQuery.Where("category_id = ?", categoryID)
+	}
+	if subcategoryID := c.Query("subcategory_id"); subcategoryID != "" {
+		countQuery = countQuery.Where(subcategoryClause(subcategoryID), subcategoryArgs(subcategoryID)...)
 	}
 	if propertyID := c.Query("property_id"); propertyID != "" {
 		countQuery = countQuery.Where("property_id = ?", propertyID)

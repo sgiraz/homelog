@@ -19,6 +19,12 @@ func NewCategoryHandler(db *gorm.DB) *CategoryHandler {
 	return &CategoryHandler{db: db}
 }
 
+// subcategoriesByName orders preloaded subcategories by name, the same way the
+// category list is ordered, so every client shows them alphabetically.
+func subcategoriesByName(db *gorm.DB) *gorm.DB {
+	return db.Order("name ASC")
+}
+
 // List returns all default categories plus the user's personal categories.
 // GET /api/v1/categories
 func (h *CategoryHandler) List(c *gin.Context) {
@@ -31,7 +37,7 @@ func (h *CategoryHandler) List(c *gin.Context) {
 	var categories []models.Category
 	if err := h.db.
 		Where("is_default = true OR user_id = ?", userID).
-		Preload("Subcategories").
+		Preload("Subcategories", subcategoriesByName).
 		Order("is_default DESC, name ASC").
 		Find(&categories).Error; err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch categories")
@@ -87,7 +93,7 @@ func (h *CategoryHandler) Create(c *gin.Context) {
 		return
 	}
 
-	h.db.Preload("Subcategories").First(&cat, cat.ID)
+	h.db.Preload("Subcategories", subcategoriesByName).First(&cat, cat.ID)
 	c.JSON(http.StatusCreated, cat)
 }
 
@@ -109,7 +115,7 @@ func (h *CategoryHandler) Get(c *gin.Context) {
 	var cat models.Category
 	if err := h.db.
 		Where("id = ? AND (is_default = true OR user_id = ?)", id, userID).
-		Preload("Subcategories").
+		Preload("Subcategories", subcategoriesByName).
 		First(&cat).Error; err != nil {
 		apierr.Fail(c, http.StatusNotFound, "category_not_found", "Category not found")
 		return
@@ -186,7 +192,7 @@ func (h *CategoryHandler) Update(c *gin.Context) {
 		}
 	}
 
-	h.db.Preload("Subcategories").First(&cat, cat.ID)
+	h.db.Preload("Subcategories", subcategoriesByName).First(&cat, cat.ID)
 	c.JSON(http.StatusOK, cat)
 }
 
