@@ -109,12 +109,13 @@
                 <option v-for="proj in projects" :key="proj.id" :value="proj.id">{{ proj.icon }} {{ proj.name }}</option>
               </select>
               <select
-                v-if="subcategoryOptions.length"
                 v-model="filters.subcategoryId"
                 @change="onFiltersChanged"
+                :disabled="!filters.categoryId"
                 class="col-span-2 px-3 py-2 border border-line rounded-lg
                        bg-surface text-ink text-base
-                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       focus:outline-none focus:ring-2 focus:ring-blue-500
+                       disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">{{ t('expenses.filters.allSubcategoriesLong') }}</option>
                 <option :value="NO_SUBCATEGORY">{{ t('expenses.modal.subcategoryNone') }}</option>
@@ -201,14 +202,16 @@
             </select>
           </div>
 
-          <div v-if="subcategoryOptions.length" class="flex items-center gap-2">
+          <div class="flex items-center gap-2">
             <label class="text-sm text-ink-soft whitespace-nowrap">{{ t('expenses.filters.subcategoryLabel') }}</label>
             <select
               v-model="filters.subcategoryId"
               @change="onFiltersChanged"
+              :disabled="!filters.categoryId"
               class="px-3 py-2 border border-line rounded-lg
                      bg-surface text-ink text-sm
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     focus:outline-none focus:ring-2 focus:ring-blue-500
+                     disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="">{{ t('expenses.filters.allSubcategoriesShort') }}</option>
               <option :value="NO_SUBCATEGORY">{{ t('expenses.modal.subcategoryNone') }}</option>
