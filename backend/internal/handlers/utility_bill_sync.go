@@ -113,9 +113,16 @@ func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *mod
 		return fmt.Errorf("could not find the built-in %q category: %w", database.SlugHome, err)
 	}
 
-	// Find the "utilities" subcategory under it
+	// Rent and mortgage get their own subcategory; every other service is an
+	// "utility". A database that has not got the rent row yet falls back to
+	// utilities rather than leaving the expense without a subcategory.
 	var utilitiesSubcat models.Subcategory
-	_ = h.db.Where("category_id = ? AND slug = ?", homeCategory.ID, database.SlugHomeUtilities).First(&utilitiesSubcat)
+	if utility.Type == "affitto" || utility.Type == "mutuo" {
+		_ = h.db.Where("category_id = ? AND slug = ?", homeCategory.ID, database.SlugHomeRentMortgage).First(&utilitiesSubcat)
+	}
+	if utilitiesSubcat.ID == 0 {
+		_ = h.db.Where("category_id = ? AND slug = ?", homeCategory.ID, database.SlugHomeUtilities).First(&utilitiesSubcat)
+	}
 
 	// Build the description in the owner's language: "Bolletta Luce - Mar 2025"
 	// / "Electricity bill - Mar 2025". It is server-generated app text, not

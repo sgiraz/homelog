@@ -60,6 +60,8 @@ func LocalizedCategoryLanguages() []string {
 const (
 	SlugHome          = "home"
 	SlugHomeUtilities = "home_utilities"
+	// SlugHomeRentMortgage is where the bills of rent and mortgage services land.
+	SlugHomeRentMortgage = "home_rent_mortgage"
 )
 
 // SubcategorySpec describes one built-in subcategory.
@@ -104,6 +106,10 @@ var DefaultCategories = []CategorySpec{
 			{Slug: "home_major_works", SeedName: "Lavori straordinari"},
 			{Slug: "home_furniture", SeedName: "Arredamento"},
 			{Slug: "home_appliances", SeedName: "Elettrodomestici"},
+			// Databases that already hold a hand-made "Affitto/Mutuo" under
+			// Casa adopt it by name (MigrateDefaultCategorySlugs); the others
+			// get a fresh row from MigrateDefaultSubcategories.
+			{Slug: SlugHomeRentMortgage, SeedName: "Affitto/Mutuo"},
 		},
 	},
 	{
