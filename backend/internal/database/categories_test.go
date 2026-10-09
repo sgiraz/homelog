@@ -195,9 +195,9 @@ func TestMigrateDefaultSubcategories_AddsMissingWithoutDuplicating(t *testing.T)
 	}
 }
 
-// A household that made its own "Affitto/Mutuo" before the catalogue had one
-// keeps that row (and the expenses on it): the slug is adopted by name, and the
-// top-up does not insert a second one.
+// A household that made its own rent/mortgage subcategory before the catalogue
+// had one keeps that row (and the expenses on it): the slug is adopted by name,
+// and the top-up does not insert a second one.
 func TestMigrateDefaultCategorySlugs_AdoptsHandMadeRentMortgage(t *testing.T) {
 	db := newTestDB(t)
 	if err := SeedDefaultCategories(db); err != nil {
