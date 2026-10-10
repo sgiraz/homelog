@@ -232,6 +232,11 @@ type Utility struct {
 	AllowsSelfReading   *bool   `gorm:"default:true" json:"allows_self_reading"` // Se il fornitore accetta autolettura
 	ComparisonThreshold float64 `gorm:"default:2.0" json:"comparison_threshold"` // Soglia base per letture stesso giorno
 	ThresholdPerDay     float64 `gorm:"default:1.0" json:"threshold_per_day"`    // Tolleranza aggiuntiva per giorno
+	// ReadingMatchDays is how far (in days) a self-reading may sit from a bill's
+	// period and still be compared with it. Whoever reads the meter rarely needs
+	// a wider window. Never written as 0 by the server, so the column default
+	// is safe.
+	ReadingMatchDays int `gorm:"default:15" json:"reading_match_days"`
 
 	// Fixed service fields
 	RecurringAmount *float64 `json:"recurring_amount,omitempty"`                   // Periodic amount (for fixed services)

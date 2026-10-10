@@ -280,10 +280,11 @@ func TestConsumptionAnalysis_ThresholdScalesWithPeriods(t *testing.T) {
 
 type compareResponse struct {
 	Comparisons        []ReadingComparison `json:"comparisons"`
+	ReadingMatchDays   int                 `json:"reading_match_days"`
 	ConsumptionSummary *ConsumptionSummary `json:"consumption_summary"`
 }
 
-func (f *moneyFixture) compareReadings(t *testing.T, token string, utilityID uint) (int, compareResponse) {
+func (f *moneyFixture) compareReadings(t *testing.T, token string, utilityID uint, query string) (int, compareResponse) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -291,7 +292,11 @@ func (f *moneyFixture) compareReadings(t *testing.T, token string, utilityID uin
 	p.Use(middleware.AuthRequired())
 	p.GET("/utilities/:id/compare-readings", NewUtilityHandler(f.db).CompareReadings)
 
-	rec := doGET(t, r, "/utilities/"+itoa(utilityID)+"/compare-readings", token)
+	path := "/utilities/" + itoa(utilityID) + "/compare-readings"
+	if query != "" {
+		path += "?" + query
+	}
+	rec := doGET(t, r, path, token)
 	var out compareResponse
 	if rec.Code == http.StatusOK {
 		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
@@ -336,7 +341,7 @@ func TestCompareReadings_StatusAndStructuredDifference(t *testing.T) {
 		)
 	}
 
-	code, got := f.compareReadings(t, f.aliceTok, u.ID)
+	code, got := f.compareReadings(t, f.aliceTok, u.ID, "")
 
 	if code != http.StatusOK {
 		t.Fatalf("status %d", code)
@@ -375,7 +380,7 @@ func TestCompareReadings_ThresholdGrowsWithDayGap(t *testing.T) {
 		&models.MeterReading{UtilityID: u.ID, ReadingDate: end.AddDate(0, 0, -5), Value: fp(115)},
 	)
 
-	_, got := f.compareReadings(t, f.aliceTok, u.ID)
+	_, got := f.compareReadings(t, f.aliceTok, u.ID, "")
 
 	c := got.Comparisons[0]
 	if c.DaysDifference != 5 || !approx(c.EffectiveThreshold, 7) {
@@ -395,7 +400,7 @@ func TestCompareReadings_NoSelfReadingIsNoData(t *testing.T) {
 		PeriodStart: day(2026, 2, 1), PeriodEnd: end, AmountTotal: 10, ProviderReading: fp(120),
 	})
 
-	_, got := f.compareReadings(t, f.aliceTok, u.ID)
+	_, got := f.compareReadings(t, f.aliceTok, u.ID, "")
 
 	if len(got.Comparisons) != 1 || got.Comparisons[0].Status != "no_data" {
 		t.Fatalf("comparisons = %+v, want one no_data", got.Comparisons)
@@ -403,6 +408,131 @@ func TestCompareReadings_NoSelfReadingIsNoData(t *testing.T) {
 	if got.Comparisons[0].MaxAbsDifference != nil {
 		t.Error("nothing was compared, so there is no difference to report")
 	}
+	if got.Comparisons[0].NoDataReason != "no_readings" {
+		t.Errorf("reason = %q, want no_readings", got.Comparisons[0].NoDataReason)
+	}
+}
+
+func TestCompareReadings_FarAwayReadingIsDeclaredNotUsed(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := f.gasUtility(t)
+	end := day(2026, 2, 28)
+	mustCreate(t, f.db,
+		&models.Bill{
+			UtilityID: u.ID, BillNumber: "B-1", IssueDate: end, DueDate: end.AddDate(0, 0, 20),
+			PeriodStart: day(2026, 2, 1), PeriodEnd: end, AmountTotal: 10, ProviderReading: fp(120),
+		},
+		// Four months before the period: far outside the default 15-day window.
+		&models.MeterReading{UtilityID: u.ID, ReadingDate: day(2025, 10, 1), Value: fp(80)},
+	)
+
+	_, got := f.compareReadings(t, f.aliceTok, u.ID, "")
+
+	c := got.Comparisons[0]
+	if c.Status != "no_data" || c.NoDataReason != "out_of_range" {
+		t.Fatalf("status %q / reason %q, want no_data / out_of_range (a 4-month-old reading must not pass for ok)", c.Status, c.NoDataReason)
+	}
+	if c.UserReading != nil || c.MaxAbsDifference != nil {
+		t.Errorf("the far-away reading must not be compared: %+v", c)
+	}
+	if c.NearestReadingDate == nil || !c.NearestReadingDate.Equal(day(2025, 10, 1)) {
+		t.Errorf("nearest reading = %v, want 2025-10-01", c.NearestReadingDate)
+	}
+	if c.NearestGapDays == nil || *c.NearestGapDays != 123 {
+		t.Errorf("gap = %v days, want 123 (Oct 1 → Feb 1)", c.NearestGapDays)
+	}
+	if got.ReadingMatchDays != 15 {
+		t.Errorf("window = %d, want the default 15", got.ReadingMatchDays)
+	}
+}
+
+func TestCompareReadings_WideningTheWindowBringsTheReadingBack(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := f.gasUtility(t)
+	end := day(2026, 2, 28)
+	mustCreate(t, f.db,
+		&models.Bill{
+			UtilityID: u.ID, BillNumber: "B-1", IssueDate: end, DueDate: end.AddDate(0, 0, 20),
+			PeriodStart: day(2026, 2, 1), PeriodEnd: end, AmountTotal: 10, ProviderReading: fp(120),
+		},
+		&models.MeterReading{UtilityID: u.ID, ReadingDate: day(2026, 1, 1), Value: fp(110)}, // 31 days before
+	)
+
+	_, narrow := f.compareReadings(t, f.aliceTok, u.ID, "")
+	if narrow.Comparisons[0].Status != "no_data" {
+		t.Fatalf("31 days is outside the default window, got %q", narrow.Comparisons[0].Status)
+	}
+
+	if err := f.db.Model(&u).Update("reading_match_days", 45).Error; err != nil {
+		t.Fatalf("widen window: %v", err)
+	}
+	_, wide := f.compareReadings(t, f.aliceTok, u.ID, "")
+	c := wide.Comparisons[0]
+	if c.Status == "no_data" || c.UserReading == nil {
+		t.Fatalf("with a 45-day window the reading must be used: %+v", c)
+	}
+	if wide.ReadingMatchDays != 45 {
+		t.Errorf("window = %d, want 45", wide.ReadingMatchDays)
+	}
+
+	// The query parameter overrides the stored value, like the thresholds do.
+	_, overridden := f.compareReadings(t, f.aliceTok, u.ID, "reading_match_days=10")
+	if overridden.Comparisons[0].Status != "no_data" || overridden.ReadingMatchDays != 10 {
+		t.Errorf("override: status %q window %d, want no_data / 10", overridden.Comparisons[0].Status, overridden.ReadingMatchDays)
+	}
+}
+
+func TestMatchReading(t *testing.T) {
+	start, end := day(2026, 2, 1), day(2026, 2, 28)
+	r := func(id uint, d time.Time) models.MeterReading {
+		return models.MeterReading{ID: id, ReadingDate: d}
+	}
+
+	t.Run("inside the period beats a nearer-looking outside reading", func(t *testing.T) {
+		readings := []models.MeterReading{r(1, day(2026, 3, 1)), r(2, day(2026, 2, 10))}
+		if m, _, _ := matchReading(readings, start, end, 15); m == nil || m.ID != 2 {
+			t.Errorf("match = %+v, want reading 2", m)
+		}
+	})
+	t.Run("nearest within the window wins", func(t *testing.T) {
+		readings := []models.MeterReading{r(1, day(2026, 1, 10)), r(2, day(2026, 1, 25))}
+		if m, _, _ := matchReading(readings, start, end, 30); m == nil || m.ID != 2 {
+			t.Errorf("match = %+v, want reading 2 (7 days away, not 22)", m)
+		}
+	})
+	t.Run("the window edge is inclusive", func(t *testing.T) {
+		readings := []models.MeterReading{r(1, day(2026, 1, 17))}
+		if m, _, _ := matchReading(readings, start, end, 15); m == nil {
+			t.Error("a reading exactly 15 days before must match")
+		}
+		if m, _, _ := matchReading(readings, start, end, 14); m != nil {
+			t.Error("a reading 15 days before must not match a 14-day window")
+		}
+	})
+	t.Run("outside the window there is no match but a nearest", func(t *testing.T) {
+		readings := []models.MeterReading{r(1, day(2025, 10, 1)), r(2, day(2025, 12, 1))}
+		m, nearest, gap := matchReading(readings, start, end, 15)
+		if m != nil || nearest == nil || nearest.ID != 2 || int(gap) != 62 {
+			t.Errorf("match=%v nearest=%+v gap=%.0f, want nil / reading 2 / 62", m, nearest, gap)
+		}
+	})
+	t.Run("after the period counts too", func(t *testing.T) {
+		readings := []models.MeterReading{r(1, day(2026, 3, 10))}
+		if m, _, gap := matchReading(readings, start, end, 15); m == nil || int(gap) != 10 {
+			t.Errorf("match=%v gap=%.0f, want a match 10 days after", m, gap)
+		}
+	})
+	t.Run("equal distance keeps the first reading", func(t *testing.T) {
+		readings := []models.MeterReading{r(1, day(2026, 2, 10)), r(2, day(2026, 2, 12))}
+		if m, _, _ := matchReading(readings, start, end, 15); m == nil || m.ID != 1 {
+			t.Errorf("match = %+v, want the first (newest) of two in-period readings", m)
+		}
+	})
+	t.Run("no readings at all", func(t *testing.T) {
+		if m, n, _ := matchReading(nil, start, end, 15); m != nil || n != nil {
+			t.Error("expected nil/nil")
+		}
+	})
 }
 
 func TestCompareReadings_OnlyForHouseholdMembers(t *testing.T) {
@@ -411,7 +541,7 @@ func TestCompareReadings_OnlyForHouseholdMembers(t *testing.T) {
 	eve := &models.User{Email: "eve@example.com", PasswordHash: "x", Name: "Eve", Role: "user", IsActive: true}
 	mustCreate(t, f.db, eve)
 
-	if code, _ := f.compareReadings(t, testutil.SignToken(t, eve), u.ID); code != http.StatusNotFound {
+	if code, _ := f.compareReadings(t, testutil.SignToken(t, eve), u.ID, ""); code != http.StatusNotFound {
 		t.Errorf("a non-member got status %d, want 404", code)
 	}
 }
@@ -446,7 +576,7 @@ func TestCompareReadings_ElectricityUsesTheWidestBandGap(t *testing.T) {
 		)
 	}
 
-	code, got := f.compareReadings(t, f.aliceTok, u.ID)
+	code, got := f.compareReadings(t, f.aliceTok, u.ID, "")
 
 	if code != http.StatusOK || len(got.Comparisons) != 3 {
 		t.Fatalf("status %d with %d comparisons, want 200 with 3", code, len(got.Comparisons))
@@ -480,9 +610,89 @@ func TestCompareReadings_ElectricityWithoutReadingsIsNoData(t *testing.T) {
 		PeriodStart: day(2026, 1, 1), PeriodEnd: end, AmountTotal: 10, ProviderReadingF1: fp(1000),
 	})
 
-	_, got := f.compareReadings(t, f.aliceTok, u.ID)
+	_, got := f.compareReadings(t, f.aliceTok, u.ID, "")
 
-	if len(got.Comparisons) != 1 || got.Comparisons[0].Status != "no_data" {
-		t.Errorf("comparisons = %+v, want one no_data", got.Comparisons)
+	if len(got.Comparisons) != 1 || got.Comparisons[0].Status != "no_data" || got.Comparisons[0].NoDataReason != "no_readings" {
+		t.Errorf("comparisons = %+v, want one no_data / no_readings", got.Comparisons)
+	}
+}
+
+func TestCompareReadings_OwnReadingAboveTheProviderIsStillADifference(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := f.gasUtility(t)
+	end := day(2026, 2, 28)
+	mustCreate(t, f.db,
+		&models.Bill{
+			UtilityID: u.ID, BillNumber: "B-1", IssueDate: end, DueDate: end.AddDate(0, 0, 20),
+			PeriodStart: day(2026, 2, 1), PeriodEnd: end, AmountTotal: 10, ProviderReading: fp(100),
+		},
+		// The household reads 10 more than the provider billed.
+		&models.MeterReading{UtilityID: u.ID, ReadingDate: end, Value: fp(110)},
+	)
+
+	_, got := f.compareReadings(t, f.aliceTok, u.ID, "")
+
+	c := got.Comparisons[0]
+	if c.Status != "alert" || c.MaxAbsDifference == nil || !approx(*c.MaxAbsDifference, 10) {
+		t.Errorf("status %q, max difference %v; want alert / 10 (the sign must not hide the gap)", c.Status, c.MaxAbsDifference)
+	}
+	if c.Difference == nil || !approx(*c.Difference, -10) {
+		t.Errorf("signed difference = %v, want -10", c.Difference)
+	}
+}
+
+func TestCompareReadings_StoredZeroWindowFallsBackToTheDefault(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := f.gasUtility(t)
+	if err := f.db.Model(&u).Update("reading_match_days", 0).Error; err != nil {
+		t.Fatalf("zero the window: %v", err)
+	}
+
+	_, got := f.compareReadings(t, f.aliceTok, u.ID, "")
+
+	if got.ReadingMatchDays != defaultReadingMatchDays {
+		t.Errorf("window = %d, want the default %d", got.ReadingMatchDays, defaultReadingMatchDays)
+	}
+}
+
+func TestUpdateUtility_ReadingMatchDays(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := f.gasUtility(t)
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	p := r.Group("")
+	p.Use(middleware.AuthRequired())
+	p.PUT("/utilities/:id", NewUtilityHandler(f.db).Update)
+
+	stored := func() int {
+		var out models.Utility
+		if err := f.db.First(&out, u.ID).Error; err != nil {
+			t.Fatalf("reload utility: %v", err)
+		}
+		return out.ReadingMatchDays
+	}
+	put := func(days int) {
+		t.Helper()
+		rec := doJSON(t, r, http.MethodPut, "/utilities/"+itoa(u.ID), f.aliceTok, map[string]any{"reading_match_days": days})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("PUT reading_match_days=%d: status %d, body %s", days, rec.Code, rec.Body.String())
+		}
+	}
+
+	if got := stored(); got != defaultReadingMatchDays {
+		t.Fatalf("a new service starts at %d days, got %d", defaultReadingMatchDays, got)
+	}
+	put(45)
+	if got := stored(); got != 45 {
+		t.Errorf("stored window = %d, want 45", got)
+	}
+	put(100000)
+	if got := stored(); got != maxReadingMatchDays {
+		t.Errorf("stored window = %d, want it capped at %d", got, maxReadingMatchDays)
+	}
+	put(0)
+	put(-3)
+	if got := stored(); got != maxReadingMatchDays {
+		t.Errorf("stored window = %d, a zero or negative value must leave it unchanged", got)
 	}
 }

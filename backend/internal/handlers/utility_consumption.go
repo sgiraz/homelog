@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -37,6 +38,13 @@ type ReadingComparison struct {
 	ProviderReading *float64 `json:"provider_reading,omitempty"`
 	UserReading     *float64 `json:"user_reading,omitempty"`
 	Difference      *float64 `json:"difference,omitempty"` // Absolute difference in mc/Smc
+	// NoDataReason explains a "no_data" status so the client can say why:
+	// "no_readings" (nothing usable recorded) or "out_of_range" (readings exist
+	// but all sit outside the matching window; see NearestReadingDate and
+	// NearestGapDays).
+	NoDataReason       string     `json:"no_data_reason,omitempty"`
+	NearestReadingDate *time.Time `json:"nearest_reading_date,omitempty"`
+	NearestGapDays     *int       `json:"nearest_gap_days,omitempty"`
 	// MaxAbsDifference is the largest provider/self-reading gap across the
 	// compared registers, in the utility's unit; nil when nothing was compared.
 	// The client words the alert from it: the server ships no prose.
@@ -97,6 +105,37 @@ type ConsumptionSummary struct {
 	PeriodCount int `json:"period_count"`
 }
 
+const (
+	defaultReadingMatchDays = 15
+	maxReadingMatchDays     = 365
+)
+
+// matchReading picks the self-reading to compare with a bill: the one inside
+// the bill's period, else the nearest one no further than maxGapDays from it.
+// Ties go to the first reading in the slice (the newest, as the caller orders
+// them). When nothing qualifies it returns a nil match together with the
+// nearest reading and its distance in days, so the caller can tell the user why
+// there is no comparison; nearest is nil only when there are no readings at all.
+func matchReading(readings []models.MeterReading, periodStart, periodEnd time.Time, maxGapDays int) (match, nearest *models.MeterReading, nearestGap float64) {
+	best := 0.0
+	for i := range readings {
+		date := readings[i].ReadingDate
+		gap := 0.0
+		if date.Before(periodStart) {
+			gap = periodStart.Sub(date).Hours() / 24
+		} else if date.After(periodEnd) {
+			gap = date.Sub(periodEnd).Hours() / 24
+		}
+		if nearest == nil || gap < nearestGap {
+			nearest, nearestGap = &readings[i], gap
+		}
+		if gap <= float64(maxGapDays) && (match == nil || gap < best) {
+			match, best = &readings[i], gap
+		}
+	}
+	return match, nearest, nearestGap
+}
+
 // CompareReadings compares provider readings from bills with user's manual readings
 // GET /api/v1/utilities/:id/compare-readings
 func (h *UtilityHandler) CompareReadings(c *gin.Context) {
@@ -152,7 +191,17 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 	if thresholdPerDay == 0 {
 		thresholdPerDay = 1.0
 	}
+	// How far a self-reading may sit from a bill's period and still count
+	maxGapDays := utility.ReadingMatchDays
+	if maxGapDays <= 0 {
+		maxGapDays = defaultReadingMatchDays
+	}
 	// Allow override via query params
+	if d := c.Query("reading_match_days"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 {
+			maxGapDays = min(parsed, maxReadingMatchDays)
+		}
+	}
 	if t := c.Query("threshold"); t != "" {
 		if parsed, err := strconv.ParseFloat(t, 64); err == nil {
 			baseThreshold = parsed
@@ -195,47 +244,20 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 			EffectiveThreshold:  baseThreshold, // Will be adjusted based on days difference
 		}
 
-		// Find user reading that falls within the bill period
-		// The user's autolettura should be within or close to the billing period
-		var closestReading *models.MeterReading
-		var bestScore int = -1 // Higher is better
+		// Find the self-reading to compare: inside the bill period, else the
+		// nearest one within the matching window. A reading further away says
+		// nothing about this bill, so it is not used.
+		closestReading, nearest, nearestGap := matchReading(readings, bill.PeriodStart, bill.PeriodEnd, maxGapDays)
 
-		log.Printf("Bill %d: period %v - %v", bill.ID, bill.PeriodStart.Format("2006-01-02"), bill.PeriodEnd.Format("2006-01-02"))
+		log.Printf("Bill %d: period %v - %v, matched reading: %v", bill.ID,
+			bill.PeriodStart.Format("2006-01-02"), bill.PeriodEnd.Format("2006-01-02"), closestReading != nil)
 
-		for i := range readings {
-			readingDate := readings[i].ReadingDate
-			score := 0
-
-			// Best match: reading date is within the bill period
-			if !readingDate.Before(bill.PeriodStart) && !readingDate.After(bill.PeriodEnd) {
-				score = 100
-			} else {
-				// Also consider readings slightly before period start or after period end
-				// (user might read meter a few days early/late)
-				daysBefore := bill.PeriodStart.Sub(readingDate).Hours() / 24
-				daysAfter := readingDate.Sub(bill.PeriodEnd).Hours() / 24
-
-				if daysBefore > 0 && daysBefore <= 15 {
-					score = 50 - int(daysBefore) // Within 15 days before period start
-				} else if daysAfter > 0 && daysAfter <= 15 {
-					score = 50 - int(daysAfter) // Within 15 days after period end
-				}
-			}
-
-			log.Printf("  Reading %d: date=%v, score=%d (F1=%v, F2=%v, F3=%v)",
-				readings[i].ID, readingDate.Format("2006-01-02"), score,
-				readings[i].ValueF1, readings[i].ValueF2, readings[i].ValueF3)
-
-			if score > bestScore {
-				bestScore = score
-				closestReading = &readings[i]
-			}
-		}
-
-		if closestReading != nil {
-			log.Printf("Best match: Reading %d with score %d", closestReading.ID, bestScore)
-		} else {
-			log.Printf("No matching reading found for bill %d", bill.ID)
+		noDataReason := "no_readings"
+		if closestReading == nil && nearest != nil {
+			noDataReason = "out_of_range"
+			gap := int(math.Ceil(nearestGap))
+			comparison.NearestReadingDate = &nearest.ReadingDate
+			comparison.NearestGapDays = &gap
 		}
 
 		if closestReading != nil {
@@ -319,6 +341,7 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 				comparison.MaxAbsDifference = &maxAbsDiff
 			} else {
 				comparison.Status = "no_data"
+				comparison.NoDataReason = noDataReason
 			}
 
 		case "gas", "water":
@@ -347,6 +370,7 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 				}
 			} else {
 				comparison.Status = "no_data"
+				comparison.NoDataReason = noDataReason
 			}
 		}
 
@@ -360,6 +384,7 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 		"comparisons":         comparisons,
 		"base_threshold":      baseThreshold,
 		"threshold_per_day":   thresholdPerDay,
+		"reading_match_days":  maxGapDays,
 		"utility_type":        utility.Type,
 		"consumption_periods": consumptionPeriods,
 		"consumption_summary": consumptionSummary,

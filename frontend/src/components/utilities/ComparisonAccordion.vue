@@ -48,7 +48,7 @@
 
         <!-- Alert message if any -->
         <div v-if="alertMessage(comparison)" class="text-sm">
-          <span :class="comparison.status === 'alert' ? 'text-danger-soft' : 'text-warning-soft'">
+          <span :class="messageClass(comparison.status)">
             {{ alertMessage(comparison) }}
           </span>
         </div>
@@ -146,6 +146,10 @@ const props = defineProps({
   getUnit: {
     type: Function,
     required: true
+  },
+  readingMatchDays: {
+    type: Number,
+    default: 15
   }
 })
 
@@ -154,7 +158,18 @@ defineEmits(['toggle-card'])
 // The server sends the status and the figures; the sentence is composed here so
 // it follows the user's language.
 function alertMessage(comparison) {
-  if (comparison.status === 'no_data') return t('utilities.comparisonAccordion.noSelfReading')
+  if (comparison.status === 'no_data') {
+    // Say why there is nothing to compare: a reading exists, it is just too far
+    // from this bill's period to say anything about it.
+    if (comparison.no_data_reason === 'out_of_range' && comparison.nearest_reading_date) {
+      return t('utilities.comparisonAccordion.outOfRange', {
+        date: props.formatDate(comparison.nearest_reading_date),
+        days: t('utilities.comparisonAccordion.daysDifference', { n: comparison.nearest_gap_days }),
+        max: t('utilities.comparisonAccordion.daysDifference', { n: props.readingMatchDays })
+      })
+    }
+    return t('utilities.comparisonAccordion.noSelfReading')
+  }
   const kind = comparison.status === 'alert' ? 'alertMessage'
     : comparison.status === 'warning' ? 'differenceMessage'
     : null
@@ -165,6 +180,14 @@ function alertMessage(comparison) {
     unit: props.getUnit(),
     days: t('utilities.comparisonAccordion.daysDifference', { n: comparison.days_difference })
   })
+}
+
+// Missing data is information, not a fault: it stays neutral instead of
+// borrowing the warning colour.
+function messageClass(status) {
+  if (status === 'alert') return 'text-danger-soft'
+  if (status === 'warning') return 'text-warning-soft'
+  return 'text-ink-soft'
 }
 
 function getStatusClasses(status) {

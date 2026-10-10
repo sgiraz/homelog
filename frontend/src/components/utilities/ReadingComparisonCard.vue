@@ -66,6 +66,7 @@
         :fmtDiff="fmtDiff"
         :formatDate="formatDate"
         :getUnit="getUnit"
+        :readingMatchDays="readingMatchDays"
         @toggle-card="toggleCard"
       />
     </div>
@@ -104,6 +105,10 @@ const props = defineProps({
   thresholdPerDay: {
     type: Number,
     default: 1
+  },
+  readingMatchDays: {
+    type: Number,
+    default: 15
   }
 })
 
@@ -136,7 +141,7 @@ function toggleCard(billId) {
 async function loadComparisons() {
   loading.value = true
   try {
-    const { data } = await utilitiesAPI.compareReadings(props.utilityId, props.baseThreshold, props.thresholdPerDay)
+    const { data } = await utilitiesAPI.compareReadings(props.utilityId, props.baseThreshold, props.thresholdPerDay, props.readingMatchDays)
     comparisons.value = data.comparisons || []
     consumptionSummary.value = data.consumption_summary || null
     consumptionPeriods.value = data.consumption_periods || []

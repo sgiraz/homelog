@@ -468,7 +468,8 @@
     "statusOk": "OK",
     "alertMessage": "Discrepanza di {diff} {unit} (soglia effettiva: {threshold} {unit}, {days} di distanza)",
     "differenceMessage": "Differenza di {diff} {unit} (soglia effettiva: {threshold} {unit}, {days} di distanza)",
-    "noSelfReading": "Nessuna autolettura disponibile per il confronto"
+    "noSelfReading": "Nessuna autolettura disponibile per il confronto",
+    "outOfRange": "L'autolettura più vicina è del {date}, a {days} dal periodo di questa bolletta. Le letture vengono abbinate entro {max}. Aggiungi una lettura più vicina al periodo oppure amplia la finestra letture nelle impostazioni del confronto."
   },
   "consumptionPeriods": {
     "title": "Dettaglio Consumi per Periodo",
@@ -576,6 +577,9 @@
     "perDayThreshold": "Per giorno",
     "perDayThresholdHint": "Tolleranza aggiuntiva",
     "perDayUnit": "{unit}/g",
+    "readingMatchDays": "Finestra letture",
+    "readingMatchDaysHint": "Distanza massima di un'autolettura dal periodo della bolletta",
+    "readingMatchDaysUnit": "giorni",
     "saveThreshold": "Salva soglia",
     "saving": "Salvataggio..."
   },
