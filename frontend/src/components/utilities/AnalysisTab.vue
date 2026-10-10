@@ -20,9 +20,15 @@
           </button>
         </div>
       </div>
-      <div v-if="analysisPeriod === 'custom'" class="flex gap-2 mt-3">
-        <input v-model="analysisFrom" type="date" class="px-3 py-2.5 border border-line rounded-lg bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <input v-model="analysisTo" type="date" class="px-3 py-2.5 border border-line rounded-lg bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      <div v-if="analysisPeriod === 'custom'" class="grid grid-cols-2 sm:flex gap-2 mt-3">
+        <label class="block min-w-0">
+          <span class="block text-xs text-ink-muted mb-1">{{ t('utilities.analysisTab.dateFrom') }}</span>
+          <input v-model="analysisFrom" type="date" class="w-0 min-w-full px-3 py-2.5 border border-line rounded-lg bg-surface text-ink text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 [&::-webkit-date-and-time-value]:min-h-[1.5em]" />
+        </label>
+        <label class="block min-w-0">
+          <span class="block text-xs text-ink-muted mb-1">{{ t('utilities.analysisTab.dateTo') }}</span>
+          <input v-model="analysisTo" type="date" class="w-0 min-w-full px-3 py-2.5 border border-line rounded-lg bg-surface text-ink text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 [&::-webkit-date-and-time-value]:min-h-[1.5em]" />
+        </label>
       </div>
     </Card>
 

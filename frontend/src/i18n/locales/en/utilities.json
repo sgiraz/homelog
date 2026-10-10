@@ -497,6 +497,8 @@
     "perDayThreshold": "Per day",
     "perDayThresholdHint": "Additional tolerance",
     "perDayUnit": "{unit}/d",
+    "dateFrom": "From date",
+    "dateTo": "To date",
     "readingMatchDays": "Reading window",
     "readingMatchDaysHint": "Furthest a self-reading can be from the bill period",
     "readingMatchDaysUnit": "days",

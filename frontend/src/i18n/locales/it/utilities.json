@@ -577,6 +577,8 @@
     "perDayThreshold": "Per giorno",
     "perDayThresholdHint": "Tolleranza aggiuntiva",
     "perDayUnit": "{unit}/g",
+    "dateFrom": "Da data",
+    "dateTo": "A data",
     "readingMatchDays": "Finestra letture",
     "readingMatchDaysHint": "Distanza massima di un'autolettura dal periodo della bolletta",
     "readingMatchDaysUnit": "giorni",
