@@ -576,7 +576,7 @@ func TestCompareReadings_ElectricityUsesTheWidestBandGap(t *testing.T) {
 		)
 	}
 
-	code, got := f.compareReadings(t, f.aliceTok, u.ID)
+	code, got := f.compareReadings(t, f.aliceTok, u.ID, "")
 
 	if code != http.StatusOK || len(got.Comparisons) != 3 {
 		t.Fatalf("status %d with %d comparisons, want 200 with 3", code, len(got.Comparisons))
@@ -610,9 +610,9 @@ func TestCompareReadings_ElectricityWithoutReadingsIsNoData(t *testing.T) {
 		PeriodStart: day(2026, 1, 1), PeriodEnd: end, AmountTotal: 10, ProviderReadingF1: fp(1000),
 	})
 
-	_, got := f.compareReadings(t, f.aliceTok, u.ID)
+	_, got := f.compareReadings(t, f.aliceTok, u.ID, "")
 
-	if len(got.Comparisons) != 1 || got.Comparisons[0].Status != "no_data" {
-		t.Errorf("comparisons = %+v, want one no_data", got.Comparisons)
+	if len(got.Comparisons) != 1 || got.Comparisons[0].Status != "no_data" || got.Comparisons[0].NoDataReason != "no_readings" {
+		t.Errorf("comparisons = %+v, want one no_data / no_readings", got.Comparisons)
 	}
 }
