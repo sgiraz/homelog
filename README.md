@@ -3,6 +3,7 @@
 > Self-hosted home expense tracking and utilities management for families.
 
 [![CI](https://github.com/sgiraz/homelog/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sgiraz/homelog/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/sgiraz/homelog/graph/badge.svg)](https://codecov.io/gh/sgiraz/homelog)
 [![Docker Image](https://github.com/sgiraz/homelog/actions/workflows/docker-build.yml/badge.svg)](https://github.com/sgiraz/homelog/actions/workflows/docker-build.yml)
 [![Release](https://img.shields.io/github/v/release/sgiraz/homelog?label=release&color=2496ED)](https://github.com/sgiraz/homelog/releases/latest)
 
