@@ -359,6 +359,7 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 		AllowsSelfReading     *bool      `json:"allows_self_reading"`
 		ComparisonThreshold   *float64   `json:"comparison_threshold"`
 		ThresholdPerDay       *float64   `json:"threshold_per_day"`
+		ReadingMatchDays      *int       `json:"reading_match_days"`
 		RecurringAmount       *float64   `json:"recurring_amount"`
 		BillingInterval       *int       `json:"billing_interval"`
 		BillingUnit           string     `json:"billing_unit" binding:"omitempty,oneof=day week month year"`
@@ -475,6 +476,9 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	}
 	if input.ThresholdPerDay != nil {
 		utility.ThresholdPerDay = *input.ThresholdPerDay
+	}
+	if input.ReadingMatchDays != nil && *input.ReadingMatchDays > 0 {
+		utility.ReadingMatchDays = min(*input.ReadingMatchDays, maxReadingMatchDays)
 	}
 	if input.RecurringAmount != nil {
 		utility.RecurringAmount = input.RecurringAmount

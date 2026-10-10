@@ -79,6 +79,17 @@
               <span class="w-12 text-xs text-ink-faint">{{ t('utilities.analysisTab.perDayUnit', { unit: consumptionUnit }) }}</span>
             </div>
           </div>
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-sm text-ink-soft">{{ t('utilities.analysisTab.readingMatchDays') }}</div>
+              <div class="text-xs text-ink-faint">{{ t('utilities.analysisTab.readingMatchDaysHint') }}</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <input v-model.number="readingMatchDaysValue" type="number" min="1" max="365" step="1"
+                class="w-16 px-2 py-2 text-sm text-center border border-line rounded-lg bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              <span class="w-12 text-xs text-ink-faint">{{ t('utilities.analysisTab.readingMatchDaysUnit') }}</span>
+            </div>
+          </div>
           <Button v-if="hasThresholdChanges" size="sm" @click="saveThreshold" :disabled="savingThreshold">
             {{ savingThreshold ? t('utilities.analysisTab.saving') : t('utilities.analysisTab.saveThreshold') }}
           </Button>
@@ -92,6 +103,7 @@
         :utility-type="utility.type"
         :base-threshold="utility.comparison_threshold || 2"
         :threshold-per-day="utility.threshold_per_day || 1"
+        :reading-match-days="utility.reading_match_days || 15"
       />
     </div>
   </div>
@@ -124,6 +136,7 @@ const comparisonKey = ref(0)
 const showThresholdSettings = ref(false)
 const thresholdValue = ref(props.utility.comparison_threshold || 2)
 const thresholdPerDayValue = ref(props.utility.threshold_per_day || 1)
+const readingMatchDaysValue = ref(props.utility.reading_match_days || 15)
 const savingThreshold = ref(false)
 
 const analysisPeriod = ref('12m')
@@ -149,7 +162,8 @@ function formatConsumption(value) {
 
 const hasThresholdChanges = computed(() => {
   return thresholdValue.value !== (props.utility.comparison_threshold || 2) ||
-         thresholdPerDayValue.value !== (props.utility.threshold_per_day || 1)
+         thresholdPerDayValue.value !== (props.utility.threshold_per_day || 1) ||
+         readingMatchDaysValue.value !== (props.utility.reading_match_days || 15)
 })
 
 const analysisData = computed(() => {
@@ -185,11 +199,13 @@ async function saveThreshold() {
   try {
     await utilitiesStore.updateUtility(props.utility.id, {
       comparison_threshold: thresholdValue.value,
-      threshold_per_day: thresholdPerDayValue.value
+      threshold_per_day: thresholdPerDayValue.value,
+      reading_match_days: readingMatchDaysValue.value
     })
     emit('threshold-saved', {
       comparison_threshold: thresholdValue.value,
-      threshold_per_day: thresholdPerDayValue.value
+      threshold_per_day: thresholdPerDayValue.value,
+      reading_match_days: readingMatchDaysValue.value
     })
     comparisonKey.value++
   } catch (err) {

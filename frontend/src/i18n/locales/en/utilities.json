@@ -388,7 +388,8 @@
     "statusOk": "OK",
     "alertMessage": "Discrepancy of {diff} {unit} (effective threshold: {threshold} {unit}, {days} apart)",
     "differenceMessage": "Difference of {diff} {unit} (effective threshold: {threshold} {unit}, {days} apart)",
-    "noSelfReading": "No self-reading available for comparison"
+    "noSelfReading": "No self-reading available for comparison",
+    "outOfRange": "Your closest self-reading is from {date}, {days} from this bill's period. Readings are matched within {max}. Add a reading closer to the period, or widen the reading window in the comparison settings."
   },
   "consumptionPeriods": {
     "title": "Consumption Detail by Period",
@@ -496,6 +497,9 @@
     "perDayThreshold": "Per day",
     "perDayThresholdHint": "Additional tolerance",
     "perDayUnit": "{unit}/d",
+    "readingMatchDays": "Reading window",
+    "readingMatchDaysHint": "Furthest a self-reading can be from the bill period",
+    "readingMatchDaysUnit": "days",
     "saveThreshold": "Save threshold",
     "saving": "Saving..."
   },

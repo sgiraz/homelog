@@ -388,7 +388,8 @@
     "statusOk": "OK",
     "alertMessage": "Abweichung von {diff} {unit} (effektiver Schwellenwert: {threshold} {unit}, {days} Abstand)",
     "differenceMessage": "Differenz von {diff} {unit} (effektiver Schwellenwert: {threshold} {unit}, {days} Abstand)",
-    "noSelfReading": "Keine Selbstablesung zum Vergleich verfügbar"
+    "noSelfReading": "Keine Selbstablesung zum Vergleich verfügbar",
+    "outOfRange": "Ihre nächste Selbstablesung stammt vom {date}, {days} vom Zeitraum dieser Rechnung entfernt. Ablesungen werden nur bis zu einem Abstand von {max} zugeordnet. Fügen Sie eine Ablesung näher am Zeitraum hinzu oder erweitern Sie das Ablesefenster in den Vergleichseinstellungen."
   },
   "consumptionPeriods": {
     "title": "Verbrauchsdetails nach Zeitraum",
@@ -496,6 +497,9 @@
     "perDayThreshold": "Pro Tag",
     "perDayThresholdHint": "Zusätzliche Toleranz",
     "perDayUnit": "{unit}/Tag",
+    "readingMatchDays": "Ablesefenster",
+    "readingMatchDaysHint": "Größter Abstand einer Selbstablesung zum Rechnungszeitraum",
+    "readingMatchDaysUnit": "Tage",
     "saveThreshold": "Schwellenwert speichern",
     "saving": "Wird gespeichert..."
   },

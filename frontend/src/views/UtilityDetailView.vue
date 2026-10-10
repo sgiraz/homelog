@@ -290,6 +290,7 @@ async function onDataChanged() {
 function onThresholdSaved(thresholds) {
   utility.value.comparison_threshold = thresholds.comparison_threshold
   utility.value.threshold_per_day = thresholds.threshold_per_day
+  utility.value.reading_match_days = thresholds.reading_match_days
 }
 
 async function onUtilityUpdated(updatedUtility) {
