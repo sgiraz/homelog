@@ -2,19 +2,19 @@
   <div>
     <!-- Filters -->
     <div class="flex flex-col sm:flex-row gap-2 mb-4">
-      <div class="flex gap-2 flex-1">
+      <div class="flex gap-2 flex-1 min-w-0">
         <input
           v-model="billSearch"
           type="search"
           :placeholder="t('utilities.billsTab.searchPlaceholder')"
-          class="flex-1 px-3 py-2.5 border border-line rounded-lg
-                 bg-surface text-ink text-sm
+          class="flex-1 min-w-0 px-3 py-2.5 border border-line rounded-lg
+                 bg-surface text-ink text-base sm:text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <select
           v-model="billStatusFilter"
-          class="px-3 py-2.5 border border-line rounded-lg
-                 bg-surface text-ink text-sm
+          class="shrink-0 px-3 py-2.5 border border-line rounded-lg
+                 bg-surface text-ink text-base sm:text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">{{ t('utilities.billsTab.statusAll') }}</option>
@@ -22,23 +22,27 @@
           <option value="paid">{{ t('utilities.billsTab.statusPaid') }}</option>
         </select>
       </div>
-      <div class="flex gap-2">
-        <input
-          v-model="billDateFrom"
-          type="date"
-          class="px-3 py-2.5 border border-line rounded-lg
-                 bg-surface text-ink text-sm
-                 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          :title="t('utilities.billsTab.dateFrom')"
-        />
-        <input
-          v-model="billDateTo"
-          type="date"
-          class="px-3 py-2.5 border border-line rounded-lg
-                 bg-surface text-ink text-sm
-                 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          :title="t('utilities.billsTab.dateTo')"
-        />
+      <!-- Visible labels on phones: an empty date field renders blank on iOS and a
+           title is never shown on touch. -->
+      <div class="grid grid-cols-2 gap-2 sm:flex">
+        <label class="block min-w-0">
+          <span class="block text-xs text-ink-muted mb-1 sm:sr-only">{{ t('utilities.billsTab.dateFrom') }}</span>
+          <input
+            v-model="billDateFrom"
+            type="date"
+            class="w-0 min-w-full px-3 py-2.5 border border-line rounded-lg bg-surface text-ink text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 [&::-webkit-date-and-time-value]:min-h-[1.5em]"
+            :title="t('utilities.billsTab.dateFrom')"
+          />
+        </label>
+        <label class="block min-w-0">
+          <span class="block text-xs text-ink-muted mb-1 sm:sr-only">{{ t('utilities.billsTab.dateTo') }}</span>
+          <input
+            v-model="billDateTo"
+            type="date"
+            class="w-0 min-w-full px-3 py-2.5 border border-line rounded-lg bg-surface text-ink text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 [&::-webkit-date-and-time-value]:min-h-[1.5em]"
+            :title="t('utilities.billsTab.dateTo')"
+          />
+        </label>
       </div>
     </div>
 

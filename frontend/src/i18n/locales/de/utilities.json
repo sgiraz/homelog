@@ -497,6 +497,8 @@
     "perDayThreshold": "Pro Tag",
     "perDayThresholdHint": "Zusätzliche Toleranz",
     "perDayUnit": "{unit}/Tag",
+    "dateFrom": "Von Datum",
+    "dateTo": "Bis Datum",
     "readingMatchDays": "Ablesefenster",
     "readingMatchDaysHint": "Größter Abstand einer Selbstablesung zum Rechnungszeitraum",
     "readingMatchDaysUnit": "Tage",
