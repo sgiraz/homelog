@@ -94,7 +94,7 @@
         <div class="space-y-2">
           <div class="flex justify-between text-sm">
             <span class="text-ink-soft">{{ t('projects.card.budget') }}</span>
-            <span class="font-medium">{{ formatCurrency(project.budget) }}</span>
+            <span class="font-medium text-ink">{{ formatCurrency(project.budget) }}</span>
           </div>
 
           <div class="flex justify-between text-sm">
