@@ -38,10 +38,9 @@ type ReadingComparison struct {
 	ProviderReading *float64 `json:"provider_reading,omitempty"`
 	UserReading     *float64 `json:"user_reading,omitempty"`
 	Difference      *float64 `json:"difference,omitempty"` // Absolute difference in mc/Smc
-	// NoDataReason explains a "no_data" status so the client can say why:
-	// "no_readings" (nothing usable recorded) or "out_of_range" (readings exist
-	// but all sit outside the matching window; see NearestReadingDate and
-	// NearestGapDays).
+	// NoDataReason explains a "no_data" status: "no_readings" (nothing usable
+	// recorded) or "out_of_range" (readings exist, all outside the matching window;
+	// see NearestReadingDate and NearestGapDays).
 	NoDataReason       string     `json:"no_data_reason,omitempty"`
 	NearestReadingDate *time.Time `json:"nearest_reading_date,omitempty"`
 	NearestGapDays     *int       `json:"nearest_gap_days,omitempty"`
@@ -110,12 +109,10 @@ const (
 	maxReadingMatchDays     = 365
 )
 
-// matchReading picks the self-reading to compare with a bill: the one inside
-// the bill's period, else the nearest one no further than maxGapDays from it.
-// Ties go to the first reading in the slice (the newest, as the caller orders
-// them). When nothing qualifies it returns a nil match together with the
-// nearest reading and its distance in days, so the caller can tell the user why
-// there is no comparison; nearest is nil only when there are no readings at all.
+// matchReading picks the self-reading for a bill: inside its period, else the
+// nearest within maxGapDays (ties go to the first, i.e. newest). With no match it
+// still returns the nearest reading and its distance in days so the caller can
+// say why; nearest is nil only when there are no readings.
 func matchReading(readings []models.MeterReading, periodStart, periodEnd time.Time, maxGapDays int) (match, nearest *models.MeterReading, nearestGap float64) {
 	best := 0.0
 	for i := range readings {

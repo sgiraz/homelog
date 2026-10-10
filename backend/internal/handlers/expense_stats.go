@@ -109,12 +109,8 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		endDate = now
 	}
 
-	// Build reusable WHERE conditions shared across all sub-queries. Compare
-	// against the literal calendar-date prefix of the stored string (substr),
-	// not SQLite's date()/strftime() functions — those convert through UTC
-	// using any offset embedded in the value first, which shifts a value
-	// recorded just after local midnight onto the previous UTC day. See the
-	// same fix in List/count above for the full explanation.
+	// Shared WHERE conditions. Dates compare by substr, not date()/strftime(), to
+	// avoid the UTC shift described in dateOnly.
 	baseWhere := "property_id IN ? AND substr(date, 1, 10) >= ? AND substr(date, 1, 10) <= ?"
 	joinWhere := "expenses.property_id IN ? AND substr(expenses.date, 1, 10) >= ? AND substr(expenses.date, 1, 10) <= ?"
 	baseArgs := []any{memberPropertyIDs, startDate.Format("2006-01-02"), endDate.Format("2006-01-02")}

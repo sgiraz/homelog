@@ -10,11 +10,10 @@ import (
 	"github.com/sgiraz/homelog/internal/apierr"
 )
 
-// publicUploadRe is the only kind of file served without authentication: the
-// short-lived page previews the template wizard shows in <img> tags (which
-// cannot send an Authorization header). Everything else under uploads/ — bill
-// and contract PDFs above all — is private and reachable only through an
-// authenticated endpoint.
+// publicUploadRe matches the only files served without authentication: the
+// short-lived template-wizard previews shown in <img> tags, which cannot send an
+// Authorization header. Bill and contract PDFs are reachable only through
+// authenticated endpoints.
 var publicUploadRe = regexp.MustCompile(`^template_page_\d+(?:_[a-f0-9]+)?_\d+\.png$`)
 
 // PublicUploads serves GET /uploads/:name from dir, restricted to

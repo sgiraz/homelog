@@ -15,24 +15,17 @@ import (
 	"gorm.io/gorm"
 )
 
-// dateOnly strips the time-of-day and location offset from t, keeping just
-// the calendar date it represents (as a UTC midnight value) — the same
-// representation every explicitly-entered expense/bill date already has.
-// Stamping a fallback "paid today" with time.Now() instead would carry the
-// server's local offset, and a payment recorded just after local midnight
-// would land on the previous day once that offset is applied (e.g. by
-// SQLite's date() function or any other UTC-normalizing comparison).
+// dateOnly keeps just the calendar date of t as a UTC midnight value, like every
+// other expense/bill date. A raw time.Now() carries the local offset, so a
+// payment just after local midnight would land on the previous day once
+// normalised to UTC (e.g. by SQLite's date()).
 func dateOnly(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
 
-// parseOptionalDate parses an optional "YYYY-MM-DD" calendar date from client
-// input into a date-only value. Paid/payment dates must travel the wire as a
-// plain date, never a full ISO timestamp: JS's `new Date().toISOString()`
-// always renders in UTC, which silently reports the wrong calendar day
-// whenever the payment happens between local midnight and the UTC day
-// rollover (e.g. 00:41 CEST is still "yesterday" in UTC) — dateOnly() cannot
-// recover the user's intended day from a timestamp that already lost it.
+// parseOptionalDate parses an optional "YYYY-MM-DD" client date into a date-only
+// value. A full ISO timestamp is refused: toISOString() renders in UTC and has
+// already lost the user's calendar day.
 func parseOptionalDate(s *string) (*time.Time, error) {
 	if s == nil || *s == "" {
 		return nil, nil

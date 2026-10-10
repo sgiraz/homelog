@@ -952,14 +952,9 @@ func TestBillPaid_CreatesSplitExpense_UnpaidDeletesIt(t *testing.T) {
 	}
 }
 
-// TestBillPaid_ExplicitPaidDate_UsesClientCalendarDayVerbatim covers a
-// Copilot review finding on PR #34: paid_date/paid_at must travel the wire
-// as a plain "YYYY-MM-DD" calendar date, never a full ISO timestamp. The
-// server has no way to recover the user's intended local day from a
-// timestamp already normalized to UTC client-side (new Date().toISOString()
-// always renders "Z") — so the contract is now a date-only string, and a
-// legacy full-timestamp payload must be rejected rather than silently
-// misread.
+// TestBillPaid_ExplicitPaidDate_UsesClientCalendarDayVerbatim: paid_date/paid_at
+// must be a plain "YYYY-MM-DD" (the server cannot recover the local day from a
+// UTC timestamp); a full timestamp is rejected, not misread.
 func TestBillPaid_ExplicitPaidDate_UsesClientCalendarDayVerbatim(t *testing.T) {
 	f := setupMoneyFixture(t)
 	util, bill, _ := f.seedBill(t, "", "", false, 50)
@@ -1214,14 +1209,8 @@ func TestDeleteAccount_BlockedWhenSoleAdminWithMembers_409(t *testing.T) {
 
 // ── Date-range filter must not convert through UTC ──────────────────────────
 //
-// An auto-created bill-payment expense is stamped with a local wall-clock
-// time (see dateOnly in utility_bills.go / utility_bill_sync.go — this used
-// to be a raw time.Now()). If the /expenses list filter ever goes back to
-// comparing via SQLite's date() function, a September 1st expense paid at
-// 00:41 CEST (September 1st 00:41 +02:00 = August 31st 22:41 UTC) would be
-// swept into an August filter, and dropped from a September one — the exact
-// bug a user reported after noticing August's total included a 1st-of-
-// September expense.
+// A bill-payment expense stamped 00:41 CEST on September 1st is August 31st in
+// UTC. Filtering with SQLite's date() would count it in August; it must not.
 func TestExpenseList_DateFilter_IgnoresEmbeddedUTCOffset(t *testing.T) {
 	f := setupMoneyFixture(t)
 

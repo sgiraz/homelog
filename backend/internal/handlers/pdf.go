@@ -61,16 +61,14 @@ func randomSuffix(n int) string {
 	return hex.EncodeToString(b)
 }
 
-// pdfUploadBodyLimit caps the raw request body of a single-PDF upload: the file
-// plus a little room for multipart framing and the other form fields. Gin has
-// already read the body by the time file.Size is known, so without this a huge
-// upload is fully received before being rejected.
+// pdfUploadBodyLimit caps the raw body of a single-PDF upload (file plus
+// multipart framing). Gin reads the body before file.Size is known, so without
+// it a huge upload is fully received before being rejected.
 const pdfUploadBodyLimit = maxPDFUploadSize + 1<<20
 
-// receivePDFUpload reads the "pdf_file" part of the request and rejects
-// anything that is not a PDF within the size limit: it bounds the body, checks
-// the extension and the %PDF- magic bytes (a renamed file is not a PDF). It
-// writes the error response itself and returns false on failure.
+// receivePDFUpload reads the "pdf_file" part and rejects anything that is not a
+// PDF within the size limit (extension and %PDF- magic bytes). It writes the
+// error response itself and returns false on failure.
 func receivePDFUpload(c *gin.Context) (*multipart.FileHeader, bool) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, pdfUploadBodyLimit)
 	file, err := c.FormFile("pdf_file")
@@ -783,9 +781,8 @@ func (h *PDFHandler) GetPDFRawText(c *gin.Context) {
 var billPDFURLPattern = regexp.MustCompile(`^/uploads/bill_(\d+)_\d+_[0-9a-f]{32}\.pdf$`)
 
 // validBillPDFURL reports whether url may be stored on a new bill of the given
-// utility: empty, or a bill PDF previously uploaded for that same utility and
-// not already attached to another bill. This stops a client from pointing its
-// bill at someone else's file (and later deleting it with the bill).
+// utility: empty, or a PDF uploaded for that utility and not yet attached to a
+// bill. It stops a client from pointing its bill at someone else's file.
 func validBillPDFURL(db *gorm.DB, url string, utilityID uint) bool {
 	if url == "" {
 		return true

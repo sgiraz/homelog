@@ -1,10 +1,8 @@
 package handlers
 
-// calculateConsumptionAnalysis is pure: bills in, periods + summary out. These
-// tests pin the algorithm documented on the function — sort by period_end, the
-// first bill is an anchor with no row, and a bill without an associated
-// self-reading falls back to the provider reading so its contribution is
-// neutral.
+// calculateConsumptionAnalysis is pure. These tests pin its documented rules:
+// sort by period_end, the first bill is an anchor with no row, and a bill without
+// an associated self-reading falls back to the provider reading (neutral).
 
 import (
 	"encoding/json"
