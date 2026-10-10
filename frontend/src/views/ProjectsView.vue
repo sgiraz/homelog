@@ -39,7 +39,7 @@
     <!-- Empty State -->
     <div v-else-if="filteredProjects.length === 0" class="text-center py-12">
       <div class="text-6xl mb-4">🏗️</div>
-      <h3 class="text-xl font-semibold mb-2">
+      <h3 class="text-xl font-semibold text-ink mb-2">
         {{ selectedStatus === '' ? t('projects.emptyAll') : t('projects.emptyFiltered', { filter: statuses.find(s => s.value === selectedStatus)?.label.toLowerCase() }) }}
       </h3>
       <p class="text-ink-soft mb-6">
@@ -94,7 +94,7 @@
         <div class="space-y-2">
           <div class="flex justify-between text-sm">
             <span class="text-ink-soft">{{ t('projects.card.budget') }}</span>
-            <span class="font-medium">{{ formatCurrency(project.budget) }}</span>
+            <span class="font-medium text-ink">{{ formatCurrency(project.budget) }}</span>
           </div>
 
           <div class="flex justify-between text-sm">

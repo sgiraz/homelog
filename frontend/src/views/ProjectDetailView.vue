@@ -49,7 +49,7 @@
     <!-- Not Found -->
     <div v-else-if="!project" class="text-center py-12">
       <div class="text-6xl mb-4">🔍</div>
-      <h3 class="text-xl font-semibold mb-2">{{ t('projects.detail.notFound') }}</h3>
+      <h3 class="text-xl font-semibold text-ink mb-2">{{ t('projects.detail.notFound') }}</h3>
       <Button @click="goBack">{{ t('projects.detail.backButton') }}</Button>
     </div>
 
