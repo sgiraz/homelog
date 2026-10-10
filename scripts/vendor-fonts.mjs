@@ -1,10 +1,7 @@
 #!/usr/bin/env node
-// Vendors the web fonts used by homelog.dev and docs.homelog.dev.
-//
-// Both sites used to pull Fraunces (and Space Mono on the landing) straight
-// from fonts.googleapis.com, which hands every visitor's IP address to Google
-// with no legal basis. This script downloads the same faces once and writes a
-// self-hosted @font-face stylesheet, so no third party sees the visitor.
+// Vendors the web fonts used by homelog.dev and docs.homelog.dev: downloads the
+// Fraunces (and Space Mono) faces once and writes a self-hosted @font-face
+// stylesheet, so visitors' IPs are never sent to Google.
 //
 // Re-run it to pick up a new font version:
 //   node scripts/vendor-fonts.mjs

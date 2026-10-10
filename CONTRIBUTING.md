@@ -37,6 +37,15 @@ Every color is a design token defined in `frontend/src/assets/styles/main.css` a
 
 `npm run check:colors` (also part of `npm run build`) re-checks every token's contrast against each theme's surfaces and the chart palette's color-blind separation. Run it whenever you touch `main.css`.
 
+### Tests
+
+```bash
+cd backend && go test ./...          # coverage is reported to Codecov by CI
+cd frontend && npm run lint && npm run build
+```
+
+New behaviour needs a test: handlers use the in-memory harness in `backend/internal/testutil`.
+
 ### Running locally
 
 ```bash
@@ -62,7 +71,9 @@ frontend/src/i18n/locales/
 │   ├── common.json
 │   ├── expenses.json
 │   └── ...
-└── it/          ← Italian (and any other language)
+├── it/          ← Italian
+│   └── ...
+└── de/          ← German (and any other language)
     └── ...
 ```
 

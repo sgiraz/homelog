@@ -3,14 +3,10 @@ import { utilitiesAPI } from '@/api/client'
 /**
  * Opens a bill's PDF in a new tab.
  *
- * Uploaded PDFs are private: the server only returns them to an authenticated
- * household member, and a plain <a href> cannot send the Authorization header.
- * So the file is fetched through the API client and shown from an object URL.
- * The tab is opened synchronously, before the request, so the browser does not
- * treat it as a popup.
- *
- * Rejects with an axios-shaped error (so `apiErrorMessage` works on it) and
- * closes the placeholder tab on failure.
+ * PDFs are private and a plain <a href> cannot send the Authorization header, so
+ * the file is fetched through the API client and shown from an object URL. The
+ * tab is opened synchronously, before the request, so it is not treated as a
+ * popup. Rejects with an axios-shaped error and closes the tab on failure.
  */
 export async function openBillPdf(utilityId, billId) {
   const tab = window.open('', '_blank')

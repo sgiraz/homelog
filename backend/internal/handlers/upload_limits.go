@@ -18,10 +18,8 @@ import (
 	"github.com/sgiraz/homelog/internal/models"
 )
 
-// defaultUploadQuotaMB is the stored-PDF budget of one household when
-// UPLOAD_QUOTA_MB is unset. A scanned bill is well under 1 MB, so this is
-// hundreds of bills, while still bounding what one account can put on the
-// Raspberry Pi's SD card.
+// defaultUploadQuotaMB is the per-household stored-PDF budget when
+// UPLOAD_QUOTA_MB is unset: hundreds of bills, but bounded for the Pi's SD card.
 const defaultUploadQuotaMB = 500
 
 // uploadQuotaBytes returns the per-household cap on attached bill PDFs, read
@@ -82,10 +80,9 @@ type uploadWindow struct {
 	start time.Time
 }
 
-// UploadRateLimiter limits how many uploads one user can start per window
-// (fixed window, per user id; per IP when the request is unauthenticated).
-// Uploads are the expensive requests: they write to disk and shell out to
-// pdftotext/pdftoppm, so they get a tighter bound than the global 100 req/min.
+// UploadRateLimiter limits uploads per user per window (fixed window; per IP
+// when unauthenticated). Uploads write to disk and shell out to poppler, so they
+// get a tighter bound than the global rate limit.
 func UploadRateLimiter(limit int, window time.Duration) gin.HandlerFunc {
 	var mu sync.Mutex
 	seen := make(map[string]*uploadWindow)
@@ -128,10 +125,9 @@ func UploadRateLimiter(limit int, window time.Duration) gin.HandlerFunc {
 // in the directory is left alone.
 var sweepableUpload = regexp.MustCompile(`^(bill_|contract_|analyze_|temp_|page_|template_page_)`)
 
-// SweepUploads deletes files in dir that are older than maxAge and not
-// attached to a bill: abandoned uploads (PDF uploaded, modal cancelled),
-// contract PDFs (never stored on a record) and wizard renders whose cleanup call
-// never arrived. It returns how many files were removed.
+// SweepUploads deletes files in dir older than maxAge that no bill references
+// (abandoned uploads, contract PDFs, leftover wizard renders). It returns how
+// many were removed.
 func SweepUploads(db *gorm.DB, dir string, maxAge time.Duration) int {
 	entries, err := os.ReadDir(dir)
 	if err != nil {

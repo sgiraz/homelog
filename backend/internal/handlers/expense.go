@@ -143,13 +143,9 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	}
 
 	// Parse date filters once — reused for both query and countQuery.
-	// Compare against the literal calendar-date prefix of the stored string
-	// (substr, not SQLite's date() function). date() first converts the value
-	// to UTC using any embedded offset, which shifts an expense recorded just
-	// after local midnight (e.g. an auto-created bill-payment expense stamped
-	// with time.Now() at 00:41 +02:00) back onto the previous UTC day — so a
-	// September 1st expense silently counted toward an August filter. substr
-	// takes the date exactly as written/displayed, with no TZ conversion.
+	// Compare the calendar-date prefix (substr), not SQLite's date(): date()
+	// converts through UTC and moves an expense stamped just after local midnight
+	// onto the previous day. See dateOnly.
 	var fromDate, toDate string
 	if from := c.Query("from"); from != "" {
 		if _, err := time.Parse("2006-01-02", from); err != nil {

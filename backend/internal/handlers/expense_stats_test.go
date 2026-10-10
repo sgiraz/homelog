@@ -1,8 +1,7 @@
 package handlers
 
-// /expenses/stats feeds the dashboard and the charts. Dates are always passed
-// explicitly (from/to) so the buckets, windows and totals are deterministic;
-// only the "period" shortcuts depend on today's date and are checked loosely.
+// Dates are always passed explicitly (from/to) so buckets and windows are
+// deterministic; the "period" shortcuts depend on today and are checked loosely.
 
 import (
 	"encoding/json"

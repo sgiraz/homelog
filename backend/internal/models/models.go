@@ -232,10 +232,9 @@ type Utility struct {
 	AllowsSelfReading   *bool   `gorm:"default:true" json:"allows_self_reading"` // Se il fornitore accetta autolettura
 	ComparisonThreshold float64 `gorm:"default:2.0" json:"comparison_threshold"` // Soglia base per letture stesso giorno
 	ThresholdPerDay     float64 `gorm:"default:1.0" json:"threshold_per_day"`    // Tolleranza aggiuntiva per giorno
-	// ReadingMatchDays is how far (in days) a self-reading may sit from a bill's
-	// period and still be compared with it. Whoever reads the meter rarely needs
-	// a wider window. Never written as 0 by the server, so the column default
-	// is safe.
+	// ReadingMatchDays is how far (days) a self-reading may sit from a bill's period
+	// and still be compared with it; rare readers need a wider window. The server
+	// never writes 0, so the column default is safe.
 	ReadingMatchDays int `gorm:"default:15" json:"reading_match_days"`
 
 	// Fixed service fields
@@ -438,10 +437,8 @@ type Bill struct {
 	// For installment bills IsPaid reflects "all installments paid" and is kept in sync
 	// by the installment handlers; clients should still check Installments for per-rata state.
 	IsPaid bool `gorm:"not null;default:false" json:"is_paid"`
-	// PaidDate: date-only contract on input only (parseOptionalDate in
-	// utility_bills.go rejects anything but "YYYY-MM-DD"). On output it's a
-	// normal time.Time/RFC3339, like every other date field — don't assume
-	// the API round-trips a bare date.
+	// PaidDate is date-only on input (see parseOptionalDate); on output it is a
+	// normal RFC3339 time.Time.
 	PaidDate *time.Time `json:"paid_date,omitempty"`
 
 	// Attachments

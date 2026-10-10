@@ -13,6 +13,9 @@ From the **Expenses** tab, add an expense with an amount, date, category, and th
 member who paid. Categories and subcategories are configurable in **Settings →
 Categories**.
 
+The list can be filtered by category and, once a category is chosen, by
+subcategory.
+
 ## Splitting
 
 When an expense is shared, HomeLog creates a **split** for each participating

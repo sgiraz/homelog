@@ -1,12 +1,9 @@
 import { watch } from 'vue'
 
-// Cookieless, privacy-first usage stats for the public demo instance only.
-// Self-hosted installs never load this: GoatCounter is wired up exclusively
-// when isDemoMode (from /version) is true, and it sets no cookies and stores
-// no personal data — see docs-site privacy policy (demo section).
-//
-// TODO: replace with your GoatCounter site code (sign up free for open
-// source projects at https://www.goatcounter.com/) before deploying.
+// Cookieless usage stats for the public demo only. Self-hosted installs never
+// load this: GoatCounter is wired up only when isDemoMode (from /version) is
+// true, and it sets no cookies and stores no personal data (see the privacy
+// policy, demo section).
 const GOATCOUNTER_SITE = 'homelog-demo'
 
 let scriptRequested = false
@@ -29,10 +26,9 @@ function countPageview(path) {
   window.goatcounter?.count({ path })
 }
 
-// Raw browser/OS language preference, e.g. "fr" — deliberately NOT run
-// through detectBrowserLocale()'s supported-locale fallback: unsupported
-// languages are exactly the signal we want (demand for a language HomeLog
-// doesn't have yet), not the "it"/"en" the app fell back to for them.
+// Raw browser language, e.g. "fr": deliberately not run through
+// detectBrowserLocale(). Unsupported languages are the signal we want (demand),
+// not the "it"/"en" the app fell back to.
 function browserLanguage() {
   const tag = navigator.languages?.[0] || navigator.language || ''
   return tag.toLowerCase().split('-')[0] || 'unknown'
