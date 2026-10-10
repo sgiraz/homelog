@@ -39,7 +39,7 @@
     <!-- Empty State -->
     <div v-else-if="filteredProjects.length === 0" class="text-center py-12">
       <div class="text-6xl mb-4">🏗️</div>
-      <h3 class="text-xl font-semibold mb-2">
+      <h3 class="text-xl font-semibold text-ink mb-2">
         {{ selectedStatus === '' ? t('projects.emptyAll') : t('projects.emptyFiltered', { filter: statuses.find(s => s.value === selectedStatus)?.label.toLowerCase() }) }}
       </h3>
       <p class="text-ink-soft mb-6">
