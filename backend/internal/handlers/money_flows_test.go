@@ -839,6 +839,9 @@ func TestDebts_ListReportsRemainderAndPayments(t *testing.T) {
 	if !d.IOwe {
 		t.Error("Bob must be reported as the debtor")
 	}
+	if d.CounterpartName != f.mAlice.Name {
+		t.Errorf("Bob's counterpart = %q, want %q", d.CounterpartName, f.mAlice.Name)
+	}
 	if !approx(d.Remaining, 49500) {
 		t.Errorf("remaining = %.2f, want 49500", d.Remaining)
 	}
@@ -847,6 +850,23 @@ func TestDebts_ListReportsRemainderAndPayments(t *testing.T) {
 	}
 	if len(d.Payments) != 1 || !approx(d.Payments[0].Amount, 500) {
 		t.Errorf("expected one 500 payment in the debt history, got %+v", d.Payments)
+	}
+
+	// Alice's view: she is the creditor, and the counterpart is still the
+	// other person (Bob), never herself.
+	got = doGET(t, f.router, "/properties/"+itoa(f.prop.ID)+"/debts?other_member_id="+itoa(f.mBob.ID), f.aliceTok)
+	if got.Code != http.StatusOK {
+		t.Fatalf("list debts as creditor: status %d, body %s", got.Code, got.Body.String())
+	}
+	var aliceResp DebtsResponse
+	if err := json.Unmarshal(got.Body.Bytes(), &aliceResp); err != nil {
+		t.Fatalf("decode debts: %v", err)
+	}
+	if len(aliceResp.Debts) != 1 {
+		t.Fatalf("expected 1 debt for Alice, got %d", len(aliceResp.Debts))
+	}
+	if ad := aliceResp.Debts[0]; ad.IOwe || ad.CounterpartName != f.mBob.Name {
+		t.Errorf("Alice's view: i_owe = %v, counterpart = %q; want false, %q", ad.IOwe, ad.CounterpartName, f.mBob.Name)
 	}
 }
 

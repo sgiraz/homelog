@@ -182,11 +182,6 @@ func (h *DebtHandler) List(c *gin.Context) {
 	for _, s := range splits {
 		remaining := remainingOwed(s)
 		iOwe := s.MemberID == current.ID
-		counterpart := other.Name
-		if !iOwe {
-			counterpart = current.Name
-		}
-
 		detail := DebtDetail{
 			ExpenseID:       s.ExpenseID,
 			SplitID:         s.ID,
@@ -197,7 +192,7 @@ func (h *DebtHandler) List(c *gin.Context) {
 			SettledAmount:   s.SettledAmount,
 			Remaining:       remaining,
 			IOwe:            iOwe,
-			CounterpartName: counterpart,
+			CounterpartName: other.Name,
 			IsFullyRepaid:   remaining <= settlementEpsilon,
 			Payments:        paymentsByExpense[s.ExpenseID],
 		}
