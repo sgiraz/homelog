@@ -222,7 +222,7 @@ func TestConsumptionAnalysis_CumulativeAlertLevels(t *testing.T) {
 		billed, own float64
 		wantAlert   bool
 		wantLevel   string
-		wantCredit bool
+		wantCredit  bool
 	}{
 		{"within threshold", 10, 9, false, "", false},
 		{"exactly at threshold", 12, 10, false, "", false},
@@ -413,5 +413,76 @@ func TestCompareReadings_OnlyForHouseholdMembers(t *testing.T) {
 
 	if code, _ := f.compareReadings(t, testutil.SignToken(t, eve), u.ID); code != http.StatusNotFound {
 		t.Errorf("a non-member got status %d, want 404", code)
+	}
+}
+
+func TestCompareReadings_ElectricityUsesTheWidestBandGap(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := models.Utility{
+		UserID: f.alice.ID, PropertyID: f.prop.ID, Type: "electricity", Provider: "Test",
+		IsMetered: true, IsActive: true, PaidByMemberID: &f.mAlice.ID,
+	}
+	mustCreate(t, f.db, &u)
+	cases := []struct {
+		end               time.Time
+		billed, own       [3]float64
+		wantStatus        string
+		wantMaxDifference float64
+	}{
+		// Bands differ by 1, 10 and 0: the widest (10) is above 2×2.
+		{day(2026, 1, 31), [3]float64{1000, 2000, 3000}, [3]float64{1001, 1990, 3000}, "alert", 10},
+		// Widest gap 3: above the allowance of 2, not above 4.
+		{day(2026, 2, 28), [3]float64{1100, 2100, 3100}, [3]float64{1100, 2100, 3097}, "warning", 3},
+		{day(2026, 3, 31), [3]float64{1200, 2200, 3200}, [3]float64{1201, 2200, 3200}, "ok", 1},
+	}
+	for i, c := range cases {
+		mustCreate(t, f.db,
+			&models.Bill{
+				UtilityID: u.ID, BillNumber: "E-" + itoa(uint(i+1)), IssueDate: c.end, DueDate: c.end.AddDate(0, 0, 20),
+				PeriodStart: c.end.AddDate(0, -1, 1), PeriodEnd: c.end, AmountTotal: 10,
+				ProviderReadingF1: fp(c.billed[0]), ProviderReadingF2: fp(c.billed[1]), ProviderReadingF3: fp(c.billed[2]),
+			},
+			&models.MeterReading{UtilityID: u.ID, ReadingDate: c.end, ValueF1: fp(c.own[0]), ValueF2: fp(c.own[1]), ValueF3: fp(c.own[2])},
+		)
+	}
+
+	code, got := f.compareReadings(t, f.aliceTok, u.ID)
+
+	if code != http.StatusOK || len(got.Comparisons) != 3 {
+		t.Fatalf("status %d with %d comparisons, want 200 with 3", code, len(got.Comparisons))
+	}
+	// Newest bill first.
+	for i, idx := range []int{2, 1, 0} {
+		c, want := got.Comparisons[i], cases[idx]
+		if c.Status != want.wantStatus {
+			t.Errorf("bill ending %s: status %q, want %q", want.end.Format("2006-01-02"), c.Status, want.wantStatus)
+		}
+		if c.MaxAbsDifference == nil || !approx(*c.MaxAbsDifference, want.wantMaxDifference) {
+			t.Errorf("bill ending %s: max_abs_difference = %v, want %.0f", want.end.Format("2006-01-02"), c.MaxAbsDifference, want.wantMaxDifference)
+		}
+	}
+	alert := got.Comparisons[2]
+	if alert.DifferenceF2 == nil || !approx(*alert.DifferenceF2, 10) || alert.UserF2 == nil || !approx(*alert.UserF2, 1990) {
+		t.Errorf("F2 detail = diff %v user %v, want 10 / 1990", alert.DifferenceF2, alert.UserF2)
+	}
+}
+
+func TestCompareReadings_ElectricityWithoutReadingsIsNoData(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := models.Utility{
+		UserID: f.alice.ID, PropertyID: f.prop.ID, Type: "electricity", Provider: "Test",
+		IsMetered: true, IsActive: true, PaidByMemberID: &f.mAlice.ID,
+	}
+	mustCreate(t, f.db, &u)
+	end := day(2026, 1, 31)
+	mustCreate(t, f.db, &models.Bill{
+		UtilityID: u.ID, BillNumber: "E-1", IssueDate: end, DueDate: end.AddDate(0, 0, 20),
+		PeriodStart: day(2026, 1, 1), PeriodEnd: end, AmountTotal: 10, ProviderReadingF1: fp(1000),
+	})
+
+	_, got := f.compareReadings(t, f.aliceTok, u.ID)
+
+	if len(got.Comparisons) != 1 || got.Comparisons[0].Status != "no_data" {
+		t.Errorf("comparisons = %+v, want one no_data", got.Comparisons)
 	}
 }
