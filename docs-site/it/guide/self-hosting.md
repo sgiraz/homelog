@@ -46,7 +46,12 @@ funziona anche su un Raspberry Pi.
 | `JWT_SECRET` | _(obbligatoria)_ | Segreto usato per firmare i token di autenticazione. |
 | `DB_PATH` | `./data/homelog.db` | Posizione del database SQLite. |
 | `UPLOAD_QUOTA_MB` | `500` | Dimensione massima dei PDF delle bollette conservati per casa, in MB. `0` toglie il limite. |
+| `PORT` | `8080` | Porta su cui il server è in ascolto. |
 | `GIN_MODE` | `debug` | Imposta `release` in produzione. |
+| `TZ` | _(di sistema)_ | Fuso orario del container, ad es. `Europe/Rome`. |
+| `CORS_ALLOWED_ORIGINS` | _(solo localhost)_ | Origini, separate da virgola, autorizzate a chiamare l'API da un altro sito. Raramente serve: il frontend è servito dallo stesso binario. |
+
+Anche i caricamenti di PDF delle bollette sono limitati: 20 al minuto per utente.
 
 ## Approfondire
 

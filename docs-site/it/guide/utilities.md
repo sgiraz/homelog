@@ -39,11 +39,50 @@ Quando segni una bolletta come **pagata**, HomeLog può creare automaticamente l
 spesa corrispondente (e dividerla), usando il pagatore configurato per quel
 servizio.
 
+Le bollette dei servizi di affitto e mutuo vengono archiviate nella sottocategoria
+**Affitto/Mutuo** di Casa, così non si nascondono più nella fetta Utenze della
+dashboard.
+
+### Il PDF originale
+
+Allega il PDF del fornitore a una bolletta — quando la aggiungi, o dopo con
+**Sostituisci** — e riaprilo dalla bolletta con **Visualizza**. I PDF conservati
+sono privati: possono aprirli solo i membri della tua casa che hanno effettuato
+l'accesso.
+
+Lo spazio è limitato per casa (500 MB di default, vedi
+[Self-hosting](./self-hosting#configurazione)) e i caricamenti hanno un limite di
+frequenza: una raffica di file viene rifiutata con un messaggio invece di
+riempire il disco.
+
 ## Analisi dei consumi
 
 La scheda **Analisi** confronta il consumo **fatturato** con quello **effettivo**
 tra bollette consecutive, così puoi individuare errori di stima o picchi
 inattesi.
+
+### Confronto tra le tue letture e quelle del fornitore
+
+Per ogni bolletta, HomeLog cerca l'autolettura che le appartiene: una presa
+**dentro il periodo della bolletta** oppure, in mancanza, **la più vicina entro la
+finestra letture** (15 giorni di default). Confronta le due e segna la bolletta
+come OK, avviso o anomalia.
+
+La tolleranza è una **soglia base** più una quota **per giorno** di distanza tra
+le due letture: una lettura fatta con una settimana di anticipo viene giudicata
+con più indulgenza di una fatta lo stesso giorno. Le due soglie e la finestra
+letture si modificano in **Analisi → Impostazioni soglia confronto**. Se leggi il
+contatore di rado, allarga la finestra (fino a 365 giorni).
+
+Quando una bolletta mostra **No dati**, il messaggio ne spiega il motivo:
+
+- non è stata registrata nessuna autolettura per il servizio, oppure
+- la più vicina è fuori dalla finestra letture. Il messaggio indica la sua data e
+  quanto dista dalla bolletta: aggiungi una lettura più vicina a quel periodo
+  oppure allarga la finestra.
+
+Una lettura troppo lontana da una bolletta non viene usata di proposito: non
+direbbe nulla su quel periodo.
 
 ## Domiciliazione e rate
 

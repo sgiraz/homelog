@@ -141,6 +141,9 @@ JWT_SECRET=PASTE_YOUR_GENERATED_SECRET_HERE
 # --- OPTIONAL ---
 GIN_MODE=release
 TZ=Europe/Rome
+
+# Max size of the bill PDFs stored per household, in MB (0 = unlimited)
+UPLOAD_QUOTA_MB=500
 ```
 
 **IMPORTANT:** Never commit `.env` to version control. It contains secrets.

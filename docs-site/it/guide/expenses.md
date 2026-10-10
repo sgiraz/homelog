@@ -13,6 +13,9 @@ Dalla scheda **Spese**, aggiungi una spesa con importo, data, categoria e il
 membro che ha pagato. Categorie e sottocategorie si configurano in
 **Impostazioni → Categorie**.
 
+L'elenco si può filtrare per categoria e, una volta scelta una categoria, per
+sottocategoria.
+
 ## La divisione
 
 Quando una spesa è condivisa, HomeLog crea una **quota** per ciascun membro

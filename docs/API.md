@@ -2,6 +2,13 @@
 
 Base URL: `/api/v1` (all endpoints require JWT authentication unless noted)
 
+## Errors
+
+Failures answer `{"error": "<English, for developers>", "error_code": "<code>"}`
+and, when the message needs values, `error_params`. Clients render their own
+translation of `error_code` and never show `error`. Internal failures always
+report `server_error`.
+
 ---
 
 ## Version
@@ -69,12 +76,15 @@ DELETE /categories/:id/subcategories/:subId     # Remove subcategory
 ## Expenses
 
 ```http
-GET    /expenses                # List expenses (filters: from, to, category_id, project_id)
+GET    /expenses                # List expenses (filters: from, to, category_id, subcategory_id,
+                                # project_id, property_id, search, unsettled_only; paging: limit, offset)
 POST   /expenses                # Create expense (supports split)
 GET    /expenses/:id            # Get expense
 PUT    /expenses/:id            # Update expense (restricted if settled)
 DELETE /expenses/:id            # Delete expense
-GET    /expenses/stats          # Expense statistics (trend, by_category, totals)
+GET    /expenses/stats          # Expense statistics (trend, by_category, totals); params: period
+                                # (1m|3m|6m|12m), year, from, to, all, category_id (switches the
+                                # breakdown to subcategories), property_id
 PATCH  /expenses/:id/long-term-debt  # Move the expense's shares out of the running
                                      # balance and into the debts ledger, or back
                                      # (409 once any share is partly settled)
@@ -110,11 +120,16 @@ GET    /utilities/:id/bills             # List bills
 PUT    /utilities/:id/bills/:bid        # Update bill (basic fields)
 PUT    /utilities/:id/bills/:bid/full   # Full bill update (with template extraction data)
 DELETE /utilities/:id/bills/:bid        # Delete bill
-POST   /utilities/:id/bills/upload      # Upload bill PDF
+POST   /utilities/:id/bills/upload      # Upload bill PDF and extract its text
+GET    /utilities/:id/bills/:bid/pdf    # Download the bill's stored PDF (household members only)
+POST   /utilities/:id/bills/:bid/pdf    # Attach (or replace) the stored PDF
+DELETE /utilities/:id/bills/:bid/pdf    # Detach the PDF and delete the file
 PATCH  /utilities/:id/bills/:bid/installments/:instId  # Update installment (pay/unpay)
 
 # Comparison
 GET    /utilities/:id/compare-readings  # Compare self vs supplier readings
+                                        # (params: threshold, threshold_per_day,
+                                        # reading_match_days; each overrides the stored value)
 
 # Per-utility communications (bollettini, avvisi fornitore)
 GET    /utilities/:id/communications
@@ -125,6 +140,18 @@ DELETE /utilities/:id/communications/:commId
 # Contract upload
 POST   /utilities/contract/upload       # Upload contract PDF
 ```
+
+A self-reading is compared with a bill only if it falls inside the bill's period
+or within `reading_match_days` of it (utility setting, default 15, max 365). A
+comparison with `status: "no_data"` carries `no_data_reason` (`no_readings` or
+`out_of_range`) and, for `out_of_range`, `nearest_reading_date` and
+`nearest_gap_days`. For any other status `max_abs_difference` is the largest
+gap between the two readings. The response carries figures only; the client
+words them.
+
+Uploads (`/bills/upload`, `/bills/:bid/pdf`, `/contract/upload`, `/pdf/*`) are
+limited to 20 per user per minute (`429 too_many_uploads`) and stored bill PDFs
+to `UPLOAD_QUOTA_MB` per household (`413 upload_quota_exceeded`).
 
 ## Communications (global — across all utilities)
 
