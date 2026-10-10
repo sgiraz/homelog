@@ -9,7 +9,6 @@ export const useBalanceStore = defineStore('balance', () => {
   const currentMemberId = ref(null)
   const otherMemberName = ref('')
   const otherMemberId = ref(null)
-  const message = ref('')
   const unsettledSplits = ref([])
   const settlements = ref([])
   const loading = ref(false)
@@ -36,7 +35,6 @@ export const useBalanceStore = defineStore('balance', () => {
       currentMemberId.value = data.current_member_id || null
       otherMemberName.value = data.other_member_name || ''
       otherMemberId.value = data.other_member_id || null
-      message.value = data.message || ''
     } catch (err) {
       balance.value = 0
       error.value = apiErrorMessage(err)
@@ -157,7 +155,6 @@ export const useBalanceStore = defineStore('balance', () => {
     currentMemberId,
     otherMemberName,
     otherMemberId,
-    message,
     unsettledSplits,
     settlements,
     loading,

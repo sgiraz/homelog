@@ -18,7 +18,7 @@
           {{ consumptionSummary.cumulative_alert_level === 'alert' ? t('utilities.consumptionSummary.overcharge') : t('utilities.consumptionSummary.warning') }}
         </h4>
         <p :class="['text-sm mt-1', consumptionSummary.cumulative_alert_level === 'alert' ? 'text-danger-soft' : 'text-warning-soft']">
-          {{ consumptionSummary.cumulative_message }}
+          {{ cumulativeMessage }}
         </p>
       </div>
     </div>
@@ -26,7 +26,7 @@
 
   <!-- Informational message (provider charged less - not a problem) -->
   <div
-    v-else-if="consumptionSummary?.cumulative_message && !consumptionSummary?.has_cumulative_alert"
+    v-else-if="consumptionSummary?.cumulative_credit"
     class="p-3 rounded-lg border border-info/30 bg-info/10"
   >
     <div class="flex items-start gap-2">
@@ -34,7 +34,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
       <p class="text-sm text-info-soft">
-        {{ consumptionSummary.cumulative_message }}
+        {{ cumulativeMessage }}
       </p>
     </div>
   </div>
@@ -118,11 +118,12 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 defineOptions({ name: 'ConsumptionSummary' })
 
-defineProps({
+const props = defineProps({
   consumptionSummary: {
     type: Object,
     default: null
@@ -154,5 +155,23 @@ defineProps({
 })
 
 const { t } = useI18n()
+
+// The server sends the figures (level, difference, period count); the wording
+// is composed here so it follows the user's language.
+const cumulativeMessage = computed(() => {
+  const s = props.consumptionSummary
+  if (!s) return ''
+  const kind = s.cumulative_credit ? 'creditMessage'
+    : s.cumulative_alert_level === 'alert' ? 'overchargeMessage'
+    : s.cumulative_alert_level === 'warning' ? 'warningMessage'
+    : null
+  if (!kind) return ''
+  const plural = s.period_count === 1 ? 'one' : 'other'
+  return t(`utilities.consumptionSummary.${kind}_${plural}`, {
+    diff: props.fmtNum(Math.abs(s.cumulative_difference)),
+    unit: props.getUnit(),
+    n: s.period_count
+  })
+})
 
 </script>

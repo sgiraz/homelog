@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -38,9 +37,12 @@ type ReadingComparison struct {
 	ProviderReading *float64 `json:"provider_reading,omitempty"`
 	UserReading     *float64 `json:"user_reading,omitempty"`
 	Difference      *float64 `json:"difference,omitempty"` // Absolute difference in mc/Smc
+	// MaxAbsDifference is the largest provider/self-reading gap across the
+	// compared registers, in the utility's unit; nil when nothing was compared.
+	// The client words the alert from it: the server ships no prose.
+	MaxAbsDifference *float64 `json:"max_abs_difference,omitempty"`
 	// Status
-	Status       string `json:"status"`        // ok, warning, alert, no_data
-	AlertMessage string `json:"alert_message"` // Human readable message
+	Status string `json:"status"` // ok, warning, alert, no_data
 }
 
 // ConsumptionPeriod represents consumption for a period comparing user vs provider readings
@@ -88,7 +90,11 @@ type ConsumptionSummary struct {
 	// Alert if cumulative difference is significant
 	HasCumulativeAlert   bool   `json:"has_cumulative_alert"`
 	CumulativeAlertLevel string `json:"cumulative_alert_level,omitempty"` // warning, alert
-	CumulativeMessage    string `json:"cumulative_message,omitempty"`
+	// CumulativeCredit is set when the provider billed notably less than the
+	// self-readings show (not an alert: a year-end adjustment may follow).
+	CumulativeCredit bool `json:"cumulative_credit"`
+	// PeriodCount is how many billing periods the cumulative figures span.
+	PeriodCount int `json:"period_count"`
 }
 
 // CompareReadings compares provider readings from bills with user's manual readings
@@ -307,16 +313,12 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 				effectiveThreshold := comparison.EffectiveThreshold
 				if maxAbsDiff > effectiveThreshold*2 {
 					comparison.Status = "alert"
-					comparison.AlertMessage = fmt.Sprintf("Discrepanza di %.1f kWh (soglia effettiva: %.1f kWh per %d giorni di differenza)",
-						maxAbsDiff, effectiveThreshold, comparison.DaysDifference)
 				} else if maxAbsDiff > effectiveThreshold {
 					comparison.Status = "warning"
-					comparison.AlertMessage = fmt.Sprintf("Differenza di %.1f kWh (soglia effettiva: %.1f kWh per %d giorni di differenza)",
-						maxAbsDiff, effectiveThreshold, comparison.DaysDifference)
 				}
+				comparison.MaxAbsDifference = &maxAbsDiff
 			} else {
 				comparison.Status = "no_data"
-				comparison.AlertMessage = "Nessuna autolettura disponibile per il confronto"
 			}
 
 		case "gas", "water":
@@ -335,25 +337,16 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 						absDiff = -absDiff
 					}
 
-					unit := "mc"
-					if utility.Type == "gas" {
-						unit = "Smc"
-					}
-
 					effectiveThreshold := comparison.EffectiveThreshold
 					if absDiff > effectiveThreshold*2 {
 						comparison.Status = "alert"
-						comparison.AlertMessage = fmt.Sprintf("Discrepanza di %.1f %s (soglia effettiva: %.1f %s per %d giorni di differenza)",
-							absDiff, unit, effectiveThreshold, unit, comparison.DaysDifference)
 					} else if absDiff > effectiveThreshold {
 						comparison.Status = "warning"
-						comparison.AlertMessage = fmt.Sprintf("Differenza di %.1f %s (soglia effettiva: %.1f %s per %d giorni di differenza)",
-							absDiff, unit, effectiveThreshold, unit, comparison.DaysDifference)
 					}
+					comparison.MaxAbsDifference = &absDiff
 				}
 			} else {
 				comparison.Status = "no_data"
-				comparison.AlertMessage = "Nessuna autolettura disponibile per il confronto"
 			}
 		}
 
@@ -552,21 +545,18 @@ func (h *UtilityHandler) calculateConsumptionAnalysis(utilityType string, bills 
 	}
 
 	numPeriods := len(periods)
+	summary.PeriodCount = numPeriods
 	if numPeriods > 0 {
 		cumulativeThreshold := threshold * float64(numPeriods)
-		if summary.CumulativeDifference > cumulativeThreshold*2 {
+		switch {
+		case summary.CumulativeDifference > cumulativeThreshold*2:
 			summary.HasCumulativeAlert = true
 			summary.CumulativeAlertLevel = "alert"
-			summary.CumulativeMessage = fmt.Sprintf("ATTENZIONE: il fornitore ha fatturato %.1f unità IN PIÙ rispetto ai consumi effettivi rilevati dalle autoletture in %d periodi. Stai pagando più del dovuto!",
-				summary.CumulativeDifference, numPeriods)
-		} else if summary.CumulativeDifference > cumulativeThreshold {
+		case summary.CumulativeDifference > cumulativeThreshold:
 			summary.HasCumulativeAlert = true
 			summary.CumulativeAlertLevel = "warning"
-			summary.CumulativeMessage = fmt.Sprintf("Il fornitore ha fatturato %.1f unità in più rispetto ai consumi effettivi in %d periodi. Tieni sotto controllo questa differenza.",
-				summary.CumulativeDifference, numPeriods)
-		} else if summary.CumulativeDifference < -cumulativeThreshold {
-			summary.CumulativeMessage = fmt.Sprintf("Il fornitore ha fatturato %.1f unità in meno rispetto ai consumi rilevati in %d periodi. Potrebbe esserci un conguaglio a fine anno.",
-				-summary.CumulativeDifference, numPeriods)
+		case summary.CumulativeDifference < -cumulativeThreshold:
+			summary.CumulativeCredit = true
 		}
 	}
 
