@@ -385,7 +385,10 @@
     "statusAlert": "Anomaly",
     "statusWarning": "Warning",
     "statusNoData": "No data",
-    "statusOk": "OK"
+    "statusOk": "OK",
+    "alertMessage": "Discrepancy of {diff} {unit} (effective threshold: {threshold} {unit}, {days} apart)",
+    "differenceMessage": "Difference of {diff} {unit} (effective threshold: {threshold} {unit}, {days} apart)",
+    "noSelfReading": "No self-reading available for comparison"
   },
   "consumptionPeriods": {
     "title": "Consumption Detail by Period",
@@ -409,7 +412,13 @@
     "totalProviderWithUnit": "Provider: {value} kWh",
     "overchargeShort": "Overbill.",
     "diffShort": "Diff.",
-    "period": "Period: {start} – {end}"
+    "period": "Period: {start} – {end}",
+    "overchargeMessage_one": "ATTENTION: the provider billed {diff} {unit} MORE than the consumption measured by your self-readings over {n} period. You are paying more than due!",
+    "overchargeMessage_other": "ATTENTION: the provider billed {diff} {unit} MORE than the consumption measured by your self-readings over {n} periods. You are paying more than due!",
+    "warningMessage_one": "The provider billed {diff} {unit} more than the actual consumption over {n} period. Keep an eye on this difference.",
+    "warningMessage_other": "The provider billed {diff} {unit} more than the actual consumption over {n} periods. Keep an eye on this difference.",
+    "creditMessage_one": "The provider billed {diff} {unit} less than the measured consumption over {n} period. A year-end adjustment may follow.",
+    "creditMessage_other": "The provider billed {diff} {unit} less than the measured consumption over {n} periods. A year-end adjustment may follow."
   },
   "comparisonCard": {
     "title": "Reading Comparison",

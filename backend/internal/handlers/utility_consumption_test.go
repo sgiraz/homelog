@@ -7,10 +7,16 @@ package handlers
 // neutral.
 
 import (
+	"encoding/json"
+	"net/http"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
+	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
+	"github.com/sgiraz/homelog/internal/testutil"
 )
 
 func fp(v float64) *float64 { return &v }
@@ -89,7 +95,7 @@ func TestConsumptionAnalysis_NoUserReadingIsNeutral(t *testing.T) {
 	if !approx(*periods[0].Difference, 0) || !approx(summary.CumulativeDifference, 0) {
 		t.Errorf("difference = %.1f / cumulative %.1f, want 0", *periods[0].Difference, summary.CumulativeDifference)
 	}
-	if summary.HasCumulativeAlert || summary.CumulativeMessage != "" {
+	if summary.HasCumulativeAlert || summary.CumulativeCredit {
 		t.Errorf("a neutral history must not raise anything: %+v", summary)
 	}
 }
@@ -202,8 +208,7 @@ func TestConsumptionAnalysis_ElectricityPartialBands(t *testing.T) {
 
 func TestConsumptionAnalysis_CumulativeAlertLevels(t *testing.T) {
 	// One period, threshold 2 → warning above 2, alert above 4, an
-	// informational message (no alert) below -2. The wording is not asserted
-	// here, only the level and whether a message exists.
+	// informational credit (no alert) below -2.
 	run := func(billed, own float64) *ConsumptionSummary {
 		_, s := analyse("gas", []models.Bill{
 			gasBill(1, day(2026, 1, 31), 100, fp(100)),
@@ -217,14 +222,14 @@ func TestConsumptionAnalysis_CumulativeAlertLevels(t *testing.T) {
 		billed, own float64
 		wantAlert   bool
 		wantLevel   string
-		wantMessage bool
+		wantCredit bool
 	}{
 		{"within threshold", 10, 9, false, "", false},
 		{"exactly at threshold", 12, 10, false, "", false},
-		{"warning", 13, 10, true, "warning", true},
-		{"exactly at alert boundary", 14, 10, true, "warning", true},
-		{"alert", 15, 10, true, "alert", true},
-		{"provider billed less: message only", 7, 10, false, "", true},
+		{"warning", 13, 10, true, "warning", false},
+		{"exactly at alert boundary", 14, 10, true, "warning", false},
+		{"alert", 15, 10, true, "alert", false},
+		{"provider billed less: credit only", 7, 10, false, "", true},
 		{"exactly at the under-billing boundary", 8, 10, false, "", false},
 	}
 	for _, tc := range cases {
@@ -233,10 +238,25 @@ func TestConsumptionAnalysis_CumulativeAlertLevels(t *testing.T) {
 			if s.HasCumulativeAlert != tc.wantAlert || s.CumulativeAlertLevel != tc.wantLevel {
 				t.Errorf("alert=%v level=%q, want alert=%v level=%q", s.HasCumulativeAlert, s.CumulativeAlertLevel, tc.wantAlert, tc.wantLevel)
 			}
-			if (s.CumulativeMessage != "") != tc.wantMessage {
-				t.Errorf("message %q, want present=%v", s.CumulativeMessage, tc.wantMessage)
+			if s.CumulativeCredit != tc.wantCredit {
+				t.Errorf("credit = %v, want %v", s.CumulativeCredit, tc.wantCredit)
 			}
 		})
+	}
+}
+
+func TestConsumptionAnalysis_ReportsPeriodCountForTheClient(t *testing.T) {
+	// The cumulative wording lives in the client; it needs the period count.
+	bills := []models.Bill{
+		gasBill(1, day(2026, 1, 31), 100, nil),
+		gasBill(2, day(2026, 2, 28), 110, nil),
+		gasBill(3, day(2026, 3, 31), 120, nil),
+	}
+
+	_, s := analyse("gas", bills, 2)
+
+	if s.PeriodCount != 2 {
+		t.Errorf("PeriodCount = %d, want 2", s.PeriodCount)
 	}
 }
 
@@ -253,5 +273,145 @@ func TestConsumptionAnalysis_ThresholdScalesWithPeriods(t *testing.T) {
 
 	if !s.HasCumulativeAlert || s.CumulativeAlertLevel != "warning" {
 		t.Errorf("level = %q (alert=%v), want warning", s.CumulativeAlertLevel, s.HasCumulativeAlert)
+	}
+}
+
+// ── CompareReadings (HTTP) ──────────────────────────────────────────────────
+
+type compareResponse struct {
+	Comparisons        []ReadingComparison `json:"comparisons"`
+	ConsumptionSummary *ConsumptionSummary `json:"consumption_summary"`
+}
+
+func (f *moneyFixture) compareReadings(t *testing.T, token string, utilityID uint) (int, compareResponse) {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	p := r.Group("")
+	p.Use(middleware.AuthRequired())
+	p.GET("/utilities/:id/compare-readings", NewUtilityHandler(f.db).CompareReadings)
+
+	rec := doGET(t, r, "/utilities/"+itoa(utilityID)+"/compare-readings", token)
+	var out compareResponse
+	if rec.Code == http.StatusOK {
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+			t.Fatalf("decode comparison: %v", err)
+		}
+	}
+	return rec.Code, out
+}
+
+func (f *moneyFixture) gasUtility(t *testing.T) models.Utility {
+	t.Helper()
+	u := models.Utility{
+		UserID: f.alice.ID, PropertyID: f.prop.ID, Type: "gas", Provider: "Test",
+		IsMetered: true, IsActive: true, PaidByMemberID: &f.mAlice.ID,
+	}
+	mustCreate(t, f.db, &u)
+	return u
+}
+
+func TestCompareReadings_StatusAndStructuredDifference(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := f.gasUtility(t)
+	// Default thresholds: base 2, 1 per day of gap. Each self-reading sits on
+	// its bill's period end, so there is no day gap and the threshold stays 2.
+	periods := []struct {
+		end            time.Time
+		billed, own    float64
+		wantStatus     string
+		wantDifference float64
+	}{
+		{day(2026, 1, 31), 100, 100, "ok", 0},
+		{day(2026, 2, 28), 120, 117, "warning", 3},
+		{day(2026, 3, 31), 140, 130, "alert", 10},
+	}
+	for i, p := range periods {
+		mustCreate(t, f.db,
+			&models.Bill{
+				UtilityID: u.ID, BillNumber: "B-" + itoa(uint(i+1)), IssueDate: p.end, DueDate: p.end.AddDate(0, 0, 20),
+				PeriodStart: p.end.AddDate(0, -1, 1), PeriodEnd: p.end, AmountTotal: 10, ProviderReading: fp(p.billed),
+			},
+			&models.MeterReading{UtilityID: u.ID, ReadingDate: p.end, Value: fp(p.own)},
+		)
+	}
+
+	code, got := f.compareReadings(t, f.aliceTok, u.ID)
+
+	if code != http.StatusOK {
+		t.Fatalf("status %d", code)
+	}
+	if len(got.Comparisons) != 3 {
+		t.Fatalf("got %d comparisons, want 3", len(got.Comparisons))
+	}
+	// The handler lists the newest bill first.
+	for i, p := range []int{2, 1, 0} {
+		c, want := got.Comparisons[i], periods[p]
+		if c.Status != want.wantStatus {
+			t.Errorf("bill ending %s: status %q, want %q", want.end.Format("2006-01-02"), c.Status, want.wantStatus)
+		}
+		if c.MaxAbsDifference == nil || !approx(*c.MaxAbsDifference, want.wantDifference) {
+			t.Errorf("bill ending %s: max_abs_difference = %v, want %.0f", want.end.Format("2006-01-02"), c.MaxAbsDifference, want.wantDifference)
+		}
+		if !approx(c.EffectiveThreshold, 2) || c.DaysDifference != 0 {
+			t.Errorf("threshold %.1f over %d days, want 2 over 0", c.EffectiveThreshold, c.DaysDifference)
+		}
+	}
+	if got.ConsumptionSummary == nil || got.ConsumptionSummary.PeriodCount != 2 {
+		t.Errorf("summary = %+v, want 2 periods", got.ConsumptionSummary)
+	}
+}
+
+func TestCompareReadings_ThresholdGrowsWithDayGap(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := f.gasUtility(t)
+	end := day(2026, 2, 28)
+	mustCreate(t, f.db,
+		&models.Bill{
+			UtilityID: u.ID, BillNumber: "B-1", IssueDate: end, DueDate: end.AddDate(0, 0, 20),
+			PeriodStart: day(2026, 2, 1), PeriodEnd: end, AmountTotal: 10, ProviderReading: fp(120),
+		},
+		// Read 5 days before the period end: the allowance becomes 2 + 5×1 = 7.
+		&models.MeterReading{UtilityID: u.ID, ReadingDate: end.AddDate(0, 0, -5), Value: fp(115)},
+	)
+
+	_, got := f.compareReadings(t, f.aliceTok, u.ID)
+
+	c := got.Comparisons[0]
+	if c.DaysDifference != 5 || !approx(c.EffectiveThreshold, 7) {
+		t.Errorf("gap %d days / threshold %.1f, want 5 / 7", c.DaysDifference, c.EffectiveThreshold)
+	}
+	if c.Status != "ok" {
+		t.Errorf("a 5-unit gap inside a 7-unit allowance must be ok, got %q", c.Status)
+	}
+}
+
+func TestCompareReadings_NoSelfReadingIsNoData(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := f.gasUtility(t)
+	end := day(2026, 2, 28)
+	mustCreate(t, f.db, &models.Bill{
+		UtilityID: u.ID, BillNumber: "B-1", IssueDate: end, DueDate: end.AddDate(0, 0, 20),
+		PeriodStart: day(2026, 2, 1), PeriodEnd: end, AmountTotal: 10, ProviderReading: fp(120),
+	})
+
+	_, got := f.compareReadings(t, f.aliceTok, u.ID)
+
+	if len(got.Comparisons) != 1 || got.Comparisons[0].Status != "no_data" {
+		t.Fatalf("comparisons = %+v, want one no_data", got.Comparisons)
+	}
+	if got.Comparisons[0].MaxAbsDifference != nil {
+		t.Error("nothing was compared, so there is no difference to report")
+	}
+}
+
+func TestCompareReadings_OnlyForHouseholdMembers(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := f.gasUtility(t)
+	eve := &models.User{Email: "eve@example.com", PasswordHash: "x", Name: "Eve", Role: "user", IsActive: true}
+	mustCreate(t, f.db, eve)
+
+	if code, _ := f.compareReadings(t, testutil.SignToken(t, eve), u.ID); code != http.StatusNotFound {
+		t.Errorf("a non-member got status %d, want 404", code)
 	}
 }

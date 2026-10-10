@@ -465,7 +465,10 @@
     "statusAlert": "Anomalia",
     "statusWarning": "Attenzione",
     "statusNoData": "No dati",
-    "statusOk": "OK"
+    "statusOk": "OK",
+    "alertMessage": "Discrepanza di {diff} {unit} (soglia effettiva: {threshold} {unit}, {days} di distanza)",
+    "differenceMessage": "Differenza di {diff} {unit} (soglia effettiva: {threshold} {unit}, {days} di distanza)",
+    "noSelfReading": "Nessuna autolettura disponibile per il confronto"
   },
   "consumptionPeriods": {
     "title": "Dettaglio Consumi per Periodo",
@@ -489,7 +492,13 @@
     "totalProviderWithUnit": "Fornitore: {value} kWh",
     "overchargeShort": "Sovrafatt.",
     "diffShort": "Diff.",
-    "period": "Periodo: {start} – {end}"
+    "period": "Periodo: {start} – {end}",
+    "overchargeMessage_one": "ATTENZIONE: il fornitore ha fatturato {diff} {unit} IN PIÙ rispetto ai consumi rilevati dalle autoletture in {n} periodo. Stai pagando più del dovuto!",
+    "overchargeMessage_other": "ATTENZIONE: il fornitore ha fatturato {diff} {unit} IN PIÙ rispetto ai consumi rilevati dalle autoletture in {n} periodi. Stai pagando più del dovuto!",
+    "warningMessage_one": "Il fornitore ha fatturato {diff} {unit} in più rispetto ai consumi effettivi in {n} periodo. Tieni sotto controllo questa differenza.",
+    "warningMessage_other": "Il fornitore ha fatturato {diff} {unit} in più rispetto ai consumi effettivi in {n} periodi. Tieni sotto controllo questa differenza.",
+    "creditMessage_one": "Il fornitore ha fatturato {diff} {unit} in meno rispetto ai consumi rilevati in {n} periodo. Potrebbe esserci un conguaglio a fine anno.",
+    "creditMessage_other": "Il fornitore ha fatturato {diff} {unit} in meno rispetto ai consumi rilevati in {n} periodi. Potrebbe esserci un conguaglio a fine anno."
   },
   "comparisonCard": {
     "title": "Confronto Letture",

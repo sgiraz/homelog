@@ -47,9 +47,9 @@
         </div>
 
         <!-- Alert message if any -->
-        <div v-if="comparison.alert_message && comparison.status !== 'ok'" class="text-sm">
+        <div v-if="alertMessage(comparison)" class="text-sm">
           <span :class="comparison.status === 'alert' ? 'text-danger-soft' : 'text-warning-soft'">
-            {{ comparison.alert_message }}
+            {{ alertMessage(comparison) }}
           </span>
         </div>
 
@@ -118,7 +118,7 @@ defineOptions({ name: 'ComparisonAccordion' })
 
 const { t } = useI18n()
 
-defineProps({
+const props = defineProps({
   comparisons: {
     type: Array,
     required: true
@@ -150,6 +150,22 @@ defineProps({
 })
 
 defineEmits(['toggle-card'])
+
+// The server sends the status and the figures; the sentence is composed here so
+// it follows the user's language.
+function alertMessage(comparison) {
+  if (comparison.status === 'no_data') return t('utilities.comparisonAccordion.noSelfReading')
+  const kind = comparison.status === 'alert' ? 'alertMessage'
+    : comparison.status === 'warning' ? 'differenceMessage'
+    : null
+  if (!kind || comparison.max_abs_difference == null) return ''
+  return t(`utilities.comparisonAccordion.${kind}`, {
+    diff: props.fmtNum(comparison.max_abs_difference),
+    threshold: props.fmtNum(comparison.effective_threshold),
+    unit: props.getUnit(),
+    days: t('utilities.comparisonAccordion.daysDifference', { n: comparison.days_difference })
+  })
+}
 
 function getStatusClasses(status) {
   switch (status) {

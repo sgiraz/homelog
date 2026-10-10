@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -31,7 +30,6 @@ type BalanceResponse struct {
 	CurrentMemberName string  `json:"current_member_name"`
 	OtherMemberID     uint    `json:"other_member_id"`
 	OtherMemberName   string  `json:"other_member_name"`
-	Message           string  `json:"message"`
 }
 
 // UnsettledSplitDetail represents a single unsettled (or partially settled) expense split
@@ -100,7 +98,6 @@ func (h *BalanceHandler) GetBalance(c *gin.Context) {
 			Balance:         0,
 			CurrentMemberID: 0,
 			OtherMemberID:   0,
-			Message:         "Settings non trovate",
 		})
 		return
 	}
@@ -113,7 +110,6 @@ func (h *BalanceHandler) GetBalance(c *gin.Context) {
 			Balance:         0,
 			CurrentMemberID: 0,
 			OtherMemberID:   0,
-			Message:         "Split mode disattivato",
 		})
 		return
 	}
@@ -126,7 +122,6 @@ func (h *BalanceHandler) GetBalance(c *gin.Context) {
 			Balance:         0,
 			CurrentMemberID: 0,
 			OtherMemberID:   0,
-			Message:         "Profilo membro non trovato",
 		})
 		return
 	}
@@ -143,7 +138,7 @@ func (h *BalanceHandler) GetBalance(c *gin.Context) {
 			return
 		}
 		otherMemberID = uint(otherMemberIDParsed)
-		if err := h.db.First(&otherMember, otherMemberID).Error; err != nil {
+		if err := h.db.Where("id = ? AND property_id = ?", otherMemberID, propertyID).First(&otherMember).Error; err != nil {
 			apierr.Fail(c, http.StatusNotFound, "other_member_not_found", "The other member was not found")
 			return
 		}
@@ -160,7 +155,6 @@ func (h *BalanceHandler) GetBalance(c *gin.Context) {
 				CurrentMemberID:   currentMember.ID,
 				CurrentMemberName: currentMember.Name,
 				OtherMemberID:     0,
-				Message:           "Nessun altro membro nella casa",
 			})
 			return
 		}
@@ -176,25 +170,12 @@ func (h *BalanceHandler) GetBalance(c *gin.Context) {
 		return
 	}
 
-	// Generate message
-	var message string
-	if balance > 0 {
-		message = fmt.Sprintf("%s ti deve €%.2f", otherMember.Name, balance)
-	} else if balance < 0 {
-		message = fmt.Sprintf("Devi a %s €%.2f", otherMember.Name, -balance)
-	} else {
-		message = "Siete pari"
-	}
-
-	log.Printf("   💰 FINAL BALANCE: %.2f - %s", balance, message)
-
 	c.JSON(http.StatusOK, BalanceResponse{
 		Balance:           balance,
 		CurrentMemberID:   currentMember.ID,
 		CurrentMemberName: currentMember.Name,
 		OtherMemberID:     otherMemberID,
 		OtherMemberName:   otherMember.Name,
-		Message:           message,
 	})
 }
 
@@ -241,7 +222,7 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 			return
 		}
 		otherMemberID = uint(otherMemberIDParsed)
-		if err := h.db.First(&otherMember, otherMemberID).Error; err != nil {
+		if err := h.db.Where("id = ? AND property_id = ?", otherMemberID, propertyID).First(&otherMember).Error; err != nil {
 			apierr.Fail(c, http.StatusNotFound, "other_member_not_found", "The other member was not found")
 			return
 		}

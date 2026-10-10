@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -132,9 +133,6 @@ func TestBalance_FullySettledIsZero(t *testing.T) {
 	if !approx(got.Balance, 0) {
 		t.Errorf("balance = %.2f, want 0", got.Balance)
 	}
-	if got.Message == "" {
-		t.Error("an even balance still needs a message")
-	}
 }
 
 func TestBalance_LeavesOutLongTermDebts(t *testing.T) {
@@ -174,9 +172,6 @@ func TestBalance_SplitModeOffReportsZero(t *testing.T) {
 	if got.Balance != 0 || got.CurrentMemberID != 0 {
 		t.Errorf("got %+v, want a zero balance with no members when split mode is off", got)
 	}
-	if got.Message == "" {
-		t.Error("expected an explanatory message")
-	}
 }
 
 func TestBalance_NoSettingsReportsZero(t *testing.T) {
@@ -185,8 +180,8 @@ func TestBalance_NoSettingsReportsZero(t *testing.T) {
 		t.Fatalf("delete settings: %v", err)
 	}
 
-	if got := f.getBalance(t, f.aliceTok, ""); got.Balance != 0 || got.Message == "" {
-		t.Errorf("got %+v, want zero balance with a message", got)
+	if got := f.getBalance(t, f.aliceTok, ""); got.Balance != 0 {
+		t.Errorf("got %+v, want a zero balance", got)
 	}
 }
 
@@ -351,5 +346,23 @@ func TestCalculateBalance_NoSettingsIsZero(t *testing.T) {
 
 	if err != nil || got != 0 {
 		t.Errorf("got %.2f, %v; want 0, nil", got, err)
+	}
+}
+
+func TestBalance_OtherMemberMustBelongToTheProperty(t *testing.T) {
+	f := setupMoneyFixture(t)
+	eve := &models.User{Email: "eve@example.com", PasswordHash: "x", Name: "Eve", Role: "user", IsActive: true}
+	mustCreate(t, f.db, eve)
+	evesHome := models.Property{UserID: eve.ID, Name: "Eve", Type: "owned", StartDate: time.Now()}
+	mustCreate(t, f.db, &evesHome)
+	stranger := models.HouseholdMember{PropertyID: evesHome.ID, UserID: &eve.ID, Name: "Eve", Role: "admin"}
+	mustCreate(t, f.db, &stranger)
+	r := f.balanceRouter()
+
+	for _, suffix := range []string{"", "/details"} {
+		rec := doGET(t, r, f.balanceURL(suffix, "other_member_id="+itoa(stranger.ID)), f.aliceTok)
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("balance%s with another household's member: status %d, want 404 (body %s)", suffix, rec.Code, rec.Body.String())
+		}
 	}
 }

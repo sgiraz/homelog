@@ -385,7 +385,10 @@
     "statusAlert": "Anomalie",
     "statusWarning": "Warnung",
     "statusNoData": "Keine Daten",
-    "statusOk": "OK"
+    "statusOk": "OK",
+    "alertMessage": "Abweichung von {diff} {unit} (effektiver Schwellenwert: {threshold} {unit}, {days} Abstand)",
+    "differenceMessage": "Differenz von {diff} {unit} (effektiver Schwellenwert: {threshold} {unit}, {days} Abstand)",
+    "noSelfReading": "Keine Selbstablesung zum Vergleich verfügbar"
   },
   "consumptionPeriods": {
     "title": "Verbrauchsdetails nach Zeitraum",
@@ -409,7 +412,13 @@
     "totalProviderWithUnit": "Anbieter: {value} kWh",
     "overchargeShort": "Überhöhte Abrechnung",
     "diffShort": "Diff.",
-    "period": "Zeitraum: {start} – {end}"
+    "period": "Zeitraum: {start} – {end}",
+    "overchargeMessage_one": "ACHTUNG: Der Anbieter hat {diff} {unit} MEHR abgerechnet als der durch Ihre Selbstablesungen gemessene Verbrauch über {n} Zeitraum. Sie zahlen mehr als nötig!",
+    "overchargeMessage_other": "ACHTUNG: Der Anbieter hat {diff} {unit} MEHR abgerechnet als der durch Ihre Selbstablesungen gemessene Verbrauch über {n} Zeiträume. Sie zahlen mehr als nötig!",
+    "warningMessage_one": "Der Anbieter hat {diff} {unit} mehr abgerechnet als der tatsächliche Verbrauch über {n} Zeitraum. Behalten Sie diese Differenz im Auge.",
+    "warningMessage_other": "Der Anbieter hat {diff} {unit} mehr abgerechnet als der tatsächliche Verbrauch über {n} Zeiträume. Behalten Sie diese Differenz im Auge.",
+    "creditMessage_one": "Der Anbieter hat {diff} {unit} weniger abgerechnet als der gemessene Verbrauch über {n} Zeitraum. Eine Jahresendabrechnung könnte folgen.",
+    "creditMessage_other": "Der Anbieter hat {diff} {unit} weniger abgerechnet als der gemessene Verbrauch über {n} Zeiträume. Eine Jahresendabrechnung könnte folgen."
   },
   "comparisonCard": {
     "title": "Zählerstandsvergleich",
