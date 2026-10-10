@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -9,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	"github.com/sgiraz/homelog/internal/i18n"
 	"github.com/sgiraz/homelog/internal/apierr"
+	"github.com/sgiraz/homelog/internal/i18n"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -35,11 +36,33 @@ type CreateExpenseRequest struct {
 	PropertyID         *uint    `json:"property_id"`
 	SubcategoryID      *uint    `json:"subcategory_id"`
 	ProjectID          *uint    `json:"project_id"`
+	DeviceID           *uint    `json:"device_id"`
 	Date               string   `json:"date" binding:"required"` // Format: YYYY-MM-DD
 	AttachmentURL      string   `json:"attachment_url"`
 	PaidByMemberID     uint     `json:"paid_by_member_id"`
 	IsSplit            bool     `json:"is_split"`
 	SplitWithMemberIDs []uint   `json:"split_with_member_ids"`
+}
+type OptionalUint struct {
+	Set   bool
+	Value *uint
+}
+
+func (o *OptionalUint) UnmarshalJSON(data []byte) error {
+	o.Set = true
+
+	if string(data) == "null" {
+		o.Value = nil
+		return nil
+	}
+
+	var value uint
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+
+	o.Value = &value
+	return nil
 }
 
 // noSubcategory is the subcategory_id value that selects expenses with none.
@@ -64,16 +87,17 @@ func subcategoryArgs(value string) []any {
 
 // UpdateExpenseRequest represents the request body for updating an expense
 type UpdateExpenseRequest struct {
-	Amount           *float64 `json:"amount"`
-	OriginalAmount   *float64 `json:"original_amount"`
-	OriginalCurrency *string  `json:"original_currency"`
-	Description      *string  `json:"description"`
-	CategoryID       *uint    `json:"category_id"`
-	PropertyID       *uint    `json:"property_id"`
-	SubcategoryID    *uint    `json:"subcategory_id"`
-	ProjectID        *uint    `json:"project_id"`
-	Date             *string  `json:"date"`
-	AttachmentURL    *string  `json:"attachment_url"`
+	Amount           *float64     `json:"amount"`
+	OriginalAmount   *float64     `json:"original_amount"`
+	OriginalCurrency *string      `json:"original_currency"`
+	Description      *string      `json:"description"`
+	CategoryID       *uint        `json:"category_id"`
+	PropertyID       *uint        `json:"property_id"`
+	DeviceID         OptionalUint `json:"device_id"`
+	SubcategoryID    *uint        `json:"subcategory_id"`
+	ProjectID        *uint        `json:"project_id"`
+	Date             *string      `json:"date"`
+	AttachmentURL    *string      `json:"attachment_url"`
 }
 
 // MonthlyStats represents monthly expense statistics
@@ -121,6 +145,7 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 		Preload("Property").
 		Preload("Subcategory").
 		Preload("Project").
+		Preload("Device").
 		Preload("PaidBy").
 		Preload("Splits").
 		Preload("Splits.Member")
@@ -321,6 +346,26 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		}
 	}
 
+	if req.DeviceID != nil {
+		var device models.Device
+		if err := h.db.
+			Where("id = ?", *req.DeviceID).
+			First(&device).Error; err != nil {
+			apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Invalid device")
+			return
+		}
+
+		if !isPropertyMember(h.db, userID, device.PropertyID) {
+			apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Invalid device")
+			return
+		}
+
+		if req.PropertyID != nil && device.PropertyID != *req.PropertyID {
+			apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Device does not belong to the selected property")
+			return
+		}
+	}
+
 	// Verify project is accessible to user (owner or shared member)
 	if req.ProjectID != nil {
 		var project models.Project
@@ -345,6 +390,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		PropertyID:       req.PropertyID,
 		SubcategoryID:    req.SubcategoryID,
 		ProjectID:        req.ProjectID,
+		DeviceID:         req.DeviceID,
 		Date:             date,
 		AttachmentURL:    req.AttachmentURL,
 		PaidByMemberID:   paidByMemberID,
@@ -483,6 +529,7 @@ func (h *ExpenseHandler) Get(c *gin.Context) {
 		Preload("Property").
 		Preload("Subcategory").
 		Preload("Project").
+		Preload("Device").
 		First(&expense).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			apierr.Fail(c, http.StatusNotFound, "expense_not_found", "Expense not found")
@@ -600,6 +647,32 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 			updates["project_id"] = *req.ProjectID
 		}
 
+		if req.DeviceID.Set {
+			if req.DeviceID.Value == nil {
+				updates["device_id"] = nil
+			} else {
+				var device models.Device
+				if err := h.db.
+					Where("id = ?", *req.DeviceID.Value).
+					First(&device).Error; err != nil {
+					apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Invalid device")
+					return
+				}
+
+				if !isPropertyMember(h.db, userID, device.PropertyID) {
+					apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Invalid device")
+					return
+				}
+
+				if expense.PropertyID != nil && device.PropertyID != *expense.PropertyID {
+					apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Device does not belong to the expense property")
+					return
+				}
+
+				updates["device_id"] = *req.DeviceID.Value
+			}
+		}
+
 		if req.Date != nil {
 			date, err := time.Parse("2006-01-02", *req.Date)
 			if err != nil {
@@ -670,6 +743,7 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 		Preload("Property").
 		Preload("Subcategory").
 		Preload("Project").
+		Preload("Device").
 		Preload("Splits").
 		Preload("Splits.Member").
 		First(&expense, expense.ID)

@@ -241,6 +241,20 @@ export const projectsAPI = {
   delete: (id) => apiClient.delete(`/projects/${id}`),
 }
 
+export const devicesAPI = {
+  list: (params) => apiClient.get('/devices', { params }),
+  get: (id) => apiClient.get(`/devices/${id}`),
+  create: (data) => apiClient.post('/devices', data),
+  update: (id, data) => apiClient.put(`/devices/${id}`, data),
+  delete: (id) => apiClient.delete(`/devices/${id}`),
+}
+export const deviceCategoriesAPI = {
+  list: () => apiClient.get('/device-categories'),
+  create: (data) => apiClient.post('/device-categories', data),
+  update: (id, data) => apiClient.put(`/device-categories/${id}`, data),
+  delete: (id) => apiClient.delete(`/device-categories/${id}`),
+}
+
 export const exportAPI = {
   exportAll: () => apiClient.get('/export/all', { responseType: 'blob' }),
   exportExpenses: () => apiClient.get('/export/expenses', { responseType: 'blob' }),

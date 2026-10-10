@@ -15,6 +15,7 @@ const (
 	TypeBill    EntityType = "bill"
 	TypeProject EntityType = "project"
 	TypeUtility EntityType = "utility"
+	TypeDevice  EntityType = "device"
 )
 
 // Upsert replaces (or inserts) the row for this entity. FTS5 virtual tables

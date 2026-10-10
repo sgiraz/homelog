@@ -10,6 +10,7 @@
     "expense": "Expenses",
     "bill": "Bills",
     "project": "Projects",
-    "utility": "Services"
+    "utility": "Services",
+    "device": "Device"
   }
 }

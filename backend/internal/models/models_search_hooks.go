@@ -84,6 +84,33 @@ func (p *Project) AfterSave(tx *gorm.DB) error {
 	return search.Upsert(tx, search.TypeProject, p.ID, propertyID, p.UserID, title, body)
 }
 
+// ── Device ──────────────────────────────────────────────────────────────
+
+func (d *Device) AfterSave(tx *gorm.DB) error {
+	propertyID := d.PropertyID
+
+	title := truncate(d.Name, 120)
+	body := strings.TrimSpace(
+		d.Name + " " +
+			d.Manufacturer + " " +
+			d.Model + " " +
+			d.SerialNumber + " " +
+			d.Status + " " +
+			d.Location + " " +
+			d.Hostname + " " +
+			d.IPAddress + " " +
+			d.MACAddress + " " +
+			d.Firmware + " " +
+			d.Notes,
+	)
+
+	return search.Upsert(tx, search.TypeDevice, d.ID, propertyID, d.UserID, title, body)
+}
+
+func (d *Device) AfterDelete(tx *gorm.DB) error {
+	return search.Remove(tx, search.TypeDevice, d.ID)
+}
+
 func (p *Project) AfterDelete(tx *gorm.DB) error {
 	return search.Remove(tx, search.TypeProject, p.ID)
 }

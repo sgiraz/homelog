@@ -249,5 +249,23 @@
     "importSuccess": "Importazione completata: {summary}.",
     "importEmpty": "nessun dato",
     "importError": "Errore importazione: {error}"
+  },
+  "deviceCategories": {
+    "title": "Categorie dispositivi",
+    "subtitle": "Gestisci le tue categorie di dispositivi",
+    "namePlaceholder": "Nome della categoria",
+    "iconPlaceholder": "Icona",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "edit": "Modifica",
+    "editPrompt": "Nome della categoria del dispositivo:",
+    "delete": "Elimina",
+    "deleteTitle": "Elimina categoria dispositivo",
+    "deleteMessage": "Vuoi davvero eliminare la categoria di dispositivo “{name}”?",
+    "deleteConfirm": "Elimina",
+    "createError": "Impossibile creare la categoria del dispositivo.",
+    "updateError": "Impossibile modificare la categoria del dispositivo.",
+    "deleteError": "Impossibile eliminare la categoria del dispositivo.",
+    "empty": "Nessuna categoria di dispositivi personalizzata disponibile."
   }
 }

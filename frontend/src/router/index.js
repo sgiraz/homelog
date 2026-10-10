@@ -50,6 +50,30 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/devices',
+      name: 'devices',
+      component: () => import('../views/DevicesView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/devices/:id',
+      name: 'device-detail',
+      component: () => import('../views/DeviceDetailView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/devices/new',
+      name: 'device-new',
+      component: () => import('../views/DeviceEditView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/devices/:id/edit',
+      name: 'device-edit',
+      component: () => import('../views/DeviceEditView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/notifications',
       name: 'notifications',
       component: () => import('../views/NotificationsView.vue'),
