@@ -616,3 +616,83 @@ func TestCompareReadings_ElectricityWithoutReadingsIsNoData(t *testing.T) {
 		t.Errorf("comparisons = %+v, want one no_data / no_readings", got.Comparisons)
 	}
 }
+
+func TestCompareReadings_OwnReadingAboveTheProviderIsStillADifference(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := f.gasUtility(t)
+	end := day(2026, 2, 28)
+	mustCreate(t, f.db,
+		&models.Bill{
+			UtilityID: u.ID, BillNumber: "B-1", IssueDate: end, DueDate: end.AddDate(0, 0, 20),
+			PeriodStart: day(2026, 2, 1), PeriodEnd: end, AmountTotal: 10, ProviderReading: fp(100),
+		},
+		// The household reads 10 more than the provider billed.
+		&models.MeterReading{UtilityID: u.ID, ReadingDate: end, Value: fp(110)},
+	)
+
+	_, got := f.compareReadings(t, f.aliceTok, u.ID, "")
+
+	c := got.Comparisons[0]
+	if c.Status != "alert" || c.MaxAbsDifference == nil || !approx(*c.MaxAbsDifference, 10) {
+		t.Errorf("status %q, max difference %v; want alert / 10 (the sign must not hide the gap)", c.Status, c.MaxAbsDifference)
+	}
+	if c.Difference == nil || !approx(*c.Difference, -10) {
+		t.Errorf("signed difference = %v, want -10", c.Difference)
+	}
+}
+
+func TestCompareReadings_StoredZeroWindowFallsBackToTheDefault(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := f.gasUtility(t)
+	if err := f.db.Model(&u).Update("reading_match_days", 0).Error; err != nil {
+		t.Fatalf("zero the window: %v", err)
+	}
+
+	_, got := f.compareReadings(t, f.aliceTok, u.ID, "")
+
+	if got.ReadingMatchDays != defaultReadingMatchDays {
+		t.Errorf("window = %d, want the default %d", got.ReadingMatchDays, defaultReadingMatchDays)
+	}
+}
+
+func TestUpdateUtility_ReadingMatchDays(t *testing.T) {
+	f := setupMoneyFixture(t)
+	u := f.gasUtility(t)
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	p := r.Group("")
+	p.Use(middleware.AuthRequired())
+	p.PUT("/utilities/:id", NewUtilityHandler(f.db).Update)
+
+	stored := func() int {
+		var out models.Utility
+		if err := f.db.First(&out, u.ID).Error; err != nil {
+			t.Fatalf("reload utility: %v", err)
+		}
+		return out.ReadingMatchDays
+	}
+	put := func(days int) {
+		t.Helper()
+		rec := doJSON(t, r, http.MethodPut, "/utilities/"+itoa(u.ID), f.aliceTok, map[string]any{"reading_match_days": days})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("PUT reading_match_days=%d: status %d, body %s", days, rec.Code, rec.Body.String())
+		}
+	}
+
+	if got := stored(); got != defaultReadingMatchDays {
+		t.Fatalf("a new service starts at %d days, got %d", defaultReadingMatchDays, got)
+	}
+	put(45)
+	if got := stored(); got != 45 {
+		t.Errorf("stored window = %d, want 45", got)
+	}
+	put(100000)
+	if got := stored(); got != maxReadingMatchDays {
+		t.Errorf("stored window = %d, want it capped at %d", got, maxReadingMatchDays)
+	}
+	put(0)
+	put(-3)
+	if got := stored(); got != maxReadingMatchDays {
+		t.Errorf("stored window = %d, a zero or negative value must leave it unchanged", got)
+	}
+}
