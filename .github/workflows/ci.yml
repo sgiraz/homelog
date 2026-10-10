@@ -25,7 +25,14 @@ jobs:
         run: go build ./cmd/api/
 
       - name: Test
-        run: go test ./...
+        run: go test -coverprofile=coverage.txt ./...
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: backend/coverage.txt
+          flags: backend
 
   frontend:
     name: Frontend
