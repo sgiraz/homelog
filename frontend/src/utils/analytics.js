@@ -4,9 +4,6 @@ import { watch } from 'vue'
 // load this: GoatCounter is wired up only when isDemoMode (from /version) is
 // true, and it sets no cookies and stores no personal data (see the privacy
 // policy, demo section).
-//
-// TODO: replace with your GoatCounter site code (free for open source at
-// https://www.goatcounter.com/) before deploying.
 const GOATCOUNTER_SITE = 'homelog-demo'
 
 let scriptRequested = false
