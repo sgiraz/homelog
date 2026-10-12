@@ -82,85 +82,59 @@
                 @input="onFiltersChanged"
                 type="search"
                 :placeholder="t('expenses.filters.searchPlaceholderShort')"
-                class="w-full pl-9 pr-4 py-2 border border-line rounded-lg
+                class="w-full h-11 pl-9 pr-4 border border-line rounded-[10px]
                        bg-surface text-ink text-base
-                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
             <div class="grid grid-cols-2 gap-2">
-              <select
-                v-model="filters.categoryId"
-                @change="onCategoryChanged"
-                class="px-3 py-2 border border-line rounded-lg
-                       bg-surface text-ink text-base
-                       focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">{{ t('expenses.filters.allCategoriesLong') }}</option>
-                <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ categoryLabel(cat) }}</option>
-              </select>
-              <select
-                v-model="filters.projectId"
-                @change="onFiltersChanged"
-                class="px-3 py-2 border border-line rounded-lg
-                       bg-surface text-ink text-base
-                       focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">{{ t('expenses.filters.allProjectsLong') }}</option>
-                <option v-for="proj in projects" :key="proj.id" :value="proj.id">{{ proj.icon }} {{ proj.name }}</option>
-              </select>
-              <select
-                v-model="filters.subcategoryId"
-                @change="onFiltersChanged"
-                :disabled="!filters.categoryId"
-                class="col-span-2 px-3 py-2 border border-line rounded-lg
-                       bg-surface text-ink text-base
-                       focus:outline-none focus:ring-2 focus:ring-blue-500
-                       disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="">{{ t('expenses.filters.allSubcategoriesLong') }}</option>
-                <option :value="NO_SUBCATEGORY">{{ t('expenses.modal.subcategoryNone') }}</option>
-                <option v-for="sub in subcategoryOptions" :key="sub.id" :value="sub.id">{{ categoryLabel(sub) }}</option>
-              </select>
-              <label class="block min-w-0">
-                <span class="block text-xs text-ink-muted mb-1">{{ t('expenses.filters.fromLabel') }}</span>
-                <input
-                  v-model="filters.from"
-                  @change="onFiltersChanged"
-                  type="date"
-                  class="w-0 min-w-full px-3 py-2 border border-line rounded-lg bg-surface text-ink text-base focus:outline-none focus:ring-2 focus:ring-blue-500 [&::-webkit-date-and-time-value]:min-h-[1.5em]"
-                />
-              </label>
-              <label class="block min-w-0">
-                <span class="block text-xs text-ink-muted mb-1">{{ t('expenses.filters.toLabel') }}</span>
-                <input
-                  v-model="filters.to"
-                  @change="onFiltersChanged"
-                  type="date"
-                  class="w-0 min-w-full px-3 py-2 border border-line rounded-lg bg-surface text-ink text-base focus:outline-none focus:ring-2 focus:ring-blue-500 [&::-webkit-date-and-time-value]:min-h-[1.5em]"
-                />
-              </label>
+              <SelectField :label="t('expenses.filters.categoryLabel')">
+                <select v-model="filters.categoryId" @change="onCategoryChanged">
+                  <option value="">{{ t('expenses.filters.allCategoriesShort') }}</option>
+                  <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ categoryLabel(cat) }}</option>
+                </select>
+              </SelectField>
+              <SelectField :label="t('expenses.filters.projectLabel')">
+                <select v-model="filters.projectId" @change="onFiltersChanged">
+                  <option value="">{{ t('expenses.filters.allProjectsShort') }}</option>
+                  <option v-for="proj in projects" :key="proj.id" :value="proj.id">{{ proj.icon }} {{ proj.name }}</option>
+                </select>
+              </SelectField>
+              <SelectField class="col-span-2" :label="t('expenses.filters.subcategoryLabel')" :disabled="!filters.categoryId">
+                <select v-model="filters.subcategoryId" @change="onFiltersChanged" :disabled="!filters.categoryId">
+                  <option value="">{{ t('expenses.filters.allSubcategoriesShort') }}</option>
+                  <option :value="NO_SUBCATEGORY">{{ t('expenses.modal.subcategoryNone') }}</option>
+                  <option v-for="sub in subcategoryOptions" :key="sub.id" :value="sub.id">{{ categoryLabel(sub) }}</option>
+                </select>
+              </SelectField>
+              <DateRangeField
+                class="col-span-2"
+                :from="filters.from"
+                :to="filters.to"
+                :from-label="t('expenses.filters.fromLabel')"
+                :to-label="t('expenses.filters.toLabel')"
+                clearable
+                @update:range="onRangeChanged"
+              />
             </div>
-            <select
-              v-model="sortOption"
-              class="w-full px-3 py-2 border border-line rounded-lg
-                     bg-surface text-ink text-base
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="date_desc">{{ t('expenses.sort.dateDesc') }}</option>
-              <option value="date_asc">{{ t('expenses.sort.dateAsc') }}</option>
-              <option value="amount_desc">{{ t('expenses.sort.amountDesc') }}</option>
-              <option value="amount_asc">{{ t('expenses.sort.amountAsc') }}</option>
-              <option value="description_asc">{{ t('expenses.sort.descriptionAsc') }}</option>
-            </select>
+            <SelectField :label="t('expenses.filters.sortLabel')">
+              <select v-model="sortOption">
+                <option value="date_desc">{{ t('expenses.sort.dateDesc') }}</option>
+                <option value="date_asc">{{ t('expenses.sort.dateAsc') }}</option>
+                <option value="amount_desc">{{ t('expenses.sort.amountDesc') }}</option>
+                <option value="amount_asc">{{ t('expenses.sort.amountAsc') }}</option>
+                <option value="description_asc">{{ t('expenses.sort.descriptionAsc') }}</option>
+              </select>
+            </SelectField>
             <button
               type="button"
               @click="toggleUnsettledOnly"
               :aria-pressed="filters.unsettledOnly"
               :class="[
-                'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
+                'flex items-center gap-1.5 h-11 px-3 rounded-[10px] border text-sm font-medium whitespace-nowrap transition-colors',
                 filters.unsettledOnly
-                  ? 'bg-warning/10 text-warning-soft'
-                  : 'text-ink-soft hover:bg-surface-2'
+                  ? 'border-warning/40 bg-warning/10 text-warning-soft'
+                  : 'border-line bg-surface text-ink-soft hover:bg-surface-2'
               ]"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -183,116 +157,84 @@
             @input="onFiltersChanged"
             type="text"
             :placeholder="t('expenses.filters.searchPlaceholderLong')"
-            class="w-full pl-9 pr-4 py-2 border border-line rounded-lg
+            class="w-full h-[38px] pl-9 pr-4 border border-line rounded-[10px]
                    bg-surface text-ink text-sm
-                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
 
-        <div class="flex flex-wrap items-center gap-3">
-          <div class="flex items-center gap-2">
-            <label class="text-sm text-ink-soft whitespace-nowrap">{{ t('expenses.filters.categoryLabel') }}</label>
-            <select
-              v-model="filters.categoryId"
-              @change="onCategoryChanged"
-              class="px-3 py-2 border border-line rounded-lg
-                     bg-surface text-ink text-sm
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+        <!-- One control language across the row: every filter is the same
+             bordered field with its label inside, so the row reads as a row
+             and not as loose labels around native boxes. -->
+        <div class="flex flex-wrap items-center gap-2">
+          <SelectField class="sm:w-56" :label="t('expenses.filters.categoryLabel')">
+            <select v-model="filters.categoryId" @change="onCategoryChanged">
               <option value="">{{ t('expenses.filters.allCategoriesShort') }}</option>
               <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.icon }} {{ categoryLabel(cat) }}</option>
             </select>
-          </div>
+          </SelectField>
 
-          <div class="flex items-center gap-2">
-            <label class="text-sm text-ink-soft whitespace-nowrap">{{ t('expenses.filters.subcategoryLabel') }}</label>
-            <select
-              v-model="filters.subcategoryId"
-              @change="onFiltersChanged"
-              :disabled="!filters.categoryId"
-              class="px-3 py-2 border border-line rounded-lg
-                     bg-surface text-ink text-sm
-                     focus:outline-none focus:ring-2 focus:ring-blue-500
-                     disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+          <SelectField class="sm:w-56" :label="t('expenses.filters.subcategoryLabel')" :disabled="!filters.categoryId">
+            <select v-model="filters.subcategoryId" @change="onFiltersChanged" :disabled="!filters.categoryId">
               <option value="">{{ t('expenses.filters.allSubcategoriesShort') }}</option>
               <option :value="NO_SUBCATEGORY">{{ t('expenses.modal.subcategoryNone') }}</option>
               <option v-for="sub in subcategoryOptions" :key="sub.id" :value="sub.id">{{ categoryLabel(sub) }}</option>
             </select>
-          </div>
+          </SelectField>
 
-          <div class="flex items-center gap-2">
-            <label class="text-sm text-ink-soft whitespace-nowrap">{{ t('expenses.filters.projectLabel') }}</label>
-            <select
-              v-model="filters.projectId"
-              @change="onFiltersChanged"
-              class="px-3 py-2 border border-line rounded-lg
-                     bg-surface text-ink text-sm
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+          <SelectField class="sm:w-56" :label="t('expenses.filters.projectLabel')">
+            <select v-model="filters.projectId" @change="onFiltersChanged">
               <option value="">{{ t('expenses.filters.allProjectsShort') }}</option>
               <option v-for="proj in projects" :key="proj.id" :value="proj.id">{{ proj.icon }} {{ proj.name }}</option>
             </select>
-          </div>
+          </SelectField>
 
-          <div class="flex items-center gap-2">
-            <label class="text-sm text-ink-soft">{{ t('expenses.filters.fromLabel') }}</label>
-            <input
-              v-model="filters.from"
-              @change="onFiltersChanged"
-              type="date"
-              class="px-3 py-2 border border-line rounded-lg
-                     bg-surface text-ink text-sm
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          <DateRangeField
+            :from="filters.from"
+            :to="filters.to"
+            :from-label="t('expenses.filters.fromLabel')"
+            :to-label="t('expenses.filters.toLabel')"
+            clearable
+            @update:range="onRangeChanged"
+          />
 
-          <div class="flex items-center gap-2">
-            <label class="text-sm text-ink-soft">{{ t('expenses.filters.toLabel') }}</label>
-            <input
-              v-model="filters.to"
-              @change="onFiltersChanged"
-              type="date"
-              class="px-3 py-2 border border-line rounded-lg
-                     bg-surface text-ink text-sm
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <SelectField class="sm:w-48" :label="t('expenses.filters.sortLabel')">
+              <select v-model="sortOption">
+                <option value="date_desc">{{ t('expenses.sort.dateDesc') }}</option>
+                <option value="date_asc">{{ t('expenses.sort.dateAsc') }}</option>
+                <option value="amount_desc">{{ t('expenses.sort.amountDesc') }}</option>
+                <option value="amount_asc">{{ t('expenses.sort.amountAsc') }}</option>
+                <option value="description_asc">{{ t('expenses.sort.descriptionAsc') }}</option>
+              </select>
+            </SelectField>
 
-          <div class="flex items-center gap-2 ml-auto">
-            <label class="text-sm text-ink-soft whitespace-nowrap">{{ t('expenses.filters.sortLabel') }}</label>
-            <select
-              v-model="sortOption"
-              class="px-3 py-2 border border-line rounded-lg
-                     bg-surface text-ink text-sm
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <button
+              type="button"
+              @click="toggleUnsettledOnly"
+              :aria-pressed="filters.unsettledOnly"
+              :class="[
+                'flex items-center gap-1.5 h-[38px] px-3 rounded-[10px] border text-sm font-medium whitespace-nowrap transition-colors',
+                filters.unsettledOnly
+                  ? 'border-warning/40 bg-warning/10 text-warning-soft'
+                  : 'border-line bg-surface text-ink-soft hover:bg-surface-2'
+              ]"
             >
-              <option value="date_desc">{{ t('expenses.sort.dateDesc') }}</option>
-              <option value="date_asc">{{ t('expenses.sort.dateAsc') }}</option>
-              <option value="amount_desc">{{ t('expenses.sort.amountDesc') }}</option>
-              <option value="amount_asc">{{ t('expenses.sort.amountAsc') }}</option>
-              <option value="description_asc">{{ t('expenses.sort.descriptionAsc') }}</option>
-            </select>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {{ t('expenses.filters.unsettledOnly') }}
+            </button>
+
+            <button
+              v-if="hasActiveFilters"
+              type="button"
+              @click="resetFilters"
+              class="h-[38px] px-3 rounded-[10px] text-sm font-medium text-ink-soft hover:bg-surface-2 transition-colors"
+            >
+              {{ t('expenses.filters.reset') }}
+            </button>
           </div>
-
-          <button
-            @click="toggleUnsettledOnly"
-            :class="[
-              'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
-              filters.unsettledOnly
-                ? 'bg-warning/10 text-warning-soft'
-                : 'text-ink-soft hover:bg-surface-2'
-            ]"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {{ t('expenses.filters.unsettledOnly') }}
-          </button>
-
-          <Button v-if="hasActiveFilters" @click="resetFilters" variant="secondary" size="sm" class="text-sm">
-            {{ t('expenses.filters.reset') }}
-          </Button>
         </div>
 
         <div v-if="hasActiveFilters || expensesStore.total > 0" class="text-xs text-ink-muted">
@@ -444,7 +386,7 @@
 <script setup>
 defineOptions({ name: 'ExpensesView' })
 
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Badge from '@/components/common/Badge.vue'
@@ -458,6 +400,8 @@ import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/
 import { categoriesAPI, projectsAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
+import DateRangeField from '@/components/common/DateRangeField.vue'
+import SelectField from '@/components/common/SelectField.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import EditExpenseModal from '@/components/expenses/EditExpenseModal.vue'
 import BalanceSection from '@/components/balance/BalanceSection.vue'
@@ -574,7 +518,14 @@ function onCategoryChanged() {
   onFiltersChanged()
 }
 
+function onRangeChanged({ from, to }) {
+  filters.value.from = from
+  filters.value.to = to
+  onFiltersChanged()
+}
+
 function onFiltersChanged() {
+  filtersFromLink = false
   const params = buildParams()
   currentFilters.value = params
   expensesStore.fetchExpenses(params, { page: 1 })
@@ -583,6 +534,10 @@ function onFiltersChanged() {
 function applyFilters() {
   onFiltersChanged()
 }
+
+// Whether the current filters were put there by a link rather than by the user
+// touching the controls: those belong to that one visit.
+let filtersFromLink = false
 
 // Filters a link can carry, e.g. the dashboard's subcategory chart:
 // /expenses?category_id=3&subcategory_id=7&from=2026-10-01&to=2026-10-12
@@ -613,6 +568,7 @@ function applyRouteFilters() {
 }
 
 function resetFilters() {
+  filtersFromLink = false
   filters.value = { search: '', categoryId: '', subcategoryId: '', projectId: '', from: '', to: '', unsettledOnly: false }
   const params = { sort: sortOption.value }
   currentFilters.value = params
@@ -737,7 +693,7 @@ async function applyHighlightTarget() {
 
 onMounted(async () => {
   fetchFiltersData()
-  applyRouteFilters()
+  if (applyRouteFilters()) filtersFromLink = true
   const params = buildParams()
   currentFilters.value = params
   await expensesStore.fetchExpenses(params, { page: 1 })
@@ -759,7 +715,9 @@ watch(
 watch(
   () => ROUTE_FILTER_KEYS.map((k) => route.query[k] ?? '').join('|'),
   () => {
-    if (applyRouteFilters()) onFiltersChanged()
+    if (!applyRouteFilters()) return
+    onFiltersChanged()
+    filtersFromLink = true // the fetch above is the link's doing, not the user's
   },
 )
 
@@ -771,6 +729,16 @@ watch(
     if (validTabs.includes(next)) activeTab.value = next
   },
 )
+
+// The view is kept alive, so its filters outlive the visit. A link-driven
+// filter (the dashboard drill-through) must not: opening Spese from the nav
+// shows the whole list, never the period someone drilled into earlier. Filters
+// the user set by hand stay, as they would on any other page.
+onActivated(() => {
+  if (!filtersFromLink) return
+  if (ROUTE_FILTER_KEYS.some((k) => route.query[k])) return
+  resetFilters()
+})
 
 onUnmounted(() => {
   observer?.disconnect()

@@ -34,28 +34,13 @@
       </button>
     </div>
 
-    <!-- The range itself: one bordered field split in two, the system date
-         picker behind each half. Label above the value on a phone (each half
-         stays a full-width 44pt target), beside it with a pointer. -->
-    <div class="grid grid-cols-2 sm:inline-grid rounded-[10px] border border-line bg-surface divide-x divide-line">
-      <label
-        v-for="field in FIELDS"
-        :key="field"
-        class="flex flex-col justify-center min-w-0 px-3 min-h-[44px] sm:min-h-0 sm:h-[38px] sm:flex-row sm:items-center sm:justify-start sm:gap-2 cursor-pointer focus-within:bg-surface-2 first:rounded-l-[9px] last:rounded-r-[9px] transition-colors"
-      >
-        <span class="text-[11px] sm:text-[13px] font-medium leading-tight text-ink-muted">
-          {{ t(`dashboard.period.${field}`) }}
-        </span>
-        <input
-          type="date"
-          :value="field === 'from' ? from : to"
-          :min="field === 'to' ? from : undefined"
-          :max="field === 'from' ? to : undefined"
-          class="date-field"
-          @change="onDateChange(field, $event)"
-        />
-      </label>
-    </div>
+    <DateRangeField
+      :from="from"
+      :to="to"
+      :from-label="t('dashboard.period.from')"
+      :to-label="t('dashboard.period.to')"
+      @update:range="(range) => emit('update:range', range)"
+    />
   </div>
 </template>
 
@@ -65,10 +50,9 @@ defineOptions({ name: 'PeriodPicker' })
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PERIOD_PRESETS } from '@/utils/periodPresets'
+import DateRangeField from '@/components/common/DateRangeField.vue'
 
 const { t } = useI18n()
-
-const FIELDS = ['from', 'to']
 
 const props = defineProps({
   /** A preset key, or 'custom'. */
@@ -107,57 +91,5 @@ function onKeydown(event) {
   buttons[next]?.focus()
 }
 
-// A cleared field (iOS has a Reset button in its picker) means nothing to the
-// stats: put the old value back. Bounds are hinted with min/max, but typed
-// input can still cross them, so an inverted range is swapped, not rejected.
-function onDateChange(field, event) {
-  const value = event.target.value
-  if (!value) {
-    event.target.value = props[field]
-    return
-  }
-  let { from, to } = props
-  if (field === 'from') from = value
-  else to = value
-  if (from > to) [from, to] = [to, from]
-  emit('update:range', { from, to })
-}
 </script>
 
-<style scoped>
-/* The bordered group is the visible control; the native input inside is bare.
-   16px on a phone so Safari does not zoom on focus; color-scheme makes the
-   system picker follow the app theme instead of the OS one. */
-.date-field {
-  appearance: none;
-  -webkit-appearance: none;
-  min-width: 0;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: rgb(var(--c-ink));
-  font-size: 1rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.375;
-  color-scheme: light;
-  cursor: pointer;
-}
-.dark .date-field {
-  color-scheme: dark;
-}
-.date-field::-webkit-date-and-time-value {
-  text-align: left;
-  min-height: 1.375em;
-}
-.date-field:focus {
-  outline: none;
-}
-@media (min-width: 640px) {
-  .date-field {
-    width: auto;
-    font-size: 0.875rem;
-  }
-}
-</style>
