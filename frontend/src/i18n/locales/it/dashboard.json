@@ -29,29 +29,16 @@
     "datasetLabel": "Spese",
     "otherCategories": "Altre ({count})",
     "drillDownAria": "Vedi il dettaglio di {category}",
+    "showExpensesAria": "Mostra le spese di {category}",
     "noData": "Nessun dato disponibile"
-  },
-  "filters": {
-    "filtersLabel": "Filtri",
-    "reset": "Reset",
-    "resetFilters": "Reset Filtri",
-    "categoryLabel": "Categoria:",
-    "projectLabel": "Progetto:",
-    "fromLabel": "Da:",
-    "toLabel": "A:",
-    "allCategoriesShort": "Tutte",
-    "allProjectsShort": "Tutti",
-    "allCategoriesLong": "Tutte categorie",
-    "allProjectsLong": "Tutti progetti"
   },
   "attention": {
     "title": "Da gestire",
-    "subtitle_one": "{n} cosa richiede attenzione",
-    "subtitle_other": "{n} elementi richiedono attenzione",
     "allClear": "Tutto in ordine",
     "allClearSub": "Nessuna bolletta in scadenza, nessun saldo aperto",
     "more_one": "+{n} altro",
     "more_other": "+{n} altri",
+    "showLess": "Mostra meno",
     "open": "Apri",
     "readingsGroup": "{n} letture da registrare",
     "settle": "Salda",
@@ -70,10 +57,10 @@
     "lastReading": "Ultima lettura: {date}"
   },
   "period": {
-    "days7": "7 giorni",
-    "days30": "30 giorni",
-    "days90": "90 giorni",
-    "year": "Anno",
-    "custom": "Personalizzato"
+    "label": "Periodo",
+    "thisMonth": "Questo mese",
+    "thisYear": "Quest'anno",
+    "from": "Dal",
+    "to": "Al"
   }
 }

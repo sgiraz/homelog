@@ -29,29 +29,16 @@
     "datasetLabel": "Ausgaben",
     "otherCategories": "Andere ({count})",
     "drillDownAria": "Details zu {category} anzeigen",
+    "showExpensesAria": "Ausgaben für {category} anzeigen",
     "noData": "Keine Daten verfügbar"
-  },
-  "filters": {
-    "filtersLabel": "Filter",
-    "reset": "Zurücksetzen",
-    "resetFilters": "Filter zurücksetzen",
-    "categoryLabel": "Kategorie:",
-    "projectLabel": "Projekt:",
-    "fromLabel": "Von:",
-    "toLabel": "Bis:",
-    "allCategoriesShort": "Alle",
-    "allProjectsShort": "Alle",
-    "allCategoriesLong": "Alle Kategorien",
-    "allProjectsLong": "Alle Projekte"
   },
   "attention": {
     "title": "Zu erledigen",
-    "subtitle_one": "{n} Aufgabe erfordert Aufmerksamkeit",
-    "subtitle_other": "{n} Aufgaben erfordern Aufmerksamkeit",
     "allClear": "Alles erledigt",
     "allClearSub": "Keine Rechnungen fällig, kein offener Saldo",
     "more_one": "+{n} weitere",
     "more_other": "+{n} weitere",
+    "showLess": "Weniger anzeigen",
     "open": "Öffnen",
     "readingsGroup": "{n} Messwerte zu erfassen",
     "settle": "Ausgleichen",
@@ -70,10 +57,10 @@
     "lastReading": "Letzter Messwert: {date}"
   },
   "period": {
-    "days7": "7 Tage",
-    "days30": "30 Tage",
-    "days90": "90 Tage",
-    "year": "Jahr",
-    "custom": "Benutzerdefiniert"
+    "label": "Zeitraum",
+    "thisMonth": "Dieser Monat",
+    "thisYear": "Dieses Jahr",
+    "from": "Von",
+    "to": "Bis"
   }
 }

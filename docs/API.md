@@ -82,7 +82,7 @@ POST   /expenses                # Create expense (supports split)
 GET    /expenses/:id            # Get expense
 PUT    /expenses/:id            # Update expense (restricted if settled)
 DELETE /expenses/:id            # Delete expense
-GET    /expenses/stats          # Expense statistics (trend, by_category, totals); params: period
+GET    /expenses/stats          # Expense statistics (trend, by_category, totals); params: from, to, category_id, compare (month|year), period, year
                                 # (1m|3m|6m|12m), year, from, to, all, category_id (switches the
                                 # breakdown to subcategories), property_id
 PATCH  /expenses/:id/long-term-debt  # Move the expense's shares out of the running

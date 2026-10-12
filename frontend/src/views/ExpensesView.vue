@@ -445,7 +445,7 @@
 defineOptions({ name: 'ExpensesView' })
 
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Badge from '@/components/common/Badge.vue'
 import { useExpensesStore } from '@/stores/expenses'
@@ -465,6 +465,7 @@ import DebtsSection from '@/components/balance/DebtsSection.vue'
 import { apiErrorMessage } from '@/utils/apiError'
 
 const route = useRoute()
+const router = useRouter()
 const { t } = useI18n()
 const expensesStore = useExpensesStore()
 const authStore = useAuthStore()
@@ -581,6 +582,34 @@ function onFiltersChanged() {
 
 function applyFilters() {
   onFiltersChanged()
+}
+
+// Filters a link can carry, e.g. the dashboard's subcategory chart:
+// /expenses?category_id=3&subcategory_id=7&from=2026-10-01&to=2026-10-12
+const ROUTE_FILTER_KEYS = ['category_id', 'subcategory_id', 'from', 'to']
+
+// Replaces the filters with the ones in the URL, then drops them from the URL:
+// this view is kept alive, so the same link followed twice must still read as
+// a query change. Returns whether the URL carried any.
+function applyRouteFilters() {
+  const q = route.query
+  // Kept alive, the watcher below also sees other pages' queries.
+  if (route.name !== 'expenses' || !ROUTE_FILTER_KEYS.some((k) => q[k])) return false
+  const id = (v) => (v ? Number(v) : '')
+  filters.value = {
+    search: '',
+    categoryId: id(q.category_id),
+    subcategoryId: q.subcategory_id === NO_SUBCATEGORY ? NO_SUBCATEGORY : id(q.subcategory_id),
+    projectId: '',
+    from: q.from || '',
+    to: q.to || '',
+    unsettledOnly: false
+  }
+  activeTab.value = 'lista'
+  const rest = { ...q }
+  ROUTE_FILTER_KEYS.forEach((k) => delete rest[k])
+  router.replace({ query: rest })
+  return true
 }
 
 function resetFilters() {
@@ -708,7 +737,8 @@ async function applyHighlightTarget() {
 
 onMounted(async () => {
   fetchFiltersData()
-  const params = { sort: sortOption.value }
+  applyRouteFilters()
+  const params = buildParams()
   currentFilters.value = params
   await expensesStore.fetchExpenses(params, { page: 1 })
   await applyHighlightTarget()
@@ -723,6 +753,13 @@ watch(
   (next, prev) => {
     if (next === prev) return
     applyHighlightTarget()
+  },
+)
+
+watch(
+  () => ROUTE_FILTER_KEYS.map((k) => route.query[k] ?? '').join('|'),
+  () => {
+    if (applyRouteFilters()) onFiltersChanged()
   },
 )
 

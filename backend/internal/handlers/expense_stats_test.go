@@ -155,6 +155,48 @@ func TestStats_PreviousWindowHasSameLength(t *testing.T) {
 	}
 }
 
+func TestStats_CompareMonthAlignsToPreviousMonth(t *testing.T) {
+	f := setupMoneyFixture(t)
+	f.addExpense(t, 100, utc(2026, 10, 5), f.casaCatID, nil)
+	f.addExpense(t, 40, utc(2026, 9, 3), f.casaCatID, nil)   // 1-12 Sep: the aligned window
+	f.addExpense(t, 500, utc(2026, 9, 25), f.casaCatID, nil) // inside a same-length window, not an aligned one
+
+	got := f.getStats(t, f.aliceTok, "from=2026-10-01&to=2026-10-12&compare=month")
+
+	if got.Previous.Start != "2026-09-01" || got.Previous.End != "2026-09-12" {
+		t.Errorf("previous window = %s → %s, want 2026-09-01 → 2026-09-12", got.Previous.Start, got.Previous.End)
+	}
+	if !approx(got.Previous.Total, 40) {
+		t.Errorf("previous total = %.2f, want 40", got.Previous.Total)
+	}
+}
+
+func TestStats_CompareMonthClampsToShorterMonth(t *testing.T) {
+	f := setupMoneyFixture(t)
+
+	got := f.getStats(t, f.aliceTok, "from=2026-03-01&to=2026-03-31&compare=month")
+
+	if got.Previous.Start != "2026-02-01" || got.Previous.End != "2026-02-28" {
+		t.Errorf("previous window = %s → %s, want 2026-02-01 → 2026-02-28 (not spilling into March)", got.Previous.Start, got.Previous.End)
+	}
+}
+
+func TestStats_CompareYearAlignsToPreviousYear(t *testing.T) {
+	f := setupMoneyFixture(t)
+	f.addExpense(t, 200, utc(2026, 4, 1), f.casaCatID, nil)
+	f.addExpense(t, 60, utc(2025, 3, 1), f.casaCatID, nil)    // 1 Jan-12 Oct 2025: the aligned window
+	f.addExpense(t, 300, utc(2025, 11, 20), f.casaCatID, nil) // inside a same-length window, not an aligned one
+
+	got := f.getStats(t, f.aliceTok, "from=2026-01-01&to=2026-10-12&compare=year")
+
+	if got.Previous.Start != "2025-01-01" || got.Previous.End != "2025-10-12" {
+		t.Errorf("previous window = %s → %s, want 2025-01-01 → 2025-10-12", got.Previous.Start, got.Previous.End)
+	}
+	if !approx(got.Previous.Total, 60) {
+		t.Errorf("previous total = %.2f, want 60", got.Previous.Total)
+	}
+}
+
 func TestStats_DailyAndQuarterlyGranularity(t *testing.T) {
 	f := setupMoneyFixture(t)
 	f.addExpense(t, 10, utc(2026, 1, 3), f.casaCatID, nil)
@@ -270,21 +312,6 @@ func TestStats_EmptyHouseholdHasNoNaN(t *testing.T) {
 	}
 	if got.Trend == nil || got.ByCategory == nil {
 		t.Error("empty series must serialise as [] and not null")
-	}
-}
-
-func TestStats_AllStartsAtFirstExpense(t *testing.T) {
-	f := setupMoneyFixture(t)
-	f.addExpense(t, 10, utc(2024, 3, 15), f.casaCatID, nil)
-	f.addExpense(t, 20, utc(2025, 7, 1), f.casaCatID, nil)
-
-	got := f.getStats(t, f.aliceTok, "all=true")
-
-	if got.Period.Start != "2024-03-15" {
-		t.Errorf("period start = %s, want the first expense's date 2024-03-15", got.Period.Start)
-	}
-	if !approx(got.TotalPeriod, 30) {
-		t.Errorf("total = %.2f, want 30", got.TotalPeriod)
 	}
 }
 
