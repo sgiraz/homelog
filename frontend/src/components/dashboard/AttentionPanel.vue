@@ -1,94 +1,98 @@
 <template>
-  <Card class="p-4 sm:p-5 border-l-4 border-l-accent">
-    <!-- Header: quiet but clearly the section title — hierarchy comes from type
-         (larger/bolder than the rows) + spacing + a hairline, NOT a fill. The
-         urgency colour lives in each row's status chip, per HIG/Material. -->
-    <div class="flex items-center gap-3 pb-3 mb-3 border-b border-line/60">
-      <span class="w-9 h-9 rounded-xl grid place-items-center shrink-0 bg-accent-soft/15 text-accent-soft">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
-      </span>
-      <div class="min-w-0">
-        <h2 class="text-base font-semibold text-ink leading-tight">{{ t('dashboard.attention.title') }}</h2>
-        <p class="text-xs text-ink-muted leading-tight">
-          {{ items.length
-            ? t(`dashboard.attention.${items.length === 1 ? 'subtitle_one' : 'subtitle_other'}`, { n: items.length })
-            : t('dashboard.attention.allClear') }}
-        </p>
-      </div>
-    </div>
+  <!-- Nothing to do is not news: one quiet line, no card. -->
+  <div
+    v-if="!items.length"
+    class="flex items-center gap-2 px-1 text-sm min-w-0"
+    :title="t('dashboard.attention.allClearSub')"
+  >
+    <svg class="w-4 h-4 shrink-0 text-positive-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+    </svg>
+    <span class="font-medium text-ink shrink-0">{{ t('dashboard.attention.allClear') }}</span>
+    <span class="text-ink-muted truncate">· {{ emptyDetail || t('dashboard.attention.allClearSub') }}</span>
+  </div>
 
-    <!-- Calm "all clear" state -->
-    <div v-if="!items.length" class="flex items-start gap-3 py-1">
-      <span class="w-8 h-8 rounded-lg grid place-items-center shrink-0 bg-positive/15 text-positive">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-        </svg>
-      </span>
-      <div class="min-w-0">
-        <div class="text-sm text-ink">{{ t('dashboard.attention.allClearSub') }}</div>
-        <div v-if="emptyDetail" class="text-xs text-ink-faint mt-0.5">{{ emptyDetail }}</div>
-      </div>
-    </div>
-
-    <!-- Concrete items (3 on mobile, 5 on desktop) -->
-    <template v-else>
-      <ul class="divide-y divide-line/60">
-        <li
-          v-for="(item, idx) in items"
-          :key="item.key"
-          class="flex items-center gap-3 py-2.5"
-          :class="{ 'hidden md:flex': idx >= 3 && !showAllMobile }"
-        >
-          <span :class="['w-8 h-8 rounded-lg grid place-items-center shrink-0', toneChip[item.tone]]">
-            <component :is="icons[item.icon]" />
-          </span>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium text-ink truncate">{{ item.title }}</div>
-            <div class="text-xs truncate" :class="toneText[item.tone] || 'text-ink-muted'">{{ item.detail }}</div>
-          </div>
-          <component
-            :is="item.to ? 'router-link' : 'button'"
-            :to="item.to"
-            type="button"
-            class="action-pill shrink-0"
-            @click="!item.to && $emit('action', item)"
-          >
-            {{ item.action }}
-          </component>
-        </li>
-      </ul>
-
-      <!-- Mobile-only overflow reveal -->
-      <button
-        v-if="items.length > 3 && !showAllMobile"
-        type="button"
-        class="md:hidden mt-2 text-xs font-medium text-ink-muted hover:text-ink"
-        @click="showAllMobile = true"
+  <!-- A bar, not a panel: the most urgent item is always on screen (items come
+       sorted by urgency), the rest wait one tap away. The urgency colour lives
+       in each row's chip, so the bar itself needs no header. -->
+  <Card
+    v-else
+    role="region"
+    :aria-label="t('dashboard.attention.title')"
+    class="px-3 py-1 sm:px-4 border-l-4 border-l-accent"
+  >
+    <ul :id="listId">
+      <li
+        v-for="(item, idx) in visibleItems"
+        :key="item.key"
+        class="flex items-center gap-3 py-2"
+        :class="{ 'border-t border-line/60': idx > 0 }"
       >
-        {{ t(`dashboard.attention.${items.length - 3 === 1 ? 'more_one' : 'more_other'}`, { n: items.length - 3 }) }}
+        <span :class="['w-8 h-8 rounded-lg grid place-items-center shrink-0', toneChip[item.tone]]">
+          <component :is="icons[item.icon]" />
+        </span>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-ink truncate">{{ item.title }}</div>
+          <div class="text-xs truncate" :class="toneText[item.tone] || 'text-ink-muted'">{{ item.detail }}</div>
+        </div>
+        <component
+          :is="item.to ? 'router-link' : 'button'"
+          :to="item.to"
+          type="button"
+          class="action-pill shrink-0"
+          @click="!item.to && $emit('action', item)"
+        >
+          {{ item.action }}
+        </component>
+        <button
+          v-if="idx === 0 && hiddenCount > 0"
+          type="button"
+          class="shrink-0 inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors"
+          :aria-expanded="false"
+          :aria-controls="listId"
+          @click="expanded = true"
+        >
+          {{ t(`dashboard.attention.${hiddenCount === 1 ? 'more_one' : 'more_other'}`, { n: hiddenCount }) }}
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </li>
+    </ul>
+
+    <div v-if="expanded && items.length > 1" class="flex justify-end pb-2">
+      <button
+        type="button"
+        class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors"
+        :aria-expanded="true"
+        :aria-controls="listId"
+        @click="expanded = false"
+      >
+        {{ t('dashboard.attention.showLess') }}
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7" />
+        </svg>
       </button>
-    </template>
+    </div>
   </Card>
 </template>
 
 <script setup>
 defineOptions({ name: 'AttentionPanel' })
 
-import { ref, h } from 'vue'
+import { ref, computed, h } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from '@/components/common/Card.vue'
 
 const { t } = useI18n()
 
-defineProps({
+const props = defineProps({
   // [{ key, tone, icon, title, detail, action, to? }] — to omitted → emits 'action'
   items: {
     type: Array,
     default: () => []
   },
-  // Optional micro-line shown under the "all clear" state
+  // Optional micro-line shown beside "all clear"
   emptyDetail: {
     type: String,
     default: ''
@@ -97,7 +101,11 @@ defineProps({
 
 defineEmits(['action'])
 
-const showAllMobile = ref(false)
+const listId = 'attention-items'
+const expanded = ref(false)
+
+const visibleItems = computed(() => (expanded.value ? props.items : props.items.slice(0, 1)))
+const hiddenCount = computed(() => props.items.length - visibleItems.value.length)
 
 // Tone → chip color classes (the left status chip carries the urgency colour)
 const toneChip = {

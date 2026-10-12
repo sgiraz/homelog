@@ -36,8 +36,43 @@ type CategoryStats struct {
 	Percentage   float64 `json:"percentage"`
 }
 
+// shiftMonths moves t by n calendar months, clamping the day to the target
+// month's length: 31 March minus one month is 28/29 February, not 3 March
+// (which is what time.AddDate would give).
+func shiftMonths(t time.Time, n int) time.Time {
+	first := time.Date(t.Year(), t.Month()+time.Month(n), 1, t.Hour(), t.Minute(), t.Second(), 0, t.Location())
+	lastDay := first.AddDate(0, 1, -1).Day()
+	day := t.Day()
+	if day > lastDay {
+		day = lastDay
+	}
+	return time.Date(first.Year(), first.Month(), day, t.Hour(), t.Minute(), t.Second(), 0, t.Location())
+}
+
+// comparisonWindow returns the window the selected one is compared against.
+//
+//   - "month": the same stretch of the previous month, so 1-12 October is
+//     weighed against 1-12 September, not against 19-30 September.
+//   - "year": the same stretch of the previous year (year to date vs year to date).
+//   - anything else: a window of the same length ending the day before.
+//
+// Month-to-date and year-to-date totals are lumpy (rent lands on the 1st), so
+// only a calendar-aligned reference is a fair one; the same-length window stays
+// the right answer for an arbitrary range.
+func comparisonWindow(mode string, start, end time.Time) (time.Time, time.Time) {
+	switch mode {
+	case "month":
+		return shiftMonths(start, -1), shiftMonths(end, -1)
+	case "year":
+		return shiftMonths(start, -12), shiftMonths(end, -12)
+	}
+	previousEnd := start.Add(-time.Second)
+	return previousEnd.Add(-end.Sub(start)), previousEnd
+}
+
 // GetStats returns statistics for charts
 // GET /api/v1/expenses/stats?period=6m&property_id=1&year=2024
+// compare=month|year aligns the "previous" window to the calendar.
 func (h *ExpenseHandler) GetStats(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -94,21 +129,6 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		}
 	}
 
-	// "all=true" overrides everything: use first expense date → today
-	if c.Query("all") == "true" {
-		var minDateStr string
-		h.db.Model(&models.Expense{}).
-			Where("property_id IN ?", memberPropertyIDs).
-			Select("substr(MIN(date), 1, 10)").
-			Scan(&minDateStr)
-		if minDateStr != "" {
-			if t, err := time.Parse("2006-01-02", minDateStr); err == nil {
-				startDate = t
-			}
-		}
-		endDate = now
-	}
-
 	// Shared WHERE conditions. Dates compare by substr, not date()/strftime(), to
 	// avoid the UTC shift described in dateOnly.
 	baseWhere := "property_id IN ? AND substr(date, 1, 10) >= ? AND substr(date, 1, 10) <= ?"
@@ -120,6 +140,11 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		baseWhere += " AND category_id = ?"
 		joinWhere += " AND expenses.category_id = ?"
 		baseArgs = append(baseArgs, categoryID)
+	}
+	if projectID := c.Query("project_id"); projectID != "" {
+		baseWhere += " AND project_id = ?"
+		joinWhere += " AND expenses.project_id = ?"
+		baseArgs = append(baseArgs, projectID)
 	}
 	if propertyID := c.Query("property_id"); propertyID != "" {
 		baseWhere += " AND property_id = ?"
@@ -333,11 +358,10 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		Where(baseWhere, baseArgs...).
 		Count(&periodCount)
 
-	// Same-length window immediately before the selected one, so the client can
-	// say "-12% vs the previous 30 days". A total on its own is not actionable:
-	// it takes a reference to become a signal.
-	previousEnd := startDate.Add(-time.Second)
-	previousStart := previousEnd.Add(-endDate.Sub(startDate))
+	// The window the selected one is compared with, so the client can say
+	// "-12% vs the previous period". A total on its own is not actionable: it
+	// takes a reference to become a signal.
+	previousStart, previousEnd := comparisonWindow(c.Query("compare"), startDate, endDate)
 	previousArgs := append([]any{memberPropertyIDs, previousStart.Format("2006-01-02"), previousEnd.Format("2006-01-02")}, baseArgs[3:]...)
 	var totalPrevious float64
 	h.db.Model(&models.Expense{}).

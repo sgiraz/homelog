@@ -29,6 +29,7 @@
     "datasetLabel": "Expenses",
     "otherCategories": "Other ({count})",
     "drillDownAria": "Drill down into {category}",
+    "showExpensesAria": "Show the {category} expenses",
     "noData": "No data available"
   },
   "filters": {
@@ -46,12 +47,11 @@
   },
   "attention": {
     "title": "To do",
-    "subtitle_one": "{n} thing needs attention",
-    "subtitle_other": "{n} things need attention",
     "allClear": "All clear",
     "allClearSub": "No bills due, no open balance",
     "more_one": "+{n} more",
     "more_other": "+{n} more",
+    "showLess": "Show less",
     "open": "Open",
     "readingsGroup": "{n} readings to log",
     "settle": "Settle",
@@ -70,10 +70,8 @@
     "lastReading": "Last reading: {date}"
   },
   "period": {
-    "days7": "7 days",
-    "days30": "30 days",
-    "days90": "90 days",
-    "year": "Year",
+    "thisMonth": "This month",
+    "thisYear": "This year",
     "custom": "Custom"
   }
 }

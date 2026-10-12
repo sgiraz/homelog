@@ -47,8 +47,8 @@
          "how much in the last N days" without touching a date picker. -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <PeriodChips
-        :activeDays="activePeriodDays"
-        @select="selectPeriodDays"
+        :active="activePeriod?.key ?? null"
+        @select="selectPeriod"
         @open-filters="filtersOpen = true"
       />
     </div>
@@ -123,10 +123,12 @@ defineOptions({ name: 'DashboardView' })
 
 import { ref, computed, onMounted, onActivated, onDeactivated, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useExpensesStore } from '@/stores/expenses'
 import { useSettingsStore } from '@/stores/settings'
 import { categoriesAPI, projectsAPI, expensesAPI, utilitiesAPI, balanceAPI } from '@/api/client'
-import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatCurrencyCompact as _formatCurrencyCompact, formatTrendLabel, yearOf, dateOnly, todayDateOnly } from '@/utils/dateFormatter'
+import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatCurrencyCompact as _formatCurrencyCompact, formatTrendLabel, yearOf } from '@/utils/dateFormatter'
+import { PERIOD_PRESETS, matchPreset, presetRange } from '@/utils/periodPresets'
 import { statsCategoryLabel } from '@/utils/categoryLabel'
 import { foldSlices, sliceColors } from '@/utils/chartSlices'
 import { useChartTheme } from '@/composables/useChartTheme'
@@ -141,6 +143,7 @@ import DashboardFilters from '@/components/dashboard/DashboardFilters.vue'
 import SettlementModal from '@/components/balance/SettlementModal.vue'
 
 const { t } = useI18n()
+const router = useRouter()
 const expensesStore = useExpensesStore()
 const settingsStore = useSettingsStore()
 
@@ -149,25 +152,18 @@ const showSettle = ref(false)
 const filtersOpen = ref(false)
 const categories = ref([])
 const projects = ref([])
-function defaultDateRange() {
-  const today = new Date()
-  const from = new Date(today)
-  from.setFullYear(from.getFullYear() - 1)
-  from.setDate(from.getDate() + 1)
-  return {
-    from: dateOnly(from),
-    to: dateOnly(today)
-  }
+// The preset the user last clicked: breaks the tie when a range fits two of
+// them (all of January is both "this month" and "this year").
+const DEFAULT_PRESET = 'thisMonth'
+const pickedPreset = ref(DEFAULT_PRESET)
+
+// What the dashboard shows on open, and what "reset" returns to.
+function defaultFilters() {
+  const preset = PERIOD_PRESETS.find((p) => p.key === DEFAULT_PRESET)
+  return { categoryId: '', projectId: '', ...presetRange(preset) }
 }
 
-const { from: defaultFrom, to: defaultTo } = defaultDateRange()
-
-const filters = ref({
-  categoryId: '',
-  projectId: '',
-  from: defaultFrom,
-  to: defaultTo
-})
+const filters = ref(defaultFilters())
 
 const hasActiveFilters = computed(() =>
   filters.value.categoryId || filters.value.projectId
@@ -262,8 +258,10 @@ const categoryRows = computed(() => {
       amount: slice.amount,
       share: total > 0 ? (slice.amount / total) * 100 : 0,
       color: colors[i],
-      clickable: !!slice.row && !stats.value?.is_subcategory,
-      aria: t('dashboard.charts.drillDownAria', { category: label })
+      clickable: !!slice.row,
+      aria: stats.value?.is_subcategory
+        ? t('dashboard.charts.showExpensesAria', { category: label })
+        : t('dashboard.charts.drillDownAria', { category: label })
     }
   })
 })
@@ -344,7 +342,8 @@ function serviceLabel(u) {
 // Concrete, per-item "to handle" brief. Each row names the specific service,
 // shows its amount/date, and links to the most specific destination (or opens
 // a modal). Priority: overdue bills → due-soon → open balance → missing
-// readings → projects over budget. Capped to 5 (panel shows 3 on mobile).
+// readings → projects over budget. The panel shows the first one and keeps the
+// rest behind a toggle, so the list is not capped.
 const attentionItems = computed(() => {
   const items = []
   const todayStart = new Date()
@@ -462,7 +461,7 @@ const attentionItems = computed(() => {
     }
   })
 
-  return items.slice(0, 5)
+  return items
 })
 
 // Micro-line for the calm empty state: last expense + last reading dates.
@@ -556,10 +555,21 @@ function buildStatsParams() {
   return params
 }
 
+// A category drills down into its subcategories; a subcategory is the bottom of
+// the chart, so it opens the expense list behind it, same filters and period.
+// The rows carry the subcategory id in category_id; 0 is "no subcategory".
 function onPieSliceClick(index) {
   // Index addresses the drawn slices, not the raw rows.
   const item = categorySlices.value[index]?.row
-  if (!item || !item.category_id) return
+  if (!item) return
+  if (stats.value?.is_subcategory) {
+    router.push({
+      path: '/expenses',
+      query: { ...buildStatsParams(), subcategory_id: item.category_id || 'none' }
+    })
+    return
+  }
+  if (!item.category_id) return
   filters.value.categoryId = item.category_id
   applyFilters()
 }
@@ -572,40 +582,33 @@ function onPieBack() {
   applyFilters()
 }
 
-// A chip is active when the current range is exactly that many days long and
+// A chip is active when the current range is exactly that preset's range and
 // ends today; anything else is "custom", which is a state, not a preset.
-const activePeriodDays = computed(() => {
-  const { from, to } = filters.value
-  if (!from || !to || to !== todayDateOnly()) return null
-  const days = Math.round((new Date(to) - new Date(from)) / MS_PER_DAY) + 1
-  return [7, 30, 90, 365].includes(days) ? days : null
-})
+const activePeriod = computed(() =>
+  matchPreset(filters.value.from, filters.value.to, pickedPreset.value)
+)
 
-function selectPeriodDays(days) {
-  const to = new Date()
-  const from = new Date(to)
-  from.setDate(from.getDate() - (days - 1))
-  filters.value.from = dateOnly(from)
-  filters.value.to = dateOnly(to)
+function selectPeriod(preset) {
+  const { from, to } = presetRange(preset)
+  pickedPreset.value = preset.key
+  filters.value.from = from
+  filters.value.to = to
   applyFilters()
 }
 
 function applyFilters() {
   const params = buildStatsParams()
   expensesStore.fetchExpenses(params)
-  fetchStats(params)
+  // Only the stats endpoint knows how to align the "previous" window to the
+  // calendar; a custom range keeps the default same-length one.
+  const compare = activePeriod.value?.compare
+  fetchStats(compare ? { ...params, compare } : params)
 }
 
-async function resetFilters() {
-  filters.value = { categoryId: '', projectId: '', from: '', to: '' }
-  // Fetch stats with full range to discover first expense date → today
-  await fetchStats({ all: true })
-  // Populate date fields from the returned period (never empty)
-  if (stats.value?.period) {
-    filters.value.from = stats.value.period.start
-    filters.value.to = stats.value.period.end
-  }
-  expensesStore.fetchExpenses(buildStatsParams())
+function resetFilters() {
+  pickedPreset.value = DEFAULT_PRESET
+  filters.value = defaultFilters()
+  applyFilters()
 }
 
 function onExpenseCreated() {
