@@ -5,7 +5,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -195,23 +194,6 @@ func TestStats_CompareYearAlignsToPreviousYear(t *testing.T) {
 	}
 	if !approx(got.Previous.Total, 60) {
 		t.Errorf("previous total = %.2f, want 60", got.Previous.Total)
-	}
-}
-
-func TestStats_ProjectFilter(t *testing.T) {
-	f := setupMoneyFixture(t)
-	p := models.Project{UserID: f.alice.ID, Name: "Bagno"}
-	mustCreate(t, f.db, &p)
-	inProject := f.addExpense(t, 120, utc(2026, 2, 10), f.casaCatID, nil)
-	if err := f.db.Model(&inProject).Update("project_id", p.ID).Error; err != nil {
-		t.Fatal(err)
-	}
-	f.addExpense(t, 80, utc(2026, 2, 11), f.casaCatID, nil)
-
-	got := f.getStats(t, f.aliceTok, fmt.Sprintf("from=2026-01-01&to=2026-03-31&project_id=%d", p.ID))
-
-	if !approx(got.TotalPeriod, 120) || got.Count != 1 {
-		t.Errorf("project total = %.2f over %d, want 120 over 1", got.TotalPeriod, got.Count)
 	}
 }
 

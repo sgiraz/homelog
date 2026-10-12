@@ -43,27 +43,14 @@
       @action="onAttentionAction"
     />
 
-    <!-- Quick windows first, full filters behind them: the fast path answers
-         "how much in the last N days" without touching a date picker. -->
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <PeriodChips
-        :active="activePeriod?.key ?? null"
-        @select="selectPeriod"
-        @open-filters="filtersOpen = true"
-      />
-    </div>
-
-    <DashboardFilters
-      :filters="filters"
-      :categories="categories"
-      :projects="projects"
-      :filtersOpen="filtersOpen"
-      :hasActiveFilters="hasActiveFilters"
-      :activeFiltersCount="activeFiltersCount"
-      @update:filters="filters = $event"
-      @update:filtersOpen="filtersOpen = $event"
-      @apply="applyFilters"
-      @reset="resetFilters"
+    <!-- The period is the dashboard's only filter: categories are narrowed by
+         tapping the chart, projects have their own view. -->
+    <PeriodPicker
+      :mode="periodMode"
+      :from="filters.from"
+      :to="filters.to"
+      @select="selectPeriod"
+      @update:range="setCustomRange"
     />
 
     <!-- KPI Cards -->
@@ -126,9 +113,9 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useExpensesStore } from '@/stores/expenses'
 import { useSettingsStore } from '@/stores/settings'
-import { categoriesAPI, projectsAPI, expensesAPI, utilitiesAPI, balanceAPI } from '@/api/client'
-import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatCurrencyCompact as _formatCurrencyCompact, formatTrendLabel, yearOf } from '@/utils/dateFormatter'
-import { PERIOD_PRESETS, matchPreset, presetRange } from '@/utils/periodPresets'
+import { projectsAPI, expensesAPI, utilitiesAPI, balanceAPI } from '@/api/client'
+import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatCurrencyCompact as _formatCurrencyCompact, formatTrendLabel, yearOf, todayDateOnly } from '@/utils/dateFormatter'
+import { PERIOD_PRESETS, presetRange } from '@/utils/periodPresets'
 import { statsCategoryLabel } from '@/utils/categoryLabel'
 import { foldSlices, sliceColors } from '@/utils/chartSlices'
 import { useChartTheme } from '@/composables/useChartTheme'
@@ -136,10 +123,9 @@ import Button from '@/components/common/Button.vue'
 import Card from '@/components/common/Card.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
 import KpiCards from '@/components/dashboard/KpiCards.vue'
-import PeriodChips from '@/components/dashboard/PeriodChips.vue'
+import PeriodPicker from '@/components/dashboard/PeriodPicker.vue'
 import AttentionPanel from '@/components/dashboard/AttentionPanel.vue'
 import DashboardCharts from '@/components/dashboard/DashboardCharts.vue'
-import DashboardFilters from '@/components/dashboard/DashboardFilters.vue'
 import SettlementModal from '@/components/balance/SettlementModal.vue'
 
 const { t } = useI18n()
@@ -149,34 +135,14 @@ const settingsStore = useSettingsStore()
 
 const showAddExpense = ref(false)
 const showSettle = ref(false)
-const filtersOpen = ref(false)
-const categories = ref([])
 const projects = ref([])
-// The preset the user last clicked: breaks the tie when a range fits two of
-// them (all of January is both "this month" and "this year").
-const DEFAULT_PRESET = 'thisMonth'
-const pickedPreset = ref(DEFAULT_PRESET)
 
-// What the dashboard shows on open, and what "reset" returns to.
-function defaultFilters() {
-  const preset = PERIOD_PRESETS.find((p) => p.key === DEFAULT_PRESET)
-  return { categoryId: '', projectId: '', ...presetRange(preset) }
-}
+// A preset key or 'custom'. Kept as state rather than derived from the dates:
+// all of January fits both presets, and the one the user tapped must stay lit.
+const periodMode = ref('thisMonth')
+const activePreset = computed(() => PERIOD_PRESETS.find((p) => p.key === periodMode.value))
 
-const filters = ref(defaultFilters())
-
-const hasActiveFilters = computed(() =>
-  filters.value.categoryId || filters.value.projectId
-)
-
-const activeFiltersCount = computed(() => {
-  let count = 0
-  if (filters.value.categoryId) count++
-  if (filters.value.projectId) count++
-  if (filters.value.from) count++
-  if (filters.value.to) count++
-  return count
-})
+const filters = ref({ categoryId: '', ...presetRange(activePreset.value) })
 
 // Stats from API (used for KPIs and charts)
 const stats = ref(null)
@@ -510,27 +476,14 @@ async function fetchStats(params = {}) {
   }
 }
 
-// Separate from the categories fetch because projects carry the budget stats
-// the brief reads, so they have to be refreshed on every re-activation, while
-// categories only change from Settings.
+// Projects carry the budget stats the brief reads, so they are refreshed on
+// every re-activation.
 async function fetchProjects() {
   try {
     const { data } = await projectsAPI.list()
     projects.value = data?.projects || data || []
   } catch (err) {
     console.error('Error fetching projects:', err)
-  }
-}
-
-async function fetchFiltersData() {
-  try {
-    const [catRes] = await Promise.all([
-      categoriesAPI.list(),
-      fetchProjects()
-    ])
-    categories.value = catRes.data || []
-  } catch (err) {
-    console.error('Error fetching filter data:', err)
   }
 }
 
@@ -549,14 +502,13 @@ function formatDate(dateStr) {
 function buildStatsParams() {
   const params = {}
   if (filters.value.categoryId) params.category_id = filters.value.categoryId
-  if (filters.value.projectId) params.project_id = filters.value.projectId
   if (filters.value.from) params.from = filters.value.from
   if (filters.value.to) params.to = filters.value.to
   return params
 }
 
 // A category drills down into its subcategories; a subcategory is the bottom of
-// the chart, so it opens the expense list behind it, same filters and period.
+// the chart, so it opens the expense list behind it, same category and period.
 // The rows carry the subcategory id in category_id; 0 is "no subcategory".
 function onPieSliceClick(index) {
   // Index addresses the drawn slices, not the raw rows.
@@ -575,22 +527,27 @@ function onPieSliceClick(index) {
 }
 
 // Steps back from the subcategory drill-down to the by-category view: clears
-// only the category filter, leaving the others (period, project) untouched.
+// only the category filter, leaving the period untouched.
 function onPieBack() {
   if (!filters.value.categoryId) return
   filters.value.categoryId = ''
   applyFilters()
 }
 
-// A chip is active when the current range is exactly that preset's range and
-// ends today; anything else is "custom", which is a state, not a preset.
-const activePeriod = computed(() =>
-  matchPreset(filters.value.from, filters.value.to, pickedPreset.value)
-)
+function selectPeriod(key) {
+  periodMode.value = key
+  Object.assign(filters.value, presetRange(activePreset.value))
+  applyFilters()
+}
 
-function selectPeriod(preset) {
-  const { from, to } = presetRange(preset)
-  pickedPreset.value = preset.key
+// Hand-picked dates that land exactly on a preset light it up again; anything
+// else is a custom range, with no segment selected.
+function setCustomRange({ from, to }) {
+  const preset = PERIOD_PRESETS.find((p) => {
+    const range = presetRange(p)
+    return range.from === from && range.to === to
+  })
+  periodMode.value = preset ? preset.key : 'custom'
   filters.value.from = from
   filters.value.to = to
   applyFilters()
@@ -601,14 +558,8 @@ function applyFilters() {
   expensesStore.fetchExpenses(params)
   // Only the stats endpoint knows how to align the "previous" window to the
   // calendar; a custom range keeps the default same-length one.
-  const compare = activePeriod.value?.compare
+  const compare = activePreset.value?.compare
   fetchStats(compare ? { ...params, compare } : params)
-}
-
-function resetFilters() {
-  pickedPreset.value = DEFAULT_PRESET
-  filters.value = defaultFilters()
-  applyFilters()
 }
 
 function onExpenseCreated() {
@@ -626,7 +577,7 @@ function refreshBrief() {
 }
 
 onMounted(() => {
-  fetchFiltersData()
+  fetchProjects()
   applyFilters()
 })
 
@@ -641,27 +592,16 @@ watch(
 // keep-alive caches this view, so onMounted won't re-run on return. Refresh on
 // re-activation so paid bills / new readings / settled balances / over-budget
 // projects drop off without a hard reload. onActivated also fires right after
-// the first mount, where fetchFiltersData has just loaded the projects — the
-// flag keeps that one from fetching them twice.
+// the first mount, where onMounted has just loaded the projects — the flag
+// keeps that one from fetching them twice.
 let wasDeactivated = false
 onDeactivated(() => { wasDeactivated = true })
 
 onActivated(() => {
   if (wasDeactivated) fetchProjects()
   if (settingsStore.householdPropertyId) fetchActionables()
+  // A preset ends today: if the view was left open across midnight (or a
+  // month end), move it forward instead of showing a stale window.
+  if (activePreset.value && filters.value.to !== todayDateOnly()) selectPeriod(periodMode.value)
 })
 </script>
-
-<style scoped>
-.filter-expand-enter-active,
-.filter-expand-leave-active {
-  transition: opacity 0.2s ease, max-height 0.25s ease;
-  overflow: hidden;
-  max-height: 500px;
-}
-.filter-expand-enter-from,
-.filter-expand-leave-to {
-  opacity: 0;
-  max-height: 0;
-}
-</style>

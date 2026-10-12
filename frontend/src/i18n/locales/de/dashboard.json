@@ -32,19 +32,6 @@
     "showExpensesAria": "Ausgaben für {category} anzeigen",
     "noData": "Keine Daten verfügbar"
   },
-  "filters": {
-    "filtersLabel": "Filter",
-    "reset": "Zurücksetzen",
-    "resetFilters": "Filter zurücksetzen",
-    "categoryLabel": "Kategorie:",
-    "projectLabel": "Projekt:",
-    "fromLabel": "Von:",
-    "toLabel": "Bis:",
-    "allCategoriesShort": "Alle",
-    "allProjectsShort": "Alle",
-    "allCategoriesLong": "Alle Kategorien",
-    "allProjectsLong": "Alle Projekte"
-  },
   "attention": {
     "title": "Zu erledigen",
     "allClear": "Alles erledigt",
@@ -70,8 +57,10 @@
     "lastReading": "Letzter Messwert: {date}"
   },
   "period": {
+    "label": "Zeitraum",
     "thisMonth": "Dieser Monat",
     "thisYear": "Dieses Jahr",
-    "custom": "Benutzerdefiniert"
+    "from": "Von",
+    "to": "Bis"
   }
 }

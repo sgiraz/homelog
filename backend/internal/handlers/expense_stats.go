@@ -141,11 +141,6 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		joinWhere += " AND expenses.category_id = ?"
 		baseArgs = append(baseArgs, categoryID)
 	}
-	if projectID := c.Query("project_id"); projectID != "" {
-		baseWhere += " AND project_id = ?"
-		joinWhere += " AND expenses.project_id = ?"
-		baseArgs = append(baseArgs, projectID)
-	}
 	if propertyID := c.Query("property_id"); propertyID != "" {
 		baseWhere += " AND property_id = ?"
 		joinWhere += " AND expenses.property_id = ?"

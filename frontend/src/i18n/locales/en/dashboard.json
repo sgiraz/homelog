@@ -32,19 +32,6 @@
     "showExpensesAria": "Show the {category} expenses",
     "noData": "No data available"
   },
-  "filters": {
-    "filtersLabel": "Filters",
-    "reset": "Reset",
-    "resetFilters": "Reset Filters",
-    "categoryLabel": "Category:",
-    "projectLabel": "Project:",
-    "fromLabel": "From:",
-    "toLabel": "To:",
-    "allCategoriesShort": "All",
-    "allProjectsShort": "All",
-    "allCategoriesLong": "All categories",
-    "allProjectsLong": "All projects"
-  },
   "attention": {
     "title": "To do",
     "allClear": "All clear",
@@ -70,8 +57,10 @@
     "lastReading": "Last reading: {date}"
   },
   "period": {
+    "label": "Period",
     "thisMonth": "This month",
     "thisYear": "This year",
-    "custom": "Custom"
+    "from": "From",
+    "to": "To"
   }
 }

@@ -586,7 +586,7 @@ function applyFilters() {
 
 // Filters a link can carry, e.g. the dashboard's subcategory chart:
 // /expenses?category_id=3&subcategory_id=7&from=2026-10-01&to=2026-10-12
-const ROUTE_FILTER_KEYS = ['category_id', 'subcategory_id', 'project_id', 'from', 'to']
+const ROUTE_FILTER_KEYS = ['category_id', 'subcategory_id', 'from', 'to']
 
 // Replaces the filters with the ones in the URL, then drops them from the URL:
 // this view is kept alive, so the same link followed twice must still read as
@@ -600,7 +600,7 @@ function applyRouteFilters() {
     search: '',
     categoryId: id(q.category_id),
     subcategoryId: q.subcategory_id === NO_SUBCATEGORY ? NO_SUBCATEGORY : id(q.subcategory_id),
-    projectId: id(q.project_id),
+    projectId: '',
     from: q.from || '',
     to: q.to || '',
     unsettledOnly: false

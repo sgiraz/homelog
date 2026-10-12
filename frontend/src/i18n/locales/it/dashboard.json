@@ -32,19 +32,6 @@
     "showExpensesAria": "Mostra le spese di {category}",
     "noData": "Nessun dato disponibile"
   },
-  "filters": {
-    "filtersLabel": "Filtri",
-    "reset": "Reset",
-    "resetFilters": "Reset Filtri",
-    "categoryLabel": "Categoria:",
-    "projectLabel": "Progetto:",
-    "fromLabel": "Da:",
-    "toLabel": "A:",
-    "allCategoriesShort": "Tutte",
-    "allProjectsShort": "Tutti",
-    "allCategoriesLong": "Tutte categorie",
-    "allProjectsLong": "Tutti progetti"
-  },
   "attention": {
     "title": "Da gestire",
     "allClear": "Tutto in ordine",
@@ -70,8 +57,10 @@
     "lastReading": "Ultima lettura: {date}"
   },
   "period": {
+    "label": "Periodo",
     "thisMonth": "Questo mese",
     "thisYear": "Quest'anno",
-    "custom": "Personalizzato"
+    "from": "Dal",
+    "to": "Al"
   }
 }
