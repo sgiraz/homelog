@@ -45,22 +45,24 @@
               <option value="">{{ t('dashboard.filters.allProjectsLong') }}</option>
               <option v-for="proj in projects" :key="proj.id" :value="proj.id">{{ proj.icon }} {{ proj.name }}</option>
             </select>
-            <input
-              :value="filters.from"
-              @change="emit('update:filters', { ...filters, from: $event.target.value }); emit('apply')"
-              type="date"
-              class="px-3 py-2 border border-line rounded-lg
-                     bg-surface text-ink text-base
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              :value="filters.to"
-              @change="emit('update:filters', { ...filters, to: $event.target.value }); emit('apply')"
-              type="date"
-              class="px-3 py-2 border border-line rounded-lg
-                     bg-surface text-ink text-base
-                     focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <label class="block min-w-0">
+              <span class="block text-xs text-ink-muted mb-1">{{ t('dashboard.filters.fromLabel') }}</span>
+              <input
+                :value="filters.from"
+                @change="emit('update:filters', { ...filters, from: $event.target.value }); emit('apply')"
+                type="date"
+                class="w-0 min-w-full px-3 py-2 border border-line rounded-lg bg-surface text-ink text-base focus:outline-none focus:ring-2 focus:ring-blue-500 [&::-webkit-date-and-time-value]:min-h-[1.5em]"
+              />
+            </label>
+            <label class="block min-w-0">
+              <span class="block text-xs text-ink-muted mb-1">{{ t('dashboard.filters.toLabel') }}</span>
+              <input
+                :value="filters.to"
+                @change="emit('update:filters', { ...filters, to: $event.target.value }); emit('apply')"
+                type="date"
+                class="w-0 min-w-full px-3 py-2 border border-line rounded-lg bg-surface text-ink text-base focus:outline-none focus:ring-2 focus:ring-blue-500 [&::-webkit-date-and-time-value]:min-h-[1.5em]"
+              />
+            </label>
           </div>
         </div>
       </Transition>
