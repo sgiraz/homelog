@@ -1,20 +1,20 @@
 import { watch } from 'vue'
 
-// Cookieless usage stats for the public demo only. Self-hosted installs never
-// load this: GoatCounter is wired up only when isDemoMode (from /version) is
-// true, and it sets no cookies and stores no personal data (see the privacy
-// policy, demo section).
-const GOATCOUNTER_SITE = 'homelog-demo'
+// Cookieless usage stats for a public demo instance only. Nothing loads unless
+// the server runs in demo mode and its operator set DEMO_GOATCOUNTER_SITE,
+// reported by /version as analytics_site: the site code belongs to whoever runs
+// the instance, so it can never be baked into the bundle. GoatCounter sets no
+// cookies and stores no personal data (see the privacy policy, demo section).
 
 let scriptRequested = false
 
-function loadScript(onReady) {
+function loadScript(site, onReady) {
   if (scriptRequested) return
   scriptRequested = true
   const script = document.createElement('script')
   script.async = true
   script.src = 'https://gc.zgo.at/count.js'
-  script.dataset.goatcounter = `https://${GOATCOUNTER_SITE}.goatcounter.com/count`
+  script.dataset.goatcounter = `https://${site}.goatcounter.com/count`
   // We call count() ourselves on every route change (incl. the first), so
   // disable GoatCounter's own onload pageview to avoid double-counting.
   script.dataset.goatcounterSettings = JSON.stringify({ no_onload: true })
@@ -35,11 +35,11 @@ function browserLanguage() {
 }
 
 // Call once at startup (App.vue), after the router is available. No-ops
-// until/unless isDemoMode becomes true.
-export function initAnalytics(router, isDemoMode) {
-  const stop = watch(isDemoMode, (enabled) => {
-    if (!enabled) return
-    loadScript(() => {
+// until/unless /version names an analytics site.
+export function initAnalytics(router, analyticsSite) {
+  const stop = watch(analyticsSite, (site) => {
+    if (!site) return
+    loadScript(site, () => {
       countPageview(router.currentRoute.value.fullPath)
       trackEvent(`lang_${browserLanguage()}`)
     })

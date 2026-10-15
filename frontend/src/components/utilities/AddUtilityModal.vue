@@ -71,7 +71,7 @@
     </div>
 
     <form @submit.prevent="handleSubmit" class="space-y-4">
-      <!-- Tipo Servizio -->
+      <!-- Service type -->
       <div>
         <label class="block text-sm text-ink-soft mb-2">
           {{ t('utilities.addUtilityModal.typeLabel') }}
@@ -510,7 +510,7 @@ const frequencyPreview = computed(() => {
 
 // Always set the type through this: the payload carries is_metered alongside
 // type, so assigning form.type on its own submits the PREVIOUS type's metering
-// — which is how a mutuo reached the API with is_metered=true.
+// — which is how a mortgage reached the API with is_metered=true.
 function applyType(value) {
   const known = [...meteredTypes.value, ...fixedTypes.value].find(t => t.value === value)
   form.value.type = value

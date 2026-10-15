@@ -322,7 +322,7 @@ async function handleResetPassword() {
     error.value = t('auth.reset.tokenRequired')
     return
   }
-  if (resetForm.value.newPassword.length < 6) {
+  if (resetForm.value.newPassword.length < 8) {
     error.value = t('auth.reset.passwordTooShort')
     return
   }

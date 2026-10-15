@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <!-- Versione & Aggiornamenti -->
+    <!-- Version & updates -->
     <Card class="p-6">
       <h2 class="text-xl font-bold text-ink mb-4">{{ t('settings.data.versionTitle') }}</h2>
       <div class="flex items-center justify-between gap-4">
@@ -214,10 +214,10 @@ async function doExport(type) {
       projects: isCSV ? exportAPI.exportProjectsCSV : exportAPI.exportProjects,
     }
     const nameMap = {
-      all: isCSV ? 'spese' : 'backup_completo',
-      expenses: 'spese',
-      utilities: 'utenze',
-      projects: 'progetti',
+      all: isCSV ? 'expenses' : 'backup',
+      expenses: 'expenses',
+      utilities: 'utilities',
+      projects: 'projects',
     }
     const ext = isCSV ? 'csv' : 'json'
     const res = await apiMap[type]()

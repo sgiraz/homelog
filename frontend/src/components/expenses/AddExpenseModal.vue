@@ -237,7 +237,7 @@
             </div>
           </div>
 
-          <!-- Riepilogo divisione -->
+          <!-- Split summary -->
           <div
             v-if="form.split_with_member_ids.length > 0 && form.amount"
             class="ml-4 bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg"

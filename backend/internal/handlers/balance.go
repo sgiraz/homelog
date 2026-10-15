@@ -88,6 +88,12 @@ func (h *BalanceHandler) GetBalance(c *gin.Context) {
 	}
 	propertyID := uint(propertyIDParsed)
 
+	// Only members may read a property's balance: without this, any signed-in
+	// user gets a 200 for any property id.
+	if !requirePropertyMember(c, h.db, currentUserID, propertyID) {
+		return
+	}
+
 	log.Printf("🔍 BALANCE REQUEST: PropertyID=%d, CurrentUserID=%d", propertyID, currentUserID)
 
 	// Check split mode first
@@ -196,6 +202,12 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 		return
 	}
 	propertyID := uint(propertyIDParsed)
+
+	// Only members may read a property's balance: without this, any signed-in
+	// user gets a 200 for any property id.
+	if !requirePropertyMember(c, h.db, currentUserID, propertyID) {
+		return
+	}
 
 	log.Printf("GetBalanceDetails - PropertyID: %d, CurrentUserID: %d", propertyID, currentUserID)
 

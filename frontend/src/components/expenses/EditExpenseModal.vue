@@ -213,7 +213,9 @@ const amountLocked = computed(() => {
   const splits = props.expense.splits
   if (!Array.isArray(splits) || splits.length === 0) return false
   const payerId = props.expense.paid_by_member_id
-  return splits.some(s => s.member_id !== payerId && s.is_settled)
+  // Mirrors the server guard: any money received on another member's share,
+  // even partial, locks the amount. Checking is_settled alone earned a 409.
+  return splits.some(s => s.member_id !== payerId && (s.is_settled || s.settled_amount > 0))
 })
 
 async function fetchCategories() {

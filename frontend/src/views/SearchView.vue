@@ -266,7 +266,7 @@ function openHit(hit) {
       break
     case 'bill':
       // parent_id is the utility the bill belongs to. The utility detail page
-      // defaults to the Bollette tab, which is where the bill appears.
+      // defaults to the bills tab, which is where the bill appears.
       if (hit.parent_id) {
         router.push({
           path: `/utilities/${hit.parent_id}`,
