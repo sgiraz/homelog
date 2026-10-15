@@ -124,7 +124,7 @@ func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *mod
 		_ = h.db.Where("category_id = ? AND slug = ?", homeCategory.ID, database.SlugHomeUtilities).First(&utilitiesSubcat)
 	}
 
-	// Build the description in the owner's language: "Bolletta Luce - Mar 2025"
+	// Build the description in the owner's language, e.g. "Electricity bill - Mar 2025"
 	// / "Electricity bill - Mar 2025". It is server-generated app text, not
 	// something the user typed, so it must never be a hardcoded Italian literal.
 	lang := i18n.UserLanguage(h.db, userID)

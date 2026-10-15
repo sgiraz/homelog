@@ -36,7 +36,7 @@
           <span>{{ t('utilities.addBillModal.lockedNotice') }}</span>
         </div>
 
-        <!-- Importo Totale -->
+        <!-- Total amount -->
         <div v-if="isForeignCurrency">
           <label class="block text-sm text-ink-soft mb-1">
             {{ t('utilities.addBillModal.totalAmountForeign', { currency: utility.currency }) }}
@@ -109,7 +109,7 @@
           />
         </div>
 
-        <!-- Scadenza + Emissione -->
+        <!-- Due date + issue date -->
         <div class="grid grid-cols-2 gap-4 w-full min-w-0 overflow-hidden">
           <Input
             v-model="form.due_date"
@@ -125,7 +125,7 @@
           />
         </div>
 
-        <!-- Consumo (metered only) -->
+        <!-- Consumption (metered only) -->
         <Input
           v-if="isMetered"
           v-model="form.consumption_total"
@@ -136,7 +136,7 @@
           placeholder="0"
         />
 
-        <!-- Numero Bolletta/Fattura -->
+        <!-- Bill/invoice number -->
         <Input
           v-model="form.bill_number"
           :label="isMetered ? t('utilities.addBillModal.billNumber') : t('utilities.addBillModal.invoiceNumber')"
@@ -144,7 +144,7 @@
           required
         />
 
-        <!-- Autolettura di riferimento (metered only) -->
+        <!-- Linked self-reading (metered only) -->
         <div v-if="isMetered" class="space-y-2">
           <label class="block text-sm font-medium text-ink-soft">
             {{ t('utilities.addBillModal.userReadingLabel') }}
@@ -243,7 +243,7 @@
           </div>
         </div>
 
-        <!-- Comunicazioni importanti -->
+        <!-- Important communications -->
         <div>
           <label class="block text-sm text-ink-soft mb-1">
             {{ t('utilities.addBillModal.communicationsLabel') }}
@@ -274,7 +274,7 @@
           @error="submitError = $event"
         />
 
-        <!-- Stato Pagamento -->
+        <!-- Payment status -->
         <div v-if="!isInstallmentBased" class="flex items-center gap-3">
           <input type="checkbox" id="is-paid" v-model="form.is_paid"
             :disabled="isLocked"

@@ -89,10 +89,10 @@ func utc(y int, m time.Month, d int) time.Time { return time.Date(y, m, d, 12, 0
 func TestStats_MonthlyTrendTotalsAndCategories(t *testing.T) {
 	f := setupMoneyFixture(t)
 	food := f.newCategory(t, "food", "Cibo")
-	f.addExpense(t, 100, utc(2026, 1, 10), f.casaCatID, nil)
+	f.addExpense(t, 100, utc(2026, 1, 10), f.homeCatID, nil)
 	f.addExpense(t, 50, utc(2026, 1, 20), food.ID, nil)
-	f.addExpense(t, 150, utc(2026, 2, 5), f.casaCatID, nil)
-	f.addExpense(t, 999, utc(2026, 5, 1), f.casaCatID, nil) // outside the window
+	f.addExpense(t, 150, utc(2026, 2, 5), f.homeCatID, nil)
+	f.addExpense(t, 999, utc(2026, 5, 1), f.homeCatID, nil) // outside the window
 
 	got := f.getStats(t, f.aliceTok, "from=2026-01-01&to=2026-03-31")
 
@@ -125,7 +125,7 @@ func TestStats_MonthlyTrendTotalsAndCategories(t *testing.T) {
 		t.Fatalf("by_category = %+v, want 2 rows", got.ByCategory)
 	}
 	top, second := got.ByCategory[0], got.ByCategory[1]
-	if top.CategoryID != f.casaCatID || !approx(top.Amount, 250) || top.Count != 2 || !approx(top.Percentage, 250.0/300*100) {
+	if top.CategoryID != f.homeCatID || !approx(top.Amount, 250) || top.Count != 2 || !approx(top.Percentage, 250.0/300*100) {
 		t.Errorf("top category = %+v, want Casa 250 (83.3%%)", top)
 	}
 	if top.CategorySlug != "home" && top.CategorySlug == "" {
@@ -141,9 +141,9 @@ func TestStats_MonthlyTrendTotalsAndCategories(t *testing.T) {
 
 func TestStats_PreviousWindowHasSameLength(t *testing.T) {
 	f := setupMoneyFixture(t)
-	f.addExpense(t, 100, utc(2026, 2, 10), f.casaCatID, nil)
-	f.addExpense(t, 40, utc(2025, 11, 15), f.casaCatID, nil) // inside the previous window
-	f.addExpense(t, 500, utc(2025, 6, 1), f.casaCatID, nil)  // too old
+	f.addExpense(t, 100, utc(2026, 2, 10), f.homeCatID, nil)
+	f.addExpense(t, 40, utc(2025, 11, 15), f.homeCatID, nil) // inside the previous window
+	f.addExpense(t, 500, utc(2025, 6, 1), f.homeCatID, nil)  // too old
 
 	got := f.getStats(t, f.aliceTok, "from=2026-01-01&to=2026-03-31")
 
@@ -157,9 +157,9 @@ func TestStats_PreviousWindowHasSameLength(t *testing.T) {
 
 func TestStats_CompareMonthAlignsToPreviousMonth(t *testing.T) {
 	f := setupMoneyFixture(t)
-	f.addExpense(t, 100, utc(2026, 10, 5), f.casaCatID, nil)
-	f.addExpense(t, 40, utc(2026, 9, 3), f.casaCatID, nil)   // 1-12 Sep: the aligned window
-	f.addExpense(t, 500, utc(2026, 9, 25), f.casaCatID, nil) // inside a same-length window, not an aligned one
+	f.addExpense(t, 100, utc(2026, 10, 5), f.homeCatID, nil)
+	f.addExpense(t, 40, utc(2026, 9, 3), f.homeCatID, nil)   // 1-12 Sep: the aligned window
+	f.addExpense(t, 500, utc(2026, 9, 25), f.homeCatID, nil) // inside a same-length window, not an aligned one
 
 	got := f.getStats(t, f.aliceTok, "from=2026-10-01&to=2026-10-12&compare=month")
 
@@ -183,9 +183,9 @@ func TestStats_CompareMonthClampsToShorterMonth(t *testing.T) {
 
 func TestStats_CompareYearAlignsToPreviousYear(t *testing.T) {
 	f := setupMoneyFixture(t)
-	f.addExpense(t, 200, utc(2026, 4, 1), f.casaCatID, nil)
-	f.addExpense(t, 60, utc(2025, 3, 1), f.casaCatID, nil)    // 1 Jan-12 Oct 2025: the aligned window
-	f.addExpense(t, 300, utc(2025, 11, 20), f.casaCatID, nil) // inside a same-length window, not an aligned one
+	f.addExpense(t, 200, utc(2026, 4, 1), f.homeCatID, nil)
+	f.addExpense(t, 60, utc(2025, 3, 1), f.homeCatID, nil)    // 1 Jan-12 Oct 2025: the aligned window
+	f.addExpense(t, 300, utc(2025, 11, 20), f.homeCatID, nil) // inside a same-length window, not an aligned one
 
 	got := f.getStats(t, f.aliceTok, "from=2026-01-01&to=2026-10-12&compare=year")
 
@@ -199,11 +199,11 @@ func TestStats_CompareYearAlignsToPreviousYear(t *testing.T) {
 
 func TestStats_DailyAndQuarterlyGranularity(t *testing.T) {
 	f := setupMoneyFixture(t)
-	f.addExpense(t, 10, utc(2026, 1, 3), f.casaCatID, nil)
-	f.addExpense(t, 5, utc(2026, 1, 3), f.casaCatID, nil)
-	f.addExpense(t, 7, utc(2026, 1, 9), f.casaCatID, nil)
-	f.addExpense(t, 20, utc(2025, 2, 1), f.casaCatID, nil)
-	f.addExpense(t, 30, utc(2026, 5, 1), f.casaCatID, nil)
+	f.addExpense(t, 10, utc(2026, 1, 3), f.homeCatID, nil)
+	f.addExpense(t, 5, utc(2026, 1, 3), f.homeCatID, nil)
+	f.addExpense(t, 7, utc(2026, 1, 9), f.homeCatID, nil)
+	f.addExpense(t, 20, utc(2025, 2, 1), f.homeCatID, nil)
+	f.addExpense(t, 30, utc(2026, 5, 1), f.homeCatID, nil)
 
 	day := f.getStats(t, f.aliceTok, "from=2026-01-01&to=2026-01-15")
 	if day.Granularity != "day" || len(day.Trend) != 2 {
@@ -234,15 +234,15 @@ func TestStats_DailyAndQuarterlyGranularity(t *testing.T) {
 func TestStats_CategoryFilterBreaksDownBySubcategory(t *testing.T) {
 	f := setupMoneyFixture(t)
 	var utilities models.Subcategory
-	if err := f.db.Where("category_id = ?", f.casaCatID).First(&utilities).Error; err != nil {
+	if err := f.db.Where("category_id = ?", f.homeCatID).First(&utilities).Error; err != nil {
 		t.Fatalf("load subcategory: %v", err)
 	}
 	other := f.newCategory(t, "food", "Cibo")
-	f.addExpense(t, 80, utc(2026, 1, 10), f.casaCatID, &utilities.ID)
-	f.addExpense(t, 20, utc(2026, 1, 11), f.casaCatID, nil)
+	f.addExpense(t, 80, utc(2026, 1, 10), f.homeCatID, &utilities.ID)
+	f.addExpense(t, 20, utc(2026, 1, 11), f.homeCatID, nil)
 	f.addExpense(t, 500, utc(2026, 1, 12), other.ID, nil)
 
-	got := f.getStats(t, f.aliceTok, "from=2026-01-01&to=2026-01-31&category_id="+itoa(f.casaCatID))
+	got := f.getStats(t, f.aliceTok, "from=2026-01-01&to=2026-01-31&category_id="+itoa(f.homeCatID))
 
 	if !got.IsSubcategory {
 		t.Error("is_subcategory must be true when a category is selected")
@@ -264,20 +264,20 @@ func TestStats_CategoryFilterBreaksDownBySubcategory(t *testing.T) {
 
 func TestStats_PropertyFilterAndHouseholdIsolation(t *testing.T) {
 	f := setupMoneyFixture(t)
-	f.addExpense(t, 100, utc(2026, 1, 10), f.casaCatID, nil)
+	f.addExpense(t, 100, utc(2026, 1, 10), f.homeCatID, nil)
 
 	// A second property of Alice's, and a stranger's household.
 	second := models.Property{UserID: f.alice.ID, Name: "Garage", Type: "owned", StartDate: time.Now()}
 	mustCreate(t, f.db, &second)
 	mustCreate(t, f.db, &models.HouseholdMember{PropertyID: second.ID, UserID: &f.alice.ID, Name: "Alice", Role: "admin"})
-	f.addExpenseIn(t, second.ID, 30, utc(2026, 1, 11), f.casaCatID, nil)
+	f.addExpenseIn(t, second.ID, 30, utc(2026, 1, 11), f.homeCatID, nil)
 
 	eve := &models.User{Email: "eve@example.com", PasswordHash: "x", Name: "Eve", Role: "user", IsActive: true}
 	mustCreate(t, f.db, eve)
 	evesHome := models.Property{UserID: eve.ID, Name: "Eve", Type: "owned", StartDate: time.Now()}
 	mustCreate(t, f.db, &evesHome)
 	mustCreate(t, f.db, &models.HouseholdMember{PropertyID: evesHome.ID, UserID: &eve.ID, Name: "Eve", Role: "admin"})
-	f.addExpenseIn(t, evesHome.ID, 7777, utc(2026, 1, 12), f.casaCatID, nil)
+	f.addExpenseIn(t, evesHome.ID, 7777, utc(2026, 1, 12), f.homeCatID, nil)
 
 	all := f.getStats(t, f.aliceTok, "from=2026-01-01&to=2026-01-31")
 	if !approx(all.TotalPeriod, 130) {
@@ -317,7 +317,7 @@ func TestStats_EmptyHouseholdHasNoNaN(t *testing.T) {
 
 func TestStats_YearDefaultAndShortcuts(t *testing.T) {
 	f := setupMoneyFixture(t)
-	f.addExpense(t, 100, utc(2023, 6, 1), f.casaCatID, nil)
+	f.addExpense(t, 100, utc(2023, 6, 1), f.homeCatID, nil)
 
 	byYear := f.getStats(t, f.aliceTok, "year=2023")
 	if byYear.Period.Start != "2023-01-01" || byYear.Period.End != "2023-12-31" || !approx(byYear.TotalPeriod, 100) {
@@ -342,7 +342,7 @@ func TestStats_YearDefaultAndShortcuts(t *testing.T) {
 func TestStats_CurrentMonthAndYearTotalsIgnoreTheWindow(t *testing.T) {
 	f := setupMoneyFixture(t)
 	now := time.Now().UTC()
-	f.addExpense(t, 25, time.Date(now.Year(), now.Month(), 1, 12, 0, 0, 0, time.UTC), f.casaCatID, nil)
+	f.addExpense(t, 25, time.Date(now.Year(), now.Month(), 1, 12, 0, 0, 0, time.UTC), f.homeCatID, nil)
 
 	// The selected window is years ago, yet the dashboard's "this month" and
 	// "this year" tiles still count today's spending.

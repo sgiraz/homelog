@@ -394,9 +394,9 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 //   - Sort bills by period_end ascending.
 //   - For each bill define its “effective user reading value”:
 //     • If bill.UserReading != nil → use the explicitly associated self-reading value.
-//     • Otherwise              → fall back to bill.ProviderReading (so Δeffettivo = Δfatturato).
-//   - Consumo Fatturato[i]  = providerReading[i]  − providerReading[i-1]  (consecutive absolute bill readings)
-//   - Consumo Effettivo[i]  = effectiveReading[i] − effectiveReading[i-1] (consecutive effective readings)
+//     • Otherwise              → fall back to bill.ProviderReading (so Δactual = Δbilled).
+//   - Billed consumption[i]  = providerReading[i]  − providerReading[i-1]  (consecutive absolute bill readings)
+//   - Actual consumption[i]  = effectiveReading[i] − effectiveReading[i-1] (consecutive effective readings)
 //   - Period rows start from index 1 (bill[0] is the reference anchor; no row generated for it).
 //   - Guard: need at least 2 bills with provider_reading set.
 func (h *UtilityHandler) calculateConsumptionAnalysis(utilityType string, bills []models.Bill, threshold float64) ([]ConsumptionPeriod, *ConsumptionSummary) {

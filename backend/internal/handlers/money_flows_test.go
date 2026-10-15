@@ -91,7 +91,7 @@ type moneyFixture struct {
 	mAlice    models.HouseholdMember
 	mBob      models.HouseholdMember
 	mCarol    models.HouseholdMember
-	casaCatID uint
+	homeCatID uint
 	aliceTok  string
 	bobTok    string
 }
@@ -116,9 +116,9 @@ func setupMoneyFixture(t *testing.T) *moneyFixture {
 
 	mustCreate(t, db, &models.HouseholdSettings{PropertyID: prop.ID, SplitMode: true})
 
-	casa := models.Category{Slug: database.SlugHome, Name: "Casa", IsDefault: true}
-	mustCreate(t, db, &casa)
-	mustCreate(t, db, &models.Subcategory{CategoryID: casa.ID, Slug: database.SlugHomeUtilities, Name: "Utenze"})
+	homeCat := models.Category{Slug: database.SlugHome, Name: "Casa", IsDefault: true}
+	mustCreate(t, db, &homeCat)
+	mustCreate(t, db, &models.Subcategory{CategoryID: homeCat.ID, Slug: database.SlugHomeUtilities, Name: "Utenze"})
 
 	return &moneyFixture{
 		router:    wireMoneyRoutes(db),
@@ -129,7 +129,7 @@ func setupMoneyFixture(t *testing.T) *moneyFixture {
 		mAlice:    mAlice,
 		mBob:      mBob,
 		mCarol:    mCarol,
-		casaCatID: casa.ID,
+		homeCatID: homeCat.ID,
 		aliceTok:  testutil.SignToken(t, alice),
 		bobTok:    testutil.SignToken(t, bob),
 	}
@@ -173,7 +173,7 @@ func (f *moneyFixture) createSplitExpenseBy(t *testing.T, token string, payerMem
 	t.Helper()
 	rec := doJSON(t, f.router, http.MethodPost, "/expenses", token, map[string]any{
 		"amount":                amount,
-		"category_id":           f.casaCatID,
+		"category_id":           f.homeCatID,
 		"property_id":           f.prop.ID,
 		"date":                  "2026-05-01",
 		"description":           "Spesa condivisa",
@@ -1018,7 +1018,7 @@ func TestBillUnpaid_BlockedWhenLinkedSplitSettled(t *testing.T) {
 	}
 }
 
-// ── 4. Installment paid/unpaid (per-rata, BillInstallmentID) ─────────────────
+// ── 4. Installment paid/unpaid (per instalment, BillInstallmentID) ─────────────────
 
 func TestInstallmentPaidUnpaid_PerRataExpenseLifecycle(t *testing.T) {
 	f := setupMoneyFixture(t)
@@ -1059,7 +1059,7 @@ func TestInstallmentPaidUnpaid_PerRataExpenseLifecycle(t *testing.T) {
 	var total int64
 	f.db.Model(&models.Expense{}).Where("bill_id = ?", bill.ID).Count(&total)
 	if total != 2 {
-		t.Fatalf("expected 2 auto-expenses (one per rata), got %d", total)
+		t.Fatalf("expected 2 auto-expenses (one per instalment), got %d", total)
 	}
 
 	// Unpay installment 1 → only its expense disappears; inst2's survives.
@@ -1074,7 +1074,7 @@ func TestInstallmentPaidUnpaid_PerRataExpenseLifecycle(t *testing.T) {
 	}
 	f.db.First(&b, bill.ID)
 	if b.IsPaid {
-		t.Error("bill must drop back to unpaid after a rata is unpaid")
+		t.Error("bill must drop back to unpaid after an instalment is unpaid")
 	}
 }
 
@@ -1112,8 +1112,8 @@ func setupAccountFixture(t *testing.T, withSecondMember bool) *accountFixture {
 	member := models.HouseholdMember{PropertyID: prop.ID, UserID: &user.ID, Name: "Owner", Role: "admin"}
 	mustCreate(t, db, &member)
 
-	casa := models.Category{Slug: database.SlugHome, Name: "Casa", IsDefault: true}
-	mustCreate(t, db, &casa)
+	homeCat := models.Category{Slug: database.SlugHome, Name: "Casa", IsDefault: true}
+	mustCreate(t, db, &homeCat)
 
 	// Utility + bill (both index into search_index via AfterSave hooks).
 	util := models.Utility{UserID: user.ID, PropertyID: prop.ID, Type: "gas", Provider: "Eni", IsMetered: true, IsActive: true}
@@ -1121,7 +1121,7 @@ func setupAccountFixture(t *testing.T, withSecondMember bool) *accountFixture {
 	bill := models.Bill{UtilityID: util.ID, BillNumber: "G-1", IssueDate: now, PeriodStart: now, PeriodEnd: now, DueDate: now, AmountTotal: 50}
 	mustCreate(t, db, &bill)
 	// A solo expense owned by the user.
-	mustCreate(t, db, &models.Expense{UserID: user.ID, PropertyID: &prop.ID, CategoryID: casa.ID, Amount: 30, Date: now, Description: "Spesa", PaidByMemberID: member.ID})
+	mustCreate(t, db, &models.Expense{UserID: user.ID, PropertyID: &prop.ID, CategoryID: homeCat.ID, Amount: 30, Date: now, Description: "Spesa", PaidByMemberID: member.ID})
 
 	if withSecondMember {
 		other := &models.User{Email: "second@example.com", PasswordHash: "x", Name: "Second", Role: "user", IsActive: true}
@@ -1217,7 +1217,7 @@ func TestExpenseList_DateFilter_IgnoresEmbeddedUTCOffset(t *testing.T) {
 	cest := time.FixedZone("CEST", 2*60*60)
 	borderline := time.Date(2026, 9, 1, 0, 41, 0, 0, cest) // 2026-08-31 22:41 UTC
 	expense := models.Expense{
-		UserID: f.alice.ID, PropertyID: &f.prop.ID, CategoryID: f.casaCatID,
+		UserID: f.alice.ID, PropertyID: &f.prop.ID, CategoryID: f.homeCatID,
 		PaidByMemberID: f.mAlice.ID,
 		Amount:         29.99, Date: borderline, Description: "Bolletta internet",
 	}

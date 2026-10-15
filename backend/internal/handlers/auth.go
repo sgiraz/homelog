@@ -18,6 +18,7 @@ import (
 
 	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/database"
+	"github.com/sgiraz/homelog/internal/i18n"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -199,7 +200,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		now := time.Now()
 		property := models.Property{
 			UserID:    user.ID,
-			Name:      "Casa Principale",
+			Name:      i18n.T(language, "property.default_name"),
 			Address:   "",
 			Type:      "owned",
 			StartDate: now,
@@ -236,7 +237,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		userSettings := models.UserSettings{
 			UserID:                    user.ID,
 			Language:                  language,
-			Currency:                  "EUR",
+			Currency:                  models.DefaultCurrency,
 			Theme:                     "auto",
 			DateFormat:                "DD/MM/YYYY",
 			DefaultSplitWithMemberIDs: "",
@@ -286,7 +287,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		userSettings := models.UserSettings{
 			UserID:                    user.ID,
 			Language:                  language,
-			Currency:                  "EUR",
+			Currency:                  models.DefaultCurrency,
 			Theme:                     "auto",
 			DateFormat:                "DD/MM/YYYY",
 			DefaultSplitWithMemberIDs: "",
@@ -525,7 +526,7 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 
 	// Always respond with the same generic message to avoid user enumeration,
 	// whether the email exists or not.
-	genericResponse := gin.H{"message": "Se l'email esiste, riceverai le istruzioni."}
+	genericResponse := gin.H{"message": "If the email exists, you will receive instructions"}
 
 	var user models.User
 	if err := h.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
@@ -561,7 +562,7 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	resp := gin.H{"message": genericResponse["message"]}
 	if os.Getenv("DEV_EXPOSE_RESET_TOKEN") == "true" {
 		resp["reset_token"] = token
-		resp["expires_in"] = "1 ora"
+		resp["expires_in"] = "1h"
 		resp["warning"] = "DEV_EXPOSE_RESET_TOKEN is enabled — do not use in production"
 	}
 	c.JSON(http.StatusOK, resp)
@@ -610,5 +611,5 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	}
 
 	log.Printf("Password reset successfully for %s", user.Email)
-	c.JSON(http.StatusOK, gin.H{"message": "Password reimpostata con successo. Puoi ora accedere."})
+	c.JSON(http.StatusOK, gin.H{"message": "Password reset. You can now sign in."})
 }

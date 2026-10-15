@@ -273,7 +273,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	}
 
 	log.Printf("ADMIN: User %d deleted user %d (%s)", adminUserID, targetUser.ID, targetUser.Email)
-	c.JSON(http.StatusOK, gin.H{"message": "Account e tutti i dati associati eliminati con successo"})
+	c.JSON(http.StatusOK, gin.H{"message": "Account and all associated data deleted"})
 }
 
 // ToggleAdmin changes a user's role between admin and user
@@ -319,5 +319,5 @@ func (h *AdminHandler) ToggleAdmin(c *gin.Context) {
 	}
 
 	log.Printf("ADMIN: User %d changed role of user %d (%s) to %s", adminUserID, targetUser.ID, targetUser.Email, req.Role)
-	c.JSON(http.StatusOK, gin.H{"message": "Ruolo aggiornato con successo", "role": req.Role})
+	c.JSON(http.StatusOK, gin.H{"message": "Role updated", "role": req.Role})
 }

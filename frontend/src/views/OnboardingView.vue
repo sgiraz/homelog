@@ -104,7 +104,7 @@
           </div>
         </div>
 
-        <!-- Step 2A: Crea proprietà -->
+        <!-- Step 2A: create property -->
         <div v-else-if="currentStep === 2 && path === 'create'">
           <div class="text-center mb-6">
             <div class="text-5xl mb-3">🏠</div>

@@ -31,6 +31,7 @@
   "debt_already_settled": "Questo debito è già estinto",
   "debt_not_found": "Debito non trovato",
   "demo_mode_disabled": "La modalità demo non è attiva su questa istanza",
+  "demo_mode_forbidden": "Operazione non disponibile nella demo.",
   "email_already_registered": "Questa email è già registrata",
   "end_before_start": "La data di fine deve essere successiva a quella di inizio",
   "exchange_params_required": "Sono richieste entrambe le valute",

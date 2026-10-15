@@ -125,8 +125,8 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 		CustomerPortal      string     `json:"customer_portal"`
 		Notes               string     `json:"notes"`
 		AllowsSelfReading   *bool      `json:"allows_self_reading"`  // nil = true (default)
-		ComparisonThreshold *float64   `json:"comparison_threshold"` // nil = 2.0 (default) - soglia base stesso giorno
-		ThresholdPerDay     *float64   `json:"threshold_per_day"`    // nil = 1.0 (default) - tolleranza per giorno
+		ComparisonThreshold *float64   `json:"comparison_threshold"` // nil = 2.0 (default) - base tolerance, same-day readings
+		ThresholdPerDay     *float64   `json:"threshold_per_day"`    // nil = 1.0 (default) - extra tolerance per elapsed day
 		IsDomiciled         bool       `json:"is_domiciled"`
 		IsInstallmentBased  bool       `json:"is_installment_based"`
 		Currency            string     `json:"currency"` // ISO code, empty = use user's household currency
@@ -177,7 +177,7 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 
 	// Whether a service has a meter follows from its type, so the payload only
 	// gets to turn metering OFF (a flat-rate water contract, say) — never on.
-	// Trusting the client in both directions is how a mutuo was stored with
+	// Trusting the client in both directions is how a mortgage was stored with
 	// is_metered=true and then offered meter readings: a bank loan is repaid on
 	// an amortisation schedule, there is nothing to read.
 	isMetered := models.MeteredByType[input.Type]

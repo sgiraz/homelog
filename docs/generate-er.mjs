@@ -26,8 +26,8 @@ const DW = 110; const DH = 60;
 const AW = 65;  const AH = 26;
 
 // ── Layout a Corridoi Sfalsati (Anti-Sovrapposizione) ────
-// Nessun elemento è allineato sullo stesso asse a meno che non sia direttamente adiacente.
-// X=800 è un "canale vuoto" che permette a Property di collegarsi a Utility senza colpire Expense.
+// No two elements share an axis unless they are directly adjacent.
+// X=800 is an empty lane, so Property can reach Utility without crossing Expense.
 const layout = {
   eUser:        [400,  200],
   eProperty:    [1200, 200],  // Spostato a destra per non coprire Utility
@@ -44,7 +44,7 @@ const layout = {
   eProject:     [1200, 1400],
   eSettlement:  [2400, 1400],
 
-  eUtility:     [800,  2200], // Asse esclusivo! La linea scende senza toccare nulla
+  eUtility:     [800,  2200], // Exclusive axis: the line runs down without touching anything
   eReading:     [1600, 1900], // Sfalsato in Y per i collegamenti laterali
   eRate:        [2400, 2200],
   
@@ -193,7 +193,7 @@ rels.forEach((r, i) => {
   const [rId, name, e1, c1, e2, c2] = r;
   const p1 = layout[e1]; const p2 = layout[e2];
   
-  // Offset deterministico basato sulla lunghezza del nome per evitare collisioni perfette
+  // Deterministic offset from the name length, to avoid exact collisions
   const offset = (name.length * 4) - 15;
   const mx = (p1[0] + p2[0]) / 2 + (EW - DW) / 2 + offset;
   const my = (p1[1] + p2[1]) / 2 + (EH - DH) / 2 + (i % 2 === 0 ? 20 : -20);

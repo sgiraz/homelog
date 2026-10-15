@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/sgiraz/homelog/internal/apierr"
+	"github.com/sgiraz/homelog/internal/i18n"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 )
@@ -115,9 +115,13 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 		}
 		relID := joinReq.ID
 		propID := req.PropertyID
+		// Written in the recipient's language, not the requester's.
+		lang := i18n.UserLanguage(h.db, adminUID)
 		createNotification(h.db, adminUID, "join_request",
-			fmt.Sprintf("%s vuole unirsi a %s", joinReq.User.Name, property.Name),
-			fmt.Sprintf("%s ha richiesto di unirsi alla proprietà %s.", joinReq.User.Name, property.Name),
+			i18n.T(lang, "notification.join_request.title",
+				"name", joinReq.User.Name, "property", property.Name),
+			i18n.T(lang, "notification.join_request.body",
+				"name", joinReq.User.Name, "property", property.Name),
 			&relID, &propID)
 	}
 

@@ -65,7 +65,7 @@
         </Card>
       </div>
 
-      <!-- Spese da saldare -->
+      <!-- Expenses still to settle -->
       <Card v-if="balanceStore.unsettledSplits.length > 0" class="p-4 sm:p-6">
         <button
           @click="unsettledOpen = !unsettledOpen"
@@ -89,7 +89,7 @@
 
         <Transition name="filter-expand">
           <div v-if="unsettledOpen" id="unsettled-splits-list" class="mt-4 space-y-3">
-            <!-- Totale da saldare -->
+            <!-- Total outstanding -->
             <div class="text-sm text-ink-soft flex justify-between border-b border-line pb-2">
               <span>{{ t('balance.unsettled.totalLabel') }}</span>
               <span class="font-semibold text-warning-soft">{{ formatCurrency(totalUnsettled) }}</span>
@@ -157,7 +157,7 @@
         </Transition>
       </Card>
 
-      <!-- Storico Pagamenti -->
+      <!-- Payment history -->
       <Card class="p-4 sm:p-6">
         <h3 class="text-lg font-semibold text-ink mb-4">{{ t('balance.history.title') }}</h3>
         <div v-if="balanceStore.settlements.length === 0" class="text-center py-8">
@@ -319,7 +319,7 @@ async function onSettlementCreated() {
   if (currentPropertyId.value) {
     await balanceStore.fetchBalanceDetails(currentPropertyId.value)
   }
-  // Refresh expenses so "Da saldare" labels update to "Saldato"
+  // Refresh expenses so the outstanding/settled labels update
   await expensesStore.fetchExpenses({})
   emit('settlement-created')
 }
