@@ -21,12 +21,30 @@ GET /version                    # Current version + update_available flag (publi
 
 ```http
 POST /auth/register             # Register new user (no auth required)
-POST /auth/login                # Login, returns JWT tokens (no auth required)
-POST /auth/refresh              # Refresh access token
+POST /auth/login                # Login, returns an access token (no auth required)
+POST /auth/refresh              # Exchange the refresh cookie for a new access token
+POST /auth/logout               # Expire the refresh cookie
 POST /auth/forgot-password      # Request password reset email (no auth required)
 POST /auth/reset-password       # Complete password reset (no auth required)
 PUT  /settings/password         # Change password (authenticated)
 ```
+
+Register and login answer `{"token": "<access token>", "user": {...}}` and set
+`homelog_refresh`, an HttpOnly `SameSite=Strict` cookie scoped to
+`/api/v1/auth`. The refresh token is never in the response body, so page script
+cannot read it. Send the access token as `Authorization: Bearer <token>`; it
+lasts 15 minutes, the refresh cookie 7 days.
+
+The two tokens are signed with the same secret and are told apart by a `typ`
+claim, so a refresh token is refused as a bearer token and an access token is
+refused by `/auth/refresh`. Each token also carries the user's `tv`
+(token version): a password change or reset, or a role change, increments it
+and invalidates every refresh token issued before. A password change returns a
+replacement `token` and sets a fresh cookie, so the caller stays signed in
+while its other sessions end.
+
+`/auth/refresh` still accepts `{"refresh_token": "..."}` in the body for
+non-browser clients that cannot hold a cookie.
 
 ## Exchange Rates
 

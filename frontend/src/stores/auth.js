@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { authAPI } from '@/api/client'
+import { authAPI, clearSession } from '@/api/client'
 import { apiErrorMessage } from '@/utils/apiError'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -22,7 +22,6 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = data.user
       token.value = data.token
       localStorage.setItem('token', data.token)
-      localStorage.setItem('refreshToken', data.refresh_token)
       localStorage.setItem('user', JSON.stringify(data.user))
       return data
     } catch (error) {
@@ -36,7 +35,6 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = data.user
       token.value = data.token
       localStorage.setItem('token', data.token)
-      localStorage.setItem('refreshToken', data.refresh_token)
       localStorage.setItem('user', JSON.stringify(data.user))
       return data
     } catch (error) {
@@ -49,11 +47,21 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('user', JSON.stringify(updatedUser))
   }
 
-  function logout() {
-    user.value = null
-    token.value = null
-    localStorage.clear()
+  // Replaces the access token after the server rotated the session (password
+  // change), having set a fresh refresh cookie in the same response.
+  function setToken(newToken) {
+    token.value = newToken
+    localStorage.setItem('token', newToken)
   }
 
-  return { user, token, isAuthenticated, avatarUrl, login, register, updateUser, logout }
+  function logout() {
+    // Only the server can expire the HttpOnly cookie. The local session goes
+    // either way, so a failed request cannot trap the user.
+    authAPI.logout().catch(() => {})
+    user.value = null
+    token.value = null
+    clearSession()
+  }
+
+  return { user, token, isAuthenticated, avatarUrl, login, register, updateUser, setToken, logout }
 })

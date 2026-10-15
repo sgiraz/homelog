@@ -19,11 +19,17 @@ var (
 	rawCode  = regexp.MustCompile(`"error_code":\s*"([a-z0-9_]+)"`)
 )
 
+// Middleware is scanned alongside the handlers: a guard that refuses a request
+// returns a code just like a handler does.
 func codesUsedInHandlers(t *testing.T) map[string]bool {
 	t.Helper()
-	files, err := filepath.Glob(filepath.Join("..", "handlers", "*.go"))
-	if err != nil {
-		t.Fatalf("glob handlers: %v", err)
+	var files []string
+	for _, dir := range []string{"handlers", "middleware"} {
+		matches, err := filepath.Glob(filepath.Join("..", dir, "*.go"))
+		if err != nil {
+			t.Fatalf("glob %s: %v", dir, err)
+		}
+		files = append(files, matches...)
 	}
 	codes := map[string]bool{
 		CodeServerError:    true,

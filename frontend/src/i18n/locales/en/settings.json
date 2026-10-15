@@ -91,7 +91,7 @@
       "submittingButton": "Saving...",
       "logout": "Sign out",
       "currentRequired": "Please enter your current password.",
-      "newTooShort": "New password must be at least 6 characters.",
+      "newTooShort": "New password must be at least 8 characters.",
       "mismatch": "Passwords do not match.",
       "success": "Password updated successfully!",
       "genericError": "Error changing password."

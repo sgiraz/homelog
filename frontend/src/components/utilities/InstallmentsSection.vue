@@ -105,7 +105,7 @@ async function togglePaid(inst, newValue) {
     inst.is_paid = newValue
     emit('installment-updated')
   } catch (err) {
-    console.error('Errore toggle rata:', err)
+    console.error('Failed to toggle instalment:', err)
     emit('error', apiErrorMessage(err, t('utilities.installments.updateError')))
   } finally {
     instUpdating.value = null

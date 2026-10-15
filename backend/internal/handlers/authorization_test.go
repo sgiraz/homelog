@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
@@ -18,6 +19,7 @@ import (
 // user from household A cannot read data from household B.
 type authzFixture struct {
 	router   *gin.Engine
+	db       *gorm.DB
 	alice    *models.User // admin of propA
 	bob      *models.User // admin of propB
 	propA    models.Property
@@ -72,6 +74,7 @@ func setupAuthzFixture(t *testing.T) *authzFixture {
 	// middleware so we exercise the same context plumbing that prod uses.
 	memberHandler := NewMemberHandler(db)
 	settingsHandler := NewSettingsHandler(db)
+	balanceHandler := NewBalanceHandler(db)
 
 	r := gin.New()
 	protected := r.Group("")
@@ -79,9 +82,12 @@ func setupAuthzFixture(t *testing.T) *authzFixture {
 	protected.GET("/properties/:id/members", memberHandler.List)
 	protected.GET("/members/:id", memberHandler.Get)
 	protected.GET("/properties/:id/settings", settingsHandler.GetHouseholdSettings)
+	protected.GET("/properties/:id/balance", balanceHandler.GetBalance)
+	protected.GET("/properties/:id/balance/details", balanceHandler.GetBalanceDetails)
 
 	return &authzFixture{
 		router:   r,
+		db:       db,
 		alice:    alice,
 		bob:      bob,
 		propA:    propA,
@@ -168,4 +174,43 @@ func itoa(u uint) string {
 		u /= 10
 	}
 	return string(buf[i:])
+}
+
+// A non-member used to get 200 with a zero balance for any property id, which
+// made the endpoint usable to probe which property ids exist and whether split
+// mode is on in someone else's household.
+func TestBalance_NonMember_403(t *testing.T) {
+	f := setupAuthzFixture(t)
+
+	for _, path := range []string{"/balance", "/balance/details"} {
+		rec := doGET(t, f.router, "/properties/"+itoa(f.propB.ID)+path, f.aliceTok)
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("%s: status = %d, want 403 (Alice reading Bob's balance)", path, rec.Code)
+		}
+	}
+}
+
+// other_member_id must belong to the property being queried.
+func TestBalance_OtherMemberFromAnotherProperty_404(t *testing.T) {
+	f := setupAuthzFixture(t)
+	// Split mode on, so /balance gets as far as resolving other_member_id.
+	if err := f.db.Create(&models.HouseholdSettings{PropertyID: f.propA.ID, SplitMode: true}).Error; err != nil {
+		t.Fatalf("household settings: %v", err)
+	}
+
+	for _, path := range []string{"/balance", "/balance/details"} {
+		rec := doGET(t, f.router, "/properties/"+itoa(f.propA.ID)+path+"?other_member_id="+itoa(f.memberB.ID), f.aliceTok)
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("%s: status = %d, want 404 (Bob's member in Alice's property)", path, rec.Code)
+		}
+	}
+}
+
+func TestBalance_Member_200(t *testing.T) {
+	f := setupAuthzFixture(t)
+
+	rec := doGET(t, f.router, "/properties/"+itoa(f.propA.ID)+"/balance", f.aliceTok)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
 }

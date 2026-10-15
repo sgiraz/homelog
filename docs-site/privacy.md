@@ -33,18 +33,20 @@ instead, so the discussion stays public and useful to others.
 - No advertising, no tracking, no profiling. `demo.homelog.dev` counts
   anonymous, aggregate visits — see [Usage statistics on the
   demo](#usage-statistics-on-the-demo) below — nothing else does.
-- No cookies requiring consent — which is why you see no cookie banner.
+- No cookies requiring consent — which is why you see no cookie banner. The
+  demo sets one strictly necessary cookie, to keep you signed in.
 - The sites store a few technical values in your browser (language, theme,
   and on the demo a login token). These never leave your device.
 - Web fonts are served from our own domains, so no font provider sees you.
 
 ## What is stored in your browser
 
-None of this is a cookie: it is `localStorage` / `sessionStorage`, which stays
-on your device and is never transmitted to us. All of it is either strictly
-necessary or a preference you set yourself, so under Article 5(3) of the
-ePrivacy Directive (in Italy, Article 122 of the Privacy Code) it is exempt
-from consent.
+Almost none of this is a cookie: it is `localStorage` / `sessionStorage`, which
+stays on your device and is never transmitted to us. The one exception is the
+demo's session cookie, listed below, which is sent back to the demo server
+because that is its whole purpose. All of it is either strictly necessary or a
+preference you set yourself, so under Article 5(3) of the ePrivacy Directive
+(in Italy, Article 122 of the Privacy Code) it is exempt from consent.
 
 | Site | Key | Purpose | Retained |
 | --- | --- | --- | --- |
@@ -52,7 +54,8 @@ from consent.
 | `homelog.dev` | `homelog-theme` | Light/dark preference | Until you clear site data |
 | `docs.homelog.dev` | `vitepress-theme-appearance` | Light/dark preference | Until you clear site data |
 | `docs.homelog.dev` | `hl-lang-redirect` | Marks that the one-time redirect to the Italian docs already happened | Until the tab is closed |
-| `demo.homelog.dev` | `token`, `refreshToken`, `user` | Keeps you signed in to the demo account | Until logout or clearing site data |
+| `demo.homelog.dev` | `token`, `user` (`localStorage`) | Keeps you signed in to the demo account | Until logout or clearing site data |
+| `demo.homelog.dev` | `homelog_refresh` (**cookie**, HttpOnly, SameSite=Strict) | Renews the short-lived login token without asking you to sign in again | 7 days, or until logout |
 | `demo.homelog.dev` | `themeMode`, `colorTheme`, `locale` | Appearance and language preferences | Until you clear site data |
 
 You can delete all of it at any time through your browser's "clear site data"
@@ -115,7 +118,10 @@ policy](https://www.goatcounter.com/privacy) for how it handles that data on
 its end.
 
 This does not apply to `homelog.dev` or `docs.homelog.dev`, and never applies
-to a self-hosted installation.
+to a self-hosted installation: the statistics are off unless whoever runs an
+instance configures their *own* GoatCounter site code, and the demo above is the
+only instance we configure. If you run a demo of your own, its visitors are
+counted on your account, never on ours.
 
 ## Self-hosted installations
 

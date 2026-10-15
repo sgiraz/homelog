@@ -630,7 +630,7 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 
 	// Apply updates atomically — if amount is changing on a split expense we
 	// also need to recompute every split's quota in the same transaction so
-	// Bilancio stays consistent with the new total.
+	// The balance stays consistent with the new total.
 	if len(updates) > 0 || (amountChanging && expense.IsSplit) {
 		err := h.db.Transaction(func(tx *gorm.DB) error {
 			if len(updates) > 0 {

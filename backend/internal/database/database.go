@@ -181,7 +181,8 @@ func AutoMigrate(db *gorm.DB) error {
 	// Data migration: fix payer splits for bill-originated expenses.
 	// Earlier versions of the bill → expense auto-creation left the payer's own
 	// split at is_settled=false, which blocked the "fully settled" status after
-	// a Settlement run (the payer split is excluded from Salda queries by design).
+	// a Settlement run (the payer split is excluded from settle-up queries by
+	// design).
 	db.Exec(`UPDATE expense_splits
 		SET is_settled = 1, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP)
 		WHERE is_settled = 0
@@ -306,8 +307,8 @@ func SeedDefaultData(db *gorm.DB, userID uint) error {
 	// Create default user settings
 	settings := models.UserSettings{
 		UserID:                    userID,
-		Language:                  "it",
-		Currency:                  "EUR",
+		Language:                  models.DefaultLanguage,
+		Currency:                  models.DefaultCurrency,
 		Theme:                     "auto",
 		DateFormat:                "DD/MM/YYYY",
 		DefaultSplitWithMemberIDs: "",

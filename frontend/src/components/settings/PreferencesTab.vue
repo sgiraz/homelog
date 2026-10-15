@@ -535,7 +535,7 @@ async function handleChangePassword() {
     pwError.value = t('settings.preferences.account.currentRequired')
     return
   }
-  if (pwForm.value.newPw.length < 6) {
+  if (pwForm.value.newPw.length < 8) {
     pwError.value = t('settings.preferences.account.newTooShort')
     return
   }
@@ -546,7 +546,9 @@ async function handleChangePassword() {
 
   pwLoading.value = true
   try {
-    await authAPI.changePassword(pwForm.value.current, pwForm.value.newPw)
+    const { data } = await authAPI.changePassword(pwForm.value.current, pwForm.value.newPw)
+    // The change revoked this session too; the server returned its successor.
+    if (data?.token) authStore.setToken(data.token)
     pwSuccess.value = t('settings.preferences.account.success')
     pwForm.value = { current: '', newPw: '', confirm: '' }
     setTimeout(() => { showChangePassword.value = false; pwSuccess.value = null }, 2000)
