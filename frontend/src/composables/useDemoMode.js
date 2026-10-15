@@ -9,6 +9,9 @@ const isResetting = ref(false)
 const appVersion = ref('')
 const updateAvailable = ref(false)
 const latestUrl = ref('')
+// GoatCounter site code, set by whoever runs a demo instance. Empty on every
+// self-hosted install, which is what keeps analytics off there.
+const analyticsSite = ref('')
 // Memoized so concurrent callers (App.vue at startup, the settings store when
 // it needs to know whether the account is shared) all await the same request.
 let initPromise = null
@@ -30,9 +33,11 @@ export function useDemoMode() {
         appVersion.value = data.current && data.current !== 'dev' ? data.current : ''
         updateAvailable.value = !!data.update_available
         latestUrl.value = data.latest_url || ''
+        analyticsSite.value = data.analytics_site || ''
       } catch {
         // Version check is best-effort; default to non-demo on failure.
         isDemoMode.value = false
+        analyticsSite.value = ''
       }
     })()
     return initPromise
@@ -53,5 +58,5 @@ export function useDemoMode() {
     }
   }
 
-  return { isDemoMode, isResetting, appVersion, updateAvailable, latestUrl, initDemoMode, resetDemo }
+  return { isDemoMode, isResetting, appVersion, updateAvailable, latestUrl, analyticsSite, initDemoMode, resetDemo }
 }
