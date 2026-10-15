@@ -309,7 +309,11 @@ func (h *AdminHandler) ToggleAdmin(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Model(&targetUser).Update("role", req.Role).Error; err != nil {
+	if err := h.db.Model(&targetUser).Updates(map[string]any{
+		"role": req.Role,
+		// Revoke their sessions: the old role travels in tokens already issued.
+		"token_version": gorm.Expr("token_version + 1"),
+	}).Error; err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update role")
 		return
 	}

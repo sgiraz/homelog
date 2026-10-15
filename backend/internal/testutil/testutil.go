@@ -40,12 +40,15 @@ func NewDB(t *testing.T) *gorm.DB {
 
 // SignToken produces a valid access token for the given user, signed with
 // TestJWTSecret — so tests must set JWT_SECRET to that value beforehand.
+// Tokens are typed: this one is only accepted by AuthRequired, not /refresh.
 func SignToken(t *testing.T, user *models.User) string {
 	t.Helper()
 	claims := middleware.JWTClaims{
-		UserID: user.ID,
-		Email:  user.Email,
-		Role:   user.Role,
+		UserID:       user.ID,
+		Email:        user.Email,
+		Role:         user.Role,
+		TokenType:    middleware.TokenTypeAccess,
+		TokenVersion: user.TokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

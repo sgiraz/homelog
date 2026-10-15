@@ -5,6 +5,16 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' }
 })
 
+// Only the short-lived access token is kept where script can read it; the
+// refresh token lives in an HttpOnly cookie scoped to /api/v1/auth. Clearing
+// these keys rather than all of localStorage keeps the theme and locale, which
+// the logged-out screens read before any sign-in.
+const SESSION_KEYS = ['token', 'user', 'refreshToken' /* legacy, pre-cookie */]
+
+export function clearSession() {
+  for (const key of SESSION_KEYS) localStorage.removeItem(key)
+}
+
 // JWT interceptor
 apiClient.interceptors.request.use(config => {
   const token = localStorage.getItem('token')
@@ -28,16 +38,9 @@ apiClient.interceptors.response.use(
   response => response,
   async error => {
     const originalRequest = error.config
-    // Skip refresh for the refresh endpoint itself to avoid infinite loop
-    const isRefreshRequest = originalRequest.url?.includes('/auth/refresh')
-    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshRequest) {
-      const refreshToken = localStorage.getItem('refreshToken')
-      if (!refreshToken) {
-        localStorage.clear()
-        window.location = '/login'
-        return Promise.reject(error)
-      }
-
+    // A 401 from an auth endpoint is the answer, not something to retry.
+    const isAuthRequest = /\/auth\/(refresh|login|register|logout)/.test(originalRequest.url || '')
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
       if (isRefreshing) {
         // Queue this request until refresh completes
         return new Promise((resolve, reject) => {
@@ -52,15 +55,16 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const { data } = await apiClient.post('/auth/refresh', { refresh_token: refreshToken })
+        // The refresh token rides along in its HttpOnly cookie.
+        const { data } = await apiClient.post('/auth/refresh')
         localStorage.setItem('token', data.token)
-        if (data.refresh_token) localStorage.setItem('refreshToken', data.refresh_token)
+        localStorage.removeItem('refreshToken')
         processQueue(null, data.token)
         originalRequest.headers.Authorization = `Bearer ${data.token}`
         return apiClient(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError)
-        localStorage.clear()
+        clearSession()
         window.location = '/login'
         return Promise.reject(refreshError)
       } finally {
@@ -77,6 +81,7 @@ export default apiClient
 export const authAPI = {
   register: (data) => apiClient.post('/auth/register', data),
   login: (data) => apiClient.post('/auth/login', data),
+  logout: () => apiClient.post('/auth/logout'),
   forgotPassword: (email) => apiClient.post('/auth/forgot-password', { email }),
   resetPassword: (token, newPassword) => apiClient.post('/auth/reset-password', { token, new_password: newPassword }),
   changePassword: (currentPassword, newPassword) =>
