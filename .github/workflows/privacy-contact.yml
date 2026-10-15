@@ -1,0 +1,65 @@
+# The privacy policy publishes a contact address for the data controller.
+# That address is a Cloudflare Email Routing forward, so it exists only as DNS
+# records in the zone: move the DNS, or turn routing off, and every message to
+# it bounces while the site, the build and the tests all keep passing. It was
+# published for a month in exactly that state.
+#
+# This fails loudly instead. GitHub emails the account that last edited the
+# cron schedule when a scheduled run fails.
+
+name: Privacy Contact
+
+on:
+  schedule:
+    - cron: "0 7 * * 1" # Monday morning
+  pull_request:
+    paths:
+      - "docs-site/privacy.md"
+      - "docs-site/it/privacy.md"
+      - ".github/workflows/privacy-contact.yml"
+  workflow_dispatch:
+
+jobs:
+  reachable:
+    name: Contact address can receive mail
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Every published address resolves to a domain that accepts mail
+        run: |
+          set -euo pipefail
+
+          files="docs-site/privacy.md docs-site/it/privacy.md"
+          # grep exits non-zero with no match, which pipefail would turn into a
+          # bare failure before the clearer message below.
+          addresses=$(grep -ohE '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' $files | sort -u || true)
+
+          if [ -z "$addresses" ]; then
+            echo "::error::The privacy policy publishes no contact address."
+            echo "Article 13 GDPR requires the controller's contact details."
+            exit 1
+          fi
+
+          failed=0
+          for address in $addresses; do
+            domain=${address#*@}
+            mx=$(dig +short MX "$domain" | sort -n)
+            if [ -z "$mx" ]; then
+              echo "::error::$address cannot receive mail: $domain has no MX record."
+              echo "  Check Cloudflare → Email Routing: enabled, destination verified, DNS records added."
+              failed=1
+            else
+              echo "$address -> $domain"
+              echo "$mx" | sed 's/^/    /'
+            fi
+          done
+          exit $failed
+
+      - name: Note what this does not prove
+        if: success()
+        run: |
+          echo "MX records exist, so mail reaches the provider." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This cannot see the routing rule or whether the destination is still" >> $GITHUB_STEP_SUMMARY
+          echo "verified. Only a real message proves delivery end to end." >> $GITHUB_STEP_SUMMARY
