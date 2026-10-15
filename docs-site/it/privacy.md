@@ -35,18 +35,22 @@ discussione resta pubblica e utile anche ad altri.
   `demo.homelog.dev` conta visite anonime e aggregate — vedi [Statistiche
   di utilizzo sulla demo](#statistiche-di-utilizzo-sulla-demo) più sotto —
   nient'altro lo fa.
-- Nessun cookie che richieda consenso — per questo non vedi alcun banner.
+- Nessun cookie che richieda consenso — per questo non vedi alcun banner. La
+  demo imposta un solo cookie strettamente necessario, per mantenerti
+  autenticato.
 - I siti salvano nel browser alcuni valori tecnici (lingua, tema e, sulla demo,
   un token di accesso). Non lasciano mai il tuo dispositivo.
 - I web font sono serviti dai nostri domini: nessun fornitore di font ti vede.
 
 ## Cosa viene salvato nel tuo browser
 
-Nulla di quanto segue è un cookie: si tratta di `localStorage` /
-`sessionStorage`, che resta sul tuo dispositivo e non ci viene mai trasmesso. È
-tutto o strettamente necessario o una preferenza che hai impostato tu, quindi ai
-sensi dell'art. 5(3) della Direttiva ePrivacy (in Italia art. 122 del Codice
-Privacy) è esente da consenso.
+Quasi nulla di quanto segue è un cookie: si tratta di `localStorage` /
+`sessionStorage`, che resta sul tuo dispositivo e non ci viene mai trasmesso.
+L'unica eccezione è il cookie di sessione della demo, elencato qui sotto, che
+viene inviato al server della demo perché è esattamente il suo scopo. È tutto o
+strettamente necessario o una preferenza che hai impostato tu, quindi ai sensi
+dell'art. 5(3) della Direttiva ePrivacy (in Italia art. 122 del Codice Privacy)
+è esente da consenso.
 
 | Sito | Chiave | Finalità | Conservazione |
 | --- | --- | --- | --- |
@@ -54,7 +58,8 @@ Privacy) è esente da consenso.
 | `homelog.dev` | `homelog-theme` | Preferenza chiaro/scuro | Finché non cancelli i dati del sito |
 | `docs.homelog.dev` | `vitepress-theme-appearance` | Preferenza chiaro/scuro | Finché non cancelli i dati del sito |
 | `docs.homelog.dev` | `hl-lang-redirect` | Segna che il reindirizzamento una tantum alla documentazione italiana è già avvenuto | Fino alla chiusura della scheda |
-| `demo.homelog.dev` | `token`, `refreshToken`, `user` | Ti mantiene autenticato sull'account demo | Fino al logout o alla cancellazione dei dati del sito |
+| `demo.homelog.dev` | `token`, `user` (`localStorage`) | Ti mantiene autenticato sull'account demo | Fino al logout o alla cancellazione dei dati del sito |
+| `demo.homelog.dev` | `homelog_refresh` (**cookie**, HttpOnly, SameSite=Strict) | Rinnova il token di accesso a breve scadenza senza chiederti di autenticarti di nuovo | 7 giorni, o fino al logout |
 | `demo.homelog.dev` | `themeMode`, `colorTheme`, `locale` | Preferenze di aspetto e lingua | Finché non cancelli i dati del sito |
 
 Puoi cancellare tutto in qualsiasi momento dalla funzione "cancella dati del
@@ -119,7 +124,10 @@ GoatCounter](https://www.goatcounter.com/privacy) per come gestisce quei
 dati dal suo lato.
 
 Questo non riguarda `homelog.dev` né `docs.homelog.dev`, e non riguarda mai
-un'installazione self-hosted.
+un'installazione self-hosted: le statistiche sono disattivate a meno che chi
+gestisce un'istanza non configuri il *proprio* codice GoatCounter, e la demo
+qui sopra è la sola istanza che configuriamo. Se gestisci una tua demo, i suoi
+visitatori vengono contati sul tuo account, mai sul nostro.
 
 ## Installazioni self-hosted
 

@@ -150,6 +150,14 @@ func main() {
 				"check_failed":     checkFailed,
 				"demo_mode":        database.IsDemoMode(),
 			}
+			// Usage stats are opt-in per instance and only on a demo. The site
+			// code comes from the operator's own configuration, never from a
+			// value compiled into the frontend.
+			if database.IsDemoMode() {
+				if site := os.Getenv("DEMO_GOATCOUNTER_SITE"); site != "" {
+					resp["analytics_site"] = site
+				}
+			}
 			if latest != "" {
 				resp["latest"] = latest
 				resp["latest_url"] = latestURL
