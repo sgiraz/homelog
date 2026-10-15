@@ -1,0 +1,29 @@
+# Codecov configuration.
+#
+# Coverage is reported for information, never as a gate: no PR is blocked on a
+# percentage. What the report is for is spotting a changed line that nothing
+# exercises, so the only thing excluded here is code that exists to serve the
+# tests themselves and would otherwise dilute that signal.
+#
+# Application code is never listed below, including wiring that is awkward to
+# test. "Hard to test" and "not worth testing" are different things, and hiding
+# the first one removes the reminder to fix it.
+
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+ignore:
+  # Test helpers: an in-memory database and token signing used by every test.
+  # They carry no product behaviour, and because the package holds no test
+  # files of its own, Go attributes them 0% however heavily the suite uses them.
+  - "backend/internal/testutil"
+
+comment:
+  layout: "condensed_header, diff, files"
+  require_changes: true
