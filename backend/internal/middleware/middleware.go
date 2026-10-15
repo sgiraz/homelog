@@ -10,6 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/sgiraz/homelog/internal/apierr"
 )
 
 // CORS middleware restricts cross-origin requests to an explicit allow-list
@@ -150,7 +152,7 @@ func DemoGuard() gin.HandlerFunc {
 	demo := os.Getenv("DEMO_MODE") == "true"
 	return func(c *gin.Context) {
 		if demo {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Operazione non disponibile in modalità demo"})
+			apierr.Fail(c, http.StatusForbidden, "demo_mode_forbidden", "This operation is not available in demo mode")
 			c.Abort()
 			return
 		}

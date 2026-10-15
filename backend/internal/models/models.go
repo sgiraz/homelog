@@ -158,6 +158,11 @@ var SupportedLanguages = map[string]bool{
 // gets the one language every string is guaranteed to exist in.
 const DefaultLanguage = "en"
 
+// DefaultCurrency is the starting currency of a new account, changed by the
+// user in settings. Like DefaultLanguage it must never be repeated as a
+// literal in a handler fallback.
+const DefaultCurrency = "EUR"
+
 // NormalizeLanguage maps a client-supplied language tag onto a supported
 // language, falling back to DefaultLanguage. Accepts regional tags ("en-GB")
 // and any casing, so a raw navigator.language value can be passed straight in.
@@ -233,9 +238,9 @@ type Utility struct {
 
 	// Metered service fields
 	PowerCapacity       float64 `json:"power_capacity,omitempty"`                // For electricity (kW)
-	AllowsSelfReading   *bool   `gorm:"default:true" json:"allows_self_reading"` // Se il fornitore accetta autolettura
-	ComparisonThreshold float64 `gorm:"default:2.0" json:"comparison_threshold"` // Soglia base per letture stesso giorno
-	ThresholdPerDay     float64 `gorm:"default:1.0" json:"threshold_per_day"`    // Tolleranza aggiuntiva per giorno
+	AllowsSelfReading   *bool   `gorm:"default:true" json:"allows_self_reading"` // Whether the provider accepts self-readings
+	ComparisonThreshold float64 `gorm:"default:2.0" json:"comparison_threshold"` // Base tolerance for same-day readings
+	ThresholdPerDay     float64 `gorm:"default:1.0" json:"threshold_per_day"`    // Extra tolerance per elapsed day
 	// ReadingMatchDays is how far (days) a self-reading may sit from a bill's period
 	// and still be compared with it; rare readers need a wider window. The server
 	// never writes 0, so the column default is safe.
@@ -349,7 +354,7 @@ type Notification struct {
 	Property *Property `gorm:"foreignKey:PropertyID" json:"property,omitempty"`
 }
 
-// MeterReading represents a USER's manual meter reading (autolettura)
+// MeterReading represents a USER's own manual meter reading
 // This is used to compare against provider readings in bills to detect anomalies
 type MeterReading struct {
 	ID        uint      `gorm:"primarykey" json:"id"`
@@ -360,12 +365,12 @@ type MeterReading struct {
 	ReadingDate time.Time `gorm:"not null;index" json:"reading_date"`
 
 	// For electricity (multi-band meters)
-	ValueF1 *float64 `json:"value_f1,omitempty"` // Fascia F1 (peak hours)
-	ValueF2 *float64 `json:"value_f2,omitempty"` // Fascia F2 (mid hours)
-	ValueF3 *float64 `json:"value_f3,omitempty"` // Fascia F3 (off-peak hours)
+	ValueF1 *float64 `json:"value_f1,omitempty"` // F1 band (peak hours)
+	ValueF2 *float64 `json:"value_f2,omitempty"` // F2 band (mid hours)
+	ValueF3 *float64 `json:"value_f3,omitempty"` // F3 band (off-peak hours)
 
 	// For gas/water (single value meters)
-	Value *float64 `json:"value,omitempty"` // Lettura singola (mc per acqua, Smc per gas)
+	Value *float64 `json:"value,omitempty"` // Single reading (m3 for water, Sm3 for gas)
 
 	// Source of reading
 	Source   string `gorm:"default:'manual'" json:"source"` // manual, submitted (inviata al fornitore)
@@ -384,7 +389,7 @@ type Bill struct {
 	BillNumber string `gorm:"not null;index" json:"bill_number"`
 
 	// Explicit association to the user's self-reading for this bill period.
-	// When set, this reading is used as the "Consumo Effettivo" anchor.
+	// When set, this reading is the anchor for actual consumption.
 	// When nil, the provider_reading value is used as fallback.
 	UserReadingID *uint         `json:"user_reading_id,omitempty"`
 	UserReading   *MeterReading `gorm:"foreignKey:UserReadingID" json:"user_reading,omitempty"`
@@ -393,14 +398,14 @@ type Bill struct {
 	PeriodEnd     time.Time     `gorm:"not null;index" json:"period_end"`
 	DueDate       time.Time     `gorm:"not null;index" json:"due_date"`
 
-	// Provider Readings (letture rilevate dal fornitore nella bolletta)
+	// Provider readings (taken by the provider, printed on the bill)
 	// These are the readings reported by the utility provider
-	ProviderReadingDate *time.Time `json:"provider_reading_date,omitempty"` // Data lettura fornitore
-	ProviderReadingF1   *float64   `json:"provider_reading_f1,omitempty"`   // Lettura F1 (electricity peak)
-	ProviderReadingF2   *float64   `json:"provider_reading_f2,omitempty"`   // Lettura F2 (electricity mid)
-	ProviderReadingF3   *float64   `json:"provider_reading_f3,omitempty"`   // Lettura F3 (electricity off-peak)
-	ProviderReading     *float64   `json:"provider_reading,omitempty"`      // Lettura singola (gas/water)
-	ReadingType         string     `json:"reading_type,omitempty"`          // actual (rilevata), estimated (stimata)
+	ProviderReadingDate *time.Time `json:"provider_reading_date,omitempty"` // Provider reading date
+	ProviderReadingF1   *float64   `json:"provider_reading_f1,omitempty"`   // Reading, F1 band (electricity peak)
+	ProviderReadingF2   *float64   `json:"provider_reading_f2,omitempty"`   // Reading, F2 band (electricity mid)
+	ProviderReadingF3   *float64   `json:"provider_reading_f3,omitempty"`   // Reading, F3 band (electricity off-peak)
+	ProviderReading     *float64   `json:"provider_reading,omitempty"`      // Single reading (gas/water)
+	ReadingType         string     `json:"reading_type,omitempty"`          // "actual" (taken) or "estimated"
 
 	// Legacy reading fields (for backwards compatibility)
 	ReadingStartDate  *time.Time `json:"reading_start_date,omitempty"`
@@ -418,10 +423,10 @@ type Bill struct {
 	// True billed consumption = Smc × ConversionCoefficient
 	ConversionCoefficient *float64 `json:"conversion_coefficient,omitempty"`
 
-	// Estimated reading/consumption (quando la bolletta contiene una stima)
+	// Estimated reading/consumption (when the bill carries an estimate)
 	EstimatedDate        *time.Time `json:"estimated_date,omitempty"`
-	EstimatedReading     *float64   `json:"estimated_reading,omitempty"`     // Lettura stimata (mc)
-	EstimatedConsumption *float64   `json:"estimated_consumption,omitempty"` // Consumo stimato (Smc), calcolato
+	EstimatedReading     *float64   `json:"estimated_reading,omitempty"`     // Estimated reading (m3)
+	EstimatedConsumption *float64   `json:"estimated_consumption,omitempty"` // Estimated consumption (Sm3), derived
 
 	// Amounts
 	AmountTotal  float64  `gorm:"not null" json:"amount_total"`
@@ -546,7 +551,7 @@ type UserSettings struct {
 
 	UserID            uint   `gorm:"uniqueIndex;not null" json:"user_id"`
 	DefaultPropertyID *uint  `json:"default_property_id,omitempty"`
-	Language          string `gorm:"not null;default:'it'" json:"language"`
+	Language          string `gorm:"not null;default:'en'" json:"language"`
 	Currency          string `gorm:"not null;default:'EUR'" json:"currency"`
 	Theme             string `gorm:"not null;default:'auto'" json:"theme"`        // auto, light, dark
 	ColorTheme        string `gorm:"not null;default:'slate'" json:"color_theme"` // slate (default), paper, forest, ocean, plum

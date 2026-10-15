@@ -31,6 +31,7 @@
 "debt_already_settled": "Diese Schuld ist bereits beglichen",
 "debt_not_found": "Schuld nicht gefunden",
 "demo_mode_disabled": "Der Demomodus ist auf dieser Instanz nicht aktiviert",
+"demo_mode_forbidden": "Dieser Vorgang ist in der Demo nicht verfügbar.",
 "email_already_registered": "Diese E-Mail-Adresse ist bereits registriert",
 "end_before_start": "Das Enddatum muss nach dem Startdatum liegen",
 "exchange_params_required": "Beide Währungen sind erforderlich",

@@ -147,7 +147,7 @@ func (h *SettingsHandler) PromoteAdmin(c *gin.Context) {
 	}
 
 	log.Printf("✅ Member ID=%d promoted to admin for property ID=%d by user ID=%d", req.MemberID, req.PropertyID, userID)
-	c.JSON(http.StatusOK, gin.H{"message": "Admin nominato con successo"})
+	c.JSON(http.StatusOK, gin.H{"message": "Admin appointed"})
 }
 
 // DeleteAccountRequest is the request body for self-account deletion
@@ -349,7 +349,7 @@ func (h *SettingsHandler) DeleteAccount(c *gin.Context) {
 	}
 
 	log.Printf("✅ User ID=%d (%s) self-deleted their account", userID, user.Email)
-	c.JSON(http.StatusOK, gin.H{"message": "Account eliminato con successo"})
+	c.JSON(http.StatusOK, gin.H{"message": "Account deleted"})
 }
 
 // cascadeDeleteProperty deletes all data associated with a property (utilities, bills, readings, etc.)

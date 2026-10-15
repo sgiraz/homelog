@@ -1,7 +1,7 @@
 <template>
   <BaseModal :title="t('utilities.editUtilityModal.title')" @close="$emit('close')">
     <form @submit.prevent="handleSubmit" class="space-y-4">
-      <!-- Tipo Servizio (read-only badge) -->
+      <!-- Service type (read-only badge) -->
       <div>
         <label class="block text-sm text-ink-soft mb-2">
           {{ t('utilities.editUtilityModal.typeLabel') }}
@@ -12,7 +12,7 @@
         </div>
       </div>
 
-      <!-- Attivo / Disattivo toggle -->
+      <!-- Active / inactive toggle -->
       <div class="flex items-center gap-3 p-3 bg-surface rounded-lg">
         <button
           type="button"

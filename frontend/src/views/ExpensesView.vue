@@ -11,7 +11,7 @@
       </Button>
     </div>
 
-    <!-- Tab bar: Lista / Bilancio -->
+    <!-- Tab bar: list / balance -->
     <div class="flex gap-1">
       <button
         v-for="tab in expenseTabs"
@@ -29,10 +29,10 @@
       </button>
     </div>
 
-    <!-- Tab: Bilancio -->
+    <!-- Balance tab -->
     <BalanceSection v-if="activeTab === 'bilancio'" />
 
-    <!-- Tab: Debiti a lungo termine -->
+    <!-- Long-term debts tab -->
     <DebtsSection v-if="activeTab === 'debiti'" />
 
     <!-- Tab: Lista -->
@@ -146,7 +146,7 @@
         </Transition>
       </div>
 
-      <!-- Desktop: filtri sempre visibili in riga -->
+      <!-- Desktop: filters always visible, in a row -->
       <div class="hidden sm:block space-y-3">
         <div class="relative">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -247,7 +247,7 @@
       </div>
     </Card>
 
-    <!-- Lista spese -->
+    <!-- Expense list -->
     <Card class="p-4 sm:p-6">
       <div v-if="expensesStore.loading && expensesStore.expenses.length === 0" class="text-center py-8 text-ink-soft">
         {{ t('expenses.list.loading') }}
@@ -731,7 +731,7 @@ watch(
 )
 
 // The view is kept alive, so its filters outlive the visit. A link-driven
-// filter (the dashboard drill-through) must not: opening Spese from the nav
+// filter (the dashboard drill-through) must not: opening Expenses from the nav
 // shows the whole list, never the period someone drilled into earlier. Filters
 // the user set by hand stay, as they would on any other page.
 onActivated(() => {

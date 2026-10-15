@@ -36,7 +36,7 @@
     <!-- Main content (only when user has a property) -->
     <template v-if="settingsStore.hasProperty">
 
-    <!-- Da gestire — brief operativo concreto (prima "cosa fare", poi il riepilogo) -->
+    <!-- Needs attention — what to do first, the summary after -->
     <AttentionPanel
       :items="attentionItems"
       :empty-detail="attentionEmptyDetail"
@@ -84,14 +84,14 @@
 
     </template>
 
-    <!-- Modal Aggiungi Spesa -->
+    <!-- Add expense modal -->
     <AddExpenseModal
       v-if="showAddExpense"
       @close="showAddExpense = false"
       @created="onExpenseCreated"
     />
 
-    <!-- Modal Salda (aperto inline dal pannello "Da gestire") -->
+    <!-- Settle-up modal, opened inline from the attention panel -->
     <SettlementModal
       v-if="showSettle && balanceInfo"
       :balance="balanceInfo.balance"
@@ -386,7 +386,7 @@ const attentionItems = computed(() => {
 
   // Multiple pending readings collapse into ONE row so the brief stays a short
   // list of concrete priorities. The action opens the utilities list (it does
-  // not log a reading inline) → labelled "Apri", not "Registra".
+  // not log a reading inline), so it is labelled "open", not "log".
   if (readings.length >= 2) {
     items.push({
       key: 'readings-group',

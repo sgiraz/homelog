@@ -31,6 +31,7 @@
   "debt_already_settled": "This debt is already paid off",
   "debt_not_found": "Debt not found",
   "demo_mode_disabled": "Demo mode is not enabled on this instance",
+  "demo_mode_forbidden": "This operation is not available in the demo.",
   "email_already_registered": "This email is already registered",
   "end_before_start": "The end date must come after the start date",
   "exchange_params_required": "Both currencies are required",

@@ -145,8 +145,8 @@ func seedDemoData(db *gorm.DB) error {
 
 	settings := models.UserSettings{
 		UserID:              user.ID,
-		Language:            "it",
-		Currency:            "EUR",
+		Language:            models.DefaultLanguage,
+		Currency:            models.DefaultCurrency,
 		Theme:               "auto",
 		DateFormat:          "DD/MM/YYYY",
 		EmailNotifications:  true,
@@ -282,17 +282,17 @@ func seedDemoData(db *gorm.DB) error {
 	}
 
 	// ---- Projects --------------------------------------------------------
-	bagno := models.Project{
+	bathroomProject := models.Project{
 		UserID: user.ID, PropertyID: &property.ID, Name: "Ristrutturazione Bagno", Icon: "🛁",
 		Budget: 6000, StartDate: daysAgo(90), EndDate: now.AddDate(0, 2, 0), Status: "active",
 		Description: "Rifacimento completo del bagno padronale.",
 	}
-	vacanza := models.Project{
+	holidayProject := models.Project{
 		UserID: user.ID, PropertyID: &property.ID, Name: "Vacanza Estate", Icon: "🏖️",
 		Budget: 2500, StartDate: daysAgo(40), EndDate: now.AddDate(0, 3, 0), Status: "active",
 		Description: "Settimana al mare in agosto.",
 	}
-	for _, p := range []*models.Project{&bagno, &vacanza} {
+	for _, p := range []*models.Project{&bathroomProject, &holidayProject} {
 		if err := db.Create(p).Error; err != nil {
 			return err
 		}
@@ -339,9 +339,9 @@ func seedDemoData(db *gorm.DB) error {
 		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), Amount: 220.00, Date: daysAgo(35), Description: "Idraulico", PaidByMemberID: mario.ID, IsSplit: true}, couple},
 		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 79.10, Date: daysAgo(45), Description: "Spesa supermercato", PaidByMemberID: mario.ID, IsSplit: true}, all},
 		// Project-linked expenses
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), ProjectID: &bagno.ID, Amount: 1850.00, Date: daysAgo(60), Description: "Piastrelle e sanitari", PaidByMemberID: mario.ID, IsSplit: true}, couple},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), ProjectID: &bagno.ID, Amount: 900.00, Date: daysAgo(20), Description: "Acconto manodopera", PaidByMemberID: mario.ID, IsSplit: false}, nil},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("entertainment"), ProjectID: &vacanza.ID, Amount: 450.00, Date: daysAgo(12), Description: "Caparra hotel", PaidByMemberID: giulia.ID, IsSplit: true}, all},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), ProjectID: &bathroomProject.ID, Amount: 1850.00, Date: daysAgo(60), Description: "Piastrelle e sanitari", PaidByMemberID: mario.ID, IsSplit: true}, couple},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), ProjectID: &bathroomProject.ID, Amount: 900.00, Date: daysAgo(20), Description: "Acconto manodopera", PaidByMemberID: mario.ID, IsSplit: false}, nil},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("entertainment"), ProjectID: &holidayProject.ID, Amount: 450.00, Date: daysAgo(12), Description: "Caparra hotel", PaidByMemberID: giulia.ID, IsSplit: true}, all},
 	}
 	for _, x := range expenses {
 		if err := addExpense(x.e, x.among); err != nil {

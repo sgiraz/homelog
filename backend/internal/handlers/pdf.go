@@ -134,7 +134,7 @@ type BillTemplateRule struct {
 	ContextAbove string  `json:"context_above"` // Words above for context validation
 
 	// Anchor-based extraction (relative positioning, resilient to layout changes)
-	AnchorText      string `json:"anchor_text"`      // Label text to find as anchor (e.g., "Importo totale da pagare")
+	AnchorText      string `json:"anchor_text"`      // Label text to find as anchor, e.g. the "amount due" label on the bill
 	AnchorDirection string `json:"anchor_direction"` // "right", "below", "right_or_below"
 	GlobalSearch    bool   `json:"global_search"`    // For unique fields (POD/PDR): search entire document
 	MultiLine       bool   `json:"multi_line"`       // For text blocks: collect all text below anchor until next section
@@ -155,21 +155,21 @@ type ExtractedBillData struct {
 	PDFURL           string  `json:"pdf_url,omitempty"`
 	RawText          string  `json:"raw_text,omitempty"` // For debugging/template creation
 
-	// Provider meter readings (letture rilevate dal fornitore)
-	ProviderReadingDate string   `json:"provider_reading_date,omitempty"` // Data lettura
-	ProviderReadingF1   *float64 `json:"provider_reading_f1,omitempty"`   // Lettura F1 (electricity peak)
-	ProviderReadingF2   *float64 `json:"provider_reading_f2,omitempty"`   // Lettura F2 (electricity mid)
-	ProviderReadingF3   *float64 `json:"provider_reading_f3,omitempty"`   // Lettura F3 (electricity off-peak)
-	ProviderReading     *float64 `json:"provider_reading,omitempty"`      // Lettura singola (gas/water mc)
-	ReadingType         string   `json:"reading_type,omitempty"`          // actual (rilevata), estimated (stimata)
+	// Provider meter readings (taken by the provider)
+	ProviderReadingDate string   `json:"provider_reading_date,omitempty"` // Reading date
+	ProviderReadingF1   *float64 `json:"provider_reading_f1,omitempty"`   // Reading, F1 band (electricity peak)
+	ProviderReadingF2   *float64 `json:"provider_reading_f2,omitempty"`   // Reading, F2 band (electricity mid)
+	ProviderReadingF3   *float64 `json:"provider_reading_f3,omitempty"`   // Reading, F3 band (electricity off-peak)
+	ProviderReading     *float64 `json:"provider_reading,omitempty"`      // Single reading (gas/water, m3)
+	ReadingType         string   `json:"reading_type,omitempty"`          // "actual" (taken) or "estimated"
 
-	// Gas conversion coefficient (Coefficiente di conversione C)
+	// Gas conversion coefficient (C)
 	ConversionCoefficient *float64 `json:"conversion_coefficient,omitempty"`
 
 	// Estimated reading/consumption fields
 	EstimatedDate                *string  `json:"estimated_date,omitempty"`
-	EstimatedReading             *float64 `json:"estimated_reading,omitempty"`     // Lettura stimata (mc)
-	EstimatedConsumption         *float64 `json:"estimated_consumption,omitempty"` // Consumo stimato (Smc)
+	EstimatedReading             *float64 `json:"estimated_reading,omitempty"`     // Estimated reading (m3)
+	EstimatedConsumption         *float64 `json:"estimated_consumption,omitempty"` // Estimated consumption (Sm3)
 	PreviousEstimatedConsumption *float64 `json:"previous_estimated_consumption,omitempty"`
 
 	// Communication text (extracted from bill)

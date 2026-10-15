@@ -79,7 +79,7 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 			Find(&expenses)
 
 		timestamp := time.Now().Format("2006-01-02_15-04-05")
-		filename := fmt.Sprintf("homelog_spese_%s.csv", timestamp)
+		filename := fmt.Sprintf("homelog_expenses_%s.csv", timestamp)
 		headers := []string{"Date", "Description", "Amount", "Category", "Project", "Paid By", "Split", "Notes"}
 		lang := i18n.UserLanguage(h.db, userID)
 		rows := make([][]string, 0, len(expenses))
@@ -452,7 +452,7 @@ func (h *ExportHandler) ImportData(c *gin.Context) {
 	log.Printf("✅ Import completed for user %d: %+v", userID, counts)
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":  "Importazione completata con successo",
+		"message":  "Import completed",
 		"imported": counts,
 	})
 }
@@ -472,7 +472,7 @@ func (h *ExportHandler) importExpenses(tx *gorm.DB, userID uint, raw []any) (int
 		e.BillID = nil    // do not carry over bill FK — bills are not re-imported here
 		e.Splits = nil    // splits handled separately in full import
 		if err := tx.Omit("Splits").Create(&e).Error; err != nil {
-			return count, fmt.Errorf("spesa '%s': %w", e.Description, err)
+			return count, fmt.Errorf("expense %q: %w", e.Description, err)
 		}
 		count++
 	}
@@ -493,7 +493,7 @@ func (h *ExportHandler) importUtilities(tx *gorm.DB, userID uint, raw []any) (in
 		u.Readings = nil
 		u.Bills = nil
 		if err := tx.Omit("Readings", "Bills").Create(&u).Error; err != nil {
-			return count, fmt.Errorf("utenza '%s': %w", u.Provider, err)
+			return count, fmt.Errorf("utility %q: %w", u.Provider, err)
 		}
 		count++
 	}

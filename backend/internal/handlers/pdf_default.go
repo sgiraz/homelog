@@ -127,8 +127,8 @@ func (h *PDFHandler) extractBillDataDefault(text string, utilityType string, pdf
 	}
 
 	if extracted.PeriodStart == "" {
-		dallAlPattern := regexp.MustCompile(`(?i)dall['']?\s*(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})\s+al\s+(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})`)
-		if match := dallAlPattern.FindStringSubmatch(text); len(match) > 6 {
+		dateRangePattern := regexp.MustCompile(`(?i)dall['']?\s*(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})\s+al\s+(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})`)
+		if match := dateRangePattern.FindStringSubmatch(text); len(match) > 6 {
 			extracted.PeriodStart = h.parseItalianDate(match[1], strings.ToLower(match[2]), match[3])
 			extracted.PeriodEnd = h.parseItalianDate(match[4], strings.ToLower(match[5]), match[6])
 			log.Printf("Extracted period (dall/al): %s - %s", extracted.PeriodStart, extracted.PeriodEnd)
@@ -144,7 +144,7 @@ func (h *PDFHandler) extractBillDataDefault(text string, utilityType string, pdf
 		}
 	}
 
-	// Gas conversion coefficient (Coefficiente di conversione C)
+	// Gas conversion coefficient (C)
 	if utilityType == "gas" {
 		coeffPatterns := []string{
 			`[Cc]oefficiente\s+di\s+conversione\s*\(?C?\)?\s*[:\s]*(\d+[,\.]\d+)`,
@@ -211,18 +211,18 @@ func (h *PDFHandler) extractProviderReadings(extracted *ExtractedBillData, text 
 	case "electricity":
 		log.Printf("Extracting electricity readings from text (length: %d)", len(text))
 
-		lettureSection := text
+		readingsSection := text
 		if idx := strings.Index(strings.ToLower(text), "letture e consumi"); idx != -1 {
-			lettureSection = text[idx:]
-			if len(lettureSection) > 2000 {
-				lettureSection = lettureSection[:2000]
+			readingsSection = text[idx:]
+			if len(readingsSection) > 2000 {
+				readingsSection = readingsSection[:2000]
 			}
 			log.Printf("Found 'Letture e consumi' section at index %d", idx)
 		}
 
 		// Pattern for "final - initial = consumption" format
 		electricPattern := regexp.MustCompile(`(\d{1,3}(?:[.\s]\d{3})*,\d+)\s*-\s*(\d{1,3}(?:[.\s]\d{3})*,\d+)\s*=\s*(\d{1,3}(?:[.\s]\d{3})*,\d+)`)
-		matches := electricPattern.FindAllStringSubmatch(lettureSection, -1)
+		matches := electricPattern.FindAllStringSubmatch(readingsSection, -1)
 
 		log.Printf("Found %d reading matches (pattern 1) in electricity bill", len(matches))
 
@@ -236,7 +236,7 @@ func (h *PDFHandler) extractProviderReadings(extracted *ExtractedBillData, text 
 			log.Printf("Extracted electricity readings (pattern 1): F1=%.2f, F2=%.2f, F3=%.2f", f1, f2, f3)
 		} else {
 			simplePattern := regexp.MustCompile(`(\d+[,\.]\d+)\s*-\s*(\d+[,\.]\d+)\s*=\s*(\d+[,\.]\d+)`)
-			matches = simplePattern.FindAllStringSubmatch(lettureSection, -1)
+			matches = simplePattern.FindAllStringSubmatch(readingsSection, -1)
 			log.Printf("Found %d reading matches (pattern 2 - simple) in electricity bill", len(matches))
 
 			if len(matches) >= 3 {
@@ -252,10 +252,10 @@ func (h *PDFHandler) extractProviderReadings(extracted *ExtractedBillData, text 
 
 		if extracted.ProviderReadingF1 == nil {
 			log.Printf("Trying FASCIA label patterns...")
-			fasciaPattern := regexp.MustCompile(`(?i)FASCIA\s*[123].*?(\d{1,3}(?:[.\s]\d{3})*,\d+)`)
-			fasciaMatches := fasciaPattern.FindAllStringSubmatch(lettureSection, 3)
-			log.Printf("Found %d FASCIA matches", len(fasciaMatches))
-			for i, m := range fasciaMatches {
+			bandPattern := regexp.MustCompile(`(?i)FASCIA\s*[123].*?(\d{1,3}(?:[.\s]\d{3})*,\d+)`)
+			bandMatches := bandPattern.FindAllStringSubmatch(readingsSection, 3)
+			log.Printf("Found %d FASCIA matches", len(bandMatches))
+			for i, m := range bandMatches {
 				log.Printf("FASCIA match %d: %v", i, m)
 			}
 		}
@@ -265,7 +265,7 @@ func (h *PDFHandler) extractProviderReadings(extracted *ExtractedBillData, text 
 				*extracted.ProviderReadingF1, *extracted.ProviderReadingF2, *extracted.ProviderReadingF3)
 		} else {
 			log.Printf("Warning: Could not extract electricity readings")
-			sample := lettureSection
+			sample := readingsSection
 			if len(sample) > 500 {
 				sample = sample[:500]
 			}
