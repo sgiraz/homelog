@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -319,6 +320,84 @@ func TestRegister_ReportsTheFailingField(t *testing.T) {
 			}
 			if resp.ErrorCode != tc.wantCode {
 				t.Errorf("error_code = %q, want %q", resp.ErrorCode, tc.wantCode)
+			}
+		})
+	}
+}
+
+// A reset is the recovery path for a compromised account, so it must end the
+// sessions that account already had. ResetPassword had no test at all.
+func TestResetPassword_RevokesSessions(t *testing.T) {
+	t.Setenv("JWT_SECRET", testutil.TestJWTSecret)
+	db := testutil.NewDB(t)
+	h := NewAuthHandler(db)
+	user := seedUser(t, h, "alice@example.com", "hunter2ABC")
+
+	r := gin.New()
+	r.POST("/auth/login", h.Login)
+	r.POST("/auth/refresh", h.RefreshToken)
+	r.POST("/auth/reset-password", h.ResetPassword)
+
+	login := postJSON(t, r, "/auth/login", map[string]string{
+		"email": "alice@example.com", "password": "hunter2ABC",
+	})
+	cookie := refreshCookieFrom(login)
+	if cookie == nil {
+		t.Fatal("no refresh cookie after login")
+	}
+
+	expires := time.Now().Add(time.Hour)
+	if err := db.Model(user).Updates(map[string]any{
+		"password_reset_token":   "reset-token",
+		"password_reset_expires": expires,
+	}).Error; err != nil {
+		t.Fatalf("seed reset token: %v", err)
+	}
+
+	rec := postJSON(t, r, "/auth/reset-password", map[string]string{
+		"token": "reset-token", "new_password": "brand-new-pass",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("reset: status %d, body %s", rec.Code, rec.Body.String())
+	}
+
+	stale := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+	stale.AddCookie(cookie)
+	staleRec := httptest.NewRecorder()
+	r.ServeHTTP(staleRec, stale)
+	if staleRec.Code != http.StatusUnauthorized {
+		t.Fatalf("session from before the reset: status %d, want 401", staleRec.Code)
+	}
+}
+
+// The Secure flag decides whether the refresh cookie may travel over plain
+// HTTP, so each way of deciding it is worth pinning down.
+func TestCookieSecure(t *testing.T) {
+	cases := []struct {
+		name    string
+		env     string
+		forward string
+		want    bool
+	}{
+		{name: "plain HTTP LAN install", want: false},
+		{name: "behind a TLS proxy", forward: "https", want: true},
+		{name: "proxy header is case-insensitive", forward: "HTTPS", want: true},
+		{name: "forced on", env: "true", want: true},
+		{name: "forced off beats the proxy header", env: "false", forward: "https", want: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("COOKIE_SECURE", tc.env)
+			req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
+			if tc.forward != "" {
+				req.Header.Set("X-Forwarded-Proto", tc.forward)
+			}
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = req
+
+			if got := cookieSecure(c); got != tc.want {
+				t.Errorf("cookieSecure = %v, want %v", got, tc.want)
 			}
 		})
 	}
