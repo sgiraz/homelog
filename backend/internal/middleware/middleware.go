@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"os"
 	"strings"
@@ -63,15 +64,51 @@ func CORS() gin.HandlerFunc {
 	}
 }
 
+// Token types carried in the "typ" claim. Both kinds are signed with the same
+// secret, so without it a 7-day refresh token is accepted wherever a
+// 15-minute access token is.
+const (
+	TokenTypeAccess  = "access"
+	TokenTypeRefresh = "refresh"
+)
+
 // JWTClaims represents the JWT token claims
 type JWTClaims struct {
 	UserID uint   `json:"user_id"`
 	Email  string `json:"email"`
 	Role   string `json:"role"`
+	// TokenType is TokenTypeAccess or TokenTypeRefresh.
+	TokenType string `json:"typ"`
+	// TokenVersion mirrors models.User.TokenVersion at issue time.
+	TokenVersion int `json:"tv"`
 	jwt.RegisteredClaims
 }
 
-// AuthRequired middleware validates JWT tokens
+// ErrWrongTokenType is returned when a valid token of the other type is
+// presented, e.g. a refresh token used as a bearer token.
+var ErrWrongTokenType = errors.New("wrong token type")
+
+// ParseToken validates the signature, algorithm, expiry and type of a token
+// signed with JWT_SECRET. HS256 is pinned and an expiry is required: without
+// either, a token signed another way or carrying no "exp" would be accepted.
+func ParseToken(tokenString, wantType string) (*JWTClaims, error) {
+	claims := &JWTClaims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}), jwt.WithExpirationRequired())
+	if err != nil {
+		return nil, err
+	}
+	if !token.Valid {
+		return nil, jwt.ErrTokenInvalidClaims
+	}
+	if claims.TokenType != wantType {
+		return nil, ErrWrongTokenType
+	}
+	return claims, nil
+}
+
+// AuthRequired middleware validates JWT access tokens
 func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -89,24 +126,9 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
-		tokenString := parts[1]
-		jwtSecret := os.Getenv("JWT_SECRET")
-
-		// Parse and validate token
-		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-			return []byte(jwtSecret), nil
-		})
-
-		if err != nil || !token.Valid {
+		claims, err := ParseToken(parts[1], TokenTypeAccess)
+		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
-			c.Abort()
-			return
-		}
-
-		// Extract claims
-		claims, ok := token.Claims.(*JWTClaims)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
 			c.Abort()
 			return
 		}

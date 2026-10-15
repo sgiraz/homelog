@@ -91,7 +91,7 @@
       "submittingButton": "Salvataggio...",
       "logout": "Esci dall'account",
       "currentRequired": "Inserisci la password attuale.",
-      "newTooShort": "La nuova password deve avere almeno 6 caratteri.",
+      "newTooShort": "La nuova password deve avere almeno 8 caratteri.",
       "mismatch": "Le due password non coincidono.",
       "success": "Password aggiornata con successo!",
       "genericError": "Errore durante il cambio password."

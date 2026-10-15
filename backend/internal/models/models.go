@@ -24,6 +24,10 @@ type User struct {
 
 	PasswordResetToken   string     `gorm:"index" json:"-"`
 	PasswordResetExpires *time.Time `json:"-"`
+
+	// TokenVersion is embedded in every issued JWT. Incrementing it (password
+	// change or reset, role change) revokes every refresh token issued before.
+	TokenVersion int `gorm:"not null;default:0" json:"-"`
 }
 
 // HouseholdMember represents a member of a household (can be a registered user or virtual)

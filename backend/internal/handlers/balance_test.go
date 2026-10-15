@@ -185,16 +185,19 @@ func TestBalance_NoSettingsReportsZero(t *testing.T) {
 	}
 }
 
+// A signed-in user who is not a member of the property is refused outright.
+// This used to answer 200 with a zero balance, which told the caller the
+// property existed and whether split mode was on.
 func TestBalance_UserWithoutMemberProfile(t *testing.T) {
 	f := setupMoneyFixture(t)
 	dave := &models.User{Email: "dave@example.com", PasswordHash: "x", Name: "Dave", Role: "user", IsActive: true}
 	mustCreate(t, f.db, dave)
 	f.createSplitExpense(t, 100, []uint{f.mBob.ID})
 
-	got := f.getBalance(t, testutil.SignToken(t, dave), "")
+	rec := doGET(t, f.balanceRouter(), f.balanceURL("", ""), testutil.SignToken(t, dave))
 
-	if got.Balance != 0 || got.CurrentMemberID != 0 {
-		t.Errorf("a user outside the household must see nothing: %+v", got)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("a user outside the household must be refused: status %d, body %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -322,9 +325,11 @@ func TestBalanceDetails_EdgeStates(t *testing.T) {
 	dave := &models.User{Email: "dave@example.com", PasswordHash: "x", Name: "Dave", Role: "user", IsActive: true}
 	mustCreate(t, f.db, dave)
 
-	outsider := f.getBalanceDetails(t, testutil.SignToken(t, dave), "")
-	if outsider.CurrentMemberID != 0 || len(outsider.UnsettledSplits) != 0 || outsider.UnsettledSplits == nil {
-		t.Errorf("outsider = %+v, want an empty ledger", outsider)
+	// An outsider is refused before any ledger is built (see
+	// TestBalance_UserWithoutMemberProfile).
+	rec := doGET(t, f.balanceRouter(), f.balanceURL("/details", ""), testutil.SignToken(t, dave))
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("outsider: status %d, want 403, body %s", rec.Code, rec.Body.String())
 	}
 
 	if err := f.db.Where("id != ?", f.mAlice.ID).Delete(&models.HouseholdMember{}).Error; err != nil {
