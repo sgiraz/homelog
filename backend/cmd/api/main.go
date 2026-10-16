@@ -476,9 +476,33 @@ func normalizeVersionTag(v string) string {
 	return v
 }
 
-func parseCalVer(v string) ([4]int, bool) {
-	var out [4]int
-	parts := strings.Split(normalizeVersionTag(v), ".")
+// calVer is a parsed CalVer tag. rc is 0 for a final release and N for the
+// Nth release candidate leading up to it, so a pre-release has to compare as
+// older than the version it is a candidate for.
+type calVer struct {
+	parts [4]int
+	rc    int
+}
+
+func parseCalVer(v string) (calVer, bool) {
+	var out calVer
+	s := normalizeVersionTag(v)
+
+	// Pre-release tags are "<calver>-rc.<n>" (2026.10.20-rc.1). A build of one
+	// still has to recognise the final release as an update, so it parses.
+	if base, suffix, found := strings.Cut(s, "-"); found {
+		if !strings.HasPrefix(suffix, "rc.") {
+			return out, false
+		}
+		n, err := strconv.Atoi(strings.TrimPrefix(suffix, "rc."))
+		if err != nil || n < 1 {
+			return out, false
+		}
+		out.rc = n
+		s = base
+	}
+
+	parts := strings.Split(s, ".")
 	if len(parts) != 3 && len(parts) != 4 {
 		return out, false
 	}
@@ -490,7 +514,7 @@ func parseCalVer(v string) ([4]int, bool) {
 		if err != nil {
 			return out, false
 		}
-		out[i] = n
+		out.parts[i] = n
 	}
 	return out, true
 }
@@ -503,12 +527,22 @@ func isVersionNewer(latest, current string) bool {
 		// Unsupported format: don't report a newer version to avoid false positives.
 		return false
 	}
-	for i := range l {
-		if l[i] != c[i] {
-			return l[i] > c[i]
+	for i := range l.parts {
+		if l.parts[i] != c.parts[i] {
+			return l.parts[i] > c.parts[i]
 		}
 	}
-	return false
+	// Same numbers: the final release supersedes its own candidates.
+	switch {
+	case l.rc == c.rc:
+		return false
+	case l.rc == 0:
+		return true
+	case c.rc == 0:
+		return false
+	default:
+		return l.rc > c.rc
+	}
 }
 
 // getLatestRelease fetches the latest release tag from GitHub, cached for 1 hour.

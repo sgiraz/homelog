@@ -3,6 +3,12 @@ name: Publish GitHub Release
 # Manual on purpose. Pushing a CalVer tag publishes the Docker image; announcing
 # the release is a separate decision, taken once the image has been tried out.
 #
+# A tag ending in "-rc.N" is published as a GitHub *pre-release*. That is the
+# whole mechanism: the GitHub API endpoint the update check reads,
+# releases/latest, ignores pre-releases, so an RC can be tagged, built, deployed
+# and tried on a real instance without a single self-hosted installation being
+# told an update exists. When it holds up, tag the final CalVer version.
+#
 # It matters more than it looks: the in-app update check reads
 # api.github.com/repos/sgiraz/homelog/releases/latest (backend/cmd/api/main.go),
 # so creating the release is the act that tells every running instance a new
@@ -17,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing CalVer tag to publish (e.g. 2026.08.20)'
+        description: 'Existing CalVer tag to publish (e.g. 2026.08.20, or 2026.08.20-rc.1 for a pre-release)'
         required: true
         type: string
 
@@ -44,6 +50,26 @@ jobs:
           fi
           echo "Tag ${TAG} found."
 
+      - name: Classify the tag
+        id: kind
+        run: |
+          set -euo pipefail
+          # The suffix decides, not an input: a tag and the release announcing
+          # it cannot disagree about whether it is a candidate or the real
+          # thing. "-rc.N" builds :rc, everything else builds :latest.
+          case "${TAG}" in
+            *-rc.*)
+              echo "prerelease=true" >> "$GITHUB_OUTPUT"
+              echo "flag=--prerelease" >> "$GITHUB_OUTPUT"
+              echo "title=HomeLog ${TAG} (release candidate)" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "prerelease=false" >> "$GITHUB_OUTPUT"
+              echo "flag=--latest" >> "$GITHUB_OUTPUT"
+              echo "title=HomeLog ${TAG}" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
       - name: Check the image is on DockerHub
         run: |
           set -euo pipefail
@@ -61,8 +87,8 @@ jobs:
           if gh release view "${TAG}" >/dev/null 2>&1; then
             echo "::notice::Release ${TAG} already exists — left untouched."
           else
-            gh release create "${TAG}" --title "HomeLog ${TAG}" --generate-notes
-            echo "::notice::Release ${TAG} published."
+            gh release create "${TAG}" --title "${{ steps.kind.outputs.title }}" --generate-notes ${{ steps.kind.outputs.flag }}
+            echo "::notice::Release ${TAG} published (pre-release: ${{ steps.kind.outputs.prerelease }})."
           fi
 
       - name: Summary
@@ -70,4 +96,9 @@ jobs:
           echo "## Release ${TAG}" >> $GITHUB_STEP_SUMMARY
           echo "- ${{ github.server_url }}/${{ github.repository }}/releases/tag/${TAG}" >> $GITHUB_STEP_SUMMARY
           echo "- Image: \`${{ env.IMAGE }}:${TAG}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Instances polling \`releases/latest\` will now see this version" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.kind.outputs.prerelease }}" = "true" ]; then
+            echo "- Marked as a **pre-release**: \`releases/latest\` ignores it, so no instance is prompted to upgrade" >> $GITHUB_STEP_SUMMARY
+            echo "- Testers pull \`${{ env.IMAGE }}:rc\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Instances polling \`releases/latest\` will now see this version" >> $GITHUB_STEP_SUMMARY
+          fi

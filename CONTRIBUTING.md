@@ -7,6 +7,7 @@ Thanks for your interest in contributing! This guide covers the main ways to con
 - [Reporting bugs](#reporting-bugs)
 - [Code contributions](#code-contributions)
 - [Translations](#translations)
+- [Releases](#releases)
 
 ---
 
@@ -139,3 +140,45 @@ The script fills in any keys present in the source but missing in the target. It
 - Preserve vue-i18n escape sequences verbatim: `{'@'}`, `{'|'}`, `{'{'}`, `{'}'}`.
 - Keep brand names unchanged: HomeLog, IBAN, POD, PDR.
 - For new keys, add them to the EN source first, then to other languages.
+
+---
+
+## Releases
+
+Maintainer-facing. Versions are CalVer (`2026.10.20`, with `.1` appended for a
+same-day respin). A version is released in two steps, and the second one is the
+announcement — nothing else tells running instances an update exists.
+
+### Release candidates
+
+A tag ending in `-rc.N` is a **pre-release**: it builds and publishes a real
+image you can deploy and use, but `api.github.com/.../releases/latest` ignores
+pre-releases, so no self-hosted instance is ever prompted to upgrade to one.
+That is what makes it safe to try a build in anger before committing to it.
+
+```bash
+# 1. Tag the candidate — this builds sgira/homelog:2026.10.20-rc.1 and :rc
+git tag 2026.10.20-rc.1 && git push origin 2026.10.20-rc.1
+
+# 2. Run it wherever you want to test it
+docker pull sgira/homelog:rc
+
+# 3. Optionally publish it as a GitHub pre-release, for changelog and history:
+#    Actions → Publish GitHub Release → tag 2026.10.20-rc.1
+```
+
+The public demo deliberately stays on `:latest` and is not redeployed by an RC
+build.
+
+### Final release
+
+```bash
+# 1. Tag the version — this builds the image and moves :latest
+git tag 2026.10.20 && git push origin 2026.10.20
+
+# 2. Announce it: Actions → Publish GitHub Release → tag 2026.10.20
+```
+
+Step 2 is what every instance's update check sees. The workflow refuses to
+publish a release whose image is not on DockerHub, so an instance is never told
+to upgrade to something it cannot pull.
