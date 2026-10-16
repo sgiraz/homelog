@@ -41,7 +41,9 @@
     "originalAmountInfo": "Ursprünglicher Betrag: {amount}",
     "originalRateInfo": "(Kurs: {rate})",
     "splitEditNotice": "Die an der Aufteilung beteiligten Personen können nicht geändert werden. Wenn du den Betrag änderst, werden die Anteile gleichmäßig neu berechnet. Um die Personen zu ändern, lösche die Ausgabe und erstelle sie neu.",
-    "saveChanges": "Änderungen speichern"
+    "saveChanges": "Änderungen speichern",
+    "deviceLabel": "Gerät",
+    "deviceNone": "Kein Gerät"
   },
   "title": "Ausgaben",
   "addButton": "Ausgabe hinzufügen",

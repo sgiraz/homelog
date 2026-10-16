@@ -336,6 +336,7 @@ const navLinks = computed(() => [
   { path: '/expenses',  label: t('nav.expenses'),   shortLabel: t('nav.expensesShort'),   id: 'expenses' },
   { path: '/utilities', label: t('nav.utilities'),  shortLabel: t('nav.utilitiesShort'),  id: 'utilities' },
   { path: '/projects',  label: t('nav.projects'),   shortLabel: t('nav.projectsShort'),   id: 'projects' },
+  { path: '/devices',   label: t('nav.devices'),    shortLabel: t('nav.devicesShort'),    id: 'devices' },
 ])
 
 // Notifications

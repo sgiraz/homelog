@@ -86,7 +86,9 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.Property{},
 		&models.HouseholdMember{},
 		&models.Category{},
+		&models.DeviceCategory{},
 		&models.Subcategory{},
+		&models.Device{},
 		&models.Expense{},
 		&models.Utility{},
 		&models.MeterReading{},
@@ -110,6 +112,10 @@ func AutoMigrate(db *gorm.DB) error {
 
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
+	}
+
+	if err := SeedDefaultDeviceCategories(db); err != nil {
+		return fmt.Errorf("failed to seed device categories: %w", err)
 	}
 
 	// Data migration: set default role for existing project members
