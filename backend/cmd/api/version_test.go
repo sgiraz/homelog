@@ -26,11 +26,13 @@ func TestNormalizeVersionTag(t *testing.T) {
 func TestParseCalVer(t *testing.T) {
 	ok := []struct {
 		in   string
-		want [4]int
+		want calVer
 	}{
-		{"2026.10.1", [4]int{2026, 10, 1, 0}},
-		{"2026.10.1.2", [4]int{2026, 10, 1, 2}},
-		{"v2026.1.0", [4]int{2026, 1, 0, 0}},
+		{"2026.10.1", calVer{parts: [4]int{2026, 10, 1, 0}}},
+		{"2026.10.1.2", calVer{parts: [4]int{2026, 10, 1, 2}}},
+		{"v2026.1.0", calVer{parts: [4]int{2026, 1, 0, 0}}},
+		{"2026.10.1-rc.1", calVer{parts: [4]int{2026, 10, 1, 0}, rc: 1}},
+		{"v2026.10.1.2-rc.12", calVer{parts: [4]int{2026, 10, 1, 2}, rc: 12}},
 	}
 	for _, tc := range ok {
 		got, valid := parseCalVer(tc.in)
@@ -46,7 +48,11 @@ func TestParseCalVer(t *testing.T) {
 	// An empty version is the case that broke: the binary built without
 	// -X main.appVersion must not parse, so the check can report that it
 	// could not conclude instead of claiming the instance is current.
-	bad := []string{"", "dev", "2026.10", "2026.10.1.2.3", "2026.ten.1", "2026..1", "latest"}
+	bad := []string{
+		"", "dev", "2026.10", "2026.10.1.2.3", "2026.ten.1", "2026..1", "latest",
+		// A pre-release suffix we do not publish must not be guessed at.
+		"2026.10.1-rc", "2026.10.1-rc.0", "2026.10.1-rc.x", "2026.10.1-beta.1", "2026.10.1-",
+	}
 	for _, in := range bad {
 		if _, valid := parseCalVer(in); valid {
 			t.Errorf("parseCalVer(%q) accepted an unusable version", in)
@@ -66,6 +72,15 @@ func TestIsVersionNewer(t *testing.T) {
 		{"2026.10.1", "2026.10.1", false},
 		{"2026.10.1", "2026.10.2", false},
 		{"v2026.10.2", "2026.10.1", true},
+		// A release candidate is older than the release it leads to, newer
+		// than the previous one, and ordered among its own siblings.
+		{"2026.10.1", "2026.10.1-rc.1", true},
+		{"2026.10.1-rc.1", "2026.10.1", false},
+		{"2026.10.1-rc.2", "2026.10.1-rc.1", true},
+		{"2026.10.1-rc.1", "2026.10.1-rc.2", false},
+		{"2026.10.1-rc.1", "2026.10.1-rc.1", false},
+		{"2026.10.1-rc.1", "2026.09.30", true},
+		{"2026.09.30", "2026.10.1-rc.1", false},
 		// Neither side parses: never claim an update exists on a guess.
 		{"", "2026.10.1", false},
 		{"2026.10.1", "", false},

@@ -3,7 +3,8 @@ name: Build and Push Docker Image
 on:
   push:
     tags:
-      - '[0-9][0-9][0-9][0-9].*'  # CalVer: 2025.03.01, 2025.03.01.1, ...
+      # CalVer: 2026.03.01, 2026.03.01.1, and pre-releases 2026.03.01-rc.1
+      - '[0-9][0-9][0-9][0-9].*'
   workflow_dispatch:
 
 env:
@@ -39,22 +40,32 @@ jobs:
           # branch name — "main", not a version. Such a build must never claim
           # :latest, or a demo redeploy (and every `docker compose pull`) would
           # silently ship an untagged main build as the current release.
+          #
+          # A "-rc.N" tag is a release candidate: it gets its own immutable tag
+          # plus the moving :rc pointer, and must never touch :latest either —
+          # :latest is what self-hosters pull, and it has to stay the last
+          # version that was actually released.
+          IS_PRERELEASE=false
+          IS_RELEASE=false
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
-            IS_RELEASE=true
-          else
-            IS_RELEASE=false
+            case "${VERSION}" in
+              *-rc.*) IS_PRERELEASE=true ;;
+              *)      IS_RELEASE=true ;;
+            esac
           fi
 
           {
             echo "version=${VERSION}"
             echo "is_release=${IS_RELEASE}"
+            echo "is_prerelease=${IS_PRERELEASE}"
             echo "tags<<TAGS_EOF"
             echo "${IMAGE}:${VERSION}"
             if [ "${IS_RELEASE}" = "true" ]; then echo "${IMAGE}:latest"; fi
+            if [ "${IS_PRERELEASE}" = "true" ]; then echo "${IMAGE}:rc"; fi
             echo "TAGS_EOF"
           } >> "$GITHUB_OUTPUT"
 
-          echo "Building version: ${VERSION} (release: ${IS_RELEASE})"
+          echo "Building version: ${VERSION} (release: ${IS_RELEASE}, pre-release: ${IS_PRERELEASE})"
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -76,6 +87,9 @@ jobs:
           if [ "${{ steps.meta.outputs.is_release }}" = "true" ]; then
             echo "- Also tagged \`latest\`" >> $GITHUB_STEP_SUMMARY
             echo "- Announce it when ready via the **Publish GitHub Release** workflow" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.meta.outputs.is_prerelease }}" = "true" ]; then
+            echo "- Also tagged \`rc\` — \`latest\` untouched, so no instance is told to upgrade" >> $GITHUB_STEP_SUMMARY
+            echo "- Try it out, then publish it as a **pre-release** via the **Publish GitHub Release** workflow" >> $GITHUB_STEP_SUMMARY
           else
             echo "- Not a tag build: \`latest\` was skipped" >> $GITHUB_STEP_SUMMARY
           fi

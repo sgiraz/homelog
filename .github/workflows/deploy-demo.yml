@@ -5,6 +5,12 @@ name: Deploy Demo
 # is guaranteed to exist before we trigger a redeploy. The demo is fully
 # independent from how end users self-host HomeLog — this only pokes a Render
 # deploy hook, never the DockerHub image or the Pi deployment path.
+#
+# The demo shows released software, so only a build that moved :latest is worth
+# a redeploy. A release candidate ("-rc.N") and a manual build from a branch
+# both leave :latest where it was: redeploying on those would restart the demo
+# onto the exact same image it is already running. Release candidates are tried
+# by pulling sgira/homelog:rc directly, not here.
 
 on:
   workflow_run:
@@ -14,8 +20,13 @@ on:
 
 jobs:
   redeploy:
-    # Skip if the upstream image build failed; manual dispatch always runs.
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # Skip unless the upstream build published a new :latest; manual dispatch
+    # always runs. For a tag build workflow_run.head_branch is the tag name.
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+          (github.event.workflow_run.conclusion == 'success' &&
+           github.event.workflow_run.event == 'push' &&
+           !contains(github.event.workflow_run.head_branch, '-rc.')) }}
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Render deploy (re-pulls :latest)
