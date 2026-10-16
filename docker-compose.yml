@@ -2,7 +2,10 @@ version: '3.8'
 
 services:
   homelog:
-    image: sgira/homelog:latest
+    # HOMELOG_TAG selects which published image to run. Unset means the
+    # current release; set it to "rc" to try a release candidate, or to an
+    # exact version to pin one.
+    image: sgira/homelog:${HOMELOG_TAG:-latest}
     container_name: homelog
     restart: unless-stopped
     ports:

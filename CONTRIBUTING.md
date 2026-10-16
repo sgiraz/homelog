@@ -160,8 +160,9 @@ That is what makes it safe to try a build in anger before committing to it.
 # 1. Tag the candidate — this builds sgira/homelog:2026.10.20-rc.1 and :rc
 git tag 2026.10.20-rc.1 && git push origin 2026.10.20-rc.1
 
-# 2. Run it wherever you want to test it
-docker pull sgira/homelog:rc
+# 2. Run it wherever you want to test it — HOMELOG_TAG=rc in the .env next to
+#    docker-compose.yml, then:
+docker compose pull && docker compose up -d
 
 # 3. Optionally publish it as a GitHub pre-release, for changelog and history:
 #    Actions → Publish GitHub Release → tag 2026.10.20-rc.1
