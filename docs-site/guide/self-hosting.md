@@ -39,6 +39,26 @@ Multi-arch images (amd64 / arm64 / arm/v7) are published on
 [Docker Hub](https://hub.docker.com/u/sgira), so the same compose file works on a
 Raspberry Pi.
 
+## Choosing a version
+
+The compose file runs `sgira/homelog:${HOMELOG_TAG:-latest}`, so by default you
+get the current release and nothing to configure. Set `HOMELOG_TAG` in your
+`.env` to run something else:
+
+```bash
+HOMELOG_TAG=2026.10.13   # pin an exact version
+HOMELOG_TAG=rc           # the latest release candidate
+```
+
+Then `docker compose pull && docker compose up -d`.
+
+A release candidate is a build we publish ahead of a release so it can be tried
+on a real install. It is not announced as an update and your instance will never
+offer one. Running one is a choice with a catch worth knowing: the database
+schema migrates on startup and does not migrate back, so going from `rc` to
+`latest` afterwards may not start. **Back up `./data` before you switch**, and
+stay on `latest` unless you intend to help test.
+
 ## Configuration
 
 | Variable | Default | Description |
