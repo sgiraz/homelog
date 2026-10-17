@@ -86,8 +86,11 @@
         </div>
 
         <!-- Description -->
-        <p v-if="project.description" class="text-sm text-ink-soft mb-4 line-clamp-2 break-words">
-          {{ project.description }}
+        <p
+          v-if="descriptionPreviews[project.id]"
+          class="text-sm text-ink-soft mb-4 line-clamp-2 break-words"
+        >
+          {{ descriptionPreviews[project.id] }}
         </p>
 
         <!-- Budget Progress -->
@@ -177,6 +180,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useHighlight } from '@/composables/useHighlight'
 import { formatCurrency as _formatCurrency, formatDate as _formatDate } from '@/utils/dateFormatter'
+import { stripMarkdown } from '@/utils/markdown'
 import apiClient from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -211,6 +215,15 @@ function ensureStats(project) {
   if (!project.stats) project.stats = { ...defaultStats, total_budget: project.budget || 0, remaining: project.budget || 0 }
   return project
 }
+
+// Descriptions are Markdown; a card shows them flattened to one line so
+// `line-clamp-2` still applies and no `v-html` is needed outside the detail
+// view. Derived once per list change rather than on every card re-render.
+const descriptionPreviews = computed(() =>
+  Object.fromEntries(
+    projectsStore.projects.map(project => [project.id, stripMarkdown(project.description)])
+  )
+)
 
 const filteredProjects = computed(() => {
   const all = projectsStore.projects.map(ensureStats)

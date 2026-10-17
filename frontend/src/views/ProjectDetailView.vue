@@ -137,9 +137,10 @@
 
       <!-- Tab: Info -->
       <div v-if="activeTab === 'info'" class="space-y-4">
-        <Card v-if="project.description" class="p-4">
+        <Card v-if="renderedDescription" class="p-4">
           <h4 class="font-medium text-ink mb-2">{{ t('projects.detail.descriptionTitle') }}</h4>
-          <p class="text-ink-soft break-words">{{ project.description }}</p>
+          <!-- Sanitized by `renderMarkdown`; never bind raw description here. -->
+          <div class="markdown-body" v-html="renderedDescription"></div>
         </Card>
 
         <Card class="p-4 space-y-3">
@@ -299,6 +300,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { formatCurrency as _formatCurrency, formatDate as _formatDate } from '@/utils/dateFormatter'
 import { useConfirm } from '@/composables/useConfirm'
 import { categoryLabel } from '@/utils/categoryLabel'
+import { renderMarkdown } from '@/utils/markdown'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import AddExpenseModal from '@/components/expenses/AddExpenseModal.vue'
@@ -326,6 +328,11 @@ const showEditModal = ref(false)
 const defaultStats = { total_budget: 0, total_spent: 0, remaining: 0, percentage_spent: 0, expense_count: 0 }
 
 const stats = computed(() => project.value?.stats || defaultStats)
+
+// The description is Markdown written by any household member, so it reaches
+// the DOM only as sanitizer output. Empty when there is nothing renderable,
+// which also drives the card's `v-if`.
+const renderedDescription = computed(() => renderMarkdown(project.value?.description))
 
 const canManage = computed(() => {
   if (!project.value) return false
