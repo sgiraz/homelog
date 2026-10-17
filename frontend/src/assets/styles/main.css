@@ -202,6 +202,76 @@
   }
 }
 
+@layer components {
+  /* ── Rendered Markdown (project descriptions).
+     Preflight resets headings to `font-size: inherit` and strips list markers,
+     so nothing here fights a browser default: this IS the type scale for
+     Markdown output. Tailwind classes cannot reach inside `v-html`, hence the
+     descendant selectors. The font stack is inherited from `html` — Markdown
+     must not introduce a typeface of its own; only `code` departs from it, and
+     it borrows the same `font-mono` the app already uses for technical values. */
+  .markdown-body {
+    @apply text-ink-soft break-words;
+  }
+
+  /* Headings stay at or below the weight of the card title above them: a
+     description is a paragraph with structure, not a document. */
+  .markdown-body h1,
+  .markdown-body h2,
+  .markdown-body h3,
+  .markdown-body h4 {
+    @apply font-semibold text-ink mt-4 mb-2;
+  }
+  .markdown-body h1 { @apply text-base; }
+  .markdown-body h2 { @apply text-sm; }
+  .markdown-body h3,
+  .markdown-body h4 { @apply text-sm text-ink-soft; }
+
+  .markdown-body p {
+    @apply mb-3;
+  }
+
+  .markdown-body ul,
+  .markdown-body ol {
+    @apply mb-3 pl-5;
+  }
+  .markdown-body ul { @apply list-disc; }
+  .markdown-body ol { @apply list-decimal; }
+  /* Spacing between entries is `li + li`, not `space-y-*`: the v4 utility
+     expands to `:where(& > :not(:last-child))`, which `@apply` splices into a
+     comma-separated selector list as invalid CSS the browser then drops. */
+  .markdown-body li + li {
+    @apply mt-1;
+  }
+  .markdown-body li::marker {
+    @apply text-ink-faint;
+  }
+  /* A nested list sits tight under its parent entry, not a paragraph apart. */
+  .markdown-body li > ul,
+  .markdown-body li > ol {
+    @apply mt-1 mb-0;
+  }
+
+  .markdown-body strong {
+    @apply font-semibold text-ink;
+  }
+
+  /* Only a link that survived sanitization is styled: DOMPurify keeps the
+     `<a>` of a `javascript:` URL but drops its href, and that leftover must
+     read as plain text rather than advertise a click that does nothing. */
+  .markdown-body a[href] {
+    @apply text-accent-soft underline underline-offset-2 hover:text-accent-deep;
+  }
+
+  .markdown-body code {
+    @apply font-mono text-[0.9em] bg-surface-2 text-ink rounded px-1 py-0.5;
+  }
+
+  /* Collapse the outer margins so the block aligns with its container. */
+  .markdown-body > :first-child { @apply mt-0; }
+  .markdown-body > :last-child { @apply mb-0; }
+}
+
 @layer utilities {
   /* Card hover lift effect */
   .hover-lift {

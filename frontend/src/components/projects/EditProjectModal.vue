@@ -34,8 +34,15 @@
 
       <!-- Description -->
       <div>
-        <label class="block text-sm text-ink-soft mb-1">
+        <label class="flex items-center gap-1.5 text-sm text-ink-soft mb-1">
           {{ t('projects.modal.descriptionLabel') }}
+          <!-- The Markdown mark (CC0). A proper noun in every language, so the
+               accessible name is a literal, not a translation key. -->
+          <svg class="w-5 h-5 text-ink-faint" viewBox="0 0 208 128" role="img" aria-label="Markdown">
+            <title>Markdown</title>
+            <rect x="5" y="5" width="198" height="118" ry="10" fill="none" stroke="currentColor" stroke-width="10" />
+            <path fill="currentColor" d="M30 98V30h20l20 25 20-25h20v68H90V59L70 84 50 59v39zm125 0l-30-33h20V30h20v35h20z" />
+          </svg>
         </label>
         <textarea
           v-model="form.description"
