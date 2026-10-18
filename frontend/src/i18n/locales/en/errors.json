@@ -145,6 +145,7 @@
   "subcategory_default_delete_admin_only": "Only admins can delete subcategories of built-in categories",
   "subcategory_not_found": "Subcategory not found",
   "template_not_found": "Template not found",
+  "template_field_not_supported": "This template maps a field that bills of this service type do not have",
   "unauthorized": "Unauthorized",
   "user_not_found": "User not found",
   "utility_already_active": "A service of this type is already active for this property. Deactivate the existing one first.",

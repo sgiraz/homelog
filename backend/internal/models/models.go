@@ -205,6 +205,63 @@ func FixedCostTypes() []string {
 	return types
 }
 
+// BillField is a value a bill template can map on a provider's PDF.
+type BillField struct {
+	Key       string `json:"key"`
+	Required  bool   `json:"required,omitempty"`
+	MultiLine bool   `json:"multi_line,omitempty"`
+}
+
+// BillFieldSet is the ordered list of fields extractable from one service type's bills.
+type BillFieldSet struct {
+	Type   string      `json:"type"`
+	Fields []BillField `json:"fields"`
+}
+
+// BillFieldCatalogue is the single source of truth for what a bill template
+// may extract, per service type: the wizard lists these fields, template
+// saves are validated against them and the extractor handles each one.
+// Rent and mortgage have no bills, hence no templates. Fixed-cost types derive
+// period_end from their billing frequency instead of reading it.
+var BillFieldCatalogue = buildBillFieldCatalogue()
+
+func buildBillFieldCatalogue() []BillFieldSet {
+	extra := []BillFieldSet{
+		{Type: "electricity", Fields: []BillField{{Key: "provider_reading_f1"}, {Key: "provider_reading_f2"}, {Key: "provider_reading_f3"}}},
+		{Type: "gas", Fields: []BillField{{Key: "provider_reading"}, {Key: "conversion_coefficient"}, {Key: "estimated_date"}, {Key: "estimated_reading"}}},
+		{Type: "water", Fields: []BillField{{Key: "provider_reading"}, {Key: "estimated_date"}, {Key: "estimated_reading"}}},
+		{Type: "waste"},
+		{Type: "internet"},
+		{Type: "insurance"},
+	}
+	catalogue := make([]BillFieldSet, len(extra))
+	for i, set := range extra {
+		metered := MeteredByType[set.Type]
+		fields := []BillField{{Key: "amount_total", Required: true}, {Key: "bill_number"}, {Key: "period_start"}}
+		if metered {
+			fields = append(fields, BillField{Key: "period_end"})
+		}
+		fields = append(fields, BillField{Key: "due_date"}, BillField{Key: "issue_date"})
+		if metered {
+			fields = append(fields, BillField{Key: "consumption_total"}, BillField{Key: "provider_reading_date"}, BillField{Key: "reading_type"})
+		}
+		fields = append(fields, set.Fields...)
+		catalogue[i] = BillFieldSet{Type: set.Type, Fields: append(fields, BillField{Key: "communication_text", MultiLine: true})}
+	}
+	return catalogue
+}
+
+// BillFieldsFor returns the fields a template of utilityType may extract, and
+// false when that type takes no bill templates.
+func BillFieldsFor(utilityType string) ([]BillField, bool) {
+	for _, set := range BillFieldCatalogue {
+		if set.Type == utilityType {
+			return set.Fields, true
+		}
+	}
+	return nil, false
+}
+
 // Utility represents a service (metered utilities or fixed-cost subscriptions).
 // Metered services have readings/consumption; fixed-cost ones have recurring
 // amounts and price tracking. See MeteredByType for which is which.

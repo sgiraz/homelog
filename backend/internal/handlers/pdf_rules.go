@@ -62,6 +62,17 @@ func (h *PDFHandler) extractBillDataWithTemplateAndWords(text string, template m
 		case "provider_reading":
 			reading := h.parseAmount(value)
 			extracted.ProviderReading = &reading
+		case "provider_reading_f1":
+			reading := h.parseAmount(value)
+			extracted.ProviderReadingF1 = &reading
+		case "provider_reading_f2":
+			reading := h.parseAmount(value)
+			extracted.ProviderReadingF2 = &reading
+		case "provider_reading_f3":
+			reading := h.parseAmount(value)
+			extracted.ProviderReadingF3 = &reading
+		case "provider_reading_date":
+			extracted.ProviderReadingDate = h.parseDate(value, rule.Format)
 		case "reading_type":
 			lower := strings.ToLower(value)
 			if strings.Contains(lower, "stim") || strings.Contains(lower, "presunt") {
@@ -78,9 +89,6 @@ func (h *PDFHandler) extractBillDataWithTemplateAndWords(text string, template m
 		case "estimated_consumption":
 			val := h.parseAmount(value)
 			extracted.EstimatedConsumption = &val
-		case "previous_estimated_consumption":
-			val := h.parseAmount(value)
-			extracted.PreviousEstimatedConsumption = &val
 		case "communication_text":
 			extracted.CommunicationText = value
 		}
@@ -648,9 +656,6 @@ func (h *PDFHandler) mergeExtracted(primary, fallback ExtractedBillData, templat
 	}
 	if primary.EstimatedConsumption == nil && !templateFields["estimated_consumption"] {
 		primary.EstimatedConsumption = fallback.EstimatedConsumption
-	}
-	if primary.PreviousEstimatedConsumption == nil && !templateFields["previous_estimated_consumption"] {
-		primary.PreviousEstimatedConsumption = fallback.PreviousEstimatedConsumption
 	}
 	return primary
 }

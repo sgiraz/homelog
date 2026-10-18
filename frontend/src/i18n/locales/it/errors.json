@@ -145,6 +145,7 @@
   "subcategory_default_delete_admin_only": "Solo gli amministratori possono eliminare sottocategorie dalle categorie predefinite",
   "subcategory_not_found": "Sottocategoria non trovata",
   "template_not_found": "Modello non trovato",
+  "template_field_not_supported": "Il modello mappa un campo che le bollette di questo tipo di servizio non hanno",
   "unauthorized": "Non autorizzato",
   "user_not_found": "Utente non trovato",
   "utility_already_active": "Esiste già un servizio di questo tipo attivo per questa proprietà. Disattiva prima quello esistente.",

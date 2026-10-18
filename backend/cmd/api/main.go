@@ -308,6 +308,7 @@ func main() {
 			{
 				pdfHandler := handlers.NewPDFHandler(db)
 				templates.GET("/bills", pdfHandler.ListBillTemplates)
+				templates.GET("/bills/fields", pdfHandler.ListBillTemplateFields)
 				templates.POST("/bills", pdfHandler.CreateBillTemplate)
 				templates.PUT("/bills/:id", pdfHandler.UpdateBillTemplate)
 				templates.DELETE("/bills/:id", pdfHandler.DeleteBillTemplate)

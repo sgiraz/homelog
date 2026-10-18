@@ -61,6 +61,7 @@
       <WizardStepInfo
         v-if="step === 1"
         :template="template"
+        :utility-types="templateTypes"
         :pdf-file="uploadedFile"
         :pdf-analysis="pdfAnalysis"
         :extracting="extracting"
@@ -155,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { templatesAPI, pdfAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
@@ -225,58 +226,27 @@ const template = ref({
   is_default: false
 })
 
-// Fields available for extraction (dynamic based on utility type)
-const baseExtractionFields = computed(() => [
-  { key: 'amount_total', label: t('utilities.templateWizard.fields.amount_total'), required: true },
-  { key: 'bill_number', label: t('utilities.templateWizard.fields.bill_number'), required: false },
-  { key: 'period_start', label: t('utilities.templateWizard.fields.period_start'), required: false },
-  { key: 'period_end', label: t('utilities.templateWizard.fields.period_end'), required: false },
-  { key: 'due_date', label: t('utilities.templateWizard.fields.due_date'), required: false },
-  { key: 'issue_date', label: t('utilities.templateWizard.fields.issue_date'), required: false },
-  { key: 'communication_text', label: t('utilities.templateWizard.fields.communication_text'), required: false, multiLine: true }
-])
-
-const meteredExtraFields = computed(() => [
-  { key: 'consumption_total', label: t('utilities.templateWizard.fields.consumption_total'), required: false }
-])
-
-const gasExtraFields = computed(() => [
-  { key: 'provider_reading', label: t('utilities.templateWizard.fields.provider_reading'), required: false },
-  { key: 'conversion_coefficient', label: t('utilities.templateWizard.fields.conversion_coefficient'), required: false },
-  { key: 'estimated_date', label: t('utilities.templateWizard.fields.estimated_date'), required: false },
-  { key: 'estimated_reading', label: t('utilities.templateWizard.fields.estimated_reading'), required: false },
-  { key: 'previous_estimated_consumption', label: t('utilities.templateWizard.fields.previous_estimated_consumption_smc'), required: false }
-])
-
-const waterExtraFields = computed(() => [
-  { key: 'provider_reading', label: t('utilities.templateWizard.fields.provider_reading'), required: false },
-  { key: 'estimated_date', label: t('utilities.templateWizard.fields.estimated_date'), required: false },
-  { key: 'estimated_reading', label: t('utilities.templateWizard.fields.estimated_reading'), required: false },
-  { key: 'previous_estimated_consumption', label: t('utilities.templateWizard.fields.previous_estimated_consumption_mc'), required: false }
-])
-
-// Metered services, per Utility.IsMetered — waste (TARI) is fixed-cost, so its
-// period_end comes from the service's billing frequency like the other fixed
-// services (see inferMissingPeriodDate in PDFUploadZone).
-const isMeteredTemplateType = computed(() => {
-  return ['electricity', 'gas', 'water'].includes(template.value.utility_type)
-})
+// Fields a template may map, per service type: the server's catalogue
+const fieldCatalogue = ref([])
+const templateTypes = computed(() => fieldCatalogue.value.map(set => set.type))
 
 const extractionFields = computed(() => {
-  let fields = baseExtractionFields.value
-  // Fixed-cost services: period_end is derived from billing frequency, not extracted
-  if (isMeteredTemplateType.value) {
-    fields = [...fields, ...meteredExtraFields.value]
-  } else {
-    fields = fields.filter(f => f.key !== 'period_end')
+  const set = fieldCatalogue.value.find(s => s.type === template.value.utility_type)
+  return (set?.fields || []).map(f => ({
+    key: f.key,
+    label: t(`utilities.templateWizard.fields.${f.key}`),
+    required: !!f.required,
+    multiLine: !!f.multi_line
+  }))
+})
+
+// A mapping the type does not list would be rejected on save (an old rule,
+// or one left over from another type).
+watch(extractionFields, fields => {
+  if (!fields.length) return
+  for (const key of Object.keys(mappings)) {
+    if (!fields.some(f => f.key === key)) delete mappings[key]
   }
-  if (template.value.utility_type === 'gas') {
-    return [...fields, ...gasExtraFields.value]
-  }
-  if (template.value.utility_type === 'water') {
-    return [...fields, ...waterExtraFields.value]
-  }
-  return fields
 })
 
 // Computed: tokens that have been mapped
@@ -684,6 +654,10 @@ async function saveTemplate() {
 
 // Initialize with existing template data if editing
 onMounted(() => {
+  templatesAPI.listBillTemplateFields()
+    .then(({ data }) => { fieldCatalogue.value = data })
+    .catch(err => { error.value = apiErrorMessage(err, t('utilities.templateWizard.fieldsLoadError')) })
+
   if (props.existingTemplate) {
     template.value = {
       name: props.existingTemplate.name,

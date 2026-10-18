@@ -85,12 +85,6 @@
           <input v-model="conversionCoefficient" type="number" step="0.00000001" min="0" placeholder="1.00000000"
             class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
-        <div v-if="previousBillHasEstimate && !previousBill?.estimated_reading">
-          <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.providerReadings.previousEstimatedSmc') }}</label>
-          <input v-model="previousEstimatedConsumption" type="number" step="0.000001" placeholder="0"
-            class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
-          <p class="text-xs text-ink-faint mt-0.5">{{ t('utilities.providerReadings.previousEstimateHintSmc', { value: fmt(previousBill.estimated_consumption) }) }}</p>
-        </div>
       </div>
 
       <!-- Water single reading -->
@@ -99,12 +93,6 @@
           <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.providerReadings.meterWater') }}</label>
           <input v-model="reading" type="number" step="0.001" placeholder="0"
             class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
-        </div>
-        <div v-if="previousBillHasEstimate && !previousBill?.estimated_reading">
-          <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.providerReadings.previousEstimatedMc') }}</label>
-          <input v-model="previousEstimatedConsumption" type="number" step="0.001" placeholder="0"
-            class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
-          <p class="text-xs text-ink-faint mt-0.5">{{ t('utilities.providerReadings.previousEstimateHintMc', { value: fmt(previousBill.estimated_consumption) }) }}</p>
         </div>
       </div>
     </div>
@@ -118,9 +106,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { formatNumber as _formatNumber } from '@/utils/dateFormatter'
 
 const props = defineProps({
-  utilityType: { type: String, required: true },
-  previousBill: { type: Object, default: null },
-  previousBillHasEstimate: { type: Boolean, default: false }
+  utilityType: { type: String, required: true }
 })
 
 const f1 = defineModel('f1')
@@ -128,7 +114,6 @@ const f2 = defineModel('f2')
 const f3 = defineModel('f3')
 const reading = defineModel('reading')
 const conversionCoefficient = defineModel('conversionCoefficient')
-const previousEstimatedConsumption = defineModel('previousEstimatedConsumption')
 
 const { t } = useI18n()
 const settingsStore = useSettingsStore()

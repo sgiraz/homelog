@@ -33,10 +33,6 @@ export function useConsumptionCalculation(form, utility, isEditing, editingBill)
     return null
   })
 
-  const previousBillHasEstimate = computed(() => {
-    return previousBill.value?.estimated_consumption != null
-  })
-
   // Get the effective previous reading: use estimated_reading if previous bill had an estimate
   const previousReading = computed(() => {
     const prev = previousBill.value
@@ -112,15 +108,6 @@ export function useConsumptionCalculation(form, utility, isEditing, editingBill)
       const C = parseFloat(form.value.conversion_coefficient)
       if (C > 0) {
         let consumption = diff * C
-        // If previous bill had estimated_consumption but NO estimated_reading (legacy data),
-        // subtract it because previousReading used provider_reading as base.
-        const prevBill = previousBill.value
-        if (previousBillHasEstimate.value && prevBill?.estimated_reading == null) {
-          const prevEstimated = parseFloat(form.value.previous_estimated_consumption)
-          if (!isNaN(prevEstimated) && prevEstimated > 0) {
-            consumption -= prevEstimated
-          }
-        }
         if (calculatedEstimatedConsumption.value != null) {
           consumption += calculatedEstimatedConsumption.value
         }
@@ -130,13 +117,6 @@ export function useConsumptionCalculation(form, utility, isEditing, editingBill)
       // TODO: water consumption path is unverified — confirm the estimate
       // handling below matches how water bills actually carry estimates.
       let consumption = diff
-      const prevBill = previousBill.value
-      if (previousBillHasEstimate.value && prevBill?.estimated_reading == null) {
-        const prevEstimated = parseFloat(form.value.previous_estimated_consumption)
-        if (!isNaN(prevEstimated) && prevEstimated > 0) {
-          consumption -= prevEstimated
-        }
-      }
       if (calculatedEstimatedConsumption.value != null) {
         consumption += calculatedEstimatedConsumption.value
       }
@@ -150,14 +130,12 @@ export function useConsumptionCalculation(form, utility, isEditing, editingBill)
   watch(() => form.value.provider_reading_f1, () => calculateConsumption())
   watch(() => form.value.provider_reading_f2, () => calculateConsumption())
   watch(() => form.value.provider_reading_f3, () => calculateConsumption())
-  watch(() => form.value.previous_estimated_consumption, () => calculateConsumption())
   watch(() => form.value.estimated_reading, () => calculateConsumption())
   watch(() => form.value.has_estimated, () => calculateConsumption())
   watch(() => form.value.period_start, () => calculateConsumption())
 
   return {
     previousBill,
-    previousBillHasEstimate,
     previousReading,
     calculatedEstimatedConsumption,
     calculateConsumption

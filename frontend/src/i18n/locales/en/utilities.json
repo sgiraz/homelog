@@ -47,6 +47,7 @@
     "fieldsTitle": "Fields to Map",
     "removeMapping": "Remove mapping",
     "notFoundInPdf": "Not found in this PDF: drag the value again",
+    "positionOnly": "No anchor: found only by its position on the page, so other bills may give a wrong value",
     "globalSearch": "Global search",
     "globalSearchTitle": "Global document search",
     "anchorTooltip": "Anchor: \"{anchor}\" → {direction}",
@@ -92,6 +93,7 @@
     "analyzeError": "Error analyzing the PDF",
     "invalidPdf": "Could not parse the PDF. Please make sure it is a valid PDF.",
     "saveError": "Error saving the template",
+    "fieldsLoadError": "Could not load the fields to map",
     "fields": {
       "amount_total": "Total Amount",
       "bill_number": "Bill Number",
@@ -105,8 +107,11 @@
       "conversion_coefficient": "Conversion Coeff. (C)",
       "estimated_date": "Estimated Date",
       "estimated_reading": "Estimated Reading (mc)",
-      "previous_estimated_consumption_smc": "Previous Estimated Consumption (Smc)",
-      "previous_estimated_consumption_mc": "Previous Estimated Consumption (mc)"
+      "provider_reading_f1": "Meter Reading F1 (kWh)",
+      "provider_reading_f2": "Meter Reading F2 (kWh)",
+      "provider_reading_f3": "Meter Reading F3 (kWh)",
+      "provider_reading_date": "Reading Date",
+      "reading_type": "Reading Type (actual/estimated)"
     },
     "directions": {
       "right": "right",
@@ -352,11 +357,7 @@
     "f3Label": "F3 (kWh)",
     "meterGas": "Meter Reading (mc)",
     "meterWater": "Meter Reading (mc)",
-    "conversionCoeff": "Conversion Coefficient (C)",
-    "previousEstimatedSmc": "Previous Estimated Consumption (Smc)",
-    "previousEstimatedMc": "Previous Estimated Consumption (mc)",
-    "previousEstimateHintSmc": "The previous bill contains an estimate of {value} Smc",
-    "previousEstimateHintMc": "The previous bill contains an estimate of {value} mc"
+    "conversionCoeff": "Conversion Coefficient (C)"
   },
   "installments": {
     "title": "Installments",

@@ -25,10 +25,13 @@ const VALUE_PATTERNS = {
   customer_code: '([A-Z0-9]+)',
   conversion_coefficient: '(\\d+,\\d+)',  // Italian decimal: 1,01843500
   provider_reading: '(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)',  // Meter reading: 5.349 or 6.180,00
+  provider_reading_f1: '(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)',
+  provider_reading_f2: '(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)',
+  provider_reading_f3: '(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)',
+  provider_reading_date: null,
   reading_type: '([A-Za-zÀ-ú]+)',
   estimated_reading: '(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)',  // Same as provider_reading
-  estimated_consumption: '(\\d{1,3}(?:[.\\s]\\d{3})*,\\d+)',
-  previous_estimated_consumption: '(\\d{1,3}(?:[.\\s]\\d{3})*,\\d+)'
+  estimated_consumption: '(\\d{1,3}(?:[.\\s]\\d{3})*,\\d+)'
 }
 
 // Extended Italian date form, e.g. "01 aprile 2026". Newer bills (Eon) write
@@ -352,6 +355,7 @@ export function generatePatternForField(token, fieldKey, allTokens, rawText) {
     case 'period_end':
     case 'due_date':
     case 'issue_date':
+    case 'provider_reading_date':
       valuePattern = getDatePattern(token)
       break
 
@@ -372,7 +376,10 @@ export function generatePatternForField(token, fieldKey, allTokens, rawText) {
       break
 
     case 'provider_reading':
-      valuePattern = VALUE_PATTERNS.provider_reading
+    case 'provider_reading_f1':
+    case 'provider_reading_f2':
+    case 'provider_reading_f3':
+      valuePattern = VALUE_PATTERNS[fieldKey]
       break
 
     case 'reading_type':
@@ -388,7 +395,6 @@ export function generatePatternForField(token, fieldKey, allTokens, rawText) {
       break
 
     case 'estimated_consumption':
-    case 'previous_estimated_consumption':
       valuePattern = VALUE_PATTERNS.estimated_consumption
       break
 
@@ -549,6 +555,7 @@ export function regeneratePatternWithContext(token, fieldKey, allTokens, rawText
     case 'due_date':
     case 'issue_date':
     case 'estimated_date':
+    case 'provider_reading_date':
       valuePattern = getDatePattern(token)
       break
     case 'bill_number':
@@ -564,7 +571,10 @@ export function regeneratePatternWithContext(token, fieldKey, allTokens, rawText
       valuePattern = VALUE_PATTERNS.conversion_coefficient
       break
     case 'provider_reading':
-      valuePattern = VALUE_PATTERNS.provider_reading
+    case 'provider_reading_f1':
+    case 'provider_reading_f2':
+    case 'provider_reading_f3':
+      valuePattern = VALUE_PATTERNS[fieldKey]
       break
     case 'reading_type':
       valuePattern = VALUE_PATTERNS.reading_type
@@ -573,7 +583,6 @@ export function regeneratePatternWithContext(token, fieldKey, allTokens, rawText
       valuePattern = VALUE_PATTERNS.estimated_reading
       break
     case 'estimated_consumption':
-    case 'previous_estimated_consumption':
       valuePattern = VALUE_PATTERNS.estimated_consumption
       break
     default:

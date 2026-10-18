@@ -278,6 +278,7 @@
     "fieldsTitle": "Campi da Mappare",
     "removeMapping": "Rimuovi mappatura",
     "notFoundInPdf": "Non trovato in questo PDF: trascina di nuovo il valore",
+    "positionOnly": "Nessuna ancora: trovato solo dalla posizione nella pagina, su altre bollette può dare un valore sbagliato",
     "globalSearch": "Ricerca globale",
     "globalSearchTitle": "Ricerca globale nel documento",
     "anchorTooltip": "Ancora: \"{anchor}\" → {direction}",
@@ -323,6 +324,7 @@
     "analyzeError": "Errore durante l'analisi del PDF",
     "invalidPdf": "Impossibile analizzare il PDF. Verifica che sia un PDF valido.",
     "saveError": "Errore durante il salvataggio",
+    "fieldsLoadError": "Impossibile caricare i campi da mappare",
     "fields": {
       "amount_total": "Importo Totale",
       "bill_number": "Numero Bolletta",
@@ -336,8 +338,11 @@
       "conversion_coefficient": "Coeff. Conversione (C)",
       "estimated_date": "Data Stima",
       "estimated_reading": "Lettura Stimata (mc)",
-      "previous_estimated_consumption_smc": "Consumi Precedenti Stimati (Smc)",
-      "previous_estimated_consumption_mc": "Consumi Precedenti Stimati (mc)"
+      "provider_reading_f1": "Lettura F1 (kWh)",
+      "provider_reading_f2": "Lettura F2 (kWh)",
+      "provider_reading_f3": "Lettura F3 (kWh)",
+      "provider_reading_date": "Data Lettura",
+      "reading_type": "Tipo Lettura (effettiva/stimata)"
     },
     "directions": {
       "right": "destra",
@@ -432,11 +437,7 @@
     "f3Label": "F3 (kWh)",
     "meterGas": "Lettura Contatore (mc)",
     "meterWater": "Lettura Contatore (mc)",
-    "conversionCoeff": "Coefficiente di Conversione (C)",
-    "previousEstimatedSmc": "Consumi Precedenti Stimati (Smc)",
-    "previousEstimatedMc": "Consumi Precedenti Stimati (mc)",
-    "previousEstimateHintSmc": "La bolletta precedente contiene una stima di {value} Smc",
-    "previousEstimateHintMc": "La bolletta precedente contiene una stima di {value} mc"
+    "conversionCoeff": "Coefficiente di Conversione (C)"
   },
   "installments": {
     "title": "Rate",

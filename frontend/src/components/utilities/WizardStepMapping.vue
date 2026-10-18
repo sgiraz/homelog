@@ -72,6 +72,9 @@
               <div v-else-if="mappings[field.key].anchorText" class="text-[10px] text-ink-faint truncate" :title="t('utilities.wizardStepMapping.anchorTooltip', { anchor: mappings[field.key].anchorText, direction: getDirectionLabel(mappings[field.key].anchorDirection) })">
                 {{ mappings[field.key].anchorText }} → {{ getDirectionLabel(mappings[field.key].anchorDirection) }}
               </div>
+              <div v-else class="text-[10px] text-warning-soft">
+                {{ t('utilities.wizardStepMapping.positionOnly') }}
+              </div>
 
               <!-- Context Editor (collapsible) -->
               <div v-if="mappings[field.key].allNeighbors" class="mt-1">
