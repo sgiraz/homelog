@@ -144,6 +144,7 @@
 "subcategory_default_create_admin_only": "Nur Administratoren können Unterkategorien zu integrierten Kategorien hinzufügen",
 "subcategory_default_delete_admin_only": "Nur Administratoren können Unterkategorien integrierter Kategorien löschen",
 "subcategory_not_found": "Unterkategorie nicht gefunden",
+"template_file_invalid": "Diese Datei ist keine gültige Rechnungsvorlage",
 "template_not_found": "Vorlage nicht gefunden",
 "template_field_not_supported": "Die Vorlage ordnet ein Feld zu, das Rechnungen dieser Dienstart nicht haben",
 "unauthorized": "Nicht autorisiert",

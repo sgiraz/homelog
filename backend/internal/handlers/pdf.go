@@ -243,31 +243,7 @@ func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 		return
 	}
 
-	// Check if a specific template was requested
-	var template models.BillTemplate
-	templateFound := false
-
-	if templateIDStr := c.PostForm("template_id"); templateIDStr != "" {
-		// User specified a template - use it if valid
-		templateID, err := strconv.ParseUint(templateIDStr, 10, 32)
-		if err == nil {
-			templateFound = h.db.Where("id = ? AND user_id = ?", templateID, userID).
-				First(&template).Error == nil
-			if templateFound {
-				log.Printf("Using user-specified template ID %d: %s", templateID, template.Name)
-			} else {
-				log.Printf("Requested template ID %d not found, falling back to auto-detection", templateID)
-			}
-		}
-	}
-
-	// If no template specified or not found, try to find a matching template by provider
-	if !templateFound {
-		templateFound = h.db.Where("user_id = ? AND provider = ? AND utility_type = ?",
-			userID, utility.Provider, utility.Type).
-			Order("is_default DESC").
-			First(&template).Error == nil
-	}
+	template, templateFound := h.resolveBillTemplate(utility, c.PostForm("template_id"))
 
 	var extracted ExtractedBillData
 	extracted.PDFURL = pdfURL
@@ -300,6 +276,30 @@ func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 
 	log.Printf("Extracted bill data: %+v", extracted)
 	c.JSON(http.StatusOK, extracted)
+}
+
+// resolveBillTemplate picks the template for a bill of utility, always among
+// the templates of the utility's property: the one requested, else the
+// utility's default, else one matching its provider and type (default first).
+func (h *PDFHandler) resolveBillTemplate(utility models.Utility, requestedID string) (models.BillTemplate, bool) {
+	var template models.BillTemplate
+	inProperty := func() *gorm.DB { return h.db.Where("property_id = ?", utility.PropertyID) }
+
+	if requestedID != "" {
+		if inProperty().Where("id = ?", requestedID).First(&template).Error == nil {
+			return template, true
+		}
+		log.Printf("Requested template ID %s not found, falling back to auto-detection", requestedID)
+	}
+	if utility.DefaultBillTemplateID != nil &&
+		inProperty().Where("id = ?", *utility.DefaultBillTemplateID).First(&template).Error == nil {
+		return template, true
+	}
+	err := inProperty().
+		Where("utility_type = ? AND LOWER(TRIM(provider)) = LOWER(TRIM(?))", utility.Type, utility.Provider).
+		Order("is_default DESC").
+		First(&template).Error
+	return template, err == nil
 }
 
 // UploadContractPDF - POST /api/v1/utilities/contract/upload
@@ -348,6 +348,22 @@ func (h *PDFHandler) UploadContractPDF(c *gin.Context) {
 
 // === Template CRUD Operations ===
 
+// memberTemplates scopes bill templates to the properties userID belongs to:
+// a template is shared by every member of its property.
+func (h *PDFHandler) memberTemplates(userID uint) *gorm.DB {
+	return h.db.Where("property_id IN (?)",
+		h.db.Model(&models.HouseholdMember{}).Select("property_id").Where("user_id = ?", userID))
+}
+
+// clearOtherDefaults leaves template the only default for its provider and type
+// in its property.
+func clearOtherDefaults(db *gorm.DB, template models.BillTemplate) error {
+	return db.Model(&models.BillTemplate{}).
+		Where("property_id = ? AND utility_type = ? AND LOWER(TRIM(provider)) = LOWER(TRIM(?)) AND id != ?",
+			template.PropertyID, template.UtilityType, template.Provider, template.ID).
+		Update("is_default", false).Error
+}
+
 // ListBillTemplates - GET /api/v1/templates/bills
 func (h *PDFHandler) ListBillTemplates(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
@@ -357,7 +373,13 @@ func (h *PDFHandler) ListBillTemplates(c *gin.Context) {
 	}
 
 	var templates []models.BillTemplate
-	query := h.db.Where("user_id = ?", userID)
+	query := h.memberTemplates(userID)
+	if utilityID := c.Query("utility_id"); utilityID != "" {
+		query = query.Where("property_id = (?)",
+			h.db.Model(&models.Utility{}).Select("property_id").Where("id = ?", utilityID))
+	} else if propertyID := c.Query("property_id"); propertyID != "" {
+		query = query.Where("property_id = ?", propertyID)
+	}
 
 	if provider := c.Query("provider"); provider != "" {
 		query = query.Where("provider = ?", provider)
@@ -410,6 +432,7 @@ func (h *PDFHandler) CreateBillTemplate(c *gin.Context) {
 	}
 
 	var input struct {
+		PropertyID      uint               `json:"property_id" binding:"required"`
 		Name            string             `json:"name" binding:"required"`
 		Provider        string             `json:"provider" binding:"required"`
 		UtilityType     string             `json:"utility_type" binding:"required"`
@@ -425,18 +448,16 @@ func (h *PDFHandler) CreateBillTemplate(c *gin.Context) {
 		return
 	}
 
+	if !requirePropertyMember(c, h.db, userID, input.PropertyID) {
+		return
+	}
+
 	// Convert rules to JSON
 	rulesJSON, _ := json.Marshal(input.ExtractionRules)
 
-	// If setting as default, unset other defaults for same provider+type
-	if input.IsDefault {
-		h.db.Model(&models.BillTemplate{}).
-			Where("user_id = ? AND provider = ? AND utility_type = ?", userID, input.Provider, input.UtilityType).
-			Update("is_default", false)
-	}
-
 	template := models.BillTemplate{
-		UserID:          userID,
+		PropertyID:      input.PropertyID,
+		UserID:          &userID,
 		Name:            input.Name,
 		Provider:        input.Provider,
 		UtilityType:     input.UtilityType,
@@ -446,6 +467,71 @@ func (h *PDFHandler) CreateBillTemplate(c *gin.Context) {
 
 	if err := h.db.Create(&template).Error; err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create template")
+		return
+	}
+	if template.IsDefault {
+		if err := clearOtherDefaults(h.db, template); err != nil {
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update default templates")
+			return
+		}
+	}
+
+	c.JSON(http.StatusCreated, template)
+}
+
+// billTemplateFileFormat marks a template exported by the templates manager.
+const billTemplateFileFormat = "homelog-bill-template/1"
+
+// ImportBillTemplate - POST /api/v1/templates/bills/import
+// Creates a template in a property from an exported template file: this is how
+// templates follow a household to a new home.
+func (h *PDFHandler) ImportBillTemplate(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
+		return
+	}
+
+	var input struct {
+		PropertyID      uint               `json:"property_id" binding:"required"`
+		Format          string             `json:"format" binding:"required"`
+		Name            string             `json:"name" binding:"required"`
+		Provider        string             `json:"provider" binding:"required"`
+		UtilityType     string             `json:"utility_type" binding:"required,oneof=electricity gas water waste internet insurance affitto mutuo"`
+		ExtractionRules []BillTemplateRule `json:"extraction_rules" binding:"required,min=1"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil || input.Format != billTemplateFileFormat {
+		apierr.Fail(c, http.StatusBadRequest, "template_file_invalid", "Not a valid bill template file")
+		return
+	}
+	for _, rule := range input.ExtractionRules {
+		if rule.Field == "" {
+			apierr.Fail(c, http.StatusBadRequest, "template_file_invalid", "A rule has no field")
+			return
+		}
+		for _, pattern := range []string{rule.Pattern, rule.ValuePattern} {
+			if _, err := regexp.Compile(pattern); err != nil {
+				apierr.Fail(c, http.StatusBadRequest, "template_file_invalid", "Invalid pattern for "+rule.Field)
+				return
+			}
+		}
+	}
+
+	if !requirePropertyMember(c, h.db, userID, input.PropertyID) {
+		return
+	}
+
+	rulesJSON, _ := json.Marshal(input.ExtractionRules)
+	template := models.BillTemplate{
+		PropertyID:      input.PropertyID,
+		UserID:          &userID,
+		Name:            input.Name,
+		Provider:        input.Provider,
+		UtilityType:     input.UtilityType,
+		ExtractionRules: string(rulesJSON),
+	}
+	if err := h.db.Create(&template).Error; err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to import template")
 		return
 	}
 
@@ -467,7 +553,7 @@ func (h *PDFHandler) UpdateBillTemplate(c *gin.Context) {
 	}
 
 	var template models.BillTemplate
-	if err := h.db.Where("id = ? AND user_id = ?", templateID, userID).First(&template).Error; err != nil {
+	if err := h.memberTemplates(userID).Where("id = ?", templateID).First(&template).Error; err != nil {
 		apierr.Fail(c, http.StatusNotFound, "template_not_found", "Template not found")
 		return
 	}
@@ -507,11 +593,11 @@ func (h *PDFHandler) UpdateBillTemplate(c *gin.Context) {
 	}
 
 	// Handle default flag
-	if input.IsDefault && !template.IsDefault {
-		h.db.Model(&models.BillTemplate{}).
-			Where("user_id = ? AND provider = ? AND utility_type = ? AND id != ?",
-				userID, template.Provider, template.UtilityType, template.ID).
-			Update("is_default", false)
+	if input.IsDefault {
+		if err := clearOtherDefaults(h.db, template); err != nil {
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update default templates")
+			return
+		}
 	}
 	template.IsDefault = input.IsDefault
 
@@ -537,14 +623,20 @@ func (h *PDFHandler) DeleteBillTemplate(c *gin.Context) {
 		return
 	}
 
-	result := h.db.Unscoped().Where("id = ? AND user_id = ?", templateID, userID).Delete(&models.BillTemplate{})
-	if result.Error != nil {
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete template")
+	var template models.BillTemplate
+	if err := h.memberTemplates(userID).Where("id = ?", templateID).First(&template).Error; err != nil {
+		apierr.Fail(c, http.StatusNotFound, "template_not_found", "Template not found")
 		return
 	}
 
-	if result.RowsAffected == 0 {
-		apierr.Fail(c, http.StatusNotFound, "template_not_found", "Template not found")
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Model(&models.Utility{}).Where("default_bill_template_id = ?", template.ID).
+			Update("default_bill_template_id", nil).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&template).Error
+	}); err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete template")
 		return
 	}
 
@@ -726,14 +818,14 @@ func (h *PDFHandler) AnalyzePDFForTemplate(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// templateValuesForAnalysis runs the rules of the user's template templateID
-// against an analysed PDF, with the same strategies a bill upload uses.
+// templateValuesForAnalysis runs the rules of template templateID, when userID
+// shares its property, against an analysed PDF, with the same strategies a bill upload uses.
 func (h *PDFHandler) templateValuesForAnalysis(templateID string, userID uint, extracted *ExtractedTextWithPositions) map[string]string {
 	if templateID == "" {
 		return nil
 	}
 	var template models.BillTemplate
-	if err := h.db.Where("id = ? AND user_id = ?", templateID, userID).First(&template).Error; err != nil {
+	if err := h.memberTemplates(userID).Where("id = ?", templateID).First(&template).Error; err != nil {
 		return nil
 	}
 	var rules []BillTemplateRule

@@ -491,6 +491,16 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	}
 	utility.PaidByMemberID = input.PaidByMemberID
 	utility.DefaultCategoryID = input.DefaultCategoryID
+	if input.DefaultBillTemplateID != nil {
+		var count int64
+		h.db.Model(&models.BillTemplate{}).
+			Where("id = ? AND property_id = ?", *input.DefaultBillTemplateID, utility.PropertyID).
+			Count(&count)
+		if count == 0 {
+			apierr.Fail(c, http.StatusBadRequest, "template_not_found", "Template not found")
+			return
+		}
+	}
 	utility.DefaultBillTemplateID = input.DefaultBillTemplateID
 	if input.SplitOverride != nil {
 		utility.SplitOverride = *input.SplitOverride

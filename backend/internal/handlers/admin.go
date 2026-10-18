@@ -237,8 +237,16 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	// 15. BillTemplates
-	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.BillTemplate{}).Error; err != nil {
+	// 15. BillTemplates: those of owned properties go with them, the other
+	// households keep theirs without an author.
+	if len(propertyIDs) > 0 {
+		if err := tx.Unscoped().Where("property_id IN ?", propertyIDs).Delete(&models.BillTemplate{}).Error; err != nil {
+			tx.Rollback()
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete bill templates")
+			return
+		}
+	}
+	if err := tx.Model(&models.BillTemplate{}).Where("user_id = ?", targetID).Update("user_id", nil).Error; err != nil {
 		tx.Rollback()
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete bill templates")
 		return

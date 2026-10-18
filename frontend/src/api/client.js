@@ -226,9 +226,10 @@ export const notificationsAPI = {
 
 export const templatesAPI = {
   // Bill templates
-  listBillTemplates: () => apiClient.get('/templates/bills'),
+  listBillTemplates: (params) => apiClient.get('/templates/bills', { params }),
   listBillTemplateFields: () => apiClient.get('/templates/bills/fields'),
   createBillTemplate: (data) => apiClient.post('/templates/bills', data),
+  importBillTemplate: (data) => apiClient.post('/templates/bills/import', data),
   updateBillTemplate: (id, data) => apiClient.put(`/templates/bills/${id}`, data),
   deleteBillTemplate: (id) => apiClient.delete(`/templates/bills/${id}`),
 }

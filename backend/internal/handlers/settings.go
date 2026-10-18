@@ -44,7 +44,6 @@ type UserSettingsResponse struct {
 	Language                  string                  `json:"language"`
 	DateFormat                string                  `json:"date_format"`
 	DefaultSplitWithMemberIDs string                  `json:"default_split_with_member_ids"` // JSON array as string e.g. "[2,3]"
-	DefaultTemplates          string                  `json:"default_templates"`             // JSON object as string e.g. {"electricity": 1}
 	EmailNotifications        bool                    `json:"email_notifications"`
 	BillReminders             bool                    `json:"bill_reminders"`
 	NotificationRetentionDays int                     `json:"notification_retention_days"`
@@ -70,7 +69,6 @@ type UpdateUserSettingsRequest struct {
 	Language                  *string `json:"language,omitempty"`
 	DateFormat                *string `json:"date_format,omitempty"`
 	DefaultSplitWithMemberIDs *string `json:"default_split_with_member_ids,omitempty"` // JSON array as string
-	DefaultTemplates          *string `json:"default_templates,omitempty"`             // JSON object as string
 	EmailNotifications        *bool   `json:"email_notifications,omitempty"`
 	BillReminders             *bool   `json:"bill_reminders,omitempty"`
 	NotificationRetentionDays *int    `json:"notification_retention_days,omitempty"`
@@ -124,7 +122,6 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 				Language:                  models.DefaultLanguage,
 				DateFormat:                "DD/MM/YYYY",
 				DefaultSplitWithMemberIDs: "",
-				DefaultTemplates:          "",
 				EmailNotifications:        true,
 				BillReminders:             true,
 				NotificationRetentionDays: 90,
@@ -158,7 +155,6 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 		Language:                  settings.Language,
 		DateFormat:                dateFormat,
 		DefaultSplitWithMemberIDs: settings.DefaultSplitWithMemberIDs,
-		DefaultTemplates:          settings.DefaultTemplates,
 		EmailNotifications:        settings.EmailNotifications,
 		BillReminders:             settings.BillDueAlertDays > 0,
 		NotificationRetentionDays: retentionDays,
@@ -226,9 +222,6 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 	if req.DefaultSplitWithMemberIDs != nil {
 		settings.DefaultSplitWithMemberIDs = *req.DefaultSplitWithMemberIDs
 	}
-	if req.DefaultTemplates != nil {
-		settings.DefaultTemplates = *req.DefaultTemplates
-	}
 	if req.EmailNotifications != nil {
 		settings.EmailNotifications = *req.EmailNotifications
 	}
@@ -281,7 +274,6 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 		Language:                  settings.Language,
 		DateFormat:                updateDateFormat,
 		DefaultSplitWithMemberIDs: settings.DefaultSplitWithMemberIDs,
-		DefaultTemplates:          settings.DefaultTemplates,
 		EmailNotifications:        settings.EmailNotifications,
 		BillReminders:             settings.BillDueAlertDays > 0,
 		NotificationRetentionDays: updateRetentionDays,

@@ -131,7 +131,13 @@
     "deleteConfirmMessage": "Are you sure you want to delete the template \"{name}\"? This action cannot be undone.",
     "cancel": "Cancel",
     "delete": "Delete",
-    "deleting": "Deleting..."
+    "deleting": "Deleting...",
+    "exportTitle": "Export",
+    "importButton": "Import Template",
+    "importing": "Importing...",
+    "importHint": "Moving house? Export your templates and import them in the new home.",
+    "importSuccess": "Template \"{name}\" imported",
+    "importError": "Could not import the template"
   },
   "billsTab": {
     "searchPlaceholder": "Search bill...",
