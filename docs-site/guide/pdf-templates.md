@@ -25,6 +25,13 @@ metered services: on a fixed-cost service it is derived from the billing
 frequency configured on the service, so check that the frequency matches the
 provider's real cycle.
 
+## Sharing and moving house
+
+A template belongs to the home, not to whoever created it: every member of the
+household can use, edit and delete it. When you move, export a template from
+**Extraction Templates** (a small JSON file with its rules) and import it in the
+new home.
+
 ## Extraction strategy
 
 To stay accurate even when a label appears more than once on a page, HomeLog
