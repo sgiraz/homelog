@@ -156,6 +156,10 @@ image you can deploy and use, but `api.github.com/.../releases/latest` ignores
 pre-releases, so no self-hosted instance is ever prompted to upgrade to one.
 That is what makes it safe to try a build in anger before committing to it.
 
+The date in an RC is the one planned for the final release, as in `1.2.0-rc.1`
+→ `1.2.0`. If the release slips, cut a new RC with the updated date rather than
+shipping a final that is older than the RC testers are running.
+
 ```bash
 # 1. Tag the candidate — this builds sgira/homelog:2026.10.20-rc.1 and :rc
 git tag 2026.10.20-rc.1 && git push origin 2026.10.20-rc.1
