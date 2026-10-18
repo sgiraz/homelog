@@ -66,10 +66,7 @@
                 </svg>
               </div>
               <!-- Anchor/strategy feedback -->
-              <div v-if="mappings[field.key].globalSearch" class="text-[10px] text-info-soft truncate" :title="t('utilities.wizardStepMapping.globalSearchTitle')">
-                {{ t('utilities.wizardStepMapping.globalSearch') }}
-              </div>
-              <div v-else-if="mappings[field.key].anchorText" class="text-[10px] text-ink-faint truncate" :title="t('utilities.wizardStepMapping.anchorTooltip', { anchor: mappings[field.key].anchorText, direction: getDirectionLabel(mappings[field.key].anchorDirection) })">
+              <div v-if="mappings[field.key].anchorText" class="text-[10px] text-ink-faint truncate" :title="t('utilities.wizardStepMapping.anchorTooltip', { anchor: mappings[field.key].anchorText, direction: getDirectionLabel(mappings[field.key].anchorDirection) })">
                 {{ mappings[field.key].anchorText }} → {{ getDirectionLabel(mappings[field.key].anchorDirection) }}
               </div>
               <div v-else class="text-[10px] text-warning-soft">

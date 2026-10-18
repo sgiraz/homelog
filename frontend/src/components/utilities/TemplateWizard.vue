@@ -411,7 +411,6 @@ function handleFieldDrop(event, fieldKey) {
       // Anchor-based extraction
       anchorText: patternInfo.anchorText,
       anchorDirection: fieldDef?.multiLine ? 'below' : (patternInfo.anchorDirection || 'right_or_below'),
-      globalSearch: patternInfo.globalSearch,
       // Multi-line flag for text block fields (communication_text)
       multiLine: fieldDef?.multiLine || false,
       // Context editor data
@@ -621,7 +620,6 @@ async function saveTemplate() {
           // Anchor-based extraction
           anchor_text: mapping.anchorText || '',
           anchor_direction: mapping.anchorDirection || 'right_or_below',
-          global_search: mapping.globalSearch || false,
           multi_line: mapping.multiLine || false
         })
       }
@@ -682,7 +680,6 @@ onMounted(() => {
               valuePattern: rule.value_pattern || '',
               anchorText: rule.anchor_text || '',
               anchorDirection: rule.anchor_direction || '',
-              globalSearch: rule.global_search || false,
               multiLine: rule.multi_line || false
             }
           }

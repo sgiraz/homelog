@@ -279,8 +279,6 @@
     "removeMapping": "Rimuovi mappatura",
     "notFoundInPdf": "Non trovato in questo PDF: trascina di nuovo il valore",
     "positionOnly": "Nessuna ancora: trovato solo dalla posizione nella pagina, su altre bollette può dare un valore sbagliato",
-    "globalSearch": "Ricerca globale",
-    "globalSearchTitle": "Ricerca globale nel documento",
     "anchorTooltip": "Ancora: \"{anchor}\" → {direction}",
     "context": "Contesto",
     "dropMultiLine": "Trascina una parola dalla sezione comunicazioni...",

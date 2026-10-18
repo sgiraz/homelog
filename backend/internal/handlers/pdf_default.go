@@ -161,32 +161,6 @@ func (h *PDFHandler) extractBillDataDefault(text string, utilityType string, pdf
 		}
 	}
 
-	// POD/PDR code
-	if utilityType == "electricity" {
-		podPattern := regexp.MustCompile(`[Cc]odice\s+POD[:\s]*(IT\d{3}E\d+)`)
-		if match := podPattern.FindStringSubmatch(text); len(match) > 1 {
-			extracted.ServiceCode = match[1]
-		}
-	} else if utilityType == "gas" {
-		pdrPatterns := []string{
-			`[Cc]odice\s+PDR[\s:]*(\d{10,})`,
-			`PDR[^0-9]*(\d{10,})`,
-		}
-		for _, pattern := range pdrPatterns {
-			re := regexp.MustCompile(pattern)
-			if match := re.FindStringSubmatch(text); len(match) > 1 {
-				extracted.ServiceCode = match[1]
-				break
-			}
-		}
-	}
-
-	// Customer code
-	customerPattern := regexp.MustCompile(`[Cc]odice\s+[Cc]liente[:\s]*([A-Z0-9]+)`)
-	if match := customerPattern.FindStringSubmatch(text); len(match) > 1 {
-		extracted.CustomerCode = match[1]
-	}
-
 	h.extractProviderReadings(&extracted, text, utilityType)
 
 	return extracted

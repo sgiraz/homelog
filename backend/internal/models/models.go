@@ -221,8 +221,7 @@ type BillFieldSet struct {
 // BillFieldCatalogue is the single source of truth for what a bill template
 // may extract, per service type: the wizard lists these fields, template
 // saves are validated against them and the extractor handles each one.
-// Rent and mortgage have no bills, hence no templates. Fixed-cost types derive
-// period_end from their billing frequency instead of reading it.
+// Rent and mortgage have no bills, hence no templates.
 var BillFieldCatalogue = buildBillFieldCatalogue()
 
 func buildBillFieldCatalogue() []BillFieldSet {
@@ -236,13 +235,8 @@ func buildBillFieldCatalogue() []BillFieldSet {
 	}
 	catalogue := make([]BillFieldSet, len(extra))
 	for i, set := range extra {
-		metered := MeteredByType[set.Type]
-		fields := []BillField{{Key: "amount_total", Required: true}, {Key: "bill_number"}, {Key: "period_start"}}
-		if metered {
-			fields = append(fields, BillField{Key: "period_end"})
-		}
-		fields = append(fields, BillField{Key: "due_date"}, BillField{Key: "issue_date"})
-		if metered {
+		fields := []BillField{{Key: "amount_total", Required: true}, {Key: "bill_number"}, {Key: "period_start"}, {Key: "period_end"}, {Key: "due_date"}, {Key: "issue_date"}}
+		if MeteredByType[set.Type] {
 			fields = append(fields, BillField{Key: "consumption_total"}, BillField{Key: "provider_reading_date"}, BillField{Key: "reading_type"})
 		}
 		fields = append(fields, set.Fields...)

@@ -136,7 +136,6 @@ type BillTemplateRule struct {
 	// Anchor-based extraction (relative positioning, resilient to layout changes)
 	AnchorText      string `json:"anchor_text"`      // Label text to find as anchor, e.g. the "amount due" label on the bill
 	AnchorDirection string `json:"anchor_direction"` // "right", "below", "right_or_below"
-	GlobalSearch    bool   `json:"global_search"`    // For unique fields (POD/PDR): search entire document
 	MultiLine       bool   `json:"multi_line"`       // For text blocks: collect all text below anchor until next section
 }
 
@@ -150,8 +149,6 @@ type ExtractedBillData struct {
 	AmountTotal      float64 `json:"amount_total,omitempty"`
 	ConsumptionTotal float64 `json:"consumption_total,omitempty"`
 	Provider         string  `json:"provider,omitempty"`
-	ServiceCode      string  `json:"service_code,omitempty"` // POD or PDR
-	CustomerCode     string  `json:"customer_code,omitempty"`
 	PDFURL           string  `json:"pdf_url,omitempty"`
 	RawText          string  `json:"raw_text,omitempty"` // For debugging/template creation
 
@@ -167,9 +164,8 @@ type ExtractedBillData struct {
 	ConversionCoefficient *float64 `json:"conversion_coefficient,omitempty"`
 
 	// Estimated reading/consumption fields
-	EstimatedDate        *string  `json:"estimated_date,omitempty"`
-	EstimatedReading     *float64 `json:"estimated_reading,omitempty"`     // Estimated reading (m3)
-	EstimatedConsumption *float64 `json:"estimated_consumption,omitempty"` // Estimated consumption (Sm3)
+	EstimatedDate    *string  `json:"estimated_date,omitempty"`
+	EstimatedReading *float64 `json:"estimated_reading,omitempty"` // Estimated reading (m3)
 
 	// Communication text (extracted from bill)
 	CommunicationText string `json:"communication_text,omitempty"`

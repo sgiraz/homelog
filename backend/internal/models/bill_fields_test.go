@@ -22,8 +22,8 @@ func TestBillFieldCatalogueCoversOnlyKnownTypes(t *testing.T) {
 			}
 			seen[f.Key] = true
 		}
-		if seen["period_end"] != MeteredByType[set.Type] {
-			t.Errorf("%s: period_end is read from metered bills only", set.Type)
+		if seen["consumption_total"] != MeteredByType[set.Type] {
+			t.Errorf("%s: consumption is read from metered bills only", set.Type)
 		}
 	}
 	for _, noBills := range []string{"affitto", "mutuo"} {

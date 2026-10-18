@@ -48,8 +48,6 @@
     "removeMapping": "Zuordnung entfernen",
     "notFoundInPdf": "In diesem PDF nicht gefunden: Wert erneut ziehen",
     "positionOnly": "Kein Anker: nur über die Position auf der Seite gefunden, bei anderen Rechnungen kann ein falscher Wert entstehen",
-    "globalSearch": "Globale Suche",
-    "globalSearchTitle": "Globale Dokumentsuche",
     "anchorTooltip": "Anker: \"{anchor}\" → {direction}",
     "context": "Kontext",
     "dropMultiLine": "Ziehe ein Wort aus dem Kommunikationsbereich...",

@@ -48,8 +48,6 @@
     "removeMapping": "Remove mapping",
     "notFoundInPdf": "Not found in this PDF: drag the value again",
     "positionOnly": "No anchor: found only by its position on the page, so other bills may give a wrong value",
-    "globalSearch": "Global search",
-    "globalSearchTitle": "Global document search",
     "anchorTooltip": "Anchor: \"{anchor}\" → {direction}",
     "context": "Context",
     "dropMultiLine": "Drag a word from the communications section...",

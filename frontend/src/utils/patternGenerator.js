@@ -4,7 +4,7 @@
  * Patterns are compatible with Go RE2 (no lookahead/lookbehind)
  */
 
-import { TokenType, getTokenContext } from './tokenizer'
+import { getTokenContext } from './tokenizer'
 
 // Italian month pattern for regex
 const ITALIAN_MONTHS_PATTERN = '(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)'
@@ -21,8 +21,6 @@ const VALUE_PATTERNS = {
   period_end: null,
   due_date: null,
   issue_date: null,
-  service_code: null, // Dynamic: POD or PDR
-  customer_code: '([A-Z0-9]+)',
   conversion_coefficient: '(\\d+,\\d+)',  // Italian decimal: 1,01843500
   provider_reading: '(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)',  // Meter reading: 5.349 or 6.180,00
   provider_reading_f1: '(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)',
@@ -30,8 +28,7 @@ const VALUE_PATTERNS = {
   provider_reading_f3: '(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)',
   provider_reading_date: null,
   reading_type: '([A-Za-zÀ-ú]+)',
-  estimated_reading: '(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)',  // Same as provider_reading
-  estimated_consumption: '(\\d{1,3}(?:[.\\s]\\d{3})*,\\d+)'
+  estimated_reading: '(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)'  // Same as provider_reading
 }
 
 // Extended Italian date form, e.g. "01 aprile 2026". Newer bills (Eon) write
@@ -64,22 +61,6 @@ function getDatePattern(token) {
   }
 
   return `(${numeric}|${EXTENDED_DATE_PATTERN})`
-}
-
-/**
- * Get service code pattern based on type
- * @param {Object} token - The token
- * @returns {string} - Regex pattern
- */
-function getServiceCodePattern(token) {
-  if (token.type === TokenType.POD) {
-    return '(IT\\d{3}E\\d+)'
-  }
-  if (token.type === TokenType.PDR) {
-    return '(\\d{10,})'
-  }
-  // Generic
-  return '([A-Z0-9]{10,})'
 }
 
 /**
@@ -202,11 +183,6 @@ const ANCHOR_KEYWORDS = [
   'numero', 'codice', 'cliente', 'lettura', 'data', 'spesa',
   'fornitura', 'contratto', 'utenza', 'fascia', 'tariffa'
 ]
-
-/**
- * Fields that should use global search (unique identifiers in document)
- */
-const GLOBAL_SEARCH_FIELDS = ['service_code', 'customer_code']
 
 /**
  * Find the best anchor label for a dropped token by looking at surrounding text.
@@ -363,14 +339,6 @@ export function generatePatternForField(token, fieldKey, allTokens, rawText) {
       valuePattern = VALUE_PATTERNS.bill_number
       break
 
-    case 'service_code':
-      valuePattern = getServiceCodePattern(token)
-      break
-
-    case 'customer_code':
-      valuePattern = VALUE_PATTERNS.customer_code
-      break
-
     case 'conversion_coefficient':
       valuePattern = VALUE_PATTERNS.conversion_coefficient
       break
@@ -392,10 +360,6 @@ export function generatePatternForField(token, fieldKey, allTokens, rawText) {
 
     case 'estimated_reading':
       valuePattern = VALUE_PATTERNS.estimated_reading
-      break
-
-    case 'estimated_consumption':
-      valuePattern = VALUE_PATTERNS.estimated_consumption
       break
 
     default:
@@ -434,16 +398,7 @@ export function generatePatternForField(token, fieldKey, allTokens, rawText) {
   const contextLeft = getContextLeft(token, allTokens)
   const contextAbove = getContextAbove(token, allTokens)
 
-  // Detect anchor and global search overrides
-  const isGlobalSearch = GLOBAL_SEARCH_FIELDS.includes(fieldKey)
-  let anchorText = ''
-  let anchorDirection = 'right_or_below'
-
-  if (!isGlobalSearch) {
-    const anchor = detectAnchor(token, allTokens)
-    anchorText = anchor.anchorText
-    anchorDirection = anchor.anchorDirection
-  }
+  const { anchorText, anchorDirection } = detectAnchor(token, allTokens)
 
   return {
     pattern: fullPattern,
@@ -462,8 +417,7 @@ export function generatePatternForField(token, fieldKey, allTokens, rawText) {
     contextAbove,
     // Anchor-based extraction
     anchorText,
-    anchorDirection,
-    globalSearch: isGlobalSearch
+    anchorDirection
   }
 }
 
@@ -561,12 +515,6 @@ export function regeneratePatternWithContext(token, fieldKey, allTokens, rawText
     case 'bill_number':
       valuePattern = VALUE_PATTERNS.bill_number
       break
-    case 'service_code':
-      valuePattern = getServiceCodePattern(token)
-      break
-    case 'customer_code':
-      valuePattern = VALUE_PATTERNS.customer_code
-      break
     case 'conversion_coefficient':
       valuePattern = VALUE_PATTERNS.conversion_coefficient
       break
@@ -581,9 +529,6 @@ export function regeneratePatternWithContext(token, fieldKey, allTokens, rawText
       break
     case 'estimated_reading':
       valuePattern = VALUE_PATTERNS.estimated_reading
-      break
-    case 'estimated_consumption':
-      valuePattern = VALUE_PATTERNS.estimated_consumption
       break
     default:
       valuePattern = `(${escapeRegex(token.text)})`
@@ -646,8 +591,6 @@ export function regeneratePatternWithContext(token, fieldKey, allTokens, rawText
     anchorDirection = 'below'
   }
 
-  const isGlobalSearch = GLOBAL_SEARCH_FIELDS.includes(fieldKey)
-
   return {
     pattern: fullPattern,
     prefix: prefixTokens.map(t => t.text).join(' '),
@@ -661,9 +604,8 @@ export function regeneratePatternWithContext(token, fieldKey, allTokens, rawText
     height: token.height ?? 0,
     contextLeft: getContextLeft(token, allTokens),
     contextAbove: getContextAbove(token, allTokens),
-    anchorText: isGlobalSearch ? '' : anchorText,
-    anchorDirection: isGlobalSearch ? 'right_or_below' : anchorDirection,
-    globalSearch: isGlobalSearch
+    anchorText,
+    anchorDirection
   }
 }
 

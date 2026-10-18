@@ -52,10 +52,6 @@ func (h *PDFHandler) extractBillDataWithTemplateAndWords(text string, template m
 			extracted.AmountTotal = h.parseAmount(value)
 		case "consumption_total":
 			extracted.ConsumptionTotal = h.parseAmount(value)
-		case "service_code":
-			extracted.ServiceCode = value
-		case "customer_code":
-			extracted.CustomerCode = value
 		case "conversion_coefficient":
 			coeff := h.parseAmount(value)
 			extracted.ConversionCoefficient = &coeff
@@ -86,9 +82,6 @@ func (h *PDFHandler) extractBillDataWithTemplateAndWords(text string, template m
 		case "estimated_reading":
 			val := h.parseAmount(value)
 			extracted.EstimatedReading = &val
-		case "estimated_consumption":
-			val := h.parseAmount(value)
-			extracted.EstimatedConsumption = &val
 		case "communication_text":
 			extracted.CommunicationText = value
 		}
@@ -98,7 +91,7 @@ func (h *PDFHandler) extractBillDataWithTemplateAndWords(text string, template m
 }
 
 // extractValueWithRuleAndWords picks the best extraction strategy per rule.
-// Priority: multi-line anchor → global search → anchor-based → position → pattern.
+// Priority: multi-line anchor → anchor-based → position → pattern.
 func (h *PDFHandler) extractValueWithRuleAndWords(rule BillTemplateRule, text string, words []WordInfo) string {
 	if rule.MultiLine && rule.AnchorText != "" && len(words) > 0 {
 		value := h.extractMultiLineByAnchor(rule, words)
@@ -107,15 +100,6 @@ func (h *PDFHandler) extractValueWithRuleAndWords(rule BillTemplateRule, text st
 			return value
 		}
 		log.Printf("Field %s: multi-line anchor match failed, trying other strategies", rule.Field)
-	}
-
-	if rule.GlobalSearch && rule.ValuePattern != "" && len(words) > 0 {
-		value := h.extractByGlobalSearch(rule, words)
-		if value != "" {
-			log.Printf("Field %s matched by global search: %s", rule.Field, value)
-			return value
-		}
-		log.Printf("Field %s: global search failed, trying next strategy", rule.Field)
 	}
 
 	if rule.AnchorText != "" && len(words) > 0 {
@@ -461,28 +445,6 @@ func searchROI(anchor AnchorMatch, direction string, allWords []WordInfo) []Word
 	return results
 }
 
-// extractByGlobalSearch scans every word for a value matching the pattern — used
-// for unique identifiers like POD/PDR codes.
-func (h *PDFHandler) extractByGlobalSearch(rule BillTemplateRule, words []WordInfo) string {
-	if rule.ValuePattern == "" {
-		return ""
-	}
-
-	valueRe, err := regexp.Compile("(?i)^" + rule.ValuePattern + "$")
-	if err != nil {
-		log.Printf("Invalid value pattern for global search field %s: %v", rule.Field, err)
-		return ""
-	}
-
-	for _, w := range words {
-		if valueRe.MatchString(w.Text) {
-			return w.Text
-		}
-	}
-
-	return ""
-}
-
 // extractByPattern is the regex-on-full-text fallback strategy.
 func (h *PDFHandler) extractByPattern(rule BillTemplateRule, text string) string {
 	hasContext := rule.Pattern != "" && rule.Pattern != rule.ValuePattern
@@ -621,12 +583,6 @@ func (h *PDFHandler) mergeExtracted(primary, fallback ExtractedBillData, templat
 	if primary.Provider == "" {
 		primary.Provider = fallback.Provider
 	}
-	if primary.ServiceCode == "" && !templateFields["service_code"] {
-		primary.ServiceCode = fallback.ServiceCode
-	}
-	if primary.CustomerCode == "" && !templateFields["customer_code"] {
-		primary.CustomerCode = fallback.CustomerCode
-	}
 	if primary.ProviderReadingDate == "" && !templateFields["provider_reading_date"] {
 		primary.ProviderReadingDate = fallback.ProviderReadingDate
 	}
@@ -653,9 +609,6 @@ func (h *PDFHandler) mergeExtracted(primary, fallback ExtractedBillData, templat
 	}
 	if primary.EstimatedReading == nil && !templateFields["estimated_reading"] {
 		primary.EstimatedReading = fallback.EstimatedReading
-	}
-	if primary.EstimatedConsumption == nil && !templateFields["estimated_consumption"] {
-		primary.EstimatedConsumption = fallback.EstimatedConsumption
 	}
 	return primary
 }
