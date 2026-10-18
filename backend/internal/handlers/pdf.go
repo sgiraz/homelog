@@ -497,11 +497,15 @@ func (h *PDFHandler) ImportBillTemplate(c *gin.Context) {
 		Format          string             `json:"format" binding:"required"`
 		Name            string             `json:"name" binding:"required"`
 		Provider        string             `json:"provider" binding:"required"`
-		UtilityType     string             `json:"utility_type" binding:"required,oneof=electricity gas water waste internet insurance affitto mutuo"`
+		UtilityType     string             `json:"utility_type" binding:"required"`
 		ExtractionRules []BillTemplateRule `json:"extraction_rules" binding:"required,min=1"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil || input.Format != billTemplateFileFormat {
 		apierr.Fail(c, http.StatusBadRequest, "template_file_invalid", "Not a valid bill template file")
+		return
+	}
+	if _, ok := models.BillFieldsFor(input.UtilityType); !ok {
+		apierr.Fail(c, http.StatusBadRequest, "template_file_invalid", "Service type "+input.UtilityType+" takes no bill templates")
 		return
 	}
 	for _, rule := range input.ExtractionRules {
@@ -517,7 +521,8 @@ func (h *PDFHandler) ImportBillTemplate(c *gin.Context) {
 		}
 	}
 
-	if !requirePropertyMember(c, h.db, userID, input.PropertyID) {
+	if !validateTemplateRules(c, input.UtilityType, input.ExtractionRules) ||
+		!requirePropertyMember(c, h.db, userID, input.PropertyID) {
 		return
 	}
 
