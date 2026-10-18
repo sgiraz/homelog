@@ -201,6 +201,7 @@ export const utilitiesAPI = {
     apiClient.get(`/utilities/${utilityId}/compare-readings`, {
       params: { threshold: baseThreshold, threshold_per_day: thresholdPerDay, reading_match_days: readingMatchDays }
     }),
+  getCostAnalysis: (utilityId, params) => apiClient.get(`/utilities/${utilityId}/cost-analysis`, { params }),
   // Communications
   getCommunications: (utilityId) => apiClient.get(`/utilities/${utilityId}/communications`),
   addCommunication: (utilityId, data) => apiClient.post(`/utilities/${utilityId}/communications`, data),

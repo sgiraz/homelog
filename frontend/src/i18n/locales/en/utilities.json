@@ -505,6 +505,41 @@
     "saveThreshold": "Save threshold",
     "saving": "Saving..."
   },
+  "costAnalysis": {
+    "title": "Cost over the period",
+    "loading": "Loading...",
+    "empty": "No bill ends in this period.",
+    "unitCost": "Unit cost (measured)",
+    "perUnit": "{price}/{unit}",
+    "unitCostMissing": "Needs two consecutive readings: enter the provider reading on each bill or link a self-reading.",
+    "measuredBills_one": "Readings cover the only bill",
+    "measuredBills_other": "Readings cover {n} of {total} bills",
+    "costPerDay": "Cost per day",
+    "perDay": "{price}/day",
+    "coveredDays_one": "Over {n} billed day",
+    "coveredDays_other": "Over {n} billed days",
+    "previous": "previous period: {value}",
+    "billedVsMeasured": "Billed vs measured consumption",
+    "billedMeasuredValues": "Billed {billed} {unit}, measured {measured} {unit} ({gap} {unit})",
+    "gap": {
+      "ok": "In line",
+      "warning": "Billed more than measured",
+      "alert": "Billed well above measured",
+      "credit": "Billed less than measured"
+    },
+    "anomaliesTitle": "Readings to check",
+    "anomaly": {
+      "consecutive_estimates": {
+        "badge": "Estimated",
+        "text": "{count} estimated readings in a row, the last on bill {number} ({date})"
+      },
+      "reading_decrease": {
+        "badge": "Reading down",
+        "text": "Bill {number} ({date}): the provider reading went down from {previous} to {current} {unit}",
+        "textRegister": "Bill {number} ({date}): the {register} provider reading went down from {previous} to {current} {unit}"
+      }
+    }
+  },
   "readingsTab": {
     "count": "{n} readings recorded",
     "addButton": "Add",
