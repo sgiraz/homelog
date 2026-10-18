@@ -65,6 +65,16 @@ export function useConsumptionCalculation(form, utility, isEditing, editingBill)
     return Math.round(diff * C * 1000000) / 1000000
   })
 
+  // The printed consumption (from the PDF, typed, or already saved) wins: only
+  // a value filled in here is recomputed when the readings change.
+  let autoConsumption = null
+  function setConsumption(value) {
+    const current = form.value.consumption_total
+    if (current != null && current !== '' && current !== autoConsumption) return
+    autoConsumption = Math.round(value * 1000) / 1000
+    form.value.consumption_total = autoConsumption
+  }
+
   // Calculate consumption from provider readings difference
   function calculateConsumption() {
     const type = utility.value?.type
@@ -84,7 +94,7 @@ export function useConsumptionCalculation(form, utility, isEditing, editingBill)
       if (!isNaN(f2Curr) && f2Prev != null) { total += f2Curr - f2Prev; hasPair = true }
       if (!isNaN(f3Curr) && f3Prev != null) { total += f3Curr - f3Prev; hasPair = true }
       if (!hasPair || total < 0) return
-      form.value.consumption_total = Math.round(total * 1000) / 1000
+      setConsumption(total)
       return
     }
 
@@ -114,7 +124,7 @@ export function useConsumptionCalculation(form, utility, isEditing, editingBill)
         if (calculatedEstimatedConsumption.value != null) {
           consumption += calculatedEstimatedConsumption.value
         }
-        form.value.consumption_total = Math.round(consumption * 1000) / 1000
+        setConsumption(consumption)
       }
     } else {
       // TODO: water consumption path is unverified — confirm the estimate
@@ -130,7 +140,7 @@ export function useConsumptionCalculation(form, utility, isEditing, editingBill)
       if (calculatedEstimatedConsumption.value != null) {
         consumption += calculatedEstimatedConsumption.value
       }
-      form.value.consumption_total = Math.round(consumption * 1000) / 1000
+      setConsumption(consumption)
     }
   }
 

@@ -540,12 +540,15 @@ type PDFAnalysisResult struct {
 	Pages     []PDFPageImage `json:"pages"`
 	PageCount int            `json:"page_count"`
 	RawText   string         `json:"raw_text"`
+	// TemplateValues holds, per field, what the template being edited extracts
+	// from this PDF — the wizard shows the value instead of the bare regex.
+	TemplateValues map[string]string `json:"template_values,omitempty"`
 }
 
 // AnalyzePDFForTemplate - POST /api/v1/pdf/analyze
 // Converts PDF to images and extracts word positions for Textract-like UI
 func (h *PDFHandler) AnalyzePDFForTemplate(c *gin.Context) {
-	_, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
 		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
@@ -632,6 +635,7 @@ func (h *PDFHandler) AnalyzePDFForTemplate(c *gin.Context) {
 	}
 	if extracted != nil {
 		result.RawText = extracted.RawText
+		result.TemplateValues = h.templateValuesForAnalysis(c.PostForm("template_id"), userID, extracted)
 	}
 
 	// Process each page
@@ -688,6 +692,29 @@ func (h *PDFHandler) AnalyzePDFForTemplate(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// templateValuesForAnalysis runs the rules of the user's template templateID
+// against an analysed PDF, with the same strategies a bill upload uses.
+func (h *PDFHandler) templateValuesForAnalysis(templateID string, userID uint, extracted *ExtractedTextWithPositions) map[string]string {
+	if templateID == "" {
+		return nil
+	}
+	var template models.BillTemplate
+	if err := h.db.Where("id = ? AND user_id = ?", templateID, userID).First(&template).Error; err != nil {
+		return nil
+	}
+	var rules []BillTemplateRule
+	if err := json.Unmarshal([]byte(template.ExtractionRules), &rules); err != nil {
+		return nil
+	}
+	values := make(map[string]string, len(rules))
+	for _, rule := range rules {
+		if value := h.extractValueWithRuleAndWords(rule, extracted.RawText, extracted.Words); value != "" {
+			values[rule.Field] = value
+		}
+	}
+	return values
 }
 
 // CleanupTemplateImages - DELETE /api/v1/pdf/cleanup/:timestamp

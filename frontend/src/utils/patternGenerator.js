@@ -15,6 +15,7 @@ const ITALIAN_MONTHS_PATTERN = '(?:gennaio|febbraio|marzo|aprile|maggio|giugno|l
  */
 const VALUE_PATTERNS = {
   amount_total: '(\\d{1,3}(?:[.\\s]\\d{3})*,\\d{2})',
+  consumption_total: '(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)',  // Billed consumption: 27 or 1.234,56
   bill_number: '(\\d+)',
   period_start: null, // Dynamic based on detected format
   period_end: null,

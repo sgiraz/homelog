@@ -226,7 +226,6 @@ const template = ref({
 })
 
 // Fields available for extraction (dynamic based on utility type)
-// consumption_total is always calculated from readings, never extracted from PDF
 const baseExtractionFields = computed(() => [
   { key: 'amount_total', label: t('utilities.templateWizard.fields.amount_total'), required: true },
   { key: 'bill_number', label: t('utilities.templateWizard.fields.bill_number'), required: false },
@@ -235,6 +234,10 @@ const baseExtractionFields = computed(() => [
   { key: 'due_date', label: t('utilities.templateWizard.fields.due_date'), required: false },
   { key: 'issue_date', label: t('utilities.templateWizard.fields.issue_date'), required: false },
   { key: 'communication_text', label: t('utilities.templateWizard.fields.communication_text'), required: false, multiLine: true }
+])
+
+const meteredExtraFields = computed(() => [
+  { key: 'consumption_total', label: t('utilities.templateWizard.fields.consumption_total'), required: false }
 ])
 
 const gasExtraFields = computed(() => [
@@ -262,7 +265,9 @@ const isMeteredTemplateType = computed(() => {
 const extractionFields = computed(() => {
   let fields = baseExtractionFields.value
   // Fixed-cost services: period_end is derived from billing frequency, not extracted
-  if (!isMeteredTemplateType.value) {
+  if (isMeteredTemplateType.value) {
+    fields = [...fields, ...meteredExtraFields.value]
+  } else {
     fields = fields.filter(f => f.key !== 'period_end')
   }
   if (template.value.utility_type === 'gas') {
@@ -333,7 +338,7 @@ async function processFile(file) {
 
   try {
     // Use the new analyze endpoint for Textract-like view
-    const { data } = await pdfAPI.analyzePDF(file)
+    const { data } = await pdfAPI.analyzePDF(file, props.existingTemplate?.id)
     uploadedFile.value = file
     // Merge split day/month/year tokens so an extended date ("01 aprile 2026")
     // is one draggable box; both the overlay and allTokens read these pages.
@@ -342,6 +347,7 @@ async function processFile(file) {
     }
     pdfAnalysis.value = data
     rawText.value = data.raw_text || ''
+    showExistingRuleValues(data.template_values || {})
 
     if (data.tag) {
       analysisTimestamp.value = data.tag
@@ -360,6 +366,22 @@ async function processFile(file) {
     console.error('PDF analysis error:', err)
   } finally {
     extracting.value = false
+  }
+}
+
+// When editing, each untouched rule shows what it extracts from the uploaded
+// PDF, pointing at the matching token so the overlay highlights it.
+function showExistingRuleValues(values) {
+  for (const mapping of Object.values(mappings)) {
+    if (!mapping?.rule) continue
+    const { rule } = mapping
+    const text = values[rule.field] || ''
+    const distance = tk => Math.hypot(tk.x - (rule.x ?? 0), tk.y - (rule.y ?? 0))
+    const located = text && allTokens.value
+      .filter(tk => tk.text === text && tk.page === (rule.page ?? 0))
+      .sort((a, b) => distance(a) - distance(b))[0]
+    mapping.token = located || { id: `existing-${rule.field}`, text, type: 'text' }
+    mapping.notFound = !text
   }
 }
 
@@ -605,7 +627,11 @@ async function saveTemplate() {
     // Build extraction rules array from mappings (includes position data)
     const extractionRules = []
     for (const [fieldKey, mapping] of Object.entries(mappings)) {
-      if (mapping && mapping.pattern) {
+      // A rule the user did not re-map is saved as it was: rebuilding it from
+      // the mapping would drop its position and anchor data.
+      if (mapping?.rule) {
+        extractionRules.push(mapping.rule)
+      } else if (mapping && mapping.pattern) {
         extractionRules.push({
           field: fieldKey,
           pattern: mapping.pattern,
@@ -673,15 +699,16 @@ onMounted(() => {
         for (const rule of existingRules) {
           if (rule.field) {
             mappings[rule.field] = {
-              token: {
-                id: `existing-${rule.field}`,
-                text: rule.value_pattern || rule.pattern || '...',
-                type: 'text'
-              },
+              rule,
+              token: { id: `existing-${rule.field}`, text: '', type: 'text' },
+              notFound: false,
               pattern: rule.pattern || '',
               prefix: rule.prefix || '',
               suffix: rule.suffix || '',
               valuePattern: rule.value_pattern || '',
+              anchorText: rule.anchor_text || '',
+              anchorDirection: rule.anchor_direction || '',
+              globalSearch: rule.global_search || false,
               multiLine: rule.multi_line || false
             }
           }

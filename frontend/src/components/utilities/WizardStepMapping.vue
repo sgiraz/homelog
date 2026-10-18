@@ -55,10 +55,13 @@
             <!-- Drop zone content -->
             <div v-if="mappings[field.key]" class="space-y-1">
               <div class="flex items-center gap-2">
-                <Badge variant="positive" class="text-sm">
+                <Badge v-if="mappings[field.key].notFound" variant="warning" class="text-sm">
+                  {{ t('utilities.wizardStepMapping.notFoundInPdf') }}
+                </Badge>
+                <Badge v-else variant="positive" class="text-sm">
                   {{ mappings[field.key].token.text }}
                 </Badge>
-                <svg class="w-4 h-4 text-positive-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!mappings[field.key].notFound" class="w-4 h-4 text-positive-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
