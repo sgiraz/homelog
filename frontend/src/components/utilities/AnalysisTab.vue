@@ -33,23 +33,32 @@
     </Card>
 
     <!-- Analysis KPIs -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+    <div :class="['grid grid-cols-2 gap-3', isMetered && 'sm:grid-cols-3']">
       <Card class="p-4 text-center">
         <div class="text-2xl font-bold text-ink">{{ formatCurrency(analysisData.totalSpent) }}</div>
         <div class="text-xs text-ink-muted mt-1">{{ t('utilities.analysisTab.kpi.totalSpent') }}</div>
       </Card>
-      <Card class="p-4 text-center">
+      <Card v-if="isMetered" class="p-4 text-center">
         <div class="text-2xl font-bold text-ink">{{ formatConsumption(analysisData.totalConsumption) }}</div>
         <div class="text-xs text-ink-muted mt-1">{{ t('utilities.analysisTab.kpi.totalConsumption', { unit: consumptionUnit }) }}</div>
       </Card>
-      <Card class="p-4 text-center col-span-2 sm:col-span-1">
+      <Card :class="['p-4 text-center', isMetered && 'col-span-2 sm:col-span-1']">
         <div class="text-2xl font-bold text-ink">{{ analysisData.billCount }}</div>
         <div class="text-xs text-ink-muted mt-1">{{ t('utilities.analysisTab.kpi.billCount') }}</div>
       </Card>
     </div>
 
+    <CostAnalysisCard
+      ref="costAnalysisCard"
+      :utility-id="utility.id"
+      :is-metered="isMetered"
+      :consumption-unit="consumptionUnit"
+      :from="analysisWindow.from"
+      :to="analysisWindow.to"
+    />
+
     <!-- Comparison Section -->
-    <div class="space-y-4">
+    <div v-if="isMetered" class="space-y-4">
       <!-- Threshold Settings (collapsible) -->
       <Card class="p-4">
         <button
@@ -120,10 +129,11 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useUtilitiesStore } from '@/stores/utilities'
 import { useSettingsStore } from '@/stores/settings'
-import { formatNumber as _formatNumber, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
+import { formatNumber as _formatNumber, formatCurrency as _formatCurrency, dateOnly, todayDateOnly } from '@/utils/dateFormatter'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import ReadingComparisonCard from '@/components/utilities/ReadingComparisonCard.vue'
+import CostAnalysisCard from '@/components/utilities/CostAnalysisCard.vue'
 
 defineOptions({ name: 'AnalysisTab' })
 
@@ -139,6 +149,7 @@ const utilitiesStore = useUtilitiesStore()
 const settingsStore = useSettingsStore()
 
 const comparisonKey = ref(0)
+const costAnalysisCard = ref(null)
 const showThresholdSettings = ref(false)
 const thresholdValue = ref(props.utility.comparison_threshold || 2)
 const thresholdPerDayValue = ref(props.utility.threshold_per_day || 1)
@@ -172,26 +183,27 @@ const hasThresholdChanges = computed(() => {
          readingMatchDaysValue.value !== (props.utility.reading_match_days || 15)
 })
 
-const analysisData = computed(() => {
-  const bills = props.utility.bills || []
-  let filtered = bills
+const isMetered = computed(() => props.utility.is_metered === true)
 
-  if (analysisPeriod.value !== 'all') {
-    let from, to
-    if (analysisPeriod.value === 'custom') {
-      from = analysisFrom.value ? new Date(analysisFrom.value) : null
-      to = analysisTo.value ? new Date(analysisTo.value) : null
-    } else {
-      const preset = periodPresets.value.find(p => p.id === analysisPeriod.value)
-      if (preset?.months) {
-        to = new Date()
-        from = new Date()
-        from.setMonth(from.getMonth() - preset.months)
-      }
-    }
-    if (from) filtered = filtered.filter(b => new Date(b.period_end) >= from)
-    if (to) filtered = filtered.filter(b => new Date(b.period_start) <= to)
+// A bill belongs to the window its period ends in, as on the server, so a bill
+// is never counted in both a window and the one before it.
+const analysisWindow = computed(() => {
+  if (analysisPeriod.value === 'custom') {
+    return { from: analysisFrom.value || null, to: analysisTo.value || null }
   }
+  const preset = periodPresets.value.find(p => p.id === analysisPeriod.value)
+  if (!preset?.months) return { from: null, to: null }
+  const from = new Date()
+  from.setMonth(from.getMonth() - preset.months)
+  return { from: dateOnly(from), to: todayDateOnly() }
+})
+
+const analysisData = computed(() => {
+  const { from, to } = analysisWindow.value
+  const filtered = (props.utility.bills || []).filter(b => {
+    const end = b.period_end?.slice(0, 10)
+    return (!from || end >= from) && (!to || end <= to)
+  })
 
   return {
     totalSpent: filtered.reduce((s, b) => s + (b.amount_total || 0), 0),
@@ -213,7 +225,7 @@ async function saveThreshold() {
       threshold_per_day: thresholdPerDayValue.value,
       reading_match_days: readingMatchDaysValue.value
     })
-    comparisonKey.value++
+    refreshComparison()
   } catch (err) {
     console.error('Error saving threshold:', err)
   } finally {
@@ -223,6 +235,7 @@ async function saveThreshold() {
 
 function refreshComparison() {
   comparisonKey.value++
+  costAnalysisCard.value?.load()
 }
 
 defineExpose({ refreshComparison })

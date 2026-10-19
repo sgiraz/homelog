@@ -131,7 +131,6 @@
 
       <AnalysisTab
         v-show="activeTab === 'analysis'"
-        v-if="isMetered"
         ref="analysisTab"
         :utility="utility"
         :consumption-unit="consumptionUnit"
@@ -220,10 +219,10 @@ const tabs = computed(() => {
   ]
   if (isMetered.value) {
     list.push({ id: 'readings', label: t('utilities.detail.tabs.readings'), icon: '\uD83D\uDCCA', count: utility.value?.readings?.length || 0 })
-    list.push({ id: 'analysis', label: t('utilities.detail.tabs.analysis'), icon: '\uD83D\uDCC8', count: null })
   } else {
     list.push({ id: 'price_history', label: t('utilities.detail.tabs.priceHistory'), icon: '\uD83D\uDCC8', count: utility.value?.price_changes?.length || 0 })
   }
+  list.push({ id: 'analysis', label: t('utilities.detail.tabs.analysis'), icon: '\uD83D\uDCC8', count: null })
   return list
 })
 

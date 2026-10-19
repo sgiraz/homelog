@@ -291,6 +291,7 @@ func main() {
 
 				// Reading comparison (self-reading vs provider reading)
 				utilities.GET("/:id/compare-readings", utilHandler.CompareReadings)
+				utilities.GET("/:id/cost-analysis", utilHandler.GetCostAnalysis)
 
 				// Communications
 				utilities.GET("/:id/communications", utilHandler.GetCommunications)

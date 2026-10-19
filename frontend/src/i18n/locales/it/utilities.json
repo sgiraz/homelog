@@ -585,6 +585,41 @@
     "saveThreshold": "Salva soglia",
     "saving": "Salvataggio..."
   },
+  "costAnalysis": {
+    "title": "Costi nel periodo",
+    "loading": "Caricamento...",
+    "empty": "Nessuna bolletta termina in questo periodo.",
+    "unitCost": "Costo unitario (misurato)",
+    "perUnit": "{price}/{unit}",
+    "unitCostMissing": "Servono due letture consecutive: inserisci la lettura del fornitore su ogni bolletta o collega un'autolettura.",
+    "measuredBills_one": "Letture disponibili per l'unica bolletta",
+    "measuredBills_other": "Letture disponibili per {n} delle {total} bollette",
+    "costPerDay": "Costo al giorno",
+    "perDay": "{price}/giorno",
+    "coveredDays_one": "Su {n} giorno fatturato",
+    "coveredDays_other": "Su {n} giorni fatturati",
+    "previous": "periodo precedente: {value}",
+    "billedVsMeasured": "Consumo fatturato vs misurato",
+    "billedMeasuredValues": "Fatturato {billed} {unit}, misurato {measured} {unit} ({gap} {unit})",
+    "gap": {
+      "ok": "In linea",
+      "warning": "Fatturato più del misurato",
+      "alert": "Fatturato molto più del misurato",
+      "credit": "Fatturato meno del misurato"
+    },
+    "anomaliesTitle": "Letture da verificare",
+    "anomaly": {
+      "consecutive_estimates": {
+        "badge": "Stimata",
+        "text": "{count} letture stimate di fila, l'ultima sulla bolletta {number} ({date})"
+      },
+      "reading_decrease": {
+        "badge": "Lettura in calo",
+        "text": "Bolletta {number} ({date}): la lettura del fornitore è scesa da {previous} a {current} {unit}",
+        "textRegister": "Bolletta {number} ({date}): la lettura {register} del fornitore è scesa da {previous} a {current} {unit}"
+      }
+    }
+  },
   "readingsTab": {
     "count": "{n} letture registrate",
     "addButton": "Aggiungi",

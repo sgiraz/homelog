@@ -505,6 +505,41 @@
     "saveThreshold": "Schwellenwert speichern",
     "saving": "Wird gespeichert..."
   },
+  "costAnalysis": {
+    "title": "Kosten im Zeitraum",
+    "loading": "Wird geladen...",
+    "empty": "In diesem Zeitraum endet keine Rechnung.",
+    "unitCost": "Preis pro Einheit (gemessen)",
+    "perUnit": "{price}/{unit}",
+    "unitCostMissing": "Dafür braucht es zwei aufeinanderfolgende Zählerstände: Erfasse den Zählerstand des Anbieters auf jeder Rechnung oder verknüpfe eine Selbstablesung.",
+    "measuredBills_one": "Zählerstände für die einzige Rechnung",
+    "measuredBills_other": "Zählerstände für {n} von {total} Rechnungen",
+    "costPerDay": "Kosten pro Tag",
+    "perDay": "{price}/Tag",
+    "coveredDays_one": "Über {n} abgerechneten Tag",
+    "coveredDays_other": "Über {n} abgerechnete Tage",
+    "previous": "Vorzeitraum: {value}",
+    "billedVsMeasured": "Abgerechneter vs. gemessener Verbrauch",
+    "billedMeasuredValues": "Abgerechnet {billed} {unit}, gemessen {measured} {unit} ({gap} {unit})",
+    "gap": {
+      "ok": "Stimmig",
+      "warning": "Mehr abgerechnet als gemessen",
+      "alert": "Deutlich mehr abgerechnet als gemessen",
+      "credit": "Weniger abgerechnet als gemessen"
+    },
+    "anomaliesTitle": "Zu prüfende Zählerstände",
+    "anomaly": {
+      "consecutive_estimates": {
+        "badge": "Geschätzt",
+        "text": "{count} geschätzte Zählerstände in Folge, zuletzt auf Rechnung {number} ({date})"
+      },
+      "reading_decrease": {
+        "badge": "Stand gesunken",
+        "text": "Rechnung {number} ({date}): Der Zählerstand des Anbieters ist von {previous} auf {current} {unit} gesunken",
+        "textRegister": "Rechnung {number} ({date}): Der Zählerstand {register} des Anbieters ist von {previous} auf {current} {unit} gesunken"
+      }
+    }
+  },
   "readingsTab": {
     "count": "{n} Zählerstände erfasst",
     "addButton": "Hinzufügen",
