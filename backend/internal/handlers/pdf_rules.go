@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"log"
+	"math"
 	"regexp"
 	"slices"
 	"sort"
@@ -71,12 +72,7 @@ func (h *PDFHandler) extractBillDataWithTemplateAndWords(text string, template m
 		case "provider_reading_date":
 			extracted.ProviderReadingDate = h.parseDate(value, rule.Format)
 		case "reading_type":
-			lower := strings.ToLower(value)
-			if strings.Contains(lower, "stim") || strings.Contains(lower, "presunt") {
-				extracted.ReadingType = "estimated"
-			} else {
-				extracted.ReadingType = "actual"
-			}
+			extracted.ReadingType = readingType(value, rule.EstimatedWords)
 		case "meter_serial":
 			extracted.MeterSerial = value
 		case "communication_text":
@@ -87,25 +83,30 @@ func (h *PDFHandler) extractBillDataWithTemplateAndWords(text string, template m
 	return extracted
 }
 
-// extractValueWithRuleAndWords picks the best extraction strategy per rule.
-// Priority: multi-line anchor → anchor-based → position → pattern.
-func (h *PDFHandler) extractValueWithRuleAndWords(rule BillTemplateRule, text string, words []WordInfo) string {
-	if rule.MultiLine && rule.AnchorText != "" && len(words) > 0 {
-		value := h.extractMultiLineByAnchor(rule, words)
-		if value != "" {
-			log.Printf("Field %s matched by multi-line anchor '%s': %s", rule.Field, rule.AnchorText, value[:min(len(value), 80)])
-			return value
+// readingType reads the reading type text: estimated when it holds one of the
+// template's words for an estimate, actual otherwise.
+func readingType(text string, estimatedWords []string) string {
+	lower := strings.ToLower(text)
+	for _, w := range estimatedWords {
+		if w = strings.ToLower(strings.TrimSpace(w)); w != "" && strings.Contains(lower, w) {
+			return "estimated"
 		}
-		log.Printf("Field %s: multi-line anchor match failed, trying other strategies", rule.Field)
 	}
+	return "actual"
+}
 
-	if rule.AnchorText != "" && len(words) > 0 {
-		value := h.extractByAnchor(rule, words)
-		if value != "" {
-			log.Printf("Field %s matched by anchor '%s': %s", rule.Field, rule.AnchorText, value)
-			return value
-		}
-		log.Printf("Field %s: anchor-based match failed, trying position", rule.Field)
+// extractValueWithRuleAndWords applies the rule's own strategy: a table or an
+// anchor rule that finds nothing leaves the field empty rather than falling
+// back to a guess. Rules with neither keep the legacy position → pattern path.
+func (h *PDFHandler) extractValueWithRuleAndWords(rule BillTemplateRule, text string, words []WordInfo) string {
+	if rule.Table != nil {
+		return h.extractFromTable(rule, words)
+	}
+	if rule.MultiLine && rule.AnchorText != "" {
+		return h.extractMultiLineByAnchor(rule, words)
+	}
+	if rule.AnchorText != "" {
+		return h.extractByAnchor(rule, words)
 	}
 
 	if rule.X > 0 && rule.Y > 0 && len(words) > 0 {
@@ -208,10 +209,10 @@ func abs(x float64) float64 {
 	return x
 }
 
-// extractByAnchor searches for the rule's anchor text, then picks the best value
-// in the region-of-interest relative to each occurrence. A graduated historical-
-// position bonus prefers the value nearest the user's original click when the
-// same anchor text appears multiple times (e.g., summary table vs pie legend).
+// extractByAnchor searches for the rule's anchor text and reads the value in
+// the region of interest of its first occurrence that has one, nearest to the
+// anchor. A value may span words (a date written out); where the user clicked
+// on the sample bill plays no part, since tables move from bill to bill.
 func (h *PDFHandler) extractByAnchor(rule BillTemplateRule, words []WordInfo) string {
 	anchors := findAnchorOccurrences(rule.AnchorText, words)
 	if len(anchors) == 0 {
@@ -221,53 +222,33 @@ func (h *PDFHandler) extractByAnchor(rule BillTemplateRule, words []WordInfo) st
 	if rule.ValuePattern == "" {
 		return ""
 	}
-	valueRe, err := regexp.Compile("(?i)^" + rule.ValuePattern + "$")
+	valueRe, err := regexp.Compile("(?i)^(?:" + rule.ValuePattern + ")$")
 	if err != nil {
 		log.Printf("Invalid value pattern for anchor search field %s: %v", rule.Field, err)
 		return ""
 	}
 
-	type candidate struct {
-		text     string
-		distance float64
-		word     WordInfo
-	}
-
-	var bestCandidate *candidate
-
 	for _, anchor := range anchors {
-		roiWords := searchROI(anchor, rule.AnchorDirection, words)
-
-		for _, w := range roiWords {
-			if valueRe.MatchString(w.Text) {
-				dx := w.X - anchor.LastWord.X
-				dy := w.Y - anchor.LastWord.Y
+		best, bestDist := "", math.Inf(1)
+		for _, c := range cellsOf(searchROI(anchor, rule.AnchorDirection, words)) {
+			for i := range c.words {
+				dx := c.words[i].X - anchor.LastWord.X
+				dy := c.words[i].Y - anchor.LastWord.Y
 				dist := dx*dx + dy*dy
-
-				if rule.X > 0 && rule.Y > 0 {
-					histDx := w.X - rule.X
-					histDy := w.Y - rule.Y
-					histDist := histDx*histDx + histDy*histDy
-					if histDist < 30*30 {
-						dist *= 0.01
-					} else if histDist < 80*80 {
-						dist *= 0.05
-					} else if histDist < 150*150 {
-						dist *= 0.2
+				for j := len(c.words); j > i; j-- {
+					value := newTextCell(c.words[i:j]).text
+					if (dist < bestDist || dist == bestDist && len(value) > len(best)) && valueRe.MatchString(value) {
+						best, bestDist = value, dist
 					}
-					log.Printf("  Field %s: candidate '%s' at (%.1f,%.1f) histDist=%.0f anchorDist=%.0f finalScore=%.1f",
-						rule.Field, w.Text, w.X, w.Y, histDist, dx*dx+dy*dy, dist)
-				}
-
-				if bestCandidate == nil || dist < bestCandidate.distance {
-					bestCandidate = &candidate{text: w.Text, distance: dist, word: w}
 				}
 			}
 		}
-	}
-
-	if bestCandidate != nil {
-		return bestCandidate.text
+		if best != "" {
+			if m := valueRe.FindStringSubmatch(best); len(m) > 1 {
+				return strings.TrimSpace(m[len(m)-1])
+			}
+			return best
+		}
 	}
 	return ""
 }
@@ -354,53 +335,79 @@ func (h *PDFHandler) extractMultiLineByAnchor(rule BillTemplateRule, words []Wor
 }
 
 // findAnchorOccurrences finds every case-insensitive occurrence of a (possibly
-// multi-word) anchor across all pages.
+// multi-word) anchor across all pages, in reading order. Each next word is the
+// nearest one close to the right on the same line or, for a label wrapped over two
+// lines, right below it.
 func findAnchorOccurrences(anchorText string, words []WordInfo) []AnchorMatch {
-	anchorWords := strings.Fields(strings.ToLower(anchorText))
+	anchorWords := strings.Fields(normalizeLabel(anchorText))
 	if len(anchorWords) == 0 {
 		return nil
 	}
 
 	var matches []AnchorMatch
-
-	for i := 0; i <= len(words)-len(anchorWords); i++ {
-		matched := true
-		var matchedWords []WordInfo
-
-		for j, aw := range anchorWords {
-			w := words[i+j]
-			wText := strings.ToLower(w.Text)
-
-			if j > 0 && w.Page != words[i].Page {
-				matched = false
-				break
-			}
-
-			if j > 0 && abs(w.Y-words[i+j-1].Y) > 10 {
-				matched = false
-				break
-			}
-
-			wClean := strings.TrimRight(wText, ":.,;")
-			awClean := strings.TrimRight(aw, ":.,;")
-			if wClean != awClean {
-				matched = false
-				break
-			}
-
-			matchedWords = append(matchedWords, w)
+	for _, start := range words {
+		if normalizeLabel(start.Text) != anchorWords[0] {
+			continue
 		}
-
-		if matched && len(matchedWords) == len(anchorWords) {
-			matches = append(matches, AnchorMatch{
-				Words:    matchedWords,
-				LastWord: matchedWords[len(matchedWords)-1],
-				Page:     matchedWords[0].Page,
-			})
+		matched := []WordInfo{start}
+		for _, aw := range anchorWords[1:] {
+			next, ok := nextAnchorWord(matched, aw, words)
+			if !ok {
+				break
+			}
+			matched = append(matched, next)
+		}
+		if len(matched) == len(anchorWords) {
+			matches = append(matches, AnchorMatch{Words: matched, LastWord: matched[len(matched)-1], Page: start.Page})
 		}
 	}
-
+	sort.SliceStable(matches, func(i, j int) bool {
+		a, b := matches[i].Words[0], matches[j].Words[0]
+		if a.Page != b.Page {
+			return a.Page < b.Page
+		}
+		if math.Abs(a.Y-b.Y) > 0.3*lineHeight(a, b) {
+			return a.Y < b.Y
+		}
+		return a.X < b.X
+	})
 	return matches
+}
+
+// nextAnchorWord looks for text after the last matched word; a word on the
+// next line must sit under the matched words, not necessarily the last one.
+func nextAnchorWord(matched []WordInfo, text string, words []WordInfo) (WordInfo, bool) {
+	prev := matched[len(matched)-1]
+	left := matched[0].X
+	for _, m := range matched {
+		left = math.Min(left, m.X)
+	}
+	var right, below *WordInfo
+	for i := range words {
+		w := &words[i]
+		if w.Page != prev.Page || normalizeLabel(w.Text) != text {
+			continue
+		}
+		switch {
+		case math.Abs(w.Y-prev.Y) < 0.3*lineHeight(*w, prev) && w.X > prev.X &&
+			w.X-(prev.X+prev.Width) < 1.5*lineHeight(*w, prev):
+			if right == nil || w.X < right.X {
+				right = w
+			}
+		case w.Y > prev.Y && w.Y-(prev.Y+prev.Height) < 0.8*lineHeight(prev, prev) &&
+			w.X < prev.X+prev.Width && left < w.X+w.Width:
+			if below == nil || w.Y < below.Y {
+				below = w
+			}
+		}
+	}
+	if right != nil {
+		return *right, true
+	}
+	if below != nil {
+		return *below, true
+	}
+	return WordInfo{}, false
 }
 
 // searchROI returns words in the Region of Interest around an anchor.
@@ -414,11 +421,19 @@ func searchROI(anchor AnchorMatch, direction string, allWords []WordInfo) []Word
 	}
 
 	if direction == "right" || direction == "right_or_below" {
+		// The band the anchor covers, all its lines: a value printed larger
+		// than a two-line label sits beside both.
+		top, bottom, right := ref.Y, ref.Y, ref.X+ref.Width
+		for _, a := range anchor.Words {
+			top = math.Min(top, a.Y)
+			bottom = math.Max(bottom, a.Y+math.Max(1, a.Height))
+			right = math.Max(right, a.X+a.Width)
+		}
 		for _, w := range allWords {
 			if w.Page != ref.Page {
 				continue
 			}
-			if abs(w.Y-ref.Y) < 10 && w.X > ref.X+ref.Width-5 && w.X < ref.X+300 {
+			if w.Y < bottom && w.Y+math.Max(1, w.Height) > top && w.X > right-5 {
 				results = append(results, w)
 			}
 		}
@@ -471,34 +486,6 @@ func (h *PDFHandler) extractByPattern(rule BillTemplateRule, text string) string
 				}
 			}
 			log.Printf("Field %s: auto-context '%s' did not match", rule.Field, contextPrefix)
-		}
-	}
-
-	if !hasContext && rule.Pattern != "" {
-		re, err := regexp.Compile("(?i)" + rule.Pattern)
-		if err != nil {
-			log.Printf("Warning: Invalid regex pattern for field %s: %v", rule.Field, err)
-		} else {
-			match := re.FindStringSubmatch(text)
-			if len(match) > 1 {
-				log.Printf("Field %s matched with bare pattern (no context): %s", rule.Field, match[1])
-				return strings.TrimSpace(match[1])
-			}
-		}
-	}
-
-	if rule.ValuePattern != "" && rule.ValuePattern != rule.Pattern {
-		re, err := regexp.Compile("(?i)" + rule.ValuePattern)
-		if err != nil {
-			log.Printf("Warning: Invalid value pattern for field %s: %v", rule.Field, err)
-		} else {
-			match := re.FindStringSubmatch(text)
-			if len(match) > 1 {
-				log.Printf("Field %s matched with fallback value_pattern", rule.Field)
-				return strings.TrimSpace(match[1])
-			} else if len(match) > 0 {
-				return strings.TrimSpace(match[0])
-			}
 		}
 	}
 

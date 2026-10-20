@@ -38,10 +38,10 @@ func TestTemplateValuesForAnalysis(t *testing.T) {
 	pdf := &ExtractedTextWithPositions{
 		RawText: "Bolletta n. 1079599\nConsumo fatturato dal 29/05/2026 al 07/10/2026   27 mc\n",
 		Words: []WordInfo{
-			{Text: "Consumo", X: 100, Y: 400, Width: 30},
-			{Text: "fatturato", X: 132, Y: 400, Width: 30},
-			{Text: "27", X: 300, Y: 400, Width: 8},
-			{Text: "mc", X: 310, Y: 400, Width: 8},
+			{Text: "Consumo", X: 100, Y: 400, Width: 30, Height: 8},
+			{Text: "fatturato", X: 132, Y: 400, Width: 30, Height: 8},
+			{Text: "27", X: 300, Y: 400, Width: 8, Height: 8},
+			{Text: "mc", X: 310, Y: 400, Width: 8, Height: 8},
 		},
 	}
 
