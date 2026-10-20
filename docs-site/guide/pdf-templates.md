@@ -25,6 +25,11 @@ metered services, and so does **period end**: on a fixed-cost service it is
 derived from the billing frequency configured on the service, so check that the
 frequency matches the provider's real cycle.
 
+HomeLog never guesses. Without a template a PDF is attached but nothing is
+filled in, and a field the template maps but a bill does not show is left empty
+and listed as **not found**, so you can type it in. When a provider changes its
+layout, create a new template from one of the new bills.
+
 ## Sharing and moving house
 
 A template belongs to the home, not to whoever created it: every member of the

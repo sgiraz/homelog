@@ -37,6 +37,24 @@ func TestEveryCatalogueFieldIsExtracted(t *testing.T) {
 	}
 }
 
+// A mapped field the bill does not yield is reported, never filled in.
+func TestNotFoundFields(t *testing.T) {
+	rules, _ := json.Marshal([]BillTemplateRule{
+		{Field: "amount_total", Pattern: `Totale\s*(\d+,\d{2})`},
+		{Field: "due_date", Pattern: `Scadenza\s*(\S+)`},
+		{Field: "provider_reading", Pattern: `Lettura\s*(\d+)`},
+		{Field: "provider_reading", Pattern: `Attuale\s*(\d+)`},
+	})
+	template := models.BillTemplate{UtilityType: "water", ExtractionRules: string(rules)}
+	h := &PDFHandler{}
+
+	got := notFoundFields(h.extractBillDataWithTemplateAndWords("Totale 12,50", template, "", nil), template)
+
+	if want := []string{"due_date", "provider_reading"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("not found = %v, want %v", got, want)
+	}
+}
+
 func TestBillTemplateRulesMustBeInTheCatalogue(t *testing.T) {
 	t.Setenv("JWT_SECRET", testutil.TestJWTSecret)
 	db := testutil.NewDB(t)

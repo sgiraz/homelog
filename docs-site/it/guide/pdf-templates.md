@@ -26,6 +26,12 @@ a costo fisso viene derivata dalla frequenza di fatturazione configurata sul
 servizio, quindi verifica che la frequenza corrisponda al ciclo reale del
 fornitore.
 
+HomeLog non tira mai a indovinare. Senza un template il PDF viene allegato ma non
+si compila nulla, e un campo mappato dal template che una bolletta non riporta
+resta vuoto ed è elencato come **non trovato**, così puoi inserirlo a mano.
+Quando un fornitore cambia impaginazione, crea un nuovo template da una delle
+nuove bollette.
+
 ## Condivisione e trasloco
 
 Un template appartiene all'abitazione, non a chi l'ha creato: ogni membro del

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -536,69 +537,21 @@ func extractLabelContext(prefixText string) string {
 	return strings.Join(labels, `\s+`)
 }
 
-// getTemplateFieldSet returns the set of field names a template defines rules for.
-func (h *PDFHandler) getTemplateFieldSet(template models.BillTemplate) map[string]bool {
-	fields := make(map[string]bool)
+// notFoundFields lists, sorted, the fields the template maps that came back
+// empty: the bill form flags them instead of filling in a guess.
+func notFoundFields(extracted ExtractedBillData, template models.BillTemplate) []string {
 	var rules []BillTemplateRule
 	json.Unmarshal([]byte(template.ExtractionRules), &rules)
-	for _, rule := range rules {
-		fields[rule.Field] = true
-	}
-	fieldNames := make([]string, 0, len(fields))
-	for f := range fields {
-		fieldNames = append(fieldNames, f)
-	}
-	log.Printf("Template '%s' defines rules for %d fields: %v", template.Name, len(fields), fieldNames)
-	return fields
-}
+	raw, _ := json.Marshal(extracted)
+	var filled map[string]any
+	json.Unmarshal(raw, &filled)
 
-// mergeExtracted fills primary's missing fields from fallback, but skips fields
-// the template defines rules for — wrong values are worse than missing values.
-func (h *PDFHandler) mergeExtracted(primary, fallback ExtractedBillData, templateFields map[string]bool) ExtractedBillData {
-	if primary.BillNumber == "" && !templateFields["bill_number"] {
-		primary.BillNumber = fallback.BillNumber
+	var missing []string
+	for _, rule := range rules {
+		if _, ok := filled[rule.Field]; !ok && !slices.Contains(missing, rule.Field) {
+			missing = append(missing, rule.Field)
+		}
 	}
-	if primary.IssueDate == "" && !templateFields["issue_date"] {
-		primary.IssueDate = fallback.IssueDate
-	}
-	if primary.PeriodStart == "" && !templateFields["period_start"] {
-		primary.PeriodStart = fallback.PeriodStart
-	}
-	if primary.PeriodEnd == "" && !templateFields["period_end"] {
-		primary.PeriodEnd = fallback.PeriodEnd
-	}
-	if primary.DueDate == "" && !templateFields["due_date"] {
-		primary.DueDate = fallback.DueDate
-	}
-	if primary.AmountTotal == 0 && !templateFields["amount_total"] {
-		primary.AmountTotal = fallback.AmountTotal
-	}
-	if primary.ConsumptionTotal == 0 && !templateFields["consumption_total"] {
-		primary.ConsumptionTotal = fallback.ConsumptionTotal
-	}
-	if primary.Provider == "" {
-		primary.Provider = fallback.Provider
-	}
-	if primary.ProviderReadingDate == "" && !templateFields["provider_reading_date"] {
-		primary.ProviderReadingDate = fallback.ProviderReadingDate
-	}
-	if primary.ReadingType == "" && !templateFields["reading_type"] {
-		primary.ReadingType = fallback.ReadingType
-	}
-	if primary.ProviderReadingF1 == nil && !templateFields["provider_reading_f1"] {
-		primary.ProviderReadingF1 = fallback.ProviderReadingF1
-	}
-	if primary.ProviderReadingF2 == nil && !templateFields["provider_reading_f2"] {
-		primary.ProviderReadingF2 = fallback.ProviderReadingF2
-	}
-	if primary.ProviderReadingF3 == nil && !templateFields["provider_reading_f3"] {
-		primary.ProviderReadingF3 = fallback.ProviderReadingF3
-	}
-	if primary.ProviderReading == nil && !templateFields["provider_reading"] {
-		primary.ProviderReading = fallback.ProviderReading
-	}
-	if primary.ConversionCoefficient == nil && !templateFields["conversion_coefficient"] {
-		primary.ConversionCoefficient = fallback.ConversionCoefficient
-	}
-	return primary
+	slices.Sort(missing)
+	return missing
 }

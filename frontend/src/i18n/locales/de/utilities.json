@@ -447,6 +447,8 @@
     "templateHint": "Wähle die Vorlage zur Extraktion von Daten aus der PDF",
     "extracting": "Daten aus PDF werden extrahiert...",
     "extractedAuto": "Daten automatisch extrahiert",
+    "noTemplate": "Keine Vorlage für diesen Dienst: Es wurde nichts ausgelesen. Fülle die Rechnung von Hand aus oder erstelle aus diesem PDF eine Vorlage über „Extraktionsvorlagen verwalten“ auf der Seite Versorgungsdienste.",
+    "notFound": "In dieser Rechnung nicht gefunden: {fields}",
     "dropPromptBill": "Rechnungs-PDF hier ablegen",
     "dropPromptInvoice": "Rechnungs-PDF hier ablegen",
     "dropSubtitle": "oder zum Auswählen klicken",
