@@ -59,6 +59,30 @@ schema migrates on startup and does not migrate back, so going from `rc` to
 `latest` afterwards may not start. **Back up `./data` before you switch**, and
 stay on `latest` unless you intend to help test.
 
+## Upgrading from 2026.09.11 or earlier
+
+Releases after 2026.09.11 changed how bill templates and bill readings are
+stored, and a database from 2026.09.11 or earlier has to be converted once
+before the new version can start on it. If you skip it, HomeLog refuses to start
+and its log points here.
+
+```bash
+docker compose stop homelog
+cp -a data data-backup-$(date +%Y%m%d)    # back up first
+
+docker compose pull
+docker compose run --rm homelog ./upgrade
+docker compose up -d
+```
+
+`./upgrade` converts the database and exits. It moves each bill template to the
+property it serves, turns a bill's estimate into its closing reading, and drops
+the old per-service default template. Then the new version starts and migrates
+the rest. Running it twice is harmless: the second run finds nothing to do.
+
+On an instance older than 2026.09.11, update to 2026.09.11 first
+(`HOMELOG_TAG=2026.09.11`), start it once, then follow the steps above.
+
 ## Configuration
 
 | Variable | Default | Description |

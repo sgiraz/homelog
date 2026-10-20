@@ -60,6 +60,31 @@ migrato all'avvio e non torna indietro, quindi passare poi da `rc` a `latest`
 potrebbe non avviarsi. **Fai un backup di `./data` prima di cambiare** e resta
 su `latest` se non intendi contribuire ai test.
 
+## Aggiornare dalla 2026.09.11 o precedenti
+
+Le versioni successive alla 2026.09.11 cambiano il modo in cui sono salvati i
+template delle bollette e le loro letture. Un database della 2026.09.11 o
+precedente va convertito una volta, prima che la nuova versione possa avviarsi.
+Se salti questo passo, HomeLog non si avvia e il suo log rimanda qui.
+
+```bash
+docker compose stop homelog
+cp -a data data-backup-$(date +%Y%m%d)    # prima il backup
+
+docker compose pull
+docker compose run --rm homelog ./upgrade
+docker compose up -d
+```
+
+`./upgrade` converte il database ed esce. Assegna ogni template alla casa che
+serve, trasforma la stima di una bolletta nella sua lettura di chiusura e toglie
+il vecchio template predefinito per servizio. Poi la nuova versione si avvia e
+migra il resto. Lanciarlo due volte non fa danni: la seconda volta non trova
+niente da fare.
+
+Se la tua istanza è più vecchia della 2026.09.11, aggiorna prima alla 2026.09.11
+(`HOMELOG_TAG=2026.09.11`), avviala una volta, poi segui i passi qui sopra.
+
 ## Configurazione
 
 | Variabile | Default | Descrizione |
