@@ -115,6 +115,7 @@
   "password_wrong": "La password non è corretta",
   "payer_not_in_property": "Chi ha pagato non è membro di questa proprietà",
   "payer_required": "È necessario indicare chi ha pagato",
+  "pdf_analysis_expired": "Il PDF analizzato non è più disponibile: caricalo di nuovo",
   "pdf_no_images": "Nessuna pagina è stata generata da questo PDF",
   "pdf_only": "Sono ammessi solo file PDF",
   "pdf_render_failed": "Impossibile convertire il PDF in immagini: potrebbe essere corrotto o non supportato.",

@@ -115,6 +115,7 @@
 "password_wrong": "Das Passwort ist nicht korrekt",
 "payer_not_in_property": "Der Zahler ist kein Mitglied dieser Immobilie",
 "payer_required": "Ein Zahler ist erforderlich",
+"pdf_analysis_expired": "Die analysierte PDF ist nicht mehr verfügbar: Lade sie erneut hoch",
 "pdf_no_images": "Aus dieser PDF konnten keine Seiten gerendert werden",
 "pdf_only": "Es sind nur PDF-Dateien zulässig",
 "pdf_render_failed": "Diese PDF konnte nicht in Bilder umgewandelt werden. Sie ist möglicherweise beschädigt oder wird nicht unterstützt.",

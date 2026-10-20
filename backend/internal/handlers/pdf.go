@@ -175,6 +175,10 @@ type ExtractedBillData struct {
 	TemplateID *uint `json:"template_id,omitempty"`
 	// NotFound lists the template's fields this bill did not yield.
 	NotFound []string `json:"not_found,omitempty"`
+	// LayoutMismatch warns that the bill does not look like the template's
+	// layout; SuggestedTemplateID is a template of the home that reads it better.
+	LayoutMismatch      bool  `json:"layout_mismatch,omitempty"`
+	SuggestedTemplateID *uint `json:"suggested_template_id,omitempty"`
 }
 
 // ExtractedContractData represents data extracted from a contract PDF
@@ -266,6 +270,7 @@ func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 		extracted = h.extractBillDataWithTemplateAndWords(text, template, pdfURL, words)
 		extracted.TemplateID = &template.ID
 		extracted.NotFound = notFoundFields(extracted, template)
+		extracted.LayoutMismatch, extracted.SuggestedTemplateID = h.layoutMismatch(extracted, template, text, words)
 	}
 
 	log.Printf("Extracted bill data: %+v", extracted)
@@ -759,6 +764,11 @@ func (h *PDFHandler) AnalyzePDFForTemplate(c *gin.Context) {
 	if extracted != nil {
 		result.RawText = extracted.RawText
 		result.TemplateValues = h.templateValuesForAnalysis(c.PostForm("template_id"), userID, extracted)
+		if extracted.HasBBox {
+			if raw, err := json.Marshal(extracted.Words); err == nil {
+				os.WriteFile(h.analysisWordsPath(tag, userID), raw, 0o600)
+			}
+		}
 	}
 
 	// Process each page
@@ -848,7 +858,7 @@ func (h *PDFHandler) templateValuesForAnalysis(templateID string, userID uint, e
 var analysisTagRe = regexp.MustCompile(`^\d+(?:_[a-f0-9]+)?$`)
 
 func (h *PDFHandler) CleanupTemplateImages(c *gin.Context) {
-	_, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
 		apierr.Fail(c, http.StatusUnauthorized, "unauthorized", "Unauthorized")
 		return
@@ -865,6 +875,7 @@ func (h *PDFHandler) CleanupTemplateImages(c *gin.Context) {
 	for _, match := range matches {
 		os.Remove(match)
 	}
+	os.Remove(h.analysisWordsPath(tag, userID))
 
 	c.JSON(http.StatusOK, gin.H{"deleted": len(matches)})
 }

@@ -14,7 +14,7 @@ import (
 // several lines or an empty cell does not shift the pick.
 type TableRule struct {
 	Column   string `json:"column"`              // header text, possibly over two or three lines
-	Stop     string `json:"stop,omitempty"`      // label right below the table; a header without it is another table
+	Stop     string `json:"stop,omitempty"`      // label right below the table, telling it from others with the same header
 	Cell     string `json:"cell,omitempty"`      // "last" (default), "first" or "row"
 	RowLabel string `json:"row_label,omitempty"` // with "row": the label on the value's row
 
@@ -211,22 +211,32 @@ func (h *PDFHandler) extractFromTable(rule BillTemplateRule, words []WordInfo) s
 		rowLabels = findAnchorOccurrences(rule.Table.RowLabel, words)
 	}
 
-	for _, header := range findHeaders(rule.Table.Column, rule.Table.Occurrence, cells) {
-		stopY := math.Inf(1)
-		if rule.Table.Stop != "" {
-			for _, s := range findAnchorOccurrences(rule.Table.Stop, words) {
-				if s.Page == header.page && s.Words[0].Y > header.bottom() && s.Words[0].Y < stopY {
-					stopY = s.Words[0].Y
-				}
+	headers := findHeaders(rule.Table.Column, rule.Table.Occurrence, cells)
+	stops := make([]float64, len(headers))
+	stopFound := false
+	for i, header := range headers {
+		stops[i] = math.Inf(1)
+		if rule.Table.Stop == "" {
+			continue
+		}
+		for _, s := range findAnchorOccurrences(rule.Table.Stop, words) {
+			if s.Page == header.page && s.Words[0].Y > header.bottom() && s.Words[0].Y < stops[i] {
+				stops[i] = s.Words[0].Y
+				stopFound = true
 			}
-			// The stop label tells this table from another one with the same header.
-			if math.IsInf(stopY, 1) {
-				continue
-			}
+		}
+	}
+
+	for i, header := range headers {
+		stopY := stops[i]
+		// The stop label tells this table from another one with the same
+		// header; a bill that lacks it everywhere still has its table.
+		if stopFound && math.IsInf(stopY, 1) {
+			continue
 		}
 		// A blank band of a line and a half also ends the table: the next section
 		// often starts before the stop label.
-		gap := 1.5 * math.Max(1, header.words[0].Height)
+		gap := 1.5 * math.Max(1, header.words[len(header.words)-1].Height)
 		prevBottom := header.bottom()
 		for _, c := range cells {
 			if c.page != header.page || c.y < header.bottom()-1 || c.y >= stopY {
