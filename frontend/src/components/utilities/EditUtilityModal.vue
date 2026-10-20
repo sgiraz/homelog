@@ -570,7 +570,7 @@ async function fetchMembers() {
 
 async function fetchBillTemplates() {
   try {
-    const { data } = await templatesAPI.listBillTemplates()
+    const { data } = await templatesAPI.listBillTemplates({ utility_id: props.utility.id })
     billTemplates.value = (data || []).filter(tpl => tpl.utility_type === props.utility.type)
   } catch (err) {
     console.error('Error fetching bill templates:', err)

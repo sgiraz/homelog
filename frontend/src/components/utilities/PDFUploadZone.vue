@@ -101,7 +101,6 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { utilitiesAPI, templatesAPI } from '@/api/client'
-import apiClient from '@/api/client'
 import { apiErrorMessage } from '@/utils/apiError'
 
 defineOptions({ name: 'PDFUploadZone' })
@@ -215,24 +214,12 @@ function clearUploadedFile() {
 
 async function loadTemplates() {
   try {
-    const { data } = await templatesAPI.listBillTemplates()
+    const { data } = await templatesAPI.listBillTemplates({ utility_id: props.utilityId })
     availableTemplates.value = data.filter(tpl => tpl.utility_type === props.utilityType)
 
     if (props.defaultTemplateId && availableTemplates.value.some(tpl => tpl.id === props.defaultTemplateId)) {
       selectedTemplateId.value = props.defaultTemplateId
-      return
     }
-
-    try {
-      const { data: settings } = await apiClient.get('/settings')
-      if (settings.default_templates) {
-        const defaultTemplates = JSON.parse(settings.default_templates)
-        const defaultId = defaultTemplates[props.utilityType]
-        if (defaultId && availableTemplates.value.some(tpl => tpl.id === defaultId)) {
-          selectedTemplateId.value = defaultId
-        }
-      }
-    } catch { /* Ignore settings error */ }
   } catch (err) {
     console.error('Error loading templates:', err)
   }

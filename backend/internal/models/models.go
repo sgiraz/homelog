@@ -611,9 +611,6 @@ type UserSettings struct {
 	// Split preferences
 	DefaultSplitWithMemberIDs string `json:"default_split_with_member_ids,omitempty"` // JSON array as string e.g. "[2,3]"
 
-	// Template preferences
-	DefaultTemplates string `json:"default_templates,omitempty"` // JSON object as string e.g. {"electricity": 1, "gas": 2}
-
 	// Notifications
 	EmailNotifications  bool `gorm:"not null;default:true" json:"email_notifications"`
 	InAppNotifications  bool `gorm:"not null;default:true" json:"in_app_notifications"`
@@ -751,7 +748,8 @@ type BillTemplate struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	UserID          uint   `gorm:"not null;index" json:"user_id"`
+	PropertyID      uint   `gorm:"not null;index" json:"property_id"`        // Shared by every member of the property
+	UserID          *uint  `gorm:"index" json:"user_id,omitempty"`           // Author; NULL once their account is deleted
 	Name            string `gorm:"not null" json:"name"`                     // Template display name
 	Provider        string `gorm:"not null;index" json:"provider"`           // Provider name (user-defined)
 	UtilityType     string `gorm:"not null" json:"utility_type"`             // electricity, gas, water, waste
@@ -759,7 +757,7 @@ type BillTemplate struct {
 	ExtractionRules string `gorm:"type:text" json:"extraction_rules"`        // JSON with regex patterns for each field
 
 	// Relations
-	User User `json:"user,omitempty"`
+	User *User `json:"user,omitempty"`
 }
 
 // ExpenseTemplate represents a reusable expense template for quick entry

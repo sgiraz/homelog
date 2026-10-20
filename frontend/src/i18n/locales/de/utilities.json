@@ -131,7 +131,13 @@
     "deleteConfirmMessage": "Möchtest du die Vorlage \"{name}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
     "cancel": "Abbrechen",
     "delete": "Löschen",
-    "deleting": "Wird gelöscht..."
+    "deleting": "Wird gelöscht...",
+    "exportTitle": "Exportieren",
+    "importButton": "Vorlage importieren",
+    "importing": "Wird importiert...",
+    "importHint": "Umzug geplant? Exportiere deine Vorlagen und importiere sie im neuen Zuhause.",
+    "importSuccess": "Vorlage \"{name}\" importiert",
+    "importError": "Die Vorlage konnte nicht importiert werden"
   },
   "billsTab": {
     "searchPlaceholder": "Rechnung suchen...",

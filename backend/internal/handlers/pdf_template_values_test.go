@@ -9,7 +9,7 @@ import (
 )
 
 // The template wizard shows, for a template being edited, what each rule
-// extracts from the uploaded PDF — and only for the caller's own template.
+// extracts from the uploaded PDF — and only for a template of the caller's household.
 func TestTemplateValuesForAnalysis(t *testing.T) {
 	db := testutil.NewDB(t)
 	h := &PDFHandler{db: db}
@@ -18,8 +18,15 @@ func TestTemplateValuesForAnalysis(t *testing.T) {
 	if err := db.Create(&owner).Error; err != nil {
 		t.Fatal(err)
 	}
+	prop := models.Property{UserID: owner.ID, Name: "Casa", IsCurrent: true}
+	if err := db.Create(&prop).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&models.HouseholdMember{PropertyID: prop.ID, UserID: &owner.ID, Name: "Owner"}).Error; err != nil {
+		t.Fatal(err)
+	}
 	tpl := models.BillTemplate{
-		UserID: owner.ID, Name: "Etra", Provider: "Etra", UtilityType: "water",
+		PropertyID: prop.ID, Name: "Etra", Provider: "Etra", UtilityType: "water",
 		ExtractionRules: `[{"field":"consumption_total","anchor_text":"Consumo fatturato","anchor_direction":"right","value_pattern":"(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)"},
 			{"field":"bill_number","pattern":"Bolletta\\s+n\\.\\s+(\\d+)"},
 			{"field":"due_date","anchor_text":"Scadenza","value_pattern":"(\\d{4}-\\d{2}-\\d{2})"}]`,
@@ -50,7 +57,7 @@ func TestTemplateValuesForAnalysis(t *testing.T) {
 	}
 
 	if got := h.templateValuesForAnalysis(fmt.Sprint(tpl.ID), owner.ID+1, pdf); got != nil {
-		t.Errorf("another user's template leaked values: %v", got)
+		t.Errorf("another household's template leaked values: %v", got)
 	}
 	if got := h.templateValuesForAnalysis("", owner.ID, pdf); got != nil {
 		t.Errorf("no template requested, got %v", got)

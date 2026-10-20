@@ -144,6 +144,7 @@
   "subcategory_default_create_admin_only": "Solo gli amministratori possono aggiungere sottocategorie alle categorie predefinite",
   "subcategory_default_delete_admin_only": "Solo gli amministratori possono eliminare sottocategorie dalle categorie predefinite",
   "subcategory_not_found": "Sottocategoria non trovata",
+  "template_file_invalid": "Questo file non è un template di bolletta valido",
   "template_not_found": "Modello non trovato",
   "template_field_not_supported": "Il modello mappa un campo che le bollette di questo tipo di servizio non hanno",
   "unauthorized": "Non autorizzato",

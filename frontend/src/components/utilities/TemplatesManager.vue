@@ -60,6 +60,15 @@
 
           <div class="flex items-center gap-2">
             <button
+              @click="exportTemplate(tpl)"
+              class="p-2 text-ink-faint hover:text-blue-500 transition-colors"
+              :title="t('utilities.templatesManager.exportTitle')"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </button>
+            <button
               @click="editTemplate(tpl)"
               class="p-2 text-ink-faint hover:text-blue-500 transition-colors"
               :title="t('utilities.templatesManager.editTitle')"
@@ -87,6 +96,11 @@
         </svg>
         {{ t('utilities.templatesManager.createButton') }}
       </Button>
+      <Button variant="secondary" @click="importInput.click()" :disabled="importing" class="w-full mt-2">
+        {{ importing ? t('utilities.templatesManager.importing') : t('utilities.templatesManager.importButton') }}
+      </Button>
+      <input ref="importInput" type="file" accept=".json,application/json" class="hidden" @change="importTemplate" />
+      <p class="mt-2 text-xs text-ink-muted text-center">{{ t('utilities.templatesManager.importHint') }}</p>
 
       <!-- Delete Confirmation -->
       <div
@@ -115,6 +129,7 @@
     <TemplateWizard
       v-if="showWizard"
       :existing-template="editingTemplate"
+      :property-id="propertyId"
       @close="closeWizard"
       @saved="onTemplateSaved"
     />
@@ -130,6 +145,14 @@ import { templatesAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import TemplateWizard from './TemplateWizard.vue'
+import { apiErrorMessage } from '@/utils/apiError'
+
+// Must match billTemplateFileFormat in handlers/pdf.go.
+const TEMPLATE_FILE_FORMAT = 'homelog-bill-template/1'
+
+const props = defineProps({
+  propertyId: { type: Number, default: null }
+})
 
 defineEmits(['close'])
 
@@ -141,11 +164,13 @@ const showWizard = ref(false)
 const editingTemplate = ref(null)
 const templateToDelete = ref(null)
 const deleting = ref(false)
+const importInput = ref(null)
+const importing = ref(false)
 
 async function fetchTemplates() {
   loading.value = true
   try {
-    const { data } = await templatesAPI.listBillTemplates()
+    const { data } = await templatesAPI.listBillTemplates({ property_id: props.propertyId })
     templates.value = data || []
   } catch (err) {
     console.error('Error fetching templates:', err)
@@ -176,6 +201,47 @@ async function deleteTemplate() {
     console.error('Error deleting template:', err)
   } finally {
     deleting.value = false
+  }
+}
+
+function exportTemplate(tpl) {
+  const file = {
+    format: TEMPLATE_FILE_FORMAT,
+    name: tpl.name,
+    provider: tpl.provider,
+    utility_type: tpl.utility_type,
+    extraction_rules: JSON.parse(tpl.extraction_rules || '[]')
+  }
+  const url = URL.createObjectURL(new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${tpl.provider}-${tpl.utility_type}.json`.replace(/[^\w.-]+/g, '_')
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function importTemplate(e) {
+  const file = e.target.files[0]
+  e.target.value = ''
+  if (!file) return
+
+  let parsed
+  try {
+    parsed = JSON.parse(await file.text())
+  } catch {
+    window.$toast?.error(t('errors.template_file_invalid'))
+    return
+  }
+
+  importing.value = true
+  try {
+    await templatesAPI.importBillTemplate({ ...parsed, property_id: props.propertyId })
+    window.$toast?.success(t('utilities.templatesManager.importSuccess', { name: parsed.name }))
+    await fetchTemplates()
+  } catch (err) {
+    window.$toast?.error(apiErrorMessage(err, t('utilities.templatesManager.importError')))
+  } finally {
+    importing.value = false
   }
 }
 

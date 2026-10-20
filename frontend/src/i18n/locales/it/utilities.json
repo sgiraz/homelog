@@ -362,7 +362,13 @@
     "deleteConfirmMessage": "Vuoi eliminare il template \"{name}\"? Questa azione non può essere annullata.",
     "cancel": "Annulla",
     "delete": "Elimina",
-    "deleting": "Eliminazione..."
+    "deleting": "Eliminazione...",
+    "exportTitle": "Esporta",
+    "importButton": "Importa Template",
+    "importing": "Importazione...",
+    "importHint": "Cambi casa? Esporta i tuoi template e importali nella nuova abitazione.",
+    "importSuccess": "Template \"{name}\" importato",
+    "importError": "Impossibile importare il template"
   },
   "addBillModal": {
     "editBillTitle": "Modifica Bolletta",

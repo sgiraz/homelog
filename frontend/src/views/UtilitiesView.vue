@@ -218,6 +218,7 @@
     <!-- Templates Manager Modal -->
     <TemplatesManager
       v-if="showTemplatesManager"
+      :property-id="selectedPropertyId"
       @close="showTemplatesManager = false"
     />
   </div>

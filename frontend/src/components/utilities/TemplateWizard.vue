@@ -172,6 +172,10 @@ const props = defineProps({
   existingTemplate: {
     type: Object,
     default: null
+  },
+  propertyId: {
+    type: Number,
+    default: null
   }
 })
 
@@ -636,7 +640,7 @@ async function saveTemplate() {
     if (isEditing.value) {
       await templatesAPI.updateBillTemplate(props.existingTemplate.id, templateData)
     } else {
-      await templatesAPI.createBillTemplate(templateData)
+      await templatesAPI.createBillTemplate({ ...templateData, property_id: props.propertyId })
     }
 
     // Cleanup images after successful save

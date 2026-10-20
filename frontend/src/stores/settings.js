@@ -18,7 +18,6 @@ export const useSettingsStore = defineStore('settings', () => {
   const language = ref(resolveInitialLocale())
   const dateFormat = ref('DD/MM/YYYY')
   const defaultSplitWithMemberIds = ref([])
-  const defaultTemplates = ref({})
   const emailNotifications = ref(true)
   const billReminders = ref(true)
   const notificationRetentionDays = ref(90)
@@ -84,14 +83,6 @@ export const useSettingsStore = defineStore('settings', () => {
           defaultSplitWithMemberIds.value = JSON.parse(data.default_split_with_member_ids)
         } catch {
           defaultSplitWithMemberIds.value = []
-        }
-      }
-
-      if (data.default_templates) {
-        try {
-          defaultTemplates.value = JSON.parse(data.default_templates)
-        } catch {
-          defaultTemplates.value = {}
         }
       }
 
@@ -166,9 +157,6 @@ export const useSettingsStore = defineStore('settings', () => {
       if (payload.default_split_with_member_ids && typeof payload.default_split_with_member_ids !== 'string') {
         payload.default_split_with_member_ids = JSON.stringify(payload.default_split_with_member_ids)
       }
-      if (payload.default_templates && typeof payload.default_templates !== 'string') {
-        payload.default_templates = JSON.stringify(payload.default_templates)
-      }
 
       await apiClient.put('/settings', payload)
     } catch (err) {
@@ -184,7 +172,6 @@ export const useSettingsStore = defineStore('settings', () => {
     language.value = resolveInitialLocale()
     dateFormat.value = 'DD/MM/YYYY'
     defaultSplitWithMemberIds.value = []
-    defaultTemplates.value = {}
     emailNotifications.value = true
     billReminders.value = true
     notificationRetentionDays.value = 90
@@ -207,7 +194,6 @@ export const useSettingsStore = defineStore('settings', () => {
     language,
     dateFormat,
     defaultSplitWithMemberIds,
-    defaultTemplates,
     emailNotifications,
     billReminders,
     notificationRetentionDays,

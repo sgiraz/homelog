@@ -25,6 +25,13 @@ per i servizi a consumo: su un servizio a costo fisso viene derivata dalla
 frequenza di fatturazione configurata sul servizio, quindi verifica che la
 frequenza corrisponda al ciclo reale del fornitore.
 
+## Condivisione e trasloco
+
+Un template appartiene all'abitazione, non a chi l'ha creato: ogni membro del
+nucleo può usarlo, modificarlo ed eliminarlo. Quando cambi casa, esporta un
+template da **Template Estrazione** (un piccolo file JSON con le sue regole) e
+importalo nella nuova abitazione.
+
 ## Strategia di estrazione
 
 Per restare accurato anche quando un'etichetta compare più volte nella pagina,

@@ -319,8 +319,8 @@ func (h *SettingsHandler) DeleteAccount(c *gin.Context) {
 	}
 	tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Category{})
 
-	// Delete BillTemplates
-	tx.Unscoped().Where("user_id = ?", userID).Delete(&models.BillTemplate{})
+	// The household keeps the bill templates this user wrote
+	tx.Model(&models.BillTemplate{}).Where("user_id = ?", userID).Update("user_id", nil)
 
 	// Delete ContractTemplates
 	tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ContractTemplate{})
@@ -389,6 +389,8 @@ func (h *SettingsHandler) cascadeDeleteProperty(tx *gorm.DB, propertyID uint) er
 		tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.Expense{})
 	}
 
+	// BillTemplates
+	tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.BillTemplate{})
 	// Settlements
 	tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.Settlement{})
 	// HouseholdSettings
