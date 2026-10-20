@@ -135,11 +135,6 @@ func TestBillTemplatesBelongToTheProperty(t *testing.T) {
 	homeUtility := models.Utility{UserID: f.owner.ID, PropertyID: f.home.ID, Type: "water", Provider: "Etra"}
 	awayUtility := models.Utility{UserID: f.neighbour.ID, PropertyID: f.away.ID, Type: "water", Provider: "Etra"}
 	mustCreate(t, f.db, &homeUtility, &awayUtility)
-	if rec := doJSON(t, f.router, http.MethodPut, fmt.Sprintf("/utilities/%d", awayUtility.ID), f.nTok, map[string]any{
-		"default_bill_template_id": created.ID,
-	}); rec.Code != http.StatusBadRequest {
-		t.Errorf("neighbour default to home template: %d", rec.Code)
-	}
 	if got := f.list(t, f.nTok, fmt.Sprintf("?utility_id=%d", homeUtility.ID)); len(got) != 0 {
 		t.Errorf("neighbour list by home utility = %+v", got)
 	}
@@ -147,14 +142,8 @@ func TestBillTemplatesBelongToTheProperty(t *testing.T) {
 		t.Errorf("partner list by utility = %+v", got)
 	}
 
-	// Deleting a template a service defaults to frees the service.
-	f.db.Model(&homeUtility).Update("default_bill_template_id", created.ID)
 	if rec := doJSON(t, f.router, http.MethodDelete, path, f.partnerTok, nil); rec.Code != http.StatusOK {
 		t.Fatalf("partner delete: %d %s", rec.Code, rec.Body)
-	}
-	f.db.First(&homeUtility, homeUtility.ID)
-	if homeUtility.DefaultBillTemplateID != nil {
-		t.Errorf("service still defaults to deleted template %d", *homeUtility.DefaultBillTemplateID)
 	}
 }
 
@@ -232,7 +221,6 @@ func TestResolveBillTemplateOrder(t *testing.T) {
 	f := setupTemplateFixture(t)
 	plain := f.addTemplate(t, f.home.ID, "Etra", "water", false)
 	byDefault := f.addTemplate(t, f.home.ID, "  ETRA ", "water", true)
-	chosen := f.addTemplate(t, f.home.ID, "Etra (new layout)", "water", false)
 	foreign := f.addTemplate(t, f.away.ID, "Etra", "water", true)
 	f.addTemplate(t, f.home.ID, "Etra", "gas", true)
 
@@ -254,14 +242,6 @@ func TestResolveBillTemplateOrder(t *testing.T) {
 	}
 	if got := resolve(fmt.Sprint(foreign.ID)); got != byDefault.ID {
 		t.Errorf("another property's template must be ignored: got %d", got)
-	}
-	utility.DefaultBillTemplateID = &chosen.ID
-	if got := resolve(""); got != chosen.ID {
-		t.Errorf("service default: got %d, want %d", got, chosen.ID)
-	}
-	utility.DefaultBillTemplateID = &foreign.ID
-	if got := resolve(""); got != byDefault.ID {
-		t.Errorf("a service default from another property must be ignored: got %d", got)
 	}
 
 	utility = models.Utility{PropertyID: f.home.ID, Type: "water", Provider: "Eon"}

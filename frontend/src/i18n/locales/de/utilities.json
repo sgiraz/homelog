@@ -197,10 +197,6 @@
     "thresholdPerDayHint": "Maximal erwarteter Verbrauch pro Tag",
     "thresholdPerDayUnit": "{unit}/Tag",
     "currencyLocked": "Gesperrt: Für diesen Dienst gibt es bereits beglichene Rechnungen.",
-    "billTemplateLabel": "Standard-Rechnungsvorlage",
-    "billTemplateNone": "Keine Vorlage (automatisch)",
-    "billTemplateOption": "{name} — {provider}",
-    "billTemplateHint": "Wird zur automatischen Extraktion von Daten aus PDF-Rechnungen verwendet",
     "saveChanges": "Änderungen speichern",
     "providerRequired": "Anbieter ist erforderlich"
   },

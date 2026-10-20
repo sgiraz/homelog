@@ -346,31 +346,30 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	}
 
 	var input struct {
-		Provider              string     `json:"provider"`
-		CustomerCode          string     `json:"customer_code"`
-		ServiceCode           string     `json:"service_code"`
-		Address               string     `json:"address"`
-		StartDate             *time.Time `json:"start_date"`
-		EndDate               *time.Time `json:"end_date"`
-		IsActive              *bool      `json:"is_active"`
-		PowerCapacity         *float64   `json:"power_capacity"`
-		CustomerPortal        string     `json:"customer_portal"`
-		Notes                 string     `json:"notes"`
-		AllowsSelfReading     *bool      `json:"allows_self_reading"`
-		ComparisonThreshold   *float64   `json:"comparison_threshold"`
-		ThresholdPerDay       *float64   `json:"threshold_per_day"`
-		ReadingMatchDays      *int       `json:"reading_match_days"`
-		RecurringAmount       *float64   `json:"recurring_amount"`
-		BillingInterval       *int       `json:"billing_interval"`
-		BillingUnit           string     `json:"billing_unit" binding:"omitempty,oneof=day week month year"`
-		PaidByMemberID        *uint      `json:"paid_by_member_id"`
-		DefaultCategoryID     *uint      `json:"default_category_id"`
-		DefaultBillTemplateID *uint      `json:"default_bill_template_id"`
-		SplitOverride         *string    `json:"split_override"`
-		SplitMemberIDs        *string    `json:"split_member_ids"`
-		IsDomiciled           *bool      `json:"is_domiciled"`
-		IsInstallmentBased    *bool      `json:"is_installment_based"`
-		Currency              *string    `json:"currency"`
+		Provider            string     `json:"provider"`
+		CustomerCode        string     `json:"customer_code"`
+		ServiceCode         string     `json:"service_code"`
+		Address             string     `json:"address"`
+		StartDate           *time.Time `json:"start_date"`
+		EndDate             *time.Time `json:"end_date"`
+		IsActive            *bool      `json:"is_active"`
+		PowerCapacity       *float64   `json:"power_capacity"`
+		CustomerPortal      string     `json:"customer_portal"`
+		Notes               string     `json:"notes"`
+		AllowsSelfReading   *bool      `json:"allows_self_reading"`
+		ComparisonThreshold *float64   `json:"comparison_threshold"`
+		ThresholdPerDay     *float64   `json:"threshold_per_day"`
+		ReadingMatchDays    *int       `json:"reading_match_days"`
+		RecurringAmount     *float64   `json:"recurring_amount"`
+		BillingInterval     *int       `json:"billing_interval"`
+		BillingUnit         string     `json:"billing_unit" binding:"omitempty,oneof=day week month year"`
+		PaidByMemberID      *uint      `json:"paid_by_member_id"`
+		DefaultCategoryID   *uint      `json:"default_category_id"`
+		SplitOverride       *string    `json:"split_override"`
+		SplitMemberIDs      *string    `json:"split_member_ids"`
+		IsDomiciled         *bool      `json:"is_domiciled"`
+		IsInstallmentBased  *bool      `json:"is_installment_based"`
+		Currency            *string    `json:"currency"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -491,17 +490,6 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	}
 	utility.PaidByMemberID = input.PaidByMemberID
 	utility.DefaultCategoryID = input.DefaultCategoryID
-	if input.DefaultBillTemplateID != nil {
-		var count int64
-		h.db.Model(&models.BillTemplate{}).
-			Where("id = ? AND property_id = ?", *input.DefaultBillTemplateID, utility.PropertyID).
-			Count(&count)
-		if count == 0 {
-			apierr.Fail(c, http.StatusBadRequest, "template_not_found", "Template not found")
-			return
-		}
-	}
-	utility.DefaultBillTemplateID = input.DefaultBillTemplateID
 	if input.SplitOverride != nil {
 		utility.SplitOverride = *input.SplitOverride
 	}
