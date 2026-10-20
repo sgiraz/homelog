@@ -121,7 +121,7 @@ func computeCostAnalysis(utility models.Utility, bills []models.Bill, from, to *
 		threshold = 2.0
 	}
 
-	var measured map[uint]float64
+	var measured map[uint]measure
 	anomalies := []ReadingAnomaly{}
 	if utility.IsMetered {
 		measured = measuredConsumption(utility.Type, bills)
@@ -152,19 +152,26 @@ func computeCostAnalysis(utility models.Utility, bills []models.Bill, from, to *
 	return result
 }
 
+// measure is the consumption over one bill: actual from the self-readings,
+// billed from the provider's closing readings.
+type measure struct{ actual, billed float64 }
+
 // measuredConsumption maps each bill to the consumption its readings measure,
 // reusing calculateConsumptionAnalysis (self-reading, else provider reading).
-// Gas meters count m³: the bill's conversion coefficient (the last known one
-// when missing) turns that into the Smc the bill charges. A negative delta is a
-// meter swap or a typo, not consumption, so that bill is left unmeasured.
-func measuredConsumption(utilityType string, bills []models.Bill) map[uint]float64 {
+// Billed consumption is the delta of the provider's closing readings, which
+// nets out a re-billed estimate; the printed total only stands in when a
+// reading is missing. Gas meters count m³: the bill's conversion coefficient
+// (the last known one when missing) turns that into the Smc the bill charges.
+// A negative delta is a meter swap or a typo, not consumption, so that bill is
+// left unmeasured.
+func measuredConsumption(utilityType string, bills []models.Bill) map[uint]measure {
 	periods, _ := (&UtilityHandler{}).calculateConsumptionAnalysis(utilityType, bills, 0)
 	byBill := make(map[uint]ConsumptionPeriod, len(periods))
 	for _, p := range periods {
 		byBill[*p.BillID] = p
 	}
 
-	measured := make(map[uint]float64, len(periods))
+	measured := make(map[uint]measure, len(periods))
 	coefficient := 1.0
 	for _, b := range bills {
 		if b.ConversionCoefficient != nil && *b.ConversionCoefficient > 0 {
@@ -174,16 +181,22 @@ func measuredConsumption(utilityType string, bills []models.Bill) map[uint]float
 		if !ok || p.UserConsumption == nil || anyNegative(p.UserConsumption, p.UserConsumptionF1, p.UserConsumptionF2, p.UserConsumptionF3) {
 			continue
 		}
-		value := *p.UserConsumption
-		if utilityType == "gas" {
-			value *= coefficient
+		m := measure{actual: *p.UserConsumption, billed: b.ConsumptionTotal}
+		if p.ProviderConsumption != nil {
+			m.billed = *p.ProviderConsumption
+			if utilityType == "gas" {
+				m.billed *= coefficient
+			}
 		}
-		measured[b.ID] = value
+		if utilityType == "gas" {
+			m.actual *= coefficient
+		}
+		measured[b.ID] = m
 	}
 	return measured
 }
 
-func costWindow(bills []models.Bill, measured map[uint]float64, from, to *time.Time, threshold float64) CostWindow {
+func costWindow(bills []models.Bill, measured map[uint]measure, from, to *time.Time, threshold float64) CostWindow {
 	w := CostWindow{From: from, To: to}
 	var spans [][2]time.Time
 	for _, b := range bills {
@@ -196,8 +209,8 @@ func costWindow(bills []models.Bill, measured map[uint]float64, from, to *time.T
 		if m, ok := measured[b.ID]; ok {
 			w.MeasuredBillCount++
 			w.MeasuredAmount += b.AmountTotal
-			w.MeasuredConsumption += m
-			w.BilledConsumption += b.ConsumptionTotal
+			w.MeasuredConsumption += m.actual
+			w.BilledConsumption += m.billed
 		}
 	}
 
@@ -227,7 +240,7 @@ func costWindow(bills []models.Bill, measured map[uint]float64, from, to *time.T
 }
 
 // readingAnomalies expects bills sorted by period_end ascending. A decrease is
-// measured against the last bill that carried that register.
+// measured against the last bill that carried that register on the same meter.
 func readingAnomalies(utilityType string, bills []models.Bill) []ReadingAnomaly {
 	type register struct {
 		name  string
@@ -245,7 +258,12 @@ func readingAnomalies(utilityType string, bills []models.Bill) []ReadingAnomaly 
 	var anomalies []ReadingAnomaly
 	last := make([]*float64, len(registers))
 	run, runIdx := 0, -1
-	for _, b := range bills {
+	var prev models.Bill
+	for i, b := range bills {
+		if i > 0 && !sameMeter(prev, b) {
+			clear(last)
+		}
+		prev = b
 		if b.ReadingType == "estimated" {
 			run++
 		} else {

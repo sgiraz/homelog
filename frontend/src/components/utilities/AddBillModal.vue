@@ -201,44 +201,11 @@
           v-model:f3="form.provider_reading_f3"
           v-model:reading="form.provider_reading"
           v-model:conversion-coefficient="form.conversion_coefficient"
+          v-model:reading-date="form.provider_reading_date"
+          v-model:reading-type="form.reading_type"
+          v-model:meter-serial="form.meter_serial"
           :utility-type="utility.type"
         />
-
-        <!-- Estimated consumption toggle (gas + water) -->
-        <div v-if="isMetered && (utility.type === 'gas' || utility.type === 'water')" class="border-t border-line pt-3 mt-3">
-          <div class="flex items-center gap-2">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" v-model="form.has_estimated"
-                class="w-4 h-4 text-warning-soft rounded border-line focus:ring-amber-500" />
-              <span class="text-sm text-ink-soft">{{ t('utilities.addBillModal.estimatedToggle') }}</span>
-            </label>
-            <button type="button" @click="showEstimatedHelp = !showEstimatedHelp"
-              class="w-5 h-5 inline-flex items-center justify-center rounded-full border border-line text-xs font-semibold text-ink-muted hover:bg-surface-2"
-              :aria-expanded="showEstimatedHelp"
-              :aria-label="t('utilities.addBillModal.estimatedHelpAria')">?</button>
-          </div>
-          <div v-if="showEstimatedHelp"
-            class="mt-2 p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-warning-soft space-y-1.5">
-            <p>{{ t('utilities.addBillModal.estimatedHelp1') }}</p>
-            <p>{{ t('utilities.addBillModal.estimatedHelp2') }}</p>
-            <p class="text-warning-soft">{{ t('utilities.addBillModal.estimatedHelp3') }}</p>
-          </div>
-          <div v-if="form.has_estimated" class="mt-3 space-y-3 pl-4 border-l-2 border-warning/30">
-            <div>
-              <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.addBillModal.estimatedDate') }}</label>
-              <input v-model="form.estimated_date" type="date"
-                class="w-full min-w-0 max-w-full box-border px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-amber-500" />
-            </div>
-            <div>
-              <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.addBillModal.estimatedReading') }}</label>
-              <input v-model="form.estimated_reading" type="number" step="0.001" placeholder="0"
-                class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-amber-500" />
-              <p v-if="calculatedEstimatedConsumption != null" class="text-xs text-warning-soft mt-1">
-                {{ t('utilities.addBillModal.estimatedConsumption', { value: formatNumber(calculatedEstimatedConsumption), unit: utility.type === 'gas' ? 'Smc' : 'mc' }) }}
-              </p>
-            </div>
-          </div>
-        </div>
 
         <!-- Important communications -->
         <div>
@@ -329,7 +296,6 @@ const isMetered = computed(() => props.utility?.is_metered === true)
 const isEditing = computed(() => !!props.bill)
 const isInstallmentBased = computed(() => !!props.utility?.is_installment_based)
 const isLocked = computed(() => !!props.bill?.is_locked)
-const showEstimatedHelp = ref(false)
 
 const modalTitle = computed(() => {
   if (isEditing.value) {
@@ -439,9 +405,7 @@ const form = ref({
   provider_reading_f3: null,
   provider_reading: null,
   conversion_coefficient: null,
-  has_estimated: false,
-  estimated_date: '',
-  estimated_reading: null,
+  meter_serial: '',
   communication_text: '',
   pdf_url: '',
   installments: []
@@ -464,17 +428,12 @@ const installmentsAmountMismatch = computed(() => {
   return Math.abs(sum - (parseFloat(form.value.amount_total) || 0)) > 0.01
 })
 
-const { calculatedEstimatedConsumption } = useConsumptionCalculation(
+useConsumptionCalculation(
   form,
   computed(() => props.utility),
   isEditing,
   props.bill
 )
-
-function formatNumber(value) {
-  if (value == null) return '-'
-  return _formatNumber(value, settingsStore.formatSettings)
-}
 
 function formatReadingOption(r) {
   const d = new Date(r.reading_date)
@@ -507,8 +466,7 @@ function onPDFExtracted(data) {
   if (data.provider_reading_f2 != null) form.value.provider_reading_f2 = data.provider_reading_f2
   if (data.provider_reading_f3 != null) form.value.provider_reading_f3 = data.provider_reading_f3
   if (data.provider_reading != null) form.value.provider_reading = data.provider_reading
-  if (data.estimated_date) { form.value.estimated_date = data.estimated_date; form.value.has_estimated = true }
-  if (data.estimated_reading != null) { form.value.estimated_reading = data.estimated_reading; form.value.has_estimated = true }
+  if (data.meter_serial) form.value.meter_serial = data.meter_serial
   if (data.communication_text) form.value.communication_text = data.communication_text
   if (data.pdf_url) form.value.pdf_url = data.pdf_url
 }
@@ -622,12 +580,7 @@ async function handleSubmit() {
       provider_reading_f2: form.value.provider_reading_f2 ? parseFloat(form.value.provider_reading_f2) : null,
       provider_reading_f3: form.value.provider_reading_f3 ? parseFloat(form.value.provider_reading_f3) : null,
       provider_reading: form.value.provider_reading ? parseFloat(form.value.provider_reading) : null,
-      estimated_date: form.value.has_estimated && form.value.estimated_date
-        ? new Date(form.value.estimated_date).toISOString() : null,
-      estimated_reading: form.value.has_estimated && form.value.estimated_reading != null
-        ? parseFloat(form.value.estimated_reading) : null,
-      estimated_consumption: form.value.has_estimated && calculatedEstimatedConsumption.value != null
-        ? calculatedEstimatedConsumption.value : null,
+      meter_serial: form.value.meter_serial.trim(),
       communication_text: form.value.communication_text || ''
     }
     if (!isEditing.value) billData.pdf_url = form.value.pdf_url || ''
@@ -679,9 +632,7 @@ onMounted(async () => {
       provider_reading_f3: props.bill.provider_reading_f3,
       provider_reading: props.bill.provider_reading,
       conversion_coefficient: props.bill.conversion_coefficient || null,
-      has_estimated: props.bill.estimated_reading != null || props.bill.estimated_consumption != null,
-      estimated_date: formatDateForInput(props.bill.estimated_date),
-      estimated_reading: props.bill.estimated_reading,
+      meter_serial: props.bill.meter_serial || '',
       communication_text: '',
       pdf_url: props.bill.pdf_url || '',
       installments: (props.bill.installments || []).map(inst => ({

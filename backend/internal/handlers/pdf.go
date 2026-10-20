@@ -159,13 +159,10 @@ type ExtractedBillData struct {
 	ProviderReadingF3   *float64 `json:"provider_reading_f3,omitempty"`   // Reading, F3 band (electricity off-peak)
 	ProviderReading     *float64 `json:"provider_reading,omitempty"`      // Single reading (gas/water, m3)
 	ReadingType         string   `json:"reading_type,omitempty"`          // "actual" (taken) or "estimated"
+	MeterSerial         string   `json:"meter_serial,omitempty"`
 
 	// Gas conversion coefficient (C)
 	ConversionCoefficient *float64 `json:"conversion_coefficient,omitempty"`
-
-	// Estimated reading/consumption fields
-	EstimatedDate    *string  `json:"estimated_date,omitempty"`
-	EstimatedReading *float64 `json:"estimated_reading,omitempty"` // Estimated reading (m3)
 
 	// Communication text (extracted from bill)
 	CommunicationText string `json:"communication_text,omitempty"`

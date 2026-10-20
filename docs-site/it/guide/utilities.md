@@ -35,6 +35,13 @@ Archivia ogni fattura del fornitore in **Bollette** — importo, periodo, scaden
 e lettura del contatore del fornitore. Una bolletta può essere **collegata a una
 delle tue letture**, ed è ciò che alimenta l'analisi dei consumi.
 
+La lettura del fornitore è quella con cui la bolletta **si chiude**, effettiva o
+stimata, con la sua data. Il consumo tra due bollette è la differenza tra le
+letture di chiusura, che annulla la stima rifatturata dalla bolletta successiva.
+Inserisci anche la **matricola del contatore**: le letture di contatori diversi
+non vengono mai sottratte, così una sostituzione del contatore non appare come
+consumo negativo.
+
 Quando segni una bolletta come **pagata**, HomeLog può creare automaticamente la
 spesa corrispondente (e dividerla), usando il pagatore configurato per quel
 servizio.

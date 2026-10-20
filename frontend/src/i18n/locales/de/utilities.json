@@ -103,13 +103,12 @@
       "consumption_total": "Abgerechneter Verbrauch",
       "provider_reading": "Zählerstand (mc)",
       "conversion_coefficient": "Umrechnungskoeffizient (C)",
-      "estimated_date": "Schätzdatum",
-      "estimated_reading": "Geschätzter Zählerstand (mc)",
       "provider_reading_f1": "Zählerstand F1 (kWh)",
       "provider_reading_f2": "Zählerstand F2 (kWh)",
       "provider_reading_f3": "Zählerstand F3 (kWh)",
       "provider_reading_date": "Ablesedatum",
-      "reading_type": "Ableseart (tatsächlich/geschätzt)"
+      "reading_type": "Ableseart (tatsächlich/geschätzt)",
+      "meter_serial": "Zählernummer"
     },
     "directions": {
       "right": "rechts",
@@ -317,14 +316,6 @@
     "readingOption": "{date} — {value} {unit}",
     "inlineReadingHint": "Du kannst direkt einen Zählerstand eingeben (er wird automatisch erstellt):",
     "inlineReadingFooter": "Leer lassen, um den Zählerstand des Anbieters als Referenz zu verwenden",
-    "estimatedToggle": "Enthält einen geschätzten Zählerstand",
-    "estimatedHelpAria": "Was bedeutet das?",
-    "estimatedHelp1": "Aktiviere dieses Kontrollkästchen, wenn die Rechnung einen vom Anbieter geschätzten Zählerstand enthält (nicht auf Basis einer tatsächlichen Selbstablesung oder eines Ablesewerts des Netzbetreibers).",
-    "estimatedHelp2": "In diesem Fall ist der abgerechnete Verbrauch eine Prognose: Die nächste Rechnung gleicht ihn mit dem tatsächlichen Zählerstand ab. Durch die Kennzeichnung kann die Verbrauchsanalyse Korrekturen von tatsächlichen Verbrauchsänderungen unterscheiden und Fehlalarme vermeiden.",
-    "estimatedHelp3": "Gib das Datum und den geschätzten Wert genau so ein, wie sie auf der Rechnung angegeben sind.",
-    "estimatedDate": "Datum der Schätzung",
-    "estimatedReading": "Geschätzter Zählerstand (mc)",
-    "estimatedConsumption": "Geschätzter Verbrauch: {value} {unit}",
     "communicationsLabel": "Wichtige Hinweise",
     "communicationsPlaceholderBill": "Relevante Hinweise...",
     "communicationsPlaceholderInvoice": "z. B. Änderungen der Vertragslaufzeit, Preisänderungen...",
@@ -361,7 +352,12 @@
     "f3Label": "F3 (kWh)",
     "meterGas": "Zählerstand (mc)",
     "meterWater": "Zählerstand (mc)",
-    "conversionCoeff": "Umrechnungskoeffizient (C)"
+    "conversionCoeff": "Umrechnungskoeffizient (C)",
+    "readingDate": "Ablesedatum",
+    "readingType": "Ableseart",
+    "actual": "Tatsächlich",
+    "estimated": "Geschätzt",
+    "meterSerial": "Zählernummer"
   },
   "installments": {
     "title": "Raten",

@@ -103,13 +103,12 @@
       "consumption_total": "Billed Consumption",
       "provider_reading": "Meter Reading (mc)",
       "conversion_coefficient": "Conversion Coeff. (C)",
-      "estimated_date": "Estimated Date",
-      "estimated_reading": "Estimated Reading (mc)",
       "provider_reading_f1": "Meter Reading F1 (kWh)",
       "provider_reading_f2": "Meter Reading F2 (kWh)",
       "provider_reading_f3": "Meter Reading F3 (kWh)",
       "provider_reading_date": "Reading Date",
-      "reading_type": "Reading Type (actual/estimated)"
+      "reading_type": "Reading Type (actual/estimated)",
+      "meter_serial": "Meter Serial Number"
     },
     "directions": {
       "right": "right",
@@ -317,14 +316,6 @@
     "readingOption": "{date} — {value} {unit}",
     "inlineReadingHint": "You can enter a reading on the fly (it will be created automatically):",
     "inlineReadingFooter": "Leave blank to use the provider's reading as the reference",
-    "estimatedToggle": "Contains estimated reading",
-    "estimatedHelpAria": "What does this mean",
-    "estimatedHelp1": "Check this box when the bill shows an estimated reading from the provider (not based on an actual self-reading or distributor reading).",
-    "estimatedHelp2": "In that case, the billed consumption is a forecast: the next bill will settle it against the actual reading. Marking the estimate allows consumption analysis to distinguish adjustments from real consumption changes and avoid false alerts.",
-    "estimatedHelp3": "Enter the date and estimated value exactly as shown on the bill.",
-    "estimatedDate": "Estimate date",
-    "estimatedReading": "Estimated Reading (mc)",
-    "estimatedConsumption": "Estimated consumption: {value} {unit}",
     "communicationsLabel": "Important notices",
     "communicationsPlaceholderBill": "Any relevant notices...",
     "communicationsPlaceholderInvoice": "e.g. Contract term changes, price updates...",
@@ -361,7 +352,12 @@
     "f3Label": "F3 (kWh)",
     "meterGas": "Meter Reading (mc)",
     "meterWater": "Meter Reading (mc)",
-    "conversionCoeff": "Conversion Coefficient (C)"
+    "conversionCoeff": "Conversion Coefficient (C)",
+    "readingDate": "Reading date",
+    "readingType": "Reading type",
+    "actual": "Actual",
+    "estimated": "Estimated",
+    "meterSerial": "Meter serial number"
   },
   "installments": {
     "title": "Installments",

@@ -19,11 +19,11 @@ reading, and more.
 3. **Save the template.** Assign it as the default for a service, and future bills
    from the same provider are parsed automatically.
 
-The fields on offer depend on the service. Meter-specific ones (provider
-reading, estimates) appear only for gas and water, and **period end** only for
-metered services: on a fixed-cost service it is derived from the billing
-frequency configured on the service, so check that the frequency matches the
-provider's real cycle.
+The fields on offer depend on the service. Meter-specific ones (the reading the
+bill closes on, its date and type, the meter serial number) appear only for
+metered services, and so does **period end**: on a fixed-cost service it is
+derived from the billing frequency configured on the service, so check that the
+frequency matches the provider's real cycle.
 
 ## Sharing and moving house
 

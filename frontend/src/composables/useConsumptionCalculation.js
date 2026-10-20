@@ -1,7 +1,7 @@
 import { computed, watch } from 'vue'
 
 /**
- * Composable that encapsulates consumption calculation logic for bills.
+ * Composable that fills a bill's consumption from the provider's closing readings.
  *
  * @param {import('vue').Ref} form - reactive form object with bill fields
  * @param {import('vue').ComputedRef} utility - the parent utility (props.utility)
@@ -10,55 +10,23 @@ import { computed, watch } from 'vue'
  */
 export function useConsumptionCalculation(form, utility, isEditing, editingBill) {
 
-  // Find the previous bill based on the period_start of the bill being uploaded.
-  // Looks for the most recent bill whose period_end is before the current bill's period_start.
+  // The bill closing right before this one. Periods overlap when a bill
+  // re-bills from the last real reading, so its start says nothing: order by
+  // period_end. A different meter starts from another zero: no previous bill.
   const previousBill = computed(() => {
-    const bills = utility.value?.bills
-    if (!bills?.length) return null
+    const currentEnd = new Date(form.value.period_end)
+    if (isNaN(currentEnd.getTime())) return null
 
-    const currentStart = form.value.period_start
-    if (!currentStart) return null
-    const currentStartDate = new Date(currentStart)
-    if (isNaN(currentStartDate.getTime())) return null
-
-    // Bills are sorted by period_end DESC from backend
-    for (const bill of bills) {
+    let prev = null
+    for (const bill of utility.value?.bills || []) {
       if (isEditing.value && editingBill?.id === bill.id) continue
       const billEnd = new Date(bill.period_end)
-      if (isNaN(billEnd.getTime())) continue
-      if (billEnd <= currentStartDate) {
-        return bill
-      }
+      if (isNaN(billEnd.getTime()) || billEnd >= currentEnd) continue
+      if (!prev || billEnd > new Date(prev.period_end)) prev = bill
     }
-    return null
-  })
-
-  // Get the effective previous reading: use estimated_reading if previous bill had an estimate
-  const previousReading = computed(() => {
-    const prev = previousBill.value
-    if (!prev) return null
-    if (prev.estimated_reading != null) return prev.estimated_reading
-    return prev.provider_reading
-  })
-
-  // Calculate estimated consumption from estimated_reading and provider_reading
-  const calculatedEstimatedConsumption = computed(() => {
-    if (!form.value.has_estimated) return null
-    if (utility.value?.type === 'water') {
-      const estReading = parseFloat(form.value.estimated_reading)
-      const provReading = parseFloat(form.value.provider_reading)
-      if (isNaN(estReading) || isNaN(provReading)) return null
-      const diff = estReading - provReading
-      if (diff < 0) return null
-      return Math.round(diff * 1000000) / 1000000
-    }
-    const estReading = parseFloat(form.value.estimated_reading)
-    const provReading = parseFloat(form.value.provider_reading)
-    const C = parseFloat(form.value.conversion_coefficient)
-    if (isNaN(estReading) || isNaN(provReading) || isNaN(C) || C <= 0) return null
-    const diff = estReading - provReading
-    if (diff < 0) return null
-    return Math.round(diff * C * 1000000) / 1000000
+    const serial = form.value.meter_serial?.trim()
+    if (prev?.meter_serial && serial && prev.meter_serial !== serial) return null
+    return prev
   })
 
   // The printed consumption (from the PDF, typed, or already saved) wins: only
@@ -71,24 +39,18 @@ export function useConsumptionCalculation(form, utility, isEditing, editingBill)
     form.value.consumption_total = autoConsumption
   }
 
-  // Calculate consumption from provider readings difference
   function calculateConsumption() {
     const type = utility.value?.type
     const prev = previousBill.value
+    if (!prev) return
 
     if (type === 'electricity') {
-      if (!prev) return
-      const f1Curr = parseFloat(form.value.provider_reading_f1)
-      const f2Curr = parseFloat(form.value.provider_reading_f2)
-      const f3Curr = parseFloat(form.value.provider_reading_f3)
-      const f1Prev = prev.provider_reading_f1
-      const f2Prev = prev.provider_reading_f2
-      const f3Prev = prev.provider_reading_f3
       let total = 0
       let hasPair = false
-      if (!isNaN(f1Curr) && f1Prev != null) { total += f1Curr - f1Prev; hasPair = true }
-      if (!isNaN(f2Curr) && f2Prev != null) { total += f2Curr - f2Prev; hasPair = true }
-      if (!isNaN(f3Curr) && f3Prev != null) { total += f3Curr - f3Prev; hasPair = true }
+      for (const key of ['provider_reading_f1', 'provider_reading_f2', 'provider_reading_f3']) {
+        const curr = parseFloat(form.value[key])
+        if (!isNaN(curr) && prev[key] != null) { total += curr - prev[key]; hasPair = true }
+      }
       if (!hasPair || total < 0) return
       setConsumption(total)
       return
@@ -97,47 +59,23 @@ export function useConsumptionCalculation(form, utility, isEditing, editingBill)
     if (type !== 'gas' && type !== 'water') return
 
     const current = parseFloat(form.value.provider_reading)
-    if (!current || isNaN(current)) return
-    const prevReadingVal = previousReading.value
-    if (prevReadingVal == null) return
-
-    const diff = current - prevReadingVal
+    if (isNaN(current) || prev.provider_reading == null) return
+    const diff = current - prev.provider_reading
     if (diff < 0) return
 
-    if (type === 'gas') {
-      const C = parseFloat(form.value.conversion_coefficient)
-      if (C > 0) {
-        let consumption = diff * C
-        if (calculatedEstimatedConsumption.value != null) {
-          consumption += calculatedEstimatedConsumption.value
-        }
-        setConsumption(consumption)
-      }
-    } else {
-      // TODO: water consumption path is unverified — confirm the estimate
-      // handling below matches how water bills actually carry estimates.
-      let consumption = diff
-      if (calculatedEstimatedConsumption.value != null) {
-        consumption += calculatedEstimatedConsumption.value
-      }
-      setConsumption(consumption)
+    if (type === 'water') {
+      setConsumption(diff)
+      return
     }
+    const C = parseFloat(form.value.conversion_coefficient)
+    if (C > 0) setConsumption(diff * C)
   }
 
-  // Watchers that trigger recalculation
   watch(() => form.value.provider_reading, () => calculateConsumption())
   watch(() => form.value.conversion_coefficient, () => calculateConsumption())
   watch(() => form.value.provider_reading_f1, () => calculateConsumption())
   watch(() => form.value.provider_reading_f2, () => calculateConsumption())
   watch(() => form.value.provider_reading_f3, () => calculateConsumption())
-  watch(() => form.value.estimated_reading, () => calculateConsumption())
-  watch(() => form.value.has_estimated, () => calculateConsumption())
-  watch(() => form.value.period_start, () => calculateConsumption())
-
-  return {
-    previousBill,
-    previousReading,
-    calculatedEstimatedConsumption,
-    calculateConsumption
-  }
+  watch(() => form.value.period_end, () => calculateConsumption())
+  watch(() => form.value.meter_serial, () => calculateConsumption())
 }

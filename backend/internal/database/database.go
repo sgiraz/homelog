@@ -1,6 +1,7 @@
 package database
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -83,6 +84,9 @@ func AutoMigrate(db *gorm.DB) error {
 
 	if err := moveBillTemplatesToProperty(db); err != nil {
 		return fmt.Errorf("failed to move bill templates to their property: %w", err)
+	}
+	if err := moveEstimatesToClosingReading(db); err != nil {
+		return fmt.Errorf("failed to move bill estimates to the closing reading: %w", err)
 	}
 
 	err := db.AutoMigrate(
@@ -336,6 +340,68 @@ func moveBillTemplatesToProperty(db *gorm.DB) error {
 		}
 		// AutoMigrate relaxes a column to NULL but never tightens one to NOT NULL.
 		return tx.Migrator().AlterColumn(&models.BillTemplate{}, "PropertyID")
+	})
+}
+
+// moveEstimatesToClosingReading makes a bill's estimate its closing reading,
+// where the bill ends and the next one re-bills from, and maps template rules
+// the same way; then it drops the estimate columns. It runs while they exist,
+// so only once.
+func moveEstimatesToClosingReading(db *gorm.DB) error {
+	m := db.Migrator()
+	if !m.HasTable(&models.Bill{}) || !m.HasColumn(&models.Bill{}, "estimated_reading") {
+		return nil
+	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		for _, stmt := range []string{
+			`UPDATE bills SET provider_reading = estimated_reading,
+				provider_reading_date = COALESCE(estimated_date, provider_reading_date),
+				reading_type = 'estimated'
+			WHERE estimated_reading IS NOT NULL`,
+			`ALTER TABLE bills DROP COLUMN estimated_date`,
+			`ALTER TABLE bills DROP COLUMN estimated_reading`,
+			`ALTER TABLE bills DROP COLUMN estimated_consumption`,
+		} {
+			if err := tx.Exec(stmt).Error; err != nil {
+				return err
+			}
+		}
+
+		var templates []models.BillTemplate
+		if err := tx.Where("extraction_rules LIKE ?", `%"estimated_%`).Find(&templates).Error; err != nil {
+			return err
+		}
+		renamed := map[string]string{"estimated_reading": "provider_reading", "estimated_date": "provider_reading_date"}
+		for _, tpl := range templates {
+			var rules []map[string]any
+			if err := json.Unmarshal([]byte(tpl.ExtractionRules), &rules); err != nil {
+				continue
+			}
+			mapped := map[string]bool{}
+			for _, r := range rules {
+				if to, ok := renamed[fmt.Sprint(r["field"])]; ok {
+					mapped[to] = true
+				}
+			}
+			kept := rules[:0]
+			for _, r := range rules {
+				field := fmt.Sprint(r["field"])
+				if to, ok := renamed[field]; ok {
+					r["field"] = to
+				} else if mapped[field] {
+					continue
+				}
+				kept = append(kept, r)
+			}
+			raw, err := json.Marshal(kept)
+			if err != nil {
+				return err
+			}
+			if err := tx.Model(&tpl).UpdateColumn("extraction_rules", string(raw)).Error; err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 

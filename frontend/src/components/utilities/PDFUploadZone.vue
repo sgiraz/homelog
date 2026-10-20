@@ -192,7 +192,7 @@ async function processFile(file) {
 
     if (data) {
       const normalized = { ...data }
-      for (const key of ['period_start', 'period_end', 'due_date', 'issue_date', 'provider_reading_date', 'estimated_date']) {
+      for (const key of ['period_start', 'period_end', 'due_date', 'issue_date', 'provider_reading_date']) {
         if (normalized[key]) normalized[key] = formatDateForInput(normalized[key])
       }
 

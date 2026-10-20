@@ -46,6 +46,11 @@
       <div v-else class="text-center bg-surface rounded p-2">
         <p class="text-sm font-semibold text-ink">{{ fmt(reading) }} mc</p>
       </div>
+      <p class="mt-2 text-xs text-center text-ink-muted">
+        <span v-if="readingDate">{{ formatDate(readingDate, settingsStore.dateSettings) }} · </span>
+        {{ t(`utilities.providerReadings.${readingType === 'estimated' ? 'estimated' : 'actual'}`) }}
+        <span v-if="meterSerial"> · {{ meterSerial }}</span>
+      </p>
     </div>
 
     <!-- Expanded form for manual entry -->
@@ -95,6 +100,27 @@
             class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
       </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.providerReadings.readingDate') }}</label>
+          <input v-model="readingDate" type="date"
+            class="w-full min-w-0 px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.providerReadings.readingType') }}</label>
+          <select v-model="readingType"
+            class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500">
+            <option value="actual">{{ t('utilities.providerReadings.actual') }}</option>
+            <option value="estimated">{{ t('utilities.providerReadings.estimated') }}</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs text-ink-soft mb-1">{{ t('utilities.providerReadings.meterSerial') }}</label>
+        <input v-model="meterSerial" type="text"
+          class="w-full px-2 py-1.5 text-sm border border-line rounded bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-blue-500" />
+      </div>
     </div>
   </div>
 </template>
@@ -103,7 +129,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
-import { formatNumber as _formatNumber } from '@/utils/dateFormatter'
+import { formatDate, formatNumber as _formatNumber } from '@/utils/dateFormatter'
 
 const props = defineProps({
   utilityType: { type: String, required: true }
@@ -114,6 +140,9 @@ const f2 = defineModel('f2')
 const f3 = defineModel('f3')
 const reading = defineModel('reading')
 const conversionCoefficient = defineModel('conversionCoefficient')
+const readingDate = defineModel('readingDate')
+const readingType = defineModel('readingType')
+const meterSerial = defineModel('meterSerial')
 
 const { t } = useI18n()
 const settingsStore = useSettingsStore()

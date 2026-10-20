@@ -28,7 +28,7 @@ const VALUE_PATTERNS = {
   provider_reading_f3: '(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)',
   provider_reading_date: null,
   reading_type: '([A-Za-zÀ-ú]+)',
-  estimated_reading: '(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)'  // Same as provider_reading
+  meter_serial: '([A-Za-z0-9][A-Za-z0-9/-]{3,})'
 }
 
 // Extended Italian date form, e.g. "01 aprile 2026". Newer bills (Eon) write
@@ -351,15 +351,8 @@ export function generatePatternForField(token, fieldKey, allTokens, rawText) {
       break
 
     case 'reading_type':
-      valuePattern = VALUE_PATTERNS.reading_type
-      break
-
-    case 'estimated_date':
-      valuePattern = getDatePattern(token)
-      break
-
-    case 'estimated_reading':
-      valuePattern = VALUE_PATTERNS.estimated_reading
+    case 'meter_serial':
+      valuePattern = VALUE_PATTERNS[fieldKey]
       break
 
     default:
@@ -508,7 +501,6 @@ export function regeneratePatternWithContext(token, fieldKey, allTokens, rawText
     case 'period_end':
     case 'due_date':
     case 'issue_date':
-    case 'estimated_date':
     case 'provider_reading_date':
       valuePattern = getDatePattern(token)
       break
@@ -525,10 +517,8 @@ export function regeneratePatternWithContext(token, fieldKey, allTokens, rawText
       valuePattern = VALUE_PATTERNS[fieldKey]
       break
     case 'reading_type':
-      valuePattern = VALUE_PATTERNS.reading_type
-      break
-    case 'estimated_reading':
-      valuePattern = VALUE_PATTERNS.estimated_reading
+    case 'meter_serial':
+      valuePattern = VALUE_PATTERNS[fieldKey]
       break
     default:
       valuePattern = `(${escapeRegex(token.text)})`

@@ -19,11 +19,12 @@ bolletta, importo, periodo, lettura del contatore e altro si compilano da soli.
 3. **Salva il template.** Assegnalo come predefinito per un servizio, e le
    bollette future dello stesso fornitore vengono analizzate automaticamente.
 
-I campi disponibili dipendono dal servizio. Quelli legati al contatore (lettura
-del fornitore, stime) compaiono solo per gas e acqua, e la **fine periodo** solo
-per i servizi a consumo: su un servizio a costo fisso viene derivata dalla
-frequenza di fatturazione configurata sul servizio, quindi verifica che la
-frequenza corrisponda al ciclo reale del fornitore.
+I campi disponibili dipendono dal servizio. Quelli legati al contatore (la
+lettura con cui si chiude la bolletta, la sua data e il tipo, la matricola)
+compaiono solo per i servizi a consumo, come la **fine periodo**: su un servizio
+a costo fisso viene derivata dalla frequenza di fatturazione configurata sul
+servizio, quindi verifica che la frequenza corrisponda al ciclo reale del
+fornitore.
 
 ## Condivisione e trasloco
 

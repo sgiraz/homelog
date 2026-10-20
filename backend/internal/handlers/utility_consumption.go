@@ -388,6 +388,12 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 	})
 }
 
+// sameMeter is false when two bills name different meters: their readings
+// count from different zeros. Bills without a serial are taken as one meter.
+func sameMeter(a, b models.Bill) bool {
+	return a.MeterSerial == "" || b.MeterSerial == "" || a.MeterSerial == b.MeterSerial
+}
+
 // calculateConsumptionAnalysis computes period-by-period consumption comparison.
 //
 // Algorithm (deterministic):
@@ -398,6 +404,7 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 //   - Billed consumption[i]  = providerReading[i]  − providerReading[i-1]  (consecutive absolute bill readings)
 //   - Actual consumption[i]  = effectiveReading[i] − effectiveReading[i-1] (consecutive effective readings)
 //   - Period rows start from index 1 (bill[0] is the reference anchor; no row generated for it).
+//   - A row after a meter change carries no consumption (see sameMeter).
 //   - Guard: need at least 2 bills with provider_reading set.
 func (h *UtilityHandler) calculateConsumptionAnalysis(utilityType string, bills []models.Bill, threshold float64) ([]ConsumptionPeriod, *ConsumptionSummary) {
 	if len(bills) < 2 {
@@ -454,6 +461,10 @@ func (h *UtilityHandler) calculateConsumptionAnalysis(utilityType string, bills 
 			PeriodStart: bill.PeriodStart,
 			PeriodEnd:   bill.PeriodEnd,
 			BillID:      &billID,
+		}
+		if !sameMeter(prev, bill) {
+			periods = append(periods, period)
+			continue
 		}
 		if utilityType == "electricity" {
 			// --- Provider consumption (consecutive absolute F1/F2/F3 readings) ---

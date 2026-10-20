@@ -33,6 +33,12 @@ Store each provider invoice under **Bills** — amount, period, due date, and th
 provider's meter reading. A bill can be **linked to one of your readings**, which
 is what powers the consumption analysis.
 
+The provider reading is the one the bill **closes** on, actual or estimated,
+with its date. Consumption between two bills is the difference of their closing
+readings, which nets out an estimate the next bill re-bills. Enter the **meter
+serial number** too: readings of different meters are never subtracted, so a
+meter replacement does not show up as negative consumption.
+
 When you mark a bill as **paid**, HomeLog can automatically create the matching
 expense (and split it), using the payer configured for that service.
 

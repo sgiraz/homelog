@@ -130,20 +130,62 @@ func TestCostAnalysis_SelfReadingsAreTheMeasure(t *testing.T) {
 
 func TestCostAnalysis_GapLevels(t *testing.T) {
 	cases := []struct {
-		billed float64
-		want   string
+		measured float64
+		want     string
 	}{
-		{102, ""}, {103, "warning"}, {105, "alert"}, {98, ""}, {97, "credit"},
+		{98, ""}, {97, "warning"}, {95, "alert"}, {102, ""}, {103, "credit"},
 	}
 	for _, tc := range cases {
 		bills := []models.Bill{
 			monthBill(1, 2026, 1, 0, 0, fp(1000)),
-			monthBill(2, 2026, 2, 50, tc.billed, fp(1100)),
+			monthBill(2, 2026, 2, 50, 0, fp(1100)),
 		}
+		bills[1].UserReading = &models.MeterReading{Value: fp(1000 + tc.measured)}
 		got := computeCostAnalysis(metered("water"), bills, nil, nil).Current
 		if got.GapLevel != tc.want {
-			t.Errorf("billed %.0f vs measured 100: level %q, want %q", tc.billed, got.GapLevel, tc.want)
+			t.Errorf("billed 100 vs measured %.0f: level %q, want %q", tc.measured, got.GapLevel, tc.want)
 		}
+	}
+}
+
+func TestCostAnalysis_BilledIsTheClosingReadingsDelta(t *testing.T) {
+	// Bill 2 closes on an estimate; bill 3 re-bills from the real reading and
+	// prints the gross 130, but only 1100 → 1200 is new consumption.
+	bills := []models.Bill{
+		monthBill(1, 2026, 1, 0, 0, fp(1000)),
+		monthBill(2, 2026, 2, 50, 100, fp(1100)),
+		monthBill(3, 2026, 3, 50, 130, fp(1200)),
+	}
+	if got := computeCostAnalysis(metered("water"), bills, nil, nil).Current; !approx(got.BilledConsumption, 200) {
+		t.Errorf("billed %.0f, want the readings delta 200, not the printed 230", got.BilledConsumption)
+	}
+
+	// Without the provider's reading the printed consumption stands in.
+	bills[2].ProviderReading = nil
+	bills[2].UserReading = &models.MeterReading{Value: fp(1190)}
+	if got := computeCostAnalysis(metered("water"), bills, nil, nil).Current; !approx(got.BilledConsumption, 230) || !approx(got.MeasuredConsumption, 190) {
+		t.Errorf("billed %.0f / measured %.0f, want 230 / 190", got.BilledConsumption, got.MeasuredConsumption)
+	}
+}
+
+func TestCostAnalysis_MeterChange(t *testing.T) {
+	bills := []models.Bill{
+		monthBill(1, 2026, 1, 0, 0, fp(500)),
+		monthBill(2, 2026, 2, 50, 0, fp(560)),
+		monthBill(3, 2026, 3, 50, 9, fp(9)),
+		monthBill(4, 2026, 4, 50, 0, fp(70)),
+	}
+	bills[0].MeterSerial, bills[1].MeterSerial = "A1", "A1"
+	bills[2].MeterSerial, bills[3].MeterSerial = "B2", "B2"
+
+	got := computeCostAnalysis(metered("water"), bills, nil, nil)
+
+	if got.Current.MeasuredBillCount != 2 || !approx(got.Current.MeasuredConsumption, 121) {
+		t.Errorf("measured %d bills / %.0f, want 2 / 121 (no delta across the new meter)",
+			got.Current.MeasuredBillCount, got.Current.MeasuredConsumption)
+	}
+	if len(got.Anomalies) != 0 {
+		t.Errorf("a new meter starting from zero is not a decrease: %+v", got.Anomalies)
 	}
 }
 
