@@ -334,13 +334,12 @@
       "consumption_total": "Consumo Fatturato",
       "provider_reading": "Lettura Contatore (mc)",
       "conversion_coefficient": "Coeff. Conversione (C)",
-      "estimated_date": "Data Stima",
-      "estimated_reading": "Lettura Stimata (mc)",
       "provider_reading_f1": "Lettura F1 (kWh)",
       "provider_reading_f2": "Lettura F2 (kWh)",
       "provider_reading_f3": "Lettura F3 (kWh)",
       "provider_reading_date": "Data Lettura",
-      "reading_type": "Tipo Lettura (effettiva/stimata)"
+      "reading_type": "Tipo Lettura (effettiva/stimata)",
+      "meter_serial": "Matricola Contatore"
     },
     "directions": {
       "right": "destra",
@@ -397,14 +396,6 @@
     "readingOption": "{date} — {value} {unit}",
     "inlineReadingHint": "Puoi inserire una lettura al volo (verrà creata automaticamente):",
     "inlineReadingFooter": "Lascia vuoto per usare la lettura del fornitore come riferimento",
-    "estimatedToggle": "Contiene lettura stimata",
-    "estimatedHelpAria": "Cosa significa",
-    "estimatedHelp1": "Spunta questa casella quando la bolletta riporta una lettura stimata dal fornitore (non basata su un'autolettura reale o su una lettura del distributore).",
-    "estimatedHelp2": "In quel caso il consumo fatturato è una previsione: nella prossima bolletta verrà conguagliato confrontandolo con la lettura effettiva. Marcare la stima permette all'analisi consumi di distinguere i conguagli dalle reali variazioni di consumo ed evitare allarmi falsi.",
-    "estimatedHelp3": "Inserisci la data e il valore stimato esattamente come riportati in bolletta.",
-    "estimatedDate": "Data stima",
-    "estimatedReading": "Lettura Stimata (mc)",
-    "estimatedConsumption": "Consumo stimato: {value} {unit}",
     "communicationsLabel": "Comunicazioni importanti",
     "communicationsPlaceholderBill": "Eventuali comunicazioni rilevanti...",
     "communicationsPlaceholderInvoice": "Es. Modifica condizioni contrattuali, variazioni di prezzo...",
@@ -441,7 +432,12 @@
     "f3Label": "F3 (kWh)",
     "meterGas": "Lettura Contatore (mc)",
     "meterWater": "Lettura Contatore (mc)",
-    "conversionCoeff": "Coefficiente di Conversione (C)"
+    "conversionCoeff": "Coefficiente di Conversione (C)",
+    "readingDate": "Data lettura",
+    "readingType": "Tipo lettura",
+    "actual": "Effettiva",
+    "estimated": "Stimata",
+    "meterSerial": "Matricola contatore"
   },
   "installments": {
     "title": "Rate",

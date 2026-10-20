@@ -184,13 +184,12 @@ erDiagram
         float provider_reading_f3
         float provider_reading
         string reading_type "actual | estimated"
+        string meter_serial
         float consumption_total
         float consumption_f1
         float consumption_f2
         float consumption_f3
         float conversion_coefficient
-        float estimated_reading
-        float estimated_consumption
         float amount_total
         float amount_energy
         float amount_fixed

@@ -227,8 +227,8 @@ var BillFieldCatalogue = buildBillFieldCatalogue()
 func buildBillFieldCatalogue() []BillFieldSet {
 	extra := []BillFieldSet{
 		{Type: "electricity", Fields: []BillField{{Key: "provider_reading_f1"}, {Key: "provider_reading_f2"}, {Key: "provider_reading_f3"}}},
-		{Type: "gas", Fields: []BillField{{Key: "provider_reading"}, {Key: "conversion_coefficient"}, {Key: "estimated_date"}, {Key: "estimated_reading"}}},
-		{Type: "water", Fields: []BillField{{Key: "provider_reading"}, {Key: "estimated_date"}, {Key: "estimated_reading"}}},
+		{Type: "gas", Fields: []BillField{{Key: "provider_reading"}, {Key: "conversion_coefficient"}}},
+		{Type: "water", Fields: []BillField{{Key: "provider_reading"}}},
 		{Type: "waste"},
 		{Type: "internet"},
 		{Type: "insurance"},
@@ -237,7 +237,7 @@ func buildBillFieldCatalogue() []BillFieldSet {
 	for i, set := range extra {
 		fields := []BillField{{Key: "amount_total", Required: true}, {Key: "bill_number"}, {Key: "period_start"}, {Key: "period_end"}, {Key: "due_date"}, {Key: "issue_date"}}
 		if MeteredByType[set.Type] {
-			fields = append(fields, BillField{Key: "consumption_total"}, BillField{Key: "provider_reading_date"}, BillField{Key: "reading_type"})
+			fields = append(fields, BillField{Key: "consumption_total"}, BillField{Key: "provider_reading_date"}, BillField{Key: "reading_type"}, BillField{Key: "meter_serial"})
 		}
 		fields = append(fields, set.Fields...)
 		catalogue[i] = BillFieldSet{Type: set.Type, Fields: append(fields, BillField{Key: "communication_text", MultiLine: true})}
@@ -457,6 +457,7 @@ type Bill struct {
 	ProviderReadingF3   *float64   `json:"provider_reading_f3,omitempty"`   // Reading, F3 band (electricity off-peak)
 	ProviderReading     *float64   `json:"provider_reading,omitempty"`      // Single reading (gas/water)
 	ReadingType         string     `json:"reading_type,omitempty"`          // "actual" (taken) or "estimated"
+	MeterSerial         string     `json:"meter_serial,omitempty"`          // Readings of different meters are never subtracted
 
 	// Legacy reading fields (for backwards compatibility)
 	ReadingStartDate  *time.Time `json:"reading_start_date,omitempty"`
@@ -473,11 +474,6 @@ type Bill struct {
 	// Gas conversion coefficient (Coefficiente di conversione C)
 	// True billed consumption = Smc × ConversionCoefficient
 	ConversionCoefficient *float64 `json:"conversion_coefficient,omitempty"`
-
-	// Estimated reading/consumption (when the bill carries an estimate)
-	EstimatedDate        *time.Time `json:"estimated_date,omitempty"`
-	EstimatedReading     *float64   `json:"estimated_reading,omitempty"`     // Estimated reading (m3)
-	EstimatedConsumption *float64   `json:"estimated_consumption,omitempty"` // Estimated consumption (Sm3), derived
 
 	// Amounts
 	AmountTotal  float64  `gorm:"not null" json:"amount_total"`

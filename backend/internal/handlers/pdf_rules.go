@@ -76,12 +76,8 @@ func (h *PDFHandler) extractBillDataWithTemplateAndWords(text string, template m
 			} else {
 				extracted.ReadingType = "actual"
 			}
-		case "estimated_date":
-			parsed := h.parseDate(value, rule.Format)
-			extracted.EstimatedDate = &parsed
-		case "estimated_reading":
-			val := h.parseAmount(value)
-			extracted.EstimatedReading = &val
+		case "meter_serial":
+			extracted.MeterSerial = value
 		case "communication_text":
 			extracted.CommunicationText = value
 		}
@@ -603,12 +599,6 @@ func (h *PDFHandler) mergeExtracted(primary, fallback ExtractedBillData, templat
 	}
 	if primary.ConversionCoefficient == nil && !templateFields["conversion_coefficient"] {
 		primary.ConversionCoefficient = fallback.ConversionCoefficient
-	}
-	if primary.EstimatedDate == nil && !templateFields["estimated_date"] {
-		primary.EstimatedDate = fallback.EstimatedDate
-	}
-	if primary.EstimatedReading == nil && !templateFields["estimated_reading"] {
-		primary.EstimatedReading = fallback.EstimatedReading
 	}
 	return primary
 }

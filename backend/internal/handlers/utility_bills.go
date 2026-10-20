@@ -76,6 +76,7 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		ReadingEndDate      *time.Time `json:"reading_end_date"`
 		ReadingEndValue     *float64   `json:"reading_end_value"`
 		ReadingType         string     `json:"reading_type"`
+		MeterSerial         string     `json:"meter_serial"`
 		ProviderReadingDate *time.Time `json:"provider_reading_date"`
 		ProviderReadingF1   *float64   `json:"provider_reading_f1"`
 		ProviderReadingF2   *float64   `json:"provider_reading_f2"`
@@ -92,9 +93,6 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		OriginalAmount        *float64   `json:"original_amount"`
 		OriginalCurrency      string     `json:"original_currency"`
 		ConversionCoefficient *float64   `json:"conversion_coefficient"`
-		EstimatedDate        *time.Time `json:"estimated_date"`
-		EstimatedReading     *float64   `json:"estimated_reading"`
-		EstimatedConsumption *float64   `json:"estimated_consumption"`
 		AmountEnergy        *float64   `json:"amount_energy"`
 		AmountFixed         *float64   `json:"amount_fixed"`
 		AmountTaxes         *float64   `json:"amount_taxes"`
@@ -172,15 +170,13 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		ReadingEndDate:        input.ReadingEndDate,
 		ReadingEndValue:       input.ReadingEndValue,
 		ReadingType:           input.ReadingType,
+		MeterSerial:           input.MeterSerial,
 		ProviderReadingDate:   input.ProviderReadingDate,
 		ProviderReadingF1:     input.ProviderReadingF1,
 		ProviderReadingF2:     input.ProviderReadingF2,
 		ProviderReadingF3:     input.ProviderReadingF3,
 		ProviderReading:       input.ProviderReading,
 		ConversionCoefficient: input.ConversionCoefficient,
-		EstimatedDate:         input.EstimatedDate,
-		EstimatedReading:      input.EstimatedReading,
-		EstimatedConsumption:  input.EstimatedConsumption,
 		ConsumptionTotal:      input.ConsumptionTotal,
 		ConsumptionF1:         input.ConsumptionF1,
 		ConsumptionF2:         input.ConsumptionF2,
@@ -720,10 +716,8 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 		OriginalAmount        *float64   `json:"original_amount"`
 		OriginalCurrency      string     `json:"original_currency"`
 		ConversionCoefficient *float64   `json:"conversion_coefficient"`
-		EstimatedDate        *time.Time `json:"estimated_date"`
-		EstimatedReading     *float64   `json:"estimated_reading"`
-		EstimatedConsumption *float64   `json:"estimated_consumption"`
 		ReadingType           string     `json:"reading_type"`
+		MeterSerial           string     `json:"meter_serial"`
 		IsPaid                bool       `json:"is_paid"`
 		// PaidDate is a plain "YYYY-MM-DD" calendar date, not a full
 		// timestamp — see parseOptionalDate.
@@ -778,10 +772,8 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	bill.OriginalAmount = input.OriginalAmount
 	bill.OriginalCurrency = input.OriginalCurrency
 	bill.ConversionCoefficient = input.ConversionCoefficient
-	bill.EstimatedDate = input.EstimatedDate
-	bill.EstimatedReading = input.EstimatedReading
-	bill.EstimatedConsumption = input.EstimatedConsumption
 	bill.ReadingType = input.ReadingType
+	bill.MeterSerial = input.MeterSerial
 	bill.ProviderReadingDate = input.ProviderReadingDate
 	bill.ProviderReadingF1 = input.ProviderReadingF1
 	bill.ProviderReadingF2 = input.ProviderReadingF2
