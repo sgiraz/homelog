@@ -137,6 +137,10 @@ type BillTemplateRule struct {
 	AnchorText      string `json:"anchor_text"`      // Label text to find as anchor, e.g. the "amount due" label on the bill
 	AnchorDirection string `json:"anchor_direction"` // "right", "below", "right_or_below"
 	MultiLine       bool   `json:"multi_line"`       // For text blocks: collect all text below anchor until next section
+
+	Table *TableRule `json:"table,omitempty"` // Value inside a table: read by column, never by position
+	// EstimatedWords mark an estimated reading in the reading type text.
+	EstimatedWords []string `json:"estimated_words,omitempty"`
 }
 
 // ExtractedBillData represents data extracted from a PDF bill

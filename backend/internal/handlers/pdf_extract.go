@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"html"
 	"io"
 	"log"
 	"os"
@@ -229,7 +230,7 @@ func parsePdftextBboxOutput(htmlOutput string) ([]WordInfo, int, error) {
 			yMin, _ := strconv.ParseFloat(match[2], 64)
 			xMax, _ := strconv.ParseFloat(match[3], 64)
 			yMax, _ := strconv.ParseFloat(match[4], 64)
-			text := strings.TrimSpace(match[5])
+			text := strings.TrimSpace(html.UnescapeString(match[5]))
 
 			if text == "" {
 				continue
