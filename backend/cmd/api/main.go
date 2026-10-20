@@ -321,6 +321,8 @@ func main() {
 				pdfHandler := handlers.NewPDFHandler(db)
 				pdf.POST("/extract-text", uploadLimiter, pdfHandler.GetPDFRawText)
 				pdf.POST("/analyze", uploadLimiter, pdfHandler.AnalyzePDFForTemplate)
+				pdf.POST("/suggest-rule", pdfHandler.SuggestBillRule)
+				pdf.POST("/try-template", uploadLimiter, pdfHandler.TryBillTemplate)
 				pdf.DELETE("/cleanup/:timestamp", pdfHandler.CleanupTemplateImages)
 			}
 

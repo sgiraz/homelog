@@ -115,6 +115,7 @@
   "password_wrong": "The password is not correct",
   "payer_not_in_property": "The payer is not a member of this property",
   "payer_required": "A payer is required",
+  "pdf_analysis_expired": "The analysed PDF is no longer available: upload it again",
   "pdf_no_images": "No pages could be rendered from this PDF",
   "pdf_only": "Only PDF files are allowed",
   "pdf_render_failed": "This PDF could not be converted to images: it may be corrupted or unsupported.",
