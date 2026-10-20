@@ -162,8 +162,8 @@ func seedDemoData(db *gorm.DB) error {
 
 	property := models.Property{
 		UserID:    user.ID,
-		Name:      "Casa Milano",
-		Address:   "Via Roma 12, Milano",
+		Name:      "Main Home",
+		Address:   "12 Elm Street",
 		Type:      "owned",
 		StartDate: now.AddDate(-3, 0, 0),
 		IsCurrent: true,
@@ -181,10 +181,10 @@ func seedDemoData(db *gorm.DB) error {
 		return err
 	}
 
-	// Members: Mario (the account), Anna (partner), Luca (figlio).
+	// Members: Mario (the account), Anna (partner), Luca (child).
 	mario := models.HouseholdMember{PropertyID: property.ID, UserID: &user.ID, Name: "Mario", Role: "admin", IsVirtual: false}
 	anna := models.HouseholdMember{PropertyID: property.ID, Name: "Anna", Role: "partner", IsVirtual: true}
-	luca := models.HouseholdMember{PropertyID: property.ID, Name: "Luca", Role: "figlio", IsVirtual: true}
+	luca := models.HouseholdMember{PropertyID: property.ID, Name: "Luca", Role: "child", IsVirtual: true}
 	for _, m := range []*models.HouseholdMember{&mario, &anna, &luca} {
 		if err := db.Create(m).Error; err != nil {
 			return err
@@ -193,28 +193,28 @@ func seedDemoData(db *gorm.DB) error {
 
 	// ---- Utilities -------------------------------------------------------
 	elec := models.Utility{
-		UserID: user.ID, PropertyID: property.ID, Type: "electricity", Provider: "Enel Energia",
+		UserID: user.ID, PropertyID: property.ID, Type: "electricity", Provider: "Volta Energy",
 		CustomerCode: "IT001E12345678", ServiceCode: "IT001E12345678", Address: property.Address,
 		StartDate: now.AddDate(-3, 0, 0), IsActive: true, IsMetered: true, PowerCapacity: 3.0,
 		DefaultCategoryID: f0(catID("home")), PaidByMemberID: &mario.ID,
 		BillingInterval: 2, BillingUnit: "month",
 	}
 	gas := models.Utility{
-		UserID: user.ID, PropertyID: property.ID, Type: "gas", Provider: "Eni Plenitude",
+		UserID: user.ID, PropertyID: property.ID, Type: "gas", Provider: "Blue Flame Gas",
 		CustomerCode: "123456789", ServiceCode: "00123456789012", Address: property.Address,
 		StartDate: now.AddDate(-3, 0, 0), IsActive: true, IsMetered: true,
 		DefaultCategoryID: f0(catID("home")), PaidByMemberID: &mario.ID,
 		BillingInterval: 2, BillingUnit: "month", IsInstallmentBased: true,
 	}
 	water := models.Utility{
-		UserID: user.ID, PropertyID: property.ID, Type: "water", Provider: "MM Servizi Idrici",
+		UserID: user.ID, PropertyID: property.ID, Type: "water", Provider: "City Water",
 		CustomerCode: "W-998877", Address: property.Address,
 		StartDate: now.AddDate(-3, 0, 0), IsActive: true, IsMetered: true, IsDomiciled: true,
 		DefaultCategoryID: f0(catID("home")), PaidByMemberID: &mario.ID,
 		BillingInterval: 3, BillingUnit: "month",
 	}
 	internet := models.Utility{
-		UserID: user.ID, PropertyID: property.ID, Type: "internet", Provider: "Fastweb",
+		UserID: user.ID, PropertyID: property.ID, Type: "internet", Provider: "Fibernet",
 		CustomerCode: "FW-456123", Address: property.Address,
 		StartDate: now.AddDate(-2, 0, 0), IsActive: true, IsMetered: false,
 		RecurringAmount: f(29.95), BillingInterval: 1, BillingUnit: "month",
@@ -274,8 +274,8 @@ func seedDemoData(db *gorm.DB) error {
 
 	// A bill-derived communication (price change announcement).
 	if err := db.Create(&models.ServiceCommunication{
-		UtilityID: elec.ID, Type: "price_change", Title: "Aggiornamento condizioni economiche",
-		Content:        "A partire dal prossimo periodo la componente energia sarà aggiornata secondo le nuove condizioni di mercato.",
+		UtilityID: elec.ID, Type: "price_change", Title: "Updated pricing",
+		Content:        "From the next billing period the energy price follows the new market conditions.",
 		ActionDeadline: tptr(now.AddDate(0, 1, 0)), IsImportant: true, IsRead: false,
 	}).Error; err != nil {
 		return err
@@ -283,14 +283,14 @@ func seedDemoData(db *gorm.DB) error {
 
 	// ---- Projects --------------------------------------------------------
 	bathroomProject := models.Project{
-		UserID: user.ID, PropertyID: &property.ID, Name: "Ristrutturazione Bagno", Icon: "🛁",
+		UserID: user.ID, PropertyID: &property.ID, Name: "Bathroom Renovation", Icon: "🛁",
 		Budget: 6000, StartDate: daysAgo(90), EndDate: now.AddDate(0, 2, 0), Status: "active",
-		Description: "Rifacimento completo del bagno padronale.",
+		Description: "Full renovation of the main bathroom.",
 	}
 	holidayProject := models.Project{
-		UserID: user.ID, PropertyID: &property.ID, Name: "Vacanza Estate", Icon: "🏖️",
+		UserID: user.ID, PropertyID: &property.ID, Name: "Summer Holiday", Icon: "🏖️",
 		Budget: 2500, StartDate: daysAgo(40), EndDate: now.AddDate(0, 3, 0), Status: "active",
-		Description: "Settimana al mare in agosto.",
+		Description: "A week at the seaside in August.",
 	}
 	for _, p := range []*models.Project{&bathroomProject, &holidayProject} {
 		if err := db.Create(p).Error; err != nil {
@@ -331,17 +331,17 @@ func seedDemoData(db *gorm.DB) error {
 		e     models.Expense
 		among []uint
 	}{
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 84.30, Date: daysAgo(3), Description: "Spesa settimanale", PaidByMemberID: mario.ID, IsSplit: true}, all},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 42.00, Date: daysAgo(10), Description: "Cena fuori", PaidByMemberID: anna.ID, IsSplit: true}, couple},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("transport"), Amount: 60.00, Date: daysAgo(7), Description: "Carburante", PaidByMemberID: mario.ID, IsSplit: false}, nil},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("entertainment"), Amount: 13.99, Date: daysAgo(15), Description: "Abbonamento streaming", PaidByMemberID: mario.ID, IsSplit: true}, all},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("family"), Amount: 120.00, Date: daysAgo(22), Description: "Materiale scolastico Luca", PaidByMemberID: anna.ID, IsSplit: false}, nil},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), Amount: 220.00, Date: daysAgo(35), Description: "Idraulico", PaidByMemberID: mario.ID, IsSplit: true}, couple},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 79.10, Date: daysAgo(45), Description: "Spesa supermercato", PaidByMemberID: mario.ID, IsSplit: true}, all},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 84.30, Date: daysAgo(3), Description: "Weekly groceries", PaidByMemberID: mario.ID, IsSplit: true}, all},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 42.00, Date: daysAgo(10), Description: "Dinner out", PaidByMemberID: anna.ID, IsSplit: true}, couple},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("transport"), Amount: 60.00, Date: daysAgo(7), Description: "Fuel", PaidByMemberID: mario.ID, IsSplit: false}, nil},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("entertainment"), Amount: 13.99, Date: daysAgo(15), Description: "Streaming subscription", PaidByMemberID: mario.ID, IsSplit: true}, all},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("family"), Amount: 120.00, Date: daysAgo(22), Description: "School supplies for Luca", PaidByMemberID: anna.ID, IsSplit: false}, nil},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), Amount: 220.00, Date: daysAgo(35), Description: "Plumber", PaidByMemberID: mario.ID, IsSplit: true}, couple},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 79.10, Date: daysAgo(45), Description: "Supermarket", PaidByMemberID: mario.ID, IsSplit: true}, all},
 		// Project-linked expenses
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), ProjectID: &bathroomProject.ID, Amount: 1850.00, Date: daysAgo(60), Description: "Piastrelle e sanitari", PaidByMemberID: mario.ID, IsSplit: true}, couple},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), ProjectID: &bathroomProject.ID, Amount: 900.00, Date: daysAgo(20), Description: "Acconto manodopera", PaidByMemberID: mario.ID, IsSplit: false}, nil},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("entertainment"), ProjectID: &holidayProject.ID, Amount: 450.00, Date: daysAgo(12), Description: "Caparra hotel", PaidByMemberID: anna.ID, IsSplit: true}, all},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), ProjectID: &bathroomProject.ID, Amount: 1850.00, Date: daysAgo(60), Description: "Tiles and fixtures", PaidByMemberID: mario.ID, IsSplit: true}, couple},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), ProjectID: &bathroomProject.ID, Amount: 900.00, Date: daysAgo(20), Description: "Labour deposit", PaidByMemberID: mario.ID, IsSplit: false}, nil},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("entertainment"), ProjectID: &holidayProject.ID, Amount: 450.00, Date: daysAgo(12), Description: "Hotel deposit", PaidByMemberID: anna.ID, IsSplit: true}, all},
 	}
 	for _, x := range expenses {
 		if err := addExpense(x.e, x.among); err != nil {
@@ -352,7 +352,7 @@ func seedDemoData(db *gorm.DB) error {
 	// ---- A settlement (Anna repays Mario part of a shared expense) -----
 	if err := db.Create(&models.Settlement{
 		PropertyID: property.ID, FromMemberID: anna.ID, ToMemberID: mario.ID,
-		Amount: 28.10, Date: daysAgo(2), PaymentMethod: "satispay", Note: "Quota spesa settimanale",
+		Amount: 28.10, Date: daysAgo(2), PaymentMethod: "satispay", Note: "Share of the weekly groceries",
 	}).Error; err != nil {
 		return err
 	}
@@ -364,7 +364,7 @@ func seedDemoData(db *gorm.DB) error {
 	// at his own pace — the Debts tab shows the remainder and the progress.
 	deposit := models.Expense{
 		UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"),
-		Amount: 12000, Date: daysAgo(75), Description: "Acconto acquisto casa",
+		Amount: 12000, Date: daysAgo(75), Description: "House purchase deposit",
 		PaidByMemberID: anna.ID, IsSplit: true, IsLongTermDebt: true,
 	}
 	if err := db.Create(&deposit).Error; err != nil {
@@ -387,11 +387,11 @@ func seedDemoData(db *gorm.DB) error {
 		amount float64
 		day    int
 		method string
-	}{{800, 50, "bonifico"}, {500, 20, "bonifico"}} {
+	}{{800, 50, "bank_transfer"}, {500, 20, "bank_transfer"}} {
 		repayment := models.Settlement{
 			PropertyID: property.ID, FromMemberID: mario.ID, ToMemberID: anna.ID,
 			Amount: r.amount, Date: daysAgo(r.day), PaymentMethod: r.method,
-			Note: "Rata acconto casa", TargetExpenseID: &deposit.ID,
+			Note: "Deposit instalment", TargetExpenseID: &deposit.ID,
 		}
 		if err := db.Create(&repayment).Error; err != nil {
 			return err
