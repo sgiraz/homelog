@@ -290,7 +290,6 @@ func (h *UtilityHandler) Get(c *gin.Context) {
 	if err := h.db.Where("id = ? AND property_id IN ?", id, memberPropertyIDs).
 		Preload("Property").
 		Preload("PaidByMember").
-		Preload("DefaultBillTemplate").
 		Preload("Bills", func(db *gorm.DB) *gorm.DB {
 			return db.Order("period_end DESC")
 		}).
@@ -518,7 +517,6 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 
 	h.db.Preload("Property").
 		Preload("PaidByMember").
-		Preload("DefaultBillTemplate").
 		Preload("Bills", func(db *gorm.DB) *gorm.DB {
 			return db.Order("period_end DESC").Limit(3)
 		}).

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -18,8 +19,8 @@ type utilityFixture struct {
 	token  string
 }
 
-// setupUtilityFixture wires just POST /utilities against a property the user
-// owns, which is all these cases need.
+// setupUtilityFixture wires the service routes against a property the user
+// owns.
 func setupUtilityFixture(t *testing.T) *utilityFixture {
 	t.Helper()
 	t.Setenv("JWT_SECRET", testutil.TestJWTSecret)
@@ -42,7 +43,10 @@ func setupUtilityFixture(t *testing.T) *utilityFixture {
 	r := gin.New()
 	g := r.Group("")
 	g.Use(middleware.AuthRequired())
-	g.POST("/utilities", NewUtilityHandler(db).Create)
+	h := NewUtilityHandler(db)
+	g.POST("/utilities", h.Create)
+	g.GET("/utilities/:id", h.Get)
+	g.PUT("/utilities/:id", h.Update)
 
 	return &utilityFixture{router: r, prop: prop, token: testutil.SignToken(t, &user)}
 }
@@ -105,5 +109,28 @@ func TestCreateUtility_MeteredTypeHonoursExplicitOptOut(t *testing.T) {
 	}
 	if !byDefault.IsMetered {
 		t.Error("electricity must default to metered when the client says nothing")
+	}
+}
+
+// Opening and editing a service loads its relations: a preload of one that no
+// longer exists fails every request at runtime, not at build time.
+func TestGetAndUpdateUtility(t *testing.T) {
+	f := setupUtilityFixture(t)
+	rec := doJSON(t, f.router, http.MethodPost, "/utilities", f.token, map[string]any{
+		"property_id": f.prop.ID, "type": "gas", "provider": "Eon",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create: %d %s", rec.Code, rec.Body)
+	}
+	var created models.Utility
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	path := fmt.Sprintf("/utilities/%d", created.ID)
+	if rec := doJSON(t, f.router, http.MethodGet, path, f.token, nil); rec.Code != http.StatusOK {
+		t.Errorf("get: %d %s", rec.Code, rec.Body)
+	}
+	if rec := doJSON(t, f.router, http.MethodPut, path, f.token, map[string]any{"provider": "Eon"}); rec.Code != http.StatusOK {
+		t.Errorf("update: %d %s", rec.Code, rec.Body)
 	}
 }
