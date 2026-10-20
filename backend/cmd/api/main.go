@@ -59,6 +59,12 @@ func main() {
 		log.Fatal("Failed to initialize database:", err)
 	}
 
+	if steps := database.PendingUpgrades(db); len(steps) > 0 {
+		log.Fatalf("❌ This database comes from HomeLog 2026.09.11 or earlier (%s). Stop HomeLog, back up the data folder, "+
+			"run the upgrade tool once (docker compose run --rm homelog ./upgrade), then start HomeLog again. "+
+			"See https://docs.homelog.dev/guide/self-hosting#upgrading-from-2026-09-11-or-earlier", strings.Join(steps, "; "))
+	}
+
 	// Auto-migrate models
 	if err := database.AutoMigrate(db); err != nil {
 		log.Fatal("Failed to migrate database:", err)

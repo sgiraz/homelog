@@ -27,15 +27,16 @@ COPY --from=frontend-builder /build/dist ./cmd/api/static/
 # Cross-compile for target platform (no CGO needed)
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -ldflags="-s -w -X main.appVersion=${APP_VERSION}" -o homelog ./cmd/api/
+    export CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} && \
+    go build -ldflags="-s -w -X main.appVersion=${APP_VERSION}" -o homelog ./cmd/api/ && \
+    go build -ldflags="-s -w" -o upgrade ./cmd/upgrade/
 
 # Stage 3: Minimal runtime
 FROM alpine:3.19
 RUN apk add --no-cache ca-certificates tzdata wget poppler-utils && \
     addgroup -g 1000 homelog && adduser -D -u 1000 -G homelog homelog
 WORKDIR /app
-COPY --from=backend-builder /build/homelog .
+COPY --from=backend-builder /build/homelog /build/upgrade ./
 RUN mkdir -p /app/data /app/uploads /app/data/avatars && chown -R homelog:homelog /app
 USER homelog
 EXPOSE 8080

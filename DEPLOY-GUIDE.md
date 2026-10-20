@@ -229,6 +229,9 @@ docker compose pull
 docker compose up -d
 ```
 
+Coming from 2026.09.11 or earlier, the database needs a one-off conversion first:
+see [Upgrading from 2026.09.11 or earlier](https://docs.homelog.dev/guide/self-hosting#upgrading-from-2026-09-11-or-earlier).
+
 ---
 
 ### Check Status

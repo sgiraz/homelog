@@ -67,6 +67,24 @@ func InitDatabase() (*gorm.DB, error) {
 	return db, nil
 }
 
+// PendingUpgrades names the conversions a database from HomeLog 2026.09.11 or
+// earlier still needs before this version can start on it. cmd/upgrade
+// applies them; the server only refuses to start.
+func PendingUpgrades(db *gorm.DB) []string {
+	m := db.Migrator()
+	var steps []string
+	if m.HasTable("bill_templates") && !m.HasColumn("bill_templates", "property_id") {
+		steps = append(steps, "bill templates still belong to their author")
+	}
+	if m.HasColumn("bills", "estimated_reading") {
+		steps = append(steps, "bills still keep a separate estimate")
+	}
+	if m.HasColumn("utilities", "default_bill_template_id") {
+		steps = append(steps, "services still have a default template")
+	}
+	return steps
+}
+
 // AutoMigrate runs automatic migrations for all models
 func AutoMigrate(db *gorm.DB) error {
 	log.Println("🔄 Running database migrations...")
@@ -79,19 +97,6 @@ func AutoMigrate(db *gorm.DB) error {
 	// Register custom join table for Project <-> User with role column
 	if err := db.SetupJoinTable(&models.Project{}, "SharedWith", &models.ProjectMember{}); err != nil {
 		return fmt.Errorf("failed to setup project_members join table: %w", err)
-	}
-
-	// A bill template's default is the flag on the template, not a per-service
-	// setting any more. Dropped before AutoMigrate, which restores the indexes the
-	// table rebuild loses.
-	if db.Migrator().HasColumn("utilities", "default_bill_template_id") {
-		db.Exec(`DROP INDEX IF EXISTS idx_utilities_default_bill_template_id`)
-		if err := db.Migrator().DropConstraint(&models.Utility{}, "fk_utilities_default_bill_template"); err != nil {
-			return fmt.Errorf("failed to drop fk_utilities_default_bill_template: %w", err)
-		}
-		if err := db.Migrator().DropColumn(&models.Utility{}, "default_bill_template_id"); err != nil {
-			return fmt.Errorf("failed to drop utilities.default_bill_template_id: %w", err)
-		}
 	}
 
 	err := db.AutoMigrate(
