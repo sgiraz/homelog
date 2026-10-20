@@ -129,10 +129,6 @@
     "thresholdPerDayHint": "Consumo massimo atteso al giorno",
     "thresholdPerDayUnit": "{unit}/g",
     "currencyLocked": "Bloccata: esistono bollette già saldate per questo servizio.",
-    "billTemplateLabel": "Template bolletta predefinito",
-    "billTemplateNone": "Nessun template (auto)",
-    "billTemplateOption": "{name} — {provider}",
-    "billTemplateHint": "Usato per estrarre automaticamente i dati dalle bollette PDF",
     "saveChanges": "Salva modifiche",
     "providerRequired": "Il fornitore è obbligatorio"
   },

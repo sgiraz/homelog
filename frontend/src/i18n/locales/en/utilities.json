@@ -197,10 +197,6 @@
     "thresholdPerDayHint": "Maximum expected consumption per day",
     "thresholdPerDayUnit": "{unit}/d",
     "currencyLocked": "Locked: there are already settled bills for this utility.",
-    "billTemplateLabel": "Default bill template",
-    "billTemplateNone": "No template (auto)",
-    "billTemplateOption": "{name} — {provider}",
-    "billTemplateHint": "Used to automatically extract data from PDF bills",
     "saveChanges": "Save changes",
     "providerRequired": "Provider is required"
   },

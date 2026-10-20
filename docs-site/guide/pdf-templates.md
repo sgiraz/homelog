@@ -20,8 +20,8 @@ reading, and more.
    read back stays red: take it from where it sits by its label or in its table.
    For the reading type, tap the words that mean an estimated reading.
 3. **Check and save.** Optionally try the template on a second bill of the same
-   provider, then save it. Assign it as the default for a service, and future
-   bills from the same provider are parsed automatically.
+   provider, then save it. Future bills of that provider and service type are
+   parsed with it; when you keep several, the one marked as default goes first.
 
 The fields on offer depend on the service. Meter-specific ones (the reading the
 bill closes on, its date and type, the meter serial number) appear only for

@@ -20,8 +20,9 @@ bolletta, importo, periodo, lettura del contatore e altro si compilano da soli.
    rilegge resta rosso: prendilo da dove sta accanto alla sua etichetta o nella sua
    tabella. Per il tipo lettura, tocca le parole che indicano una lettura stimata.
 3. **Controlla e salva.** Se vuoi, prova il template su una seconda bolletta dello
-   stesso fornitore, poi salvalo. Assegnalo come predefinito per un servizio, e le
-   bollette future dello stesso fornitore vengono analizzate automaticamente.
+   stesso fornitore, poi salvalo. Le bollette future di quel fornitore e tipo di
+   servizio vengono lette con questo template; se ne hai più d'uno, si parte da
+   quello segnato come predefinito.
 
 I campi disponibili dipendono dal servizio. Quelli legati al contatore (la
 lettura con cui si chiude la bolletta, la sua data e il tipo, la matricola)
