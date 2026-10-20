@@ -41,7 +41,9 @@
     "originalAmountInfo": "Original amount: {amount}",
     "originalRateInfo": "(rate: {rate})",
     "splitEditNotice": "The people involved in the split cannot be changed. If you change the amount, shares will be recalculated equally. To change members, delete and recreate the expense.",
-    "saveChanges": "Save Changes"
+    "saveChanges": "Save Changes",
+    "deviceLabel": "Device",
+    "deviceNone": "No device"
   },
   "title": "Expenses",
   "addButton": "Add Expense",

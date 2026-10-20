@@ -176,7 +176,30 @@
           </option>
         </select>
       </div>
-
+      <!-- Device (Optional) -->
+      <div>
+        <label class="block text-sm text-ink-soft mb-1">
+          {{ t('expenses.modal.deviceLabel') }}
+        </label>
+        <select
+            v-model.number="form.device_id"
+            class="w-full px-3 py-3 border border-line rounded-lg
+           bg-surface text-ink text-base
+           focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option :value="null">{{ t('expenses.modal.deviceNone') }}</option>
+          <option
+              v-for="device in devices"
+              :key="device.id"
+              :value="device.id"
+          >
+            {{ device.name }}
+            <template v-if="device.manufacturer || device.model">
+              — {{ [device.manufacturer, device.model].filter(Boolean).join(' ') }}
+            </template>
+          </option>
+        </select>
+      </div>
       <!-- Sezione Split -->
       <div v-if="hasMultipleUsers" class="border-t border-line pt-4 space-y-3">
         <div class="flex items-center gap-3">
@@ -298,7 +321,7 @@ import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { formatCurrency as _formatCurrency, todayDateOnly } from '@/utils/dateFormatter'
-import apiClient, { categoriesAPI, projectsAPI, expenseTemplatesAPI, exchangeAPI } from '@/api/client'
+import apiClient, { categoriesAPI, projectsAPI, expenseTemplatesAPI, exchangeAPI, devicesAPI } from '@/api/client'
 import { currencies as allCurrencies } from '@/utils/currencies'
 import { categoryLabel } from '@/utils/categoryLabel'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -325,6 +348,7 @@ const error = ref(null)
 const userSettings = ref(null)
 const categories = ref([])
 const activeProjects = ref([])
+const devices = ref([])
 const expenseTemplates = ref([])
 const selectedTemplateId = ref(null)
 
@@ -369,6 +393,7 @@ const form = ref({
   is_split: false,
   split_with_member_ids: [],
   project_id: props.projectId,
+  device_id: null,
   property_id: null
 })
 
@@ -508,7 +533,17 @@ async function fetchActiveProjects() {
     console.error('Error fetching projects:', err)
   }
 }
-
+async function fetchDevices() {
+  try {
+    const { data } = await devicesAPI.list({
+      property_id: currentPropertyId.value
+    })
+    devices.value = data?.devices || []
+  } catch (err) {
+    console.error('Error fetching devices:', err)
+    devices.value = []
+  }
+}
 async function fetchHouseholdUsers() {
   if (!currentPropertyId.value) return
 
@@ -619,6 +654,7 @@ async function handleSubmit() {
       date: form.value.date,
       property_id: form.value.property_id,
       project_id: form.value.project_id,
+      device_id: form.value.device_id || undefined,
       paid_by_member_id: form.value.paid_by_member_id,
       is_split: form.value.is_split,
       split_with_member_ids: form.value.is_split
@@ -641,6 +677,7 @@ onMounted(async () => {
   fetchCategories()
   fetchExpenseTemplates()
   await fetchCurrentProperty()
+  await fetchDevices()
   await fetchHouseholdUsers()
   await fetchUserSettings()
   fetchActiveProjects()

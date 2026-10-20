@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/database"
 	"github.com/sgiraz/homelog/internal/i18n"
-	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
@@ -47,9 +47,11 @@ type ExportData struct {
 	Properties        []models.Property          `json:"properties"`
 	HouseholdMembers  []models.HouseholdMember   `json:"household_members"`
 	Categories        []models.Category          `json:"categories"`
+	DeviceCategories  []models.DeviceCategory    `json:"device_categories"`
 	Expenses          []models.Expense           `json:"expenses"`
 	ExpenseSplits     []models.ExpenseSplit      `json:"expense_splits"`
 	Settlements       []models.Settlement        `json:"settlements"`
+	Devices           []models.Device            `json:"devices"`
 	Utilities         []models.Utility           `json:"utilities"`
 	MeterReadings     []models.MeterReading      `json:"meter_readings"`
 	Bills             []models.Bill              `json:"bills"`
@@ -116,11 +118,19 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 	// Categories: user's custom + system defaults
 	h.db.Where("user_id = ? OR user_id IS NULL", userID).Find(&data.Categories)
 
+	// Device categories: user's custom + system defaults
+	h.db.Where("user_id = ? OR user_id IS NULL", userID).Find(&data.DeviceCategories)
+
 	// Expenses
 	h.db.Where("user_id = ?", userID).Find(&data.Expenses)
 	expenseIDs := make([]uint, len(data.Expenses))
 	for i, e := range data.Expenses {
 		expenseIDs[i] = e.ID
+	}
+
+	// Devices
+	if len(propertyIDs) > 0 {
+		h.db.Where("property_id IN ?", propertyIDs).Find(&data.Devices)
 	}
 
 	// Expense splits
@@ -405,7 +415,7 @@ func (h *ExportHandler) ImportData(c *gin.Context) {
 	switch importType {
 	case "expenses":
 		if raw, ok := payload["expenses"].([]any); ok {
-			n, err := h.importExpenses(tx, userID, raw)
+			n, err := h.importExpenses(tx, userID, raw, map[uint]uint{})
 			if err != nil {
 				tx.Rollback()
 				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to import expenses: "+err.Error())
@@ -459,7 +469,7 @@ func (h *ExportHandler) ImportData(c *gin.Context) {
 
 // importExpenses inserts expense records for the given user.
 // BillID is always cleared to avoid dangling FK references.
-func (h *ExportHandler) importExpenses(tx *gorm.DB, userID uint, raw []any) (int, error) {
+func (h *ExportHandler) importExpenses(tx *gorm.DB, userID uint, raw []any, deviceIDs map[uint]uint) (int, error) {
 	count := 0
 	for _, item := range raw {
 		b, _ := json.Marshal(item)
@@ -467,6 +477,15 @@ func (h *ExportHandler) importExpenses(tx *gorm.DB, userID uint, raw []any) (int
 		if err := json.Unmarshal(b, &e); err != nil {
 			continue
 		}
+
+		if e.DeviceID != nil {
+			if newDeviceID, ok := deviceIDs[*e.DeviceID]; ok {
+				e.DeviceID = &newDeviceID
+			} else {
+				e.DeviceID = nil
+			}
+		}
+
 		e.ID = 0          // let DB assign a new ID
 		e.UserID = userID // enforce ownership
 		e.BillID = nil    // do not carry over bill FK — bills are not re-imported here
@@ -520,11 +539,143 @@ func (h *ExportHandler) importProjects(tx *gorm.DB, userID uint, raw []any) (int
 	return count, nil
 }
 
-// importFull handles a complete backup (expenses + utilities + projects).
+func (h *ExportHandler) importDeviceCategories(tx *gorm.DB, userID uint, raw []any) (map[uint]uint, error) {
+	categoryIDs := make(map[uint]uint)
+
+	for _, item := range raw {
+		b, _ := json.Marshal(item)
+
+		var category models.DeviceCategory
+		if err := json.Unmarshal(b, &category); err != nil {
+			continue
+		}
+
+		oldID := category.ID
+
+		if category.UserID == nil || category.IsDefault {
+			var existing models.DeviceCategory
+
+			if err := tx.
+				Where("slug = ? AND user_id IS NULL", category.Slug).
+				First(&existing).Error; err != nil {
+				if err != gorm.ErrRecordNotFound {
+					return categoryIDs, err
+				}
+
+				category.ID = 0
+				category.UserID = nil
+				category.IsDefault = true
+
+				if err := tx.Create(&category).Error; err != nil {
+					return categoryIDs, fmt.Errorf("device category '%s': %w", category.Name, err)
+				}
+
+				existing = category
+			}
+
+			categoryIDs[oldID] = existing.ID
+			continue
+		}
+
+		var existing models.DeviceCategory
+
+		if err := tx.
+			Where("user_id = ? AND name = ?", userID, category.Name).
+			First(&existing).Error; err != nil {
+			if err != gorm.ErrRecordNotFound {
+				return categoryIDs, err
+			}
+
+			category.ID = 0
+			category.UserID = &userID
+			category.IsDefault = false
+
+			if err := tx.Create(&category).Error; err != nil {
+				return categoryIDs, fmt.Errorf("device category '%s': %w", category.Name, err)
+			}
+
+			existing = category
+		}
+
+		categoryIDs[oldID] = existing.ID
+	}
+
+	return categoryIDs, nil
+}
+
+func (h *ExportHandler) importDevices(tx *gorm.DB, userID uint, raw []any, categoryIDs map[uint]uint) (int, map[uint]uint, error) {
+	count := 0
+	deviceIDs := make(map[uint]uint)
+
+	for _, item := range raw {
+		b, _ := json.Marshal(item)
+
+		var device models.Device
+		if err := json.Unmarshal(b, &device); err != nil {
+			continue
+		}
+		if !isPropertyMember(tx, userID, device.PropertyID) {
+			return count, deviceIDs, fmt.Errorf(
+				"device '%s': property %d is not accessible",
+				device.Name,
+				device.PropertyID,
+			)
+		}
+
+		oldDeviceID := device.ID
+
+		device.ID = 0
+		device.UserID = userID
+
+		if device.CategoryID != nil {
+			if newCategoryID, ok := categoryIDs[*device.CategoryID]; ok {
+				device.CategoryID = &newCategoryID
+			} else {
+				device.CategoryID = nil
+			}
+		}
+
+		device.Property = models.Property{}
+		device.Category = nil
+		device.Expenses = nil
+
+		if err := tx.Omit("Property", "Category", "Expenses").Create(&device).Error; err != nil {
+			return count, deviceIDs, fmt.Errorf("device '%s': %w", device.Name, err)
+		}
+		deviceIDs[oldDeviceID] = device.ID
+
+		count++
+	}
+
+	return count, deviceIDs, nil
+}
+
+// importFull handles a complete backup, including devices and device categories.
 // Importing is additive: no existing data is overwritten.
 func (h *ExportHandler) importFull(tx *gorm.DB, userID uint, payload map[string]any, counts map[string]int) error {
+	var deviceCategoryIDs map[uint]uint
+	var deviceIDs map[uint]uint
+
+	if raw, ok := payload["device_categories"].([]any); ok {
+		var err error
+		deviceCategoryIDs, err = h.importDeviceCategories(tx, userID, raw)
+		if err != nil {
+			return err
+		}
+		counts["device_categories"] = len(deviceCategoryIDs)
+	}
+
+	if raw, ok := payload["devices"].([]any); ok {
+		n, ids, err := h.importDevices(tx, userID, raw, deviceCategoryIDs)
+		if err != nil {
+			return err
+		}
+		deviceIDs = ids
+		counts["devices"] = n
+	}
+
 	if raw, ok := payload["expenses"].([]any); ok {
-		n, err := h.importExpenses(tx, userID, raw)
+		n, err := h.importExpenses(tx, userID, raw, deviceIDs)
 		if err != nil {
 			return err
 		}
@@ -544,5 +695,6 @@ func (h *ExportHandler) importFull(tx *gorm.DB, userID uint, payload map[string]
 		}
 		counts["projects"] = n
 	}
+
 	return nil
 }

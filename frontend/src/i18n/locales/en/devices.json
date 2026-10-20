@@ -1,0 +1,56 @@
+{
+"title": "Devices",
+"loading": "Loading devices...",
+"empty": "No devices available.",
+  "searchPlaceholder": "Search devices …",
+  "allStatuses": "All statuses",
+  "allCategories": "All categories",
+  "add": "+ Add Device",
+  "deleteConfirm": "Do you really want to delete the device?",
+"card": {
+"location": "Location",
+"status": "Status",
+"purchasePrice": "Purchase price",
+"purchaseDate": "Purchase date",
+"property": "Property"
+},
+"status": {
+"active": "Active",
+"repair": "Under repair",
+"broken": "Broken",
+"retired": "Retired",
+"disposed": "Disposed"
+},
+"detail": {
+"title": "Device",
+"category": "Category",
+"manufacturer": "Manufacturer",
+"model": "Model",
+"network": "Network",
+"hostname": "Hostname",
+"ipAddress": "IP address",
+"macAddress": "MAC address",
+"firmware": "Firmware",
+"general": "General",
+"status": "Status",
+"location": "Location",
+"serialNumber": "Serial number",
+"purchase": "Purchase & Warranty",
+"purchaseDate": "Purchase date",
+"purchasePrice": "Purchase price",
+"warrantyUntil": "Warranty until",
+"notes": "Notes",
+"edit": "Edit",
+"name": "Name",
+"managementUrl": "Management URL",
+"save": "Save",
+"saving": "Saving...",
+"expenses": "Expenses",
+"noExpenses": "No expenses are linked to this device.",
+"delete": "Delete",
+  "deleteConfirm": "Do you really want to delete the device?"
+},
+  "form": {
+    "property" : "Property"
+  }
+}
