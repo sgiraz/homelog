@@ -306,6 +306,17 @@ export const pdfAPI = {
   },
   // Cleanup temporary template images
   cleanupImages: (timestamp) => apiClient.delete(`/pdf/cleanup/${timestamp}`),
+  // Rules that read a value picked on the analysed bill back from it
+  suggestRule: (payload) => apiClient.post('/pdf/suggest-rule', payload),
+  // Unsaved template rules applied to another bill
+  tryTemplate: (file, rules) => {
+    const formData = new FormData()
+    formData.append('pdf_file', file)
+    formData.append('extraction_rules', JSON.stringify(rules))
+    return apiClient.post('/pdf/try-template', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
 }
 
 export const versionAPI = {

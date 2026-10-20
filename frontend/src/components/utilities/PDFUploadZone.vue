@@ -96,6 +96,18 @@
         </div>
       </div>
 
+      <div v-if="extraction?.layout_mismatch" class="mt-2 p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm text-warning-soft space-y-2">
+        <p>{{ t('utilities.pdfUploadZone.layoutMismatch') }}</p>
+        <button
+          v-if="suggestedTemplate"
+          type="button"
+          class="text-accent-soft hover:underline"
+          @click="useTemplate(suggestedTemplate.id)"
+        >
+          {{ t('utilities.pdfUploadZone.useTemplate', { name: suggestedTemplate.name }) }}
+        </button>
+      </div>
+
       <div v-if="error" class="mt-2 text-sm text-danger-soft">
         {{ error }}
       </div>
@@ -104,7 +116,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { utilitiesAPI, templatesAPI } from '@/api/client'
 import { apiErrorMessage } from '@/utils/apiError'
@@ -133,6 +145,16 @@ const extraction = ref(null)
 
 const availableTemplates = ref([])
 const selectedTemplateId = ref(null)
+
+const suggestedTemplate = computed(() =>
+  availableTemplates.value.find(tpl => tpl.id === extraction.value?.suggested_template_id))
+
+// The upload never switches template by itself: the user does, and the same
+// PDF is read again.
+function useTemplate(id) {
+  selectedTemplateId.value = id
+  if (uploadedFile.value) processFile(uploadedFile.value)
+}
 
 function formatDateForInput(dateStr) {
   if (!dateStr) return ''

@@ -13,10 +13,14 @@ bolletta, importo, periodo, lettura del contatore e altro si compilano da soli.
 
 1. **Carica una bolletta di esempio.** HomeLog converte il PDF in testo e rileva
    token come importi, date, codici contatore (POD/PDR) e numeri.
-2. **Indica i campi.** In un wizard a 3 step, punta al valore che vuoi per ogni
-   campo (importo totale, periodo, lettura del fornitore…). HomeLog memorizza dove
-   si trova nella pagina e come riconoscerlo.
-3. **Salva il template.** Assegnalo come predefinito per un servizio, e le
+2. **Indica i campi.** Trascina il valore che vuoi su ogni campo (importo totale,
+   periodo, lettura del fornitore…). HomeLog trova come ritrovarlo — dall'etichetta
+   accanto, oppure dalla colonna della sua tabella e dalla riga — e mostra la regola
+   con il valore che rilegge da quella stessa bolletta. Un valore che nessuna regola
+   rilegge resta rosso: prendilo da dove sta accanto alla sua etichetta o nella sua
+   tabella. Per il tipo lettura, tocca le parole che indicano una lettura stimata.
+3. **Controlla e salva.** Se vuoi, prova il template su una seconda bolletta dello
+   stesso fornitore, poi salvalo. Assegnalo come predefinito per un servizio, e le
    bollette future dello stesso fornitore vengono analizzate automaticamente.
 
 I campi disponibili dipendono dal servizio. Quelli legati al contatore (la

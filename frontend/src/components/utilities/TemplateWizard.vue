@@ -79,23 +79,15 @@
         :extraction-fields="extractionFields"
         :drag-over-field="dragOverField"
         :mappings="mappings"
-        :testing="testing"
-        :has-tested-patterns="hasTestedPatterns"
-        :test-results="testResults"
-        :context-editor-open="contextEditorOpen"
-        :get-direction-label="getDirectionLabel"
-        :get-context-summary="getContextSummary"
-        :get-neighbor-words="getNeighborWords"
-        :is-context-word-selected="isContextWordSelected"
-        :get-field-label="getFieldLabel"
-        :direction-labels="directionLabels"
+        :field-errors="fieldErrors"
+        :suggesting="suggesting"
+        :describe-rule="describeRule"
         @drag-start="handleDragStart"
         @drag-end="handleDragEnd"
         @field-drop="handleFieldDrop($event.event, $event.fieldKey)"
         @clear-mapping="clearMapping"
-        @toggle-context-editor="toggleContextEditor"
-        @toggle-context-word="toggleContextWord($event.fieldKey, $event.word, $event.direction)"
-        @test-patterns="testAllPatterns"
+        @next-suggestion="nextSuggestion"
+        @toggle-estimated-word="toggleEstimatedWord($event.fieldKey, $event.word)"
         @update:drag-over-field="dragOverField = $event"
       />
 
@@ -106,7 +98,11 @@
         :mappings="mappings"
         :extraction-fields="extractionFields"
         :get-field-label="getFieldLabel"
+        :trying="trying"
+        :try-result="tryResult"
+        :try-error="tryError"
         @update:template="template = $event"
+        @try-file="tryOnAnotherBill"
       />
 
       <!-- Error -->
@@ -161,7 +157,6 @@ import { useI18n } from 'vue-i18n'
 import { templatesAPI, pdfAPI } from '@/api/client'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
-import { generatePatternForField, regeneratePatternWithContext, getNeighborWordsForToken, testPattern } from '@/utils/patternGenerator'
 import { mergeExtendedDateTokens } from '@/utils/tokenizer'
 import WizardStepInfo from './WizardStepInfo.vue'
 import WizardStepMapping from './WizardStepMapping.vue'
@@ -195,7 +190,6 @@ const steps = computed(() => [
 const extracting = ref(false)
 const extractError = ref(null)
 const uploadedFile = ref(null)
-const rawText = ref('')
 
 // PDF Analysis data (from /pdf/analyze endpoint)
 const pdfAnalysis = ref(null)
@@ -205,17 +199,18 @@ const analysisTimestamp = ref(null)
 const dragOverField = ref(null)
 const draggingToken = ref(null)
 
-// Field mappings: { fieldKey: { token, pattern, prefix, suffix } }
+// Field mappings. A dropped value carries the rules the server suggested for
+// it, all checked to read it back ({ token, suggestions, choice, cell,
+// estimatedWords }); a rule of the template being edited is kept as { rule }.
 const mappings = reactive({})
+// Fields whose dropped value no rule reads back: the value, shown in red.
+const fieldErrors = reactive({})
+const suggesting = ref(null)
 
-// Context editor state
-const contextEditorOpen = ref(null) // field.key of open editor, or null
-const directionLabels = { left: '←', above: '↑', right: '→' }
-
-// Testing state
-const testing = ref(false)
-const hasTestedPatterns = ref(false)
-const testResults = ref({})
+// Second-bill check on the review step
+const trying = ref(false)
+const tryResult = ref(null)
+const tryError = ref(null)
 
 // Save state
 const saving = ref(false)
@@ -320,7 +315,6 @@ async function processFile(file) {
       data.pages = data.pages.map(p => ({ ...p, words: mergeExtendedDateTokens(p.words || []) }))
     }
     pdfAnalysis.value = data
-    rawText.value = data.raw_text || ''
     showExistingRuleValues(data.template_values || {})
 
     if (data.tag) {
@@ -369,190 +363,100 @@ function handleDragEnd() {
   dragOverField.value = null
 }
 
-function handleFieldDrop(event, fieldKey) {
+// The server proposes the rules that read the dropped value back from this
+// same bill; none means the value cannot be mapped from where it was taken.
+async function handleFieldDrop(event, fieldKey) {
   dragOverField.value = null
-
+  let token
   try {
-    const tokenData = JSON.parse(event.dataTransfer.getData('application/json'))
-    const fieldDef = extractionFields.value.find(f => f.key === fieldKey)
+    token = JSON.parse(event.dataTransfer.getData('application/json'))
+  } catch {
+    return
+  }
 
-    // Generate pattern for this field (includes position data)
-    const patternInfo = generatePatternForField(
-      tokenData,
-      fieldKey,
-      allTokens.value,
-      rawText.value
-    )
-
-    // Get neighbor words for context editor
-    const neighbors = getNeighborWordsForToken(tokenData, allTokens.value)
-
-    // Pre-select context words that match the auto-detected anchor
-    const autoSelected = { left: [], above: [], right: [] }
-    if (patternInfo.anchorText) {
-      const anchorLower = patternInfo.anchorText.toLowerCase()
-      autoSelected.left = neighbors.left.filter(w =>
-        anchorLower.includes(w.text.toLowerCase())
-      )
+  suggesting.value = fieldKey
+  delete fieldErrors[fieldKey]
+  try {
+    const { data } = await pdfAPI.suggestRule({
+      tag: analysisTimestamp.value,
+      field: fieldKey,
+      word: { text: token.text, page: token.page, x: token.x, y: token.y, width: token.width, height: token.height }
+    })
+    if (!data.suggestions?.length) {
+      delete mappings[fieldKey]
+      fieldErrors[fieldKey] = token.text
+      return
     }
-
-    // Store the mapping with all position, context, and anchor data
-    mappings[fieldKey] = {
-      token: tokenData,
-      pattern: patternInfo.pattern,
-      prefix: patternInfo.prefix,
-      suffix: patternInfo.suffix,
-      valuePattern: patternInfo.valuePattern,
-      // Position data for position-based extraction
-      page: patternInfo.page,
-      x: patternInfo.x,
-      y: patternInfo.y,
-      width: patternInfo.width,
-      height: patternInfo.height,
-      // Context for validation
-      contextLeft: patternInfo.contextLeft,
-      contextAbove: patternInfo.contextAbove,
-      // Anchor-based extraction
-      anchorText: patternInfo.anchorText,
-      anchorDirection: fieldDef?.multiLine ? 'below' : (patternInfo.anchorDirection || 'right_or_below'),
-      // Multi-line flag for text block fields (communication_text)
-      multiLine: fieldDef?.multiLine || false,
-      // Context editor data
-      selectedContext: autoSelected,
-      allNeighbors: neighbors
-    }
-
-    // Reset test results when mapping changes
-    hasTestedPatterns.value = false
-    testResults.value = {}
-  } catch (e) {
-    console.error('Error handling drop:', e)
+    mappings[fieldKey] = { token, suggestions: data.suggestions, choice: 0, cell: data.cell, estimatedWords: [] }
+    tryResult.value = null
+  } catch (err) {
+    error.value = apiErrorMessage(err, t('utilities.templateWizard.suggestError'))
+  } finally {
+    suggesting.value = null
   }
 }
 
 function clearMapping(fieldKey) {
-  if (contextEditorOpen.value === fieldKey) {
-    contextEditorOpen.value = null
-  }
   delete mappings[fieldKey]
-  hasTestedPatterns.value = false
-  testResults.value = {}
+  delete fieldErrors[fieldKey]
+  tryResult.value = null
 }
 
-// Test all patterns
-async function testAllPatterns() {
-  testing.value = true
-  testResults.value = {}
-  hasTestedPatterns.value = true
+function nextSuggestion(fieldKey) {
+  const mapping = mappings[fieldKey]
+  mapping.choice = (mapping.choice + 1) % mapping.suggestions.length
+  tryResult.value = null
+}
 
+function toggleEstimatedWord(fieldKey, word) {
+  const words = mappings[fieldKey].estimatedWords
+  const i = words.indexOf(word)
+  if (i >= 0) words.splice(i, 1)
+  else words.push(word)
+  tryResult.value = null
+}
+
+// describeRule says in words how a rule finds its value.
+function describeRule(rule) {
+  if (rule.table) {
+    const { column, cell, row_label: rowLabel, stop, occurrence } = rule.table
+    const parts = [t('utilities.wizardStepMapping.ruleTable', { column })]
+    if (occurrence) parts.push(t('utilities.wizardStepMapping.ruleOccurrence', { n: occurrence }))
+    parts.push(cell === 'row'
+      ? t('utilities.wizardStepMapping.ruleCellRow', { label: rowLabel })
+      : t(cell === 'first' ? 'utilities.wizardStepMapping.ruleCellFirst' : 'utilities.wizardStepMapping.ruleCellLast'))
+    if (stop) parts.push(t('utilities.wizardStepMapping.ruleStop', { stop }))
+    return parts.join(', ')
+  }
+  if (rule.anchor_text) {
+    return t('utilities.wizardStepMapping.ruleAnchor', { anchor: rule.anchor_text, direction: getDirectionLabel(rule.anchor_direction) })
+  }
+  return t('utilities.wizardStepMapping.positionOnly')
+}
+
+// templateRules is what the template saves: the chosen suggestion per field,
+// the reading type with the words that mark an estimate.
+function templateRules() {
+  return Object.entries(mappings).map(([fieldKey, mapping]) => {
+    if (!mapping.suggestions) return mapping.rule
+    const rule = { ...mapping.suggestions[mapping.choice].rule, field: fieldKey }
+    if (fieldKey === 'reading_type') rule.estimated_words = [...mapping.estimatedWords]
+    return rule
+  })
+}
+
+async function tryOnAnotherBill(file) {
+  trying.value = true
+  tryError.value = null
+  tryResult.value = null
   try {
-    for (const [fieldKey, mapping] of Object.entries(mappings)) {
-      if (mapping && mapping.pattern) {
-        // Test with regex (for compatibility check)
-        const regexResult = testPattern(mapping.pattern, rawText.value)
-
-        // Build result with position info
-        const result = {
-          ...regexResult,
-          // Position-based extraction info
-          hasPosition: mapping.x > 0 || mapping.y > 0,
-          page: mapping.page ?? 0,
-          x: mapping.x ?? 0,
-          y: mapping.y ?? 0,
-          contextLeft: mapping.contextLeft || '',
-          contextAbove: mapping.contextAbove || ''
-        }
-
-        // If regex found a value but it differs from the dragged token,
-        // and we have position data, the position-based match should be more accurate
-        if (result.success && mapping.token && result.value !== mapping.token.text) {
-          if (result.hasPosition) {
-            // Position-based extraction should use the exact value at that position
-            result.value = mapping.token.text
-          }
-        }
-
-        testResults.value[fieldKey] = result
-      }
-    }
+    const { data } = await pdfAPI.tryTemplate(file, templateRules())
+    tryResult.value = data
+  } catch (err) {
+    tryError.value = apiErrorMessage(err, t('utilities.templateWizard.analyzeError'))
   } finally {
-    testing.value = false
+    trying.value = false
   }
-}
-
-// Context editor functions
-function toggleContextEditor(fieldKey) {
-  contextEditorOpen.value = contextEditorOpen.value === fieldKey ? null : fieldKey
-}
-
-function getNeighborWords(fieldKey, direction) {
-  const mapping = mappings[fieldKey]
-  if (!mapping?.allNeighbors) return []
-  return mapping.allNeighbors[direction] || []
-}
-
-function isContextWordSelected(fieldKey, wordId) {
-  const mapping = mappings[fieldKey]
-  if (!mapping?.selectedContext) return false
-  const { left, above, right } = mapping.selectedContext
-  return [...(left || []), ...(above || []), ...(right || [])].some(w => w.id === wordId)
-}
-
-function toggleContextWord(fieldKey, word, direction) {
-  const mapping = mappings[fieldKey]
-  if (!mapping?.selectedContext) return
-
-  const dirArr = mapping.selectedContext[direction] || []
-  const idx = dirArr.findIndex(w => w.id === word.id)
-
-  if (idx >= 0) {
-    // Remove
-    dirArr.splice(idx, 1)
-  } else {
-    // Add, maintaining spatial order (by x for left/right, by y for above)
-    dirArr.push(word)
-    if (direction === 'left' || direction === 'right') {
-      dirArr.sort((a, b) => a.x - b.x)
-    } else {
-      dirArr.sort((a, b) => a.y - b.y)
-    }
-  }
-
-  // Regenerate the pattern with the updated context
-  const patternInfo = regeneratePatternWithContext(
-    mapping.token,
-    fieldKey,
-    allTokens.value,
-    rawText.value,
-    mapping.selectedContext
-  )
-
-  // Update the mapping in-place
-  mapping.pattern = patternInfo.pattern
-  mapping.prefix = patternInfo.prefix
-  mapping.suffix = patternInfo.suffix
-  mapping.anchorText = patternInfo.anchorText
-  mapping.anchorDirection = patternInfo.anchorDirection
-
-  // Reset test results
-  hasTestedPatterns.value = false
-  testResults.value = {}
-}
-
-function getContextSummary(fieldKey) {
-  const mapping = mappings[fieldKey]
-  if (!mapping?.selectedContext) return ''
-
-  const left = mapping.selectedContext.left || []
-  const above = mapping.selectedContext.above || []
-
-  if (left.length > 0) {
-    return '\u2190 ' + left.map(w => w.text).join(' ')
-  }
-  if (above.length > 0) {
-    return '\u2191 ' + above.map(w => w.text).join(' ')
-  }
-  return ''
 }
 
 // Navigation
@@ -597,37 +501,7 @@ async function saveTemplate() {
   error.value = null
 
   try {
-    // Build extraction rules array from mappings (includes position data)
-    const extractionRules = []
-    for (const [fieldKey, mapping] of Object.entries(mappings)) {
-      // A rule the user did not re-map is saved as it was: rebuilding it from
-      // the mapping would drop its position and anchor data.
-      if (mapping?.rule) {
-        extractionRules.push(mapping.rule)
-      } else if (mapping && mapping.pattern) {
-        extractionRules.push({
-          field: fieldKey,
-          pattern: mapping.pattern,
-          prefix: mapping.prefix || '',
-          suffix: mapping.suffix || '',
-          value_pattern: mapping.valuePattern || '',
-          format: '',
-          // Position data for position-based extraction
-          page: mapping.page ?? 0,
-          x: mapping.x ?? 0,
-          y: mapping.y ?? 0,
-          width: mapping.width ?? 0,
-          height: mapping.height ?? 0,
-          // Context for validation
-          context_left: mapping.contextLeft || '',
-          context_above: mapping.contextAbove || '',
-          // Anchor-based extraction
-          anchor_text: mapping.anchorText || '',
-          anchor_direction: mapping.anchorDirection || 'right_or_below',
-          multi_line: mapping.multiLine || false
-        })
-      }
-    }
+    const extractionRules = templateRules()
 
     const templateData = {
       name: template.value.name,
@@ -677,14 +551,7 @@ onMounted(() => {
             mappings[rule.field] = {
               rule,
               token: { id: `existing-${rule.field}`, text: '', type: 'text' },
-              notFound: false,
-              pattern: rule.pattern || '',
-              prefix: rule.prefix || '',
-              suffix: rule.suffix || '',
-              valuePattern: rule.value_pattern || '',
-              anchorText: rule.anchor_text || '',
-              anchorDirection: rule.anchor_direction || '',
-              multiLine: rule.multi_line || false
+              notFound: false
             }
           }
         }

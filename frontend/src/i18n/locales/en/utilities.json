@@ -40,29 +40,35 @@
     "summaryType": "Type:",
     "summaryFieldsMapped": "Mapped fields:",
     "rulesTitle": "Extraction Rules",
-    "useAsDefault": "Use as default template for {provider}"
+    "useAsDefault": "Use as default template for {provider}",
+    "tryTitle": "Check on another bill (optional)",
+    "tryHint": "Pick a second bill from the same provider: each field shows what the template reads there.",
+    "tryButton": "Choose a PDF",
+    "trying": "Reading…",
+    "tryNotFound": "not found"
   },
   "wizardStepMapping": {
-    "intro": "Drag values from the PDF to the corresponding fields on the right.",
+    "intro": "Drag each value from the PDF onto its field. HomeLog works out how to find it and checks the rule on this bill.",
     "fieldsTitle": "Fields to Map",
     "removeMapping": "Remove mapping",
     "notFoundInPdf": "Not found in this PDF: drag the value again",
     "positionOnly": "No anchor: found only by its position on the page, so other bills may give a wrong value",
-    "anchorTooltip": "Anchor: \"{anchor}\" → {direction}",
-    "context": "Context",
     "dropMultiLine": "Drag a word from the communications section...",
     "dropHere": "Drop here...",
     "multiLineNotice": "Multi-line extraction: text below the anchor will be captured automatically",
-    "testButton": "Test Pattern",
-    "testing": "Testing...",
-    "testResultsTitle": "Test Results",
-    "fieldLabel": "{field}:",
-    "positionInfo": "Page {page}, pos: ({x}, {y})",
-    "testErrors": {
-      "emptyInput": "Pattern or text is empty",
-      "noMatch": "No match found",
-      "invalidRegex": "Invalid regex"
-    }
+    "suggesting": "Looking for a rule…",
+    "noRule": "No rule reads “{value}” back from this bill: drag it from where it sits next to its label or in its table.",
+    "ruleTable": "Column “{column}”",
+    "ruleOccurrence": "no. {n} from the left",
+    "ruleCellLast": "last row",
+    "ruleCellFirst": "first row",
+    "ruleCellRow": "row “{label}”",
+    "ruleStop": "table up to “{stop}”",
+    "ruleAnchor": "“{anchor}” → {direction}",
+    "otherRule": "Another rule ({n}/{total})",
+    "estimatedHint": "Tap the words that mean an estimated reading:",
+    "readsAsEstimated": "On this bill: estimated reading",
+    "readsAsActual": "On this bill: actual reading"
   },
   "wizardStepInfo": {
     "intro": "Upload a sample PDF from the provider to create the extraction rules.",
@@ -114,7 +120,8 @@
       "right": "right",
       "below": "below",
       "right_or_below": "right/below"
-    }
+    },
+    "suggestError": "Could not look for a rule for this value"
   },
   "templatesManager": {
     "title": "Extraction Templates",
@@ -453,7 +460,9 @@
     "dropPromptInvoice": "Drop the invoice PDF here",
     "dropSubtitle": "or click to select",
     "uploadOnlyPdf": "Please upload a PDF file",
-    "extractError": "Error extracting data from PDF"
+    "extractError": "Error extracting data from PDF",
+    "layoutMismatch": "This bill does not look like the template’s layout: check the fields or use another template.",
+    "useTemplate": "Read it with “{name}”"
   },
   "addReadingModal": {
     "editTitle": "Edit Reading",

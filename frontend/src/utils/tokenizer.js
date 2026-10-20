@@ -185,28 +185,6 @@ export function classifyToken(text) {
 }
 
 /**
- * Find context around a token (words before and after on the same line)
- * @param {Object} token - The token object
- * @param {Array} allTokens - All tokens from the document
- * @param {number} contextSize - Number of tokens before/after to include
- * @returns {Object} - { before: Array, after: Array }
- */
-export function getTokenContext(token, allTokens, contextSize = 3) {
-  // Get all tokens on the same line
-  const lineTokens = allTokens.filter(t => t.lineIndex === token.lineIndex)
-  const tokenIndex = lineTokens.findIndex(t => t.id === token.id)
-
-  if (tokenIndex === -1) {
-    return { before: [], after: [] }
-  }
-
-  const before = lineTokens.slice(Math.max(0, tokenIndex - contextSize), tokenIndex)
-  const after = lineTokens.slice(tokenIndex + 1, tokenIndex + 1 + contextSize)
-
-  return { before, after }
-}
-
-/**
  * Find neighbors for a token (left, right, above, below)
  * @param {Object} token - The token to find neighbors for
  * @param {Array} allTokens - All tokens from the document

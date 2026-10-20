@@ -41,7 +41,33 @@
         >
           <span class="text-sm text-ink-soft">{{ getFieldLabel(fieldKey) }}</span>
           <span v-if="mapping.notFound" class="text-sm text-warning-soft">{{ t('utilities.wizardStepMapping.notFoundInPdf') }}</span>
-          <span v-else class="text-sm font-mono text-ink">{{ mapping.token.text }}</span>
+          <span v-else class="text-sm font-mono text-ink">{{ mapping.suggestions ? mapping.suggestions[mapping.choice].value : mapping.token.text }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Optional check on a second bill -->
+    <div class="border border-line rounded-lg p-4 space-y-3">
+      <div>
+        <h5 class="text-sm font-medium text-ink">{{ t('utilities.wizardStepReview.tryTitle') }}</h5>
+        <p class="text-xs text-ink-muted mt-1">{{ t('utilities.wizardStepReview.tryHint') }}</p>
+      </div>
+      <input ref="tryInput" type="file" accept=".pdf" class="hidden" @change="onTryFile" />
+      <Button type="button" variant="secondary" size="sm" :disabled="trying" @click="tryInput?.click()">
+        {{ trying ? t('utilities.wizardStepReview.trying') : t('utilities.wizardStepReview.tryButton') }}
+      </Button>
+      <p v-if="tryError" class="text-sm text-danger-soft">{{ tryError }}</p>
+      <div v-if="tryResult" class="space-y-1">
+        <div
+          v-for="fieldKey in Object.keys(mappings)"
+          :key="fieldKey"
+          class="flex items-center justify-between py-1 border-b border-line last:border-0"
+        >
+          <span class="text-sm text-ink-soft">{{ getFieldLabel(fieldKey) }}</span>
+          <span v-if="tryResult.not_found?.includes(fieldKey)" class="text-sm text-warning-soft">
+            {{ t('utilities.wizardStepReview.tryNotFound') }}
+          </span>
+          <span v-else class="text-sm font-mono text-ink">{{ fieldKey === 'reading_type' ? t(`utilities.providerReadings.${tryResult[fieldKey]}`) : tryResult[fieldKey] }}</span>
         </div>
       </div>
     </div>
@@ -62,7 +88,9 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Button from '@/components/common/Button.vue'
 
 defineOptions({ name: 'WizardStepReview' })
 
@@ -82,12 +110,22 @@ defineProps({
   getFieldLabel: {
     type: Function,
     required: true
-  }
+  },
+  trying: { type: Boolean, default: false },
+  tryResult: { type: Object, default: null },
+  tryError: { type: String, default: null }
 })
 
-const emit = defineEmits(['update:template'])
+const emit = defineEmits(['update:template', 'try-file'])
 
 const { t } = useI18n()
+const tryInput = ref(null)
+
+function onTryFile(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (file) emit('try-file', file)
+}
 
 function getUtilityTypeName(type) {
   const key = `utilities.utilityTypes.${type}`
