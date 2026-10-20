@@ -136,7 +136,6 @@ type BillTemplateRule struct {
 	// Anchor-based extraction (relative positioning, resilient to layout changes)
 	AnchorText      string `json:"anchor_text"`      // Label text to find as anchor, e.g. the "amount due" label on the bill
 	AnchorDirection string `json:"anchor_direction"` // "right", "below", "right_or_below"
-	GlobalSearch    bool   `json:"global_search"`    // For unique fields (POD/PDR): search entire document
 	MultiLine       bool   `json:"multi_line"`       // For text blocks: collect all text below anchor until next section
 }
 
@@ -150,8 +149,6 @@ type ExtractedBillData struct {
 	AmountTotal      float64 `json:"amount_total,omitempty"`
 	ConsumptionTotal float64 `json:"consumption_total,omitempty"`
 	Provider         string  `json:"provider,omitempty"`
-	ServiceCode      string  `json:"service_code,omitempty"` // POD or PDR
-	CustomerCode     string  `json:"customer_code,omitempty"`
 	PDFURL           string  `json:"pdf_url,omitempty"`
 	RawText          string  `json:"raw_text,omitempty"` // For debugging/template creation
 
@@ -167,10 +164,8 @@ type ExtractedBillData struct {
 	ConversionCoefficient *float64 `json:"conversion_coefficient,omitempty"`
 
 	// Estimated reading/consumption fields
-	EstimatedDate                *string  `json:"estimated_date,omitempty"`
-	EstimatedReading             *float64 `json:"estimated_reading,omitempty"`     // Estimated reading (m3)
-	EstimatedConsumption         *float64 `json:"estimated_consumption,omitempty"` // Estimated consumption (Sm3)
-	PreviousEstimatedConsumption *float64 `json:"previous_estimated_consumption,omitempty"`
+	EstimatedDate    *string  `json:"estimated_date,omitempty"`
+	EstimatedReading *float64 `json:"estimated_reading,omitempty"` // Estimated reading (m3)
 
 	// Communication text (extracted from bill)
 	CommunicationText string `json:"communication_text,omitempty"`
@@ -379,6 +374,33 @@ func (h *PDFHandler) ListBillTemplates(c *gin.Context) {
 	c.JSON(http.StatusOK, templates)
 }
 
+// ListBillTemplateFields - GET /api/v1/templates/bills/fields
+// Returns the bill field catalogue: which fields a template may map, per service type.
+func (h *PDFHandler) ListBillTemplateFields(c *gin.Context) {
+	c.JSON(http.StatusOK, models.BillFieldCatalogue)
+}
+
+// validateTemplateRules rejects a template for a type without bills, or with a
+// rule for a field the catalogue does not list for that type.
+func validateTemplateRules(c *gin.Context, utilityType string, rules []BillTemplateRule) bool {
+	fields, ok := models.BillFieldsFor(utilityType)
+	if !ok {
+		apierr.Fail(c, http.StatusBadRequest, "invalid_request", "Service type "+utilityType+" takes no bill templates")
+		return false
+	}
+	allowed := make(map[string]bool, len(fields))
+	for _, f := range fields {
+		allowed[f.Key] = true
+	}
+	for _, rule := range rules {
+		if !allowed[rule.Field] {
+			apierr.Fail(c, http.StatusBadRequest, "template_field_not_supported", "Field "+rule.Field+" cannot be extracted from "+utilityType+" bills")
+			return false
+		}
+	}
+	return true
+}
+
 // CreateBillTemplate - POST /api/v1/templates/bills
 func (h *PDFHandler) CreateBillTemplate(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
@@ -390,13 +412,16 @@ func (h *PDFHandler) CreateBillTemplate(c *gin.Context) {
 	var input struct {
 		Name            string             `json:"name" binding:"required"`
 		Provider        string             `json:"provider" binding:"required"`
-		UtilityType     string             `json:"utility_type" binding:"required,oneof=electricity gas water waste internet insurance affitto mutuo"`
+		UtilityType     string             `json:"utility_type" binding:"required"`
 		IsDefault       bool               `json:"is_default"`
 		ExtractionRules []BillTemplateRule `json:"extraction_rules"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		apierr.Fail(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	if !validateTemplateRules(c, input.UtilityType, input.ExtractionRules) {
 		return
 	}
 
@@ -472,6 +497,13 @@ func (h *PDFHandler) UpdateBillTemplate(c *gin.Context) {
 	if input.ExtractionRules != nil {
 		rulesJSON, _ := json.Marshal(input.ExtractionRules)
 		template.ExtractionRules = string(rulesJSON)
+	}
+	if input.UtilityType != "" || input.ExtractionRules != nil {
+		var rules []BillTemplateRule
+		json.Unmarshal([]byte(template.ExtractionRules), &rules)
+		if !validateTemplateRules(c, template.UtilityType, rules) {
+			return
+		}
 	}
 
 	// Handle default flag

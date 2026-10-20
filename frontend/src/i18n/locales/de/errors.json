@@ -145,6 +145,7 @@
 "subcategory_default_delete_admin_only": "Nur Administratoren können Unterkategorien integrierter Kategorien löschen",
 "subcategory_not_found": "Unterkategorie nicht gefunden",
 "template_not_found": "Vorlage nicht gefunden",
+"template_field_not_supported": "Die Vorlage ordnet ein Feld zu, das Rechnungen dieser Dienstart nicht haben",
 "unauthorized": "Nicht autorisiert",
 "user_not_found": "Benutzer nicht gefunden",
 "utility_already_active": "Ein Dienst dieses Typs ist für diese Immobilie bereits aktiv. Deaktivieren Sie zuerst den bestehenden Dienst.",

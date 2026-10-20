@@ -47,8 +47,7 @@
     "fieldsTitle": "Zuzuordnende Felder",
     "removeMapping": "Zuordnung entfernen",
     "notFoundInPdf": "In diesem PDF nicht gefunden: Wert erneut ziehen",
-    "globalSearch": "Globale Suche",
-    "globalSearchTitle": "Globale Dokumentsuche",
+    "positionOnly": "Kein Anker: nur über die Position auf der Seite gefunden, bei anderen Rechnungen kann ein falscher Wert entstehen",
     "anchorTooltip": "Anker: \"{anchor}\" → {direction}",
     "context": "Kontext",
     "dropMultiLine": "Ziehe ein Wort aus dem Kommunikationsbereich...",
@@ -92,6 +91,7 @@
     "analyzeError": "Fehler beim Analysieren der PDF",
     "invalidPdf": "Die PDF konnte nicht verarbeitet werden. Bitte stelle sicher, dass es sich um eine gültige PDF-Datei handelt.",
     "saveError": "Fehler beim Speichern der Vorlage",
+    "fieldsLoadError": "Die zuzuordnenden Felder konnten nicht geladen werden",
     "fields": {
       "amount_total": "Gesamtbetrag",
       "bill_number": "Rechnungsnummer",
@@ -105,8 +105,11 @@
       "conversion_coefficient": "Umrechnungskoeffizient (C)",
       "estimated_date": "Schätzdatum",
       "estimated_reading": "Geschätzter Zählerstand (mc)",
-      "previous_estimated_consumption_smc": "Vorheriger geschätzter Verbrauch (Smc)",
-      "previous_estimated_consumption_mc": "Vorheriger geschätzter Verbrauch (mc)"
+      "provider_reading_f1": "Zählerstand F1 (kWh)",
+      "provider_reading_f2": "Zählerstand F2 (kWh)",
+      "provider_reading_f3": "Zählerstand F3 (kWh)",
+      "provider_reading_date": "Ablesedatum",
+      "reading_type": "Ableseart (tatsächlich/geschätzt)"
     },
     "directions": {
       "right": "rechts",
@@ -352,11 +355,7 @@
     "f3Label": "F3 (kWh)",
     "meterGas": "Zählerstand (mc)",
     "meterWater": "Zählerstand (mc)",
-    "conversionCoeff": "Umrechnungskoeffizient (C)",
-    "previousEstimatedSmc": "Vorheriger geschätzter Verbrauch (Smc)",
-    "previousEstimatedMc": "Vorheriger geschätzter Verbrauch (mc)",
-    "previousEstimateHintSmc": "Die vorherige Rechnung enthält eine Schätzung von {value} Smc",
-    "previousEstimateHintMc": "Die vorherige Rechnung enthält eine Schätzung von {value} mc"
+    "conversionCoeff": "Umrechnungskoeffizient (C)"
   },
   "installments": {
     "title": "Raten",

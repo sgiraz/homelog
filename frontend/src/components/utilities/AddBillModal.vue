@@ -201,10 +201,7 @@
           v-model:f3="form.provider_reading_f3"
           v-model:reading="form.provider_reading"
           v-model:conversion-coefficient="form.conversion_coefficient"
-          v-model:previous-estimated-consumption="form.previous_estimated_consumption"
           :utility-type="utility.type"
-          :previous-bill="previousBill"
-          :previous-bill-has-estimate="previousBillHasEstimate"
         />
 
         <!-- Estimated consumption toggle (gas + water) -->
@@ -445,7 +442,6 @@ const form = ref({
   has_estimated: false,
   estimated_date: '',
   estimated_reading: null,
-  previous_estimated_consumption: null,
   communication_text: '',
   pdf_url: '',
   installments: []
@@ -468,7 +464,7 @@ const installmentsAmountMismatch = computed(() => {
   return Math.abs(sum - (parseFloat(form.value.amount_total) || 0)) > 0.01
 })
 
-const { previousBill, previousBillHasEstimate, calculatedEstimatedConsumption } = useConsumptionCalculation(
+const { calculatedEstimatedConsumption } = useConsumptionCalculation(
   form,
   computed(() => props.utility),
   isEditing,
@@ -513,9 +509,6 @@ function onPDFExtracted(data) {
   if (data.provider_reading != null) form.value.provider_reading = data.provider_reading
   if (data.estimated_date) { form.value.estimated_date = data.estimated_date; form.value.has_estimated = true }
   if (data.estimated_reading != null) { form.value.estimated_reading = data.estimated_reading; form.value.has_estimated = true }
-  if (data.previous_estimated_consumption != null && previousBillHasEstimate.value) {
-    form.value.previous_estimated_consumption = data.previous_estimated_consumption
-  }
   if (data.communication_text) form.value.communication_text = data.communication_text
   if (data.pdf_url) form.value.pdf_url = data.pdf_url
 }
@@ -689,7 +682,6 @@ onMounted(async () => {
       has_estimated: props.bill.estimated_reading != null || props.bill.estimated_consumption != null,
       estimated_date: formatDateForInput(props.bill.estimated_date),
       estimated_reading: props.bill.estimated_reading,
-      previous_estimated_consumption: null,
       communication_text: '',
       pdf_url: props.bill.pdf_url || '',
       installments: (props.bill.installments || []).map(inst => ({

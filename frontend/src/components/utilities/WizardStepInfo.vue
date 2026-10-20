@@ -32,14 +32,7 @@
                bg-surface text-ink
                focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
-        <option value="electricity">{{ t('utilities.utilityTypes.electricity') }}</option>
-        <option value="gas">{{ t('utilities.utilityTypes.gas') }}</option>
-        <option value="water">{{ t('utilities.utilityTypes.water') }}</option>
-        <option value="waste">{{ t('utilities.utilityTypes.waste') }}</option>
-        <option value="internet">{{ t('utilities.utilityTypes.internet') }}</option>
-        <option value="insurance">{{ t('utilities.utilityTypes.insurance') }}</option>
-        <option value="affitto">{{ t('utilities.utilityTypes.affitto') }}</option>
-        <option value="mutuo">{{ t('utilities.utilityTypes.mutuo') }}</option>
+        <option v-for="type in utilityTypes" :key="type" :value="type">{{ t(`utilities.utilityTypes.${type}`) }}</option>
       </select>
     </div>
 
@@ -115,6 +108,10 @@ defineOptions({ name: 'WizardStepInfo' })
 defineProps({
   template: {
     type: Object,
+    required: true
+  },
+  utilityTypes: {
+    type: Array,
     required: true
   },
   pdfFile: {
