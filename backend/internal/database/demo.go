@@ -181,11 +181,11 @@ func seedDemoData(db *gorm.DB) error {
 		return err
 	}
 
-	// Members: Mario (the account), Giulia (partner), Luca (figlio).
+	// Members: Mario (the account), Anna (partner), Luca (figlio).
 	mario := models.HouseholdMember{PropertyID: property.ID, UserID: &user.ID, Name: "Mario", Role: "admin", IsVirtual: false}
-	giulia := models.HouseholdMember{PropertyID: property.ID, Name: "Giulia", Role: "partner", IsVirtual: true}
+	anna := models.HouseholdMember{PropertyID: property.ID, Name: "Anna", Role: "partner", IsVirtual: true}
 	luca := models.HouseholdMember{PropertyID: property.ID, Name: "Luca", Role: "figlio", IsVirtual: true}
-	for _, m := range []*models.HouseholdMember{&mario, &giulia, &luca} {
+	for _, m := range []*models.HouseholdMember{&mario, &anna, &luca} {
 		if err := db.Create(m).Error; err != nil {
 			return err
 		}
@@ -324,24 +324,24 @@ func seedDemoData(db *gorm.DB) error {
 		return nil
 	}
 
-	all := []uint{mario.ID, giulia.ID, luca.ID}
-	couple := []uint{mario.ID, giulia.ID}
+	all := []uint{mario.ID, anna.ID, luca.ID}
+	couple := []uint{mario.ID, anna.ID}
 
 	expenses := []struct {
 		e     models.Expense
 		among []uint
 	}{
 		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 84.30, Date: daysAgo(3), Description: "Spesa settimanale", PaidByMemberID: mario.ID, IsSplit: true}, all},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 42.00, Date: daysAgo(10), Description: "Cena fuori", PaidByMemberID: giulia.ID, IsSplit: true}, couple},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 42.00, Date: daysAgo(10), Description: "Cena fuori", PaidByMemberID: anna.ID, IsSplit: true}, couple},
 		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("transport"), Amount: 60.00, Date: daysAgo(7), Description: "Carburante", PaidByMemberID: mario.ID, IsSplit: false}, nil},
 		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("entertainment"), Amount: 13.99, Date: daysAgo(15), Description: "Abbonamento streaming", PaidByMemberID: mario.ID, IsSplit: true}, all},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("family"), Amount: 120.00, Date: daysAgo(22), Description: "Materiale scolastico Luca", PaidByMemberID: giulia.ID, IsSplit: false}, nil},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("family"), Amount: 120.00, Date: daysAgo(22), Description: "Materiale scolastico Luca", PaidByMemberID: anna.ID, IsSplit: false}, nil},
 		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), Amount: 220.00, Date: daysAgo(35), Description: "Idraulico", PaidByMemberID: mario.ID, IsSplit: true}, couple},
 		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("food_dining"), Amount: 79.10, Date: daysAgo(45), Description: "Spesa supermercato", PaidByMemberID: mario.ID, IsSplit: true}, all},
 		// Project-linked expenses
 		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), ProjectID: &bathroomProject.ID, Amount: 1850.00, Date: daysAgo(60), Description: "Piastrelle e sanitari", PaidByMemberID: mario.ID, IsSplit: true}, couple},
 		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"), ProjectID: &bathroomProject.ID, Amount: 900.00, Date: daysAgo(20), Description: "Acconto manodopera", PaidByMemberID: mario.ID, IsSplit: false}, nil},
-		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("entertainment"), ProjectID: &holidayProject.ID, Amount: 450.00, Date: daysAgo(12), Description: "Caparra hotel", PaidByMemberID: giulia.ID, IsSplit: true}, all},
+		{models.Expense{UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("entertainment"), ProjectID: &holidayProject.ID, Amount: 450.00, Date: daysAgo(12), Description: "Caparra hotel", PaidByMemberID: anna.ID, IsSplit: true}, all},
 	}
 	for _, x := range expenses {
 		if err := addExpense(x.e, x.among); err != nil {
@@ -349,23 +349,23 @@ func seedDemoData(db *gorm.DB) error {
 		}
 	}
 
-	// ---- A settlement (Giulia repays Mario part of a shared expense) -----
+	// ---- A settlement (Anna repays Mario part of a shared expense) -----
 	if err := db.Create(&models.Settlement{
-		PropertyID: property.ID, FromMemberID: giulia.ID, ToMemberID: mario.ID,
+		PropertyID: property.ID, FromMemberID: anna.ID, ToMemberID: mario.ID,
 		Amount: 28.10, Date: daysAgo(2), PaymentMethod: "satispay", Note: "Quota spesa settimanale",
 	}).Error; err != nil {
 		return err
 	}
 
 	// ---- A long-term debt, partly repaid ---------------------------------
-	// Giulia fronted the deposit on the new house. Left in the running balance
+	// Anna fronted the deposit on the new house. Left in the running balance
 	// it would swallow every ordinary expense between the two of them, so it
 	// lives in its own ledger (Expense.IsLongTermDebt) and Mario pays it back
 	// at his own pace — the Debts tab shows the remainder and the progress.
 	deposit := models.Expense{
 		UserID: user.ID, PropertyID: &property.ID, CategoryID: catID("home"),
 		Amount: 12000, Date: daysAgo(75), Description: "Acconto acquisto casa",
-		PaidByMemberID: giulia.ID, IsSplit: true, IsLongTermDebt: true,
+		PaidByMemberID: anna.ID, IsSplit: true, IsLongTermDebt: true,
 	}
 	if err := db.Create(&deposit).Error; err != nil {
 		return err
@@ -373,7 +373,7 @@ func seedDemoData(db *gorm.DB) error {
 	depositShare := round2(deposit.Amount / 2)
 	debtSplit := models.ExpenseSplit{ExpenseID: deposit.ID, MemberID: mario.ID, Amount: depositShare}
 	payerSplit := models.ExpenseSplit{
-		ExpenseID: deposit.ID, MemberID: giulia.ID, Amount: depositShare,
+		ExpenseID: deposit.ID, MemberID: anna.ID, Amount: depositShare,
 		SettledAmount: depositShare, IsSettled: true, SettledAt: tptr(deposit.Date),
 	}
 	for _, sp := range []*models.ExpenseSplit{&debtSplit, &payerSplit} {
@@ -389,7 +389,7 @@ func seedDemoData(db *gorm.DB) error {
 		method string
 	}{{800, 50, "bonifico"}, {500, 20, "bonifico"}} {
 		repayment := models.Settlement{
-			PropertyID: property.ID, FromMemberID: mario.ID, ToMemberID: giulia.ID,
+			PropertyID: property.ID, FromMemberID: mario.ID, ToMemberID: anna.ID,
 			Amount: r.amount, Date: daysAgo(r.day), PaymentMethod: r.method,
 			Note: "Rata acconto casa", TargetExpenseID: &deposit.ID,
 		}

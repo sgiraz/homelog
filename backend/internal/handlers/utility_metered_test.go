@@ -117,7 +117,7 @@ func TestCreateUtility_MeteredTypeHonoursExplicitOptOut(t *testing.T) {
 func TestGetAndUpdateUtility(t *testing.T) {
 	f := setupUtilityFixture(t)
 	rec := doJSON(t, f.router, http.MethodPost, "/utilities", f.token, map[string]any{
-		"property_id": f.prop.ID, "type": "gas", "provider": "Eon",
+		"property_id": f.prop.ID, "type": "gas", "provider": "Volta",
 	})
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", rec.Code, rec.Body)
@@ -130,7 +130,7 @@ func TestGetAndUpdateUtility(t *testing.T) {
 	if rec := doJSON(t, f.router, http.MethodGet, path, f.token, nil); rec.Code != http.StatusOK {
 		t.Errorf("get: %d %s", rec.Code, rec.Body)
 	}
-	if rec := doJSON(t, f.router, http.MethodPut, path, f.token, map[string]any{"provider": "Eon"}); rec.Code != http.StatusOK {
+	if rec := doJSON(t, f.router, http.MethodPut, path, f.token, map[string]any{"provider": "Volta"}); rec.Code != http.StatusOK {
 		t.Errorf("update: %d %s", rec.Code, rec.Body)
 	}
 }

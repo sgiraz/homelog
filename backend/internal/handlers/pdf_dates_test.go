@@ -10,7 +10,7 @@ func TestParseDate(t *testing.T) {
 		value string
 		want  string
 	}{
-		// Extended Italian form (newer Eon-style bills)
+		// Extended Italian form
 		{"extended lowercase", "01 aprile 2026", "2026-04-01"},
 		{"extended end of month", "30 aprile 2026", "2026-04-30"},
 		{"extended capitalized month", "01 Aprile 2026", "2026-04-01"},

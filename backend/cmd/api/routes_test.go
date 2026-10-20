@@ -41,7 +41,7 @@ func TestEveryGETRouteAnswersWithoutServerError(t *testing.T) {
 	member := models.HouseholdMember{PropertyID: prop.ID, UserID: &user.ID, Name: user.Name, Role: "admin"}
 	partner := models.HouseholdMember{PropertyID: prop.ID, Name: "Partner", Role: "member"}
 	mustCreate(t, db, &member, &partner)
-	utility := models.Utility{UserID: user.ID, PropertyID: prop.ID, Type: "gas", Provider: "Eon", IsMetered: true}
+	utility := models.Utility{UserID: user.ID, PropertyID: prop.ID, Type: "gas", Provider: "Volta", IsMetered: true}
 	mustCreate(t, db, &utility)
 	value := 100.0
 	reading := models.MeterReading{UtilityID: utility.ID, ReadingDate: now, Value: &value}

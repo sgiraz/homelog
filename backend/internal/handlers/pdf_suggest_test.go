@@ -19,13 +19,13 @@ import (
 
 func readingsPage() []WordInfo {
 	return page(
-		line(10, 40, "Numero Fattura:"), line(10, 52, "2026 / 249743"),
-		line(10, 70, "Matricola contatore:"), line(120, 70, "3452327545"),
-		line(10, 100, "Tipo lettura"), line(100, 100, "Data lettura"), line(200, 100, "Lettura"),
-		line(10, 112, "LG - Rilevata"), line(100, 112, "03/01/2026"), line(200, 112, "89"),
-		line(10, 124, "LG - Autolettura"), line(100, 124, "28/02/2026"), line(200, 124, "102"),
-		line(10, 136, "MA - Stimata"), line(100, 136, "16/06/2026"), line(200, 136, "122"),
-		line(10, 160, "Consumi del periodo"),
+		line(10, 40, "Invoice number:"), line(10, 52, "2026 / 100123"),
+		line(10, 70, "Meter serial number:"), line(120, 70, "1234567890"),
+		line(10, 100, "Reading type"), line(100, 100, "Reading date"), line(200, 100, "Reading"),
+		line(10, 112, "R1 - Actual"), line(100, 112, "05/01/2026"), line(200, 112, "410"),
+		line(10, 124, "R2 - Customer"), line(100, 124, "03/03/2026"), line(200, 124, "455"),
+		line(10, 136, "R3 - Estimated"), line(100, 136, "15/06/2026"), line(200, 136, "498"),
+		line(10, 160, "Period consumption"),
 	)
 }
 
@@ -45,26 +45,26 @@ func TestSuggestRules(t *testing.T) {
 	words := readingsPage()
 
 	// Like values stacked above: a table column, the last cell.
-	got, _ := h.suggestRules("provider_reading", pick(t, words, "122"), words)
-	if len(got) == 0 || got[0].Rule.Table == nil || got[0].Rule.Table.Column != "Lettura" || got[0].Rule.Table.Cell != "last" || got[0].Value != "122" {
-		t.Fatalf("reading suggestion = %+v, want the last cell of column Lettura", got)
+	got, _ := h.suggestRules("provider_reading", pick(t, words, "498"), words)
+	if len(got) == 0 || got[0].Rule.Table == nil || got[0].Rule.Table.Column != "Reading" || got[0].Rule.Table.Cell != "last" || got[0].Value != "498" {
+		t.Fatalf("reading suggestion = %+v, want the last cell of column Reading", got)
 	}
 
 	// A label to the left: an anchor.
-	got, _ = h.suggestRules("meter_serial", pick(t, words, "3452327545"), words)
-	if len(got) == 0 || got[0].Rule.AnchorText != "Matricola contatore:" || got[0].Rule.AnchorDirection != "right" {
+	got, _ = h.suggestRules("meter_serial", pick(t, words, "1234567890"), words)
+	if len(got) == 0 || got[0].Rule.AnchorText != "Meter serial number:" || got[0].Rule.AnchorDirection != "right" {
 		t.Fatalf("serial suggestion = %+v, want the label on its left", got)
 	}
 
 	// Only its cell singles the value out: the year before it is in the pattern.
-	got, _ = h.suggestRules("bill_number", pick(t, words, "249743"), words)
-	if len(got) == 0 || got[0].Value != "249743" {
-		t.Fatalf("bill number suggestion = %+v, want 249743", got)
+	got, _ = h.suggestRules("bill_number", pick(t, words, "100123"), words)
+	if len(got) == 0 || got[0].Value != "100123" {
+		t.Fatalf("bill number suggestion = %+v, want 100123", got)
 	}
 
 	// The reading type keeps the whole cell, for the estimate words.
-	got, cell := h.suggestRules("reading_type", pick(t, words, "Stimata"), words)
-	if len(got) == 0 || cell != "MA - Stimata" {
+	got, cell := h.suggestRules("reading_type", pick(t, words, "Estimated"), words)
+	if len(got) == 0 || cell != "R3 - Estimated" {
 		t.Fatalf("reading type suggestion = %+v (cell %q), want the type column", got, cell)
 	}
 
@@ -89,7 +89,7 @@ func TestSuggestBillRuleIsPerUser(t *testing.T) {
 	r := gin.New()
 	r.Use(middleware.AuthRequired())
 	r.POST("/pdf/suggest-rule", h.SuggestBillRule)
-	body := map[string]any{"tag": "123_abcd", "field": "provider_reading", "word": pick(t, readingsPage(), "122")}
+	body := map[string]any{"tag": "123_abcd", "field": "provider_reading", "word": pick(t, readingsPage(), "498")}
 
 	rec := doJSON(t, r, http.MethodPost, "/pdf/suggest-rule", f.aliceTok, body)
 	var out struct {
@@ -119,11 +119,11 @@ func TestLayoutMismatch(t *testing.T) {
 		raw, _ := json.Marshal(rs)
 		return string(raw)
 	}
-	old := models.BillTemplate{PropertyID: f.prop.ID, Name: "Old", Provider: "Eon", UtilityType: "gas", ExtractionRules: rules("Bolletta", "Importo")}
-	current := models.BillTemplate{PropertyID: f.prop.ID, Name: "New", Provider: "Eon", UtilityType: "gas", ExtractionRules: rules("n°", "Totale")}
+	old := models.BillTemplate{PropertyID: f.prop.ID, Name: "Old", Provider: "Volta", UtilityType: "gas", ExtractionRules: rules("Bolletta", "Importo")}
+	current := models.BillTemplate{PropertyID: f.prop.ID, Name: "New", Provider: "Volta", UtilityType: "gas", ExtractionRules: rules("n°", "Totale")}
 	mustCreate(t, f.db, &old)
 	mustCreate(t, f.db, &current)
-	words := page(line(10, 10, "n° 98142292"), line(10, 30, "Totale"), line(100, 30, "29,00"))
+	words := page(line(10, 10, "n° 1001"), line(10, 30, "Totale"), line(100, 30, "42,00"))
 
 	extracted := h.extractBillDataWithTemplateAndWords("", old, "", words)
 	extracted.NotFound = notFoundFields(extracted, old)
@@ -150,7 +150,7 @@ func TestSuggestAndTryRejectBadInput(t *testing.T) {
 	r.POST("/pdf/suggest-rule", h.SuggestBillRule)
 	r.POST("/pdf/try-template", h.TryBillTemplate)
 
-	word := pick(t, readingsPage(), "122")
+	word := pick(t, readingsPage(), "498")
 	for name, tc := range map[string]struct {
 		body any
 		code string
@@ -189,12 +189,12 @@ func TestSuggestAndTryRejectBadInput(t *testing.T) {
 // end date as context, with any month, or the rule only reads September.
 func TestSuggestPeriodStartOnASharedLine(t *testing.T) {
 	h := &PDFHandler{}
-	sample := page(line(10, 10, "PERIODO DI FATTURAZIONE"), line(10, 22, "01 settembre 2026 - 30 settembre 2026"))
+	sample := page(line(10, 10, "BILLING PERIOD"), line(10, 22, "01 settembre 2026 - 30 settembre 2026"))
 	got, _ := h.suggestRules("period_start", pick(t, sample, "01"), sample)
 	if len(got) == 0 || got[0].Value != "01 settembre 2026" {
 		t.Fatalf("suggestions = %+v, want the start date", got)
 	}
-	next := page(line(10, 10, "PERIODO DI FATTURAZIONE"), line(10, 22, "01 ottobre 2026 - 31 ottobre 2026"))
+	next := page(line(10, 10, "BILLING PERIOD"), line(10, 22, "01 ottobre 2026 - 31 ottobre 2026"))
 	if v := h.extractValueWithRuleAndWords(got[0].Rule, "", next); v != "01 ottobre 2026" {
 		t.Errorf("on the next bill the rule reads %q, want 01 ottobre 2026", v)
 	}

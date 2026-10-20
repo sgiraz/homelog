@@ -141,7 +141,7 @@ func locateWord(cells []textCell, picked WordInfo) (int, int) {
 
 // valueInCell reads the field's value from the words around the picked one
 // and returns it with the value patterns to try: the bare format first, then
-// the format inside the cell's other words ("2026 / 249743", "Da 31/07/2026")
+// the format inside the cell's other words ("2026 / 100123", "Da 30/06/2026")
 // with numbers generalized, for a value that only its neighbours single out.
 func valueInCell(c textCell, wi int, pattern string) (string, []string) {
 	re := regexp.MustCompile("(?i)^(?:" + pattern + ")$")
@@ -274,7 +274,7 @@ func leftCell(c textCell, cells []textCell) *textCell {
 
 func anchorCandidates(field string, c textCell, wi int, cells []textCell) []BillTemplateRule {
 	var rules []BillTemplateRule
-	// Label words before the value in its own cell ("n° 98142292").
+	// Label words before the value in its own cell ("n° 1001").
 	var inCell []string
 	for i := wi - 1; i >= 0 && len(inCell) < 4; i-- {
 		if !isLabel(c.words[i].Text) {
