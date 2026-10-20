@@ -56,7 +56,7 @@ func (h *PDFHandler) suggestRules(field string, picked WordInfo, words []WordInf
 	cell = c.text
 
 	if isMultiLineField(field) {
-		for _, label := range labelsAbove(c, cells) {
+		for _, label := range labelsAbove(c, cells, false) {
 			rule := BillTemplateRule{Field: field, AnchorText: label, AnchorDirection: "below", MultiLine: true}
 			if value := h.extractValueWithRuleAndWords(rule, "", words); value != "" {
 				return []RuleSuggestion{{rule, value}}, cell
@@ -86,8 +86,9 @@ func (h *PDFHandler) suggestRules(field string, picked WordInfo, words []WordInf
 	} else {
 		candidates = append(tables, anchors...)
 	}
+	same := func(got string) bool { return got == value }
 	if field == "reading_type" {
-		value = normalizeLabel(c.text)
+		same = func(got string) bool { return normalizeLabel(got) == normalizeLabel(c.text) }
 	}
 
 	seen := map[string]bool{}
@@ -95,10 +96,7 @@ func (h *PDFHandler) suggestRules(field string, picked WordInfo, words []WordInf
 		for _, p := range patterns {
 			rule.ValuePattern = p
 			got := h.extractValueWithRuleAndWords(rule, "", words)
-			if field == "reading_type" {
-				got = normalizeLabel(got)
-			}
-			if got != value {
+			if !same(got) {
 				continue
 			}
 			key := describeRule(rule)
@@ -123,14 +121,16 @@ func isMultiLineField(field string) bool {
 	return false
 }
 
-// locateWord finds the cell and word index of the picked word.
+// locateWord finds the cell and word index of the picked word. The wizard
+// shows a date written out as one box, so the pick may span several words: it
+// starts at the first one.
 func locateWord(cells []textCell, picked WordInfo) (int, int) {
 	for ci, c := range cells {
 		if c.page != picked.Page {
 			continue
 		}
 		for wi, w := range c.words {
-			if w.Text == picked.Text && math.Abs(w.X-picked.X) < 0.5 && math.Abs(w.Y-picked.Y) < 0.5 {
+			if strings.HasPrefix(picked.Text, w.Text) && math.Abs(w.X-picked.X) < 0.5 && math.Abs(w.Y-picked.Y) < 2 {
 				return ci, wi
 			}
 		}
@@ -212,12 +212,13 @@ func isLabel(text string) bool {
 	return false
 }
 
-// inColumn tells whether other cells in the picked cell's column, in the
-// same format, sit right above it: a table, where labels repeat on every row.
+// inColumn tells whether other cells in the same format sit above the picked
+// one, aligned with it on the left or the right as table columns are.
 func inColumn(c textCell, cells []textCell, pattern string) bool {
 	re := regexp.MustCompile("(?i)^(?:" + pattern + ")$")
 	for _, o := range cells {
-		if o.page != c.page || o.y >= c.y || c.y-o.y > 15*c.lineHeight || !o.overlapsX(c) {
+		if o.page != c.page || o.y >= c.y || c.y-o.y > 15*c.lineHeight ||
+			math.Abs(o.x0-c.x0) > 1.5 && math.Abs(o.x1-c.x1) > 1.5 {
 			continue
 		}
 		if _, ok := wholeWordsMatch(o, re); ok {
@@ -229,10 +230,16 @@ func inColumn(c textCell, cells []textCell, pattern string) bool {
 
 // labelsAbove lists the label cells right above c, nearest first, each also
 // joined with the label line over it (a header or label wrapped on two lines).
-func labelsAbove(c textCell, cells []textCell) []string {
+// For table headers only rows of labels count, past the records above c.
+func labelsAbove(c textCell, cells []textCell, headers bool) []string {
+	reach := 15.0
+	if headers {
+		reach = 25
+	}
 	var above []textCell
 	for _, o := range cells {
-		if o.page == c.page && o.y < c.y && c.y-o.y < 15*c.lineHeight && o.overlapsX(c) && isLabel(o.text) {
+		if o.page == c.page && o.y < c.y && c.y-o.y < reach*c.lineHeight && o.overlapsX(c) && isLabel(o.text) &&
+			(!headers || headerRow(o, cells)) {
 			above = append(above, o)
 		}
 	}
@@ -276,7 +283,7 @@ func anchorCandidates(field string, c textCell, wi int, cells []textCell) []Bill
 	if left := leftCell(c, cells); left != nil && isLabel(left.text) {
 		rules = append(rules, BillTemplateRule{Field: field, AnchorText: left.text, AnchorDirection: "right"})
 	}
-	for _, label := range labelsAbove(c, cells) {
+	for _, label := range labelsAbove(c, cells, false) {
 		rules = append(rules, BillTemplateRule{Field: field, AnchorText: label, AnchorDirection: "below"})
 	}
 	return rules
@@ -287,7 +294,7 @@ func anchorCandidates(field string, c textCell, wi int, cells []textCell) []Bill
 // one on the row's label, or the first.
 func tableCandidates(field string, c textCell, cells []textCell) []BillTemplateRule {
 	var rules []BillTemplateRule
-	for _, header := range labelsAbove(c, cells) {
+	for _, header := range labelsAbove(c, cells, true) {
 		headers := findHeaders(header, 0, cells)
 		var h *textCell
 		for i := range headers {
@@ -328,6 +335,23 @@ func tableCandidates(field string, c textCell, cells []textCell) []BillTemplateR
 		rules = append(rules, BillTemplateRule{Field: field, Table: &first})
 	}
 	return rules
+}
+
+// headerRow tells whether a header cell heads columns: it shares its row
+// with other labels and no number or date. A row holding a value is a record;
+// a lone label is a title.
+func headerRow(header textCell, cells []textCell) bool {
+	n := 0
+	for _, o := range cells {
+		if !o.sameRow(header) {
+			continue
+		}
+		if valueLike.MatchString(o.text) {
+			return false
+		}
+		n++
+	}
+	return n > 1
 }
 
 // stopLabel is the label opening the first row below the picked cell that is

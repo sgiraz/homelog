@@ -236,7 +236,7 @@ func (h *PDFHandler) extractFromTable(rule BillTemplateRule, words []WordInfo) s
 		}
 		// A blank band of a line and a half also ends the table: the next section
 		// often starts before the stop label.
-		gap := 1.5 * math.Max(1, header.words[0].Height)
+		gap := 1.5 * math.Max(1, header.words[len(header.words)-1].Height)
 		prevBottom := header.bottom()
 		for _, c := range cells {
 			if c.page != header.page || c.y < header.bottom()-1 || c.y >= stopY {
