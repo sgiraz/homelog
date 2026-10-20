@@ -184,3 +184,18 @@ func TestSuggestAndTryRejectBadInput(t *testing.T) {
 		t.Errorf("rules that are not JSON: status %d, body %s", rec.Code, rec.Body.String())
 	}
 }
+
+// Start and end of a period share a line: the start needs the dash and the
+// end date as context, with any month, or the rule only reads September.
+func TestSuggestPeriodStartOnASharedLine(t *testing.T) {
+	h := &PDFHandler{}
+	sample := page(line(10, 10, "PERIODO DI FATTURAZIONE"), line(10, 22, "01 settembre 2026 - 30 settembre 2026"))
+	got, _ := h.suggestRules("period_start", pick(t, sample, "01"), sample)
+	if len(got) == 0 || got[0].Value != "01 settembre 2026" {
+		t.Fatalf("suggestions = %+v, want the start date", got)
+	}
+	next := page(line(10, 10, "PERIODO DI FATTURAZIONE"), line(10, 22, "01 ottobre 2026 - 31 ottobre 2026"))
+	if v := h.extractValueWithRuleAndWords(got[0].Rule, "", next); v != "01 ottobre 2026" {
+		t.Errorf("on the next bill the rule reads %q, want 01 ottobre 2026", v)
+	}
+}

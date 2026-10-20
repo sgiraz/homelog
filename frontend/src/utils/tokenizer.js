@@ -61,9 +61,9 @@ function isNoiseContent(text) {
     return true
   }
 
-  // QR code signatures or encoded data patterns
-  if (/^[A-Z0-9]{15,}$/.test(trimmed) && !/^IT\d{3}E/.test(trimmed)) {
-    // Long uppercase alphanumeric but not POD codes
+  // QR code signatures or encoded data patterns. Not POD codes, nor meter
+  // serials: a few letters followed by digits ("FIOR976591371580").
+  if (/^[A-Z0-9]{15,}$/.test(trimmed) && !/^IT\d{3}E/.test(trimmed) && !/^[A-Z]{1,6}\d+$/.test(trimmed)) {
     return true
   }
 

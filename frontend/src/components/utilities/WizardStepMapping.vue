@@ -86,7 +86,7 @@
                 <p class="text-[11px] text-ink-soft">{{ t('utilities.wizardStepMapping.estimatedHint') }}</p>
                 <div class="flex flex-wrap gap-1">
                   <button
-                    v-for="word in cellWords(mappings[field.key].cell)"
+                    v-for="word in estimateChoices(field.key)"
                     :key="word"
                     @click="emit('toggle-estimated-word', { fieldKey: field.key, word })"
                     :class="[
@@ -99,8 +99,19 @@
                     {{ word }}
                   </button>
                 </div>
-                <p class="text-[11px]" :class="mappings[field.key].estimatedWords.length ? 'text-warning-soft' : 'text-ink-muted'">
-                  {{ mappings[field.key].estimatedWords.length ? t('utilities.wizardStepMapping.readsAsEstimated') : t('utilities.wizardStepMapping.readsAsActual') }}
+                <form class="flex gap-1" @submit.prevent="addEstimatedWord(field.key)">
+                  <input
+                    v-model="newEstimatedWord"
+                    type="text"
+                    :placeholder="t('utilities.wizardStepMapping.estimatedAddPlaceholder')"
+                    class="flex-1 min-w-0 px-1.5 py-0.5 text-[11px] border border-line rounded bg-surface text-ink"
+                  />
+                  <button type="submit" class="px-1.5 py-0.5 text-[11px] border border-line rounded text-ink-muted hover:border-ink-faint">
+                    {{ t('utilities.wizardStepMapping.estimatedAdd') }}
+                  </button>
+                </form>
+                <p class="text-[11px]" :class="readsAsEstimated(field.key) ? 'text-warning-soft' : 'text-ink-muted'">
+                  {{ readsAsEstimated(field.key) ? t('utilities.wizardStepMapping.readsAsEstimated') : t('utilities.wizardStepMapping.readsAsActual') }}
                 </p>
               </div>
             </div>
@@ -121,6 +132,7 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Badge from '@/components/common/Badge.vue'
 import PDFTextractView from './PDFTextractView.vue'
@@ -161,7 +173,27 @@ function mappingValue(fieldKey) {
   return m.suggestions ? m.suggestions[m.choice].value : m.token.text
 }
 
-function cellWords(cell) {
-  return [...new Set(cell.split(/\s+/).filter(w => /\p{L}{2,}/u.test(w)))]
+// The cell's words, plus the ones typed in: a sample bill with an actual
+// reading does not show the word the provider prints for an estimate.
+function estimateChoices(fieldKey) {
+  const m = props.mappings[fieldKey]
+  const words = m.cell.split(/\s+/).filter(w => /\p{L}{2,}/u.test(w))
+  return [...new Set([...words, ...m.estimatedWords])]
+}
+
+function readsAsEstimated(fieldKey) {
+  const m = props.mappings[fieldKey]
+  const cell = m.cell.toLowerCase()
+  return m.estimatedWords.some(w => cell.includes(w.toLowerCase()))
+}
+
+const newEstimatedWord = ref('')
+
+function addEstimatedWord(fieldKey) {
+  const word = newEstimatedWord.value.trim()
+  newEstimatedWord.value = ''
+  if (word && !props.mappings[fieldKey].estimatedWords.includes(word)) {
+    emit('toggle-estimated-word', { fieldKey, word })
+  }
 }
 </script>

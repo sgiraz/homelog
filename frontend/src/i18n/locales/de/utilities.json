@@ -66,9 +66,11 @@
     "ruleStop": "Tabelle bis „{stop}“",
     "ruleAnchor": "„{anchor}“ → {direction}",
     "otherRule": "Andere Regel ({n}/{total})",
-    "estimatedHint": "Tippe auf die Wörter, die einen geschätzten Zählerstand bedeuten:",
+    "estimatedHint": "Wörter, die einen geschätzten Zählerstand bedeuten (antippen oder das Wort deines Anbieters hinzufügen):",
     "readsAsEstimated": "In dieser Rechnung: geschätzter Zählerstand",
-    "readsAsActual": "In dieser Rechnung: tatsächlicher Zählerstand"
+    "readsAsActual": "In dieser Rechnung: tatsächlicher Zählerstand",
+    "estimatedAddPlaceholder": "Wort hinzufügen…",
+    "estimatedAdd": "Hinzufügen"
   },
   "wizardStepInfo": {
     "intro": "Lade eine Beispiel-PDF des Anbieters hoch, um die Extraktionsregeln zu erstellen.",

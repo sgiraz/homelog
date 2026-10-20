@@ -297,9 +297,11 @@
     "ruleStop": "tabella fino a “{stop}”",
     "ruleAnchor": "“{anchor}” → {direction}",
     "otherRule": "Altra regola ({n}/{total})",
-    "estimatedHint": "Tocca le parole che indicano una lettura stimata:",
+    "estimatedHint": "Parole che indicano una lettura stimata (tocca, o aggiungi quella che usa il fornitore):",
     "readsAsEstimated": "In questa bolletta: lettura stimata",
-    "readsAsActual": "In questa bolletta: lettura effettiva"
+    "readsAsActual": "In questa bolletta: lettura effettiva",
+    "estimatedAddPlaceholder": "Aggiungi una parola…",
+    "estimatedAdd": "Aggiungi"
   },
   "wizardStepInfo": {
     "intro": "Carica un PDF di esempio del fornitore per creare le regole di estrazione.",
