@@ -105,7 +105,6 @@ func main() {
 
 	// Apply middleware
 	router.Use(middleware.CORS())
-	router.Use(middleware.RateLimiter())
 	router.Use(middleware.Logger())
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
@@ -129,7 +128,9 @@ func main() {
 	})
 
 	// API v1 routes
-	v1 := router.Group("/api/v1")
+	// Rate-limited apart from the frontend: a page load fetches some twenty
+	// assets, and counting them let one failing page lock out the whole app.
+	v1 := router.Group("/api/v1", middleware.RateLimiter())
 	{
 		// Version check (public, no auth required)
 		v1.GET("/version", func(c *gin.Context) {
