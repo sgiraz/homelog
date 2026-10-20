@@ -1,9 +1,13 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -132,5 +136,51 @@ func TestLayoutMismatch(t *testing.T) {
 	extracted.NotFound = notFoundFields(extracted, current)
 	if mismatch, _ := h.layoutMismatch(extracted, current, "", words); mismatch {
 		t.Error("the matching template must not warn")
+	}
+}
+
+// A request the wizard cannot have sent, or an analysis already cleaned up,
+// is refused with a code the client can word.
+func TestSuggestAndTryRejectBadInput(t *testing.T) {
+	f := setupMoneyFixture(t)
+	h := &PDFHandler{db: f.db, uploadsDir: t.TempDir()}
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(middleware.AuthRequired())
+	r.POST("/pdf/suggest-rule", h.SuggestBillRule)
+	r.POST("/pdf/try-template", h.TryBillTemplate)
+
+	word := pick(t, readingsPage(), "122")
+	for name, tc := range map[string]struct {
+		body any
+		code string
+	}{
+		"no field":       {map[string]any{"tag": "123_abcd", "word": word}, "invalid_request"},
+		"unknown tag":    {map[string]any{"tag": "999_ffff", "field": "provider_reading", "word": word}, "pdf_analysis_expired"},
+		"not a tag path": {map[string]any{"tag": "../etc", "field": "provider_reading", "word": word}, "pdf_analysis_expired"},
+	} {
+		rec := doJSON(t, r, http.MethodPost, "/pdf/suggest-rule", f.aliceTok, tc.body)
+		var out struct {
+			Code string `json:"error_code"`
+		}
+		json.Unmarshal(rec.Body.Bytes(), &out)
+		if out.Code != tc.code {
+			t.Errorf("%s: status %d, code %q, want %q", name, rec.Code, out.Code, tc.code)
+		}
+	}
+
+	var body bytes.Buffer
+	form := multipart.NewWriter(&body)
+	part, _ := form.CreateFormFile("pdf_file", "bill.pdf")
+	part.Write([]byte("%PDF-1.4 not really"))
+	form.WriteField("extraction_rules", "not json")
+	form.Close()
+	req := httptest.NewRequest(http.MethodPost, "/pdf/try-template", &body)
+	req.Header.Set("Content-Type", form.FormDataContentType())
+	req.Header.Set("Authorization", "Bearer "+f.aliceTok)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "invalid_request") {
+		t.Errorf("rules that are not JSON: status %d, body %s", rec.Code, rec.Body.String())
 	}
 }
