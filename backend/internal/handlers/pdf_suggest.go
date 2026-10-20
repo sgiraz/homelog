@@ -77,14 +77,12 @@ func (h *PDFHandler) suggestRules(field string, picked WordInfo, words []WordInf
 		return nil, cell
 	}
 
-	// A label right before the value, in its cell ("n° 98142292") or the
-	// next one to the left, or no like values above it: a label reads it.
-	// Like values stacked above: a table does.
+	// Like values aligned above the value: a table reads it, even with a
+	// label beside it ("A 30/09/2026" closes a record). Otherwise a label does.
 	var candidates []BillTemplateRule
 	tables := tableCandidates(field, c, cells)
 	anchors := anchorCandidates(field, c, wi, cells)
-	left := leftCell(c, cells)
-	if wi > 0 && isLabel(c.words[wi-1].Text) || left != nil && isLabel(left.text) || !inColumn(c, cells, pattern) {
+	if !inColumn(c, cells, pattern) {
 		candidates = append(anchors, tables...)
 	} else {
 		candidates = append(tables, anchors...)
