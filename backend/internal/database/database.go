@@ -81,6 +81,19 @@ func AutoMigrate(db *gorm.DB) error {
 		return fmt.Errorf("failed to setup project_members join table: %w", err)
 	}
 
+	// A bill template's default is the flag on the template, not a per-service
+	// setting any more. Dropped before AutoMigrate, which restores the indexes the
+	// table rebuild loses.
+	if db.Migrator().HasColumn("utilities", "default_bill_template_id") {
+		db.Exec(`DROP INDEX IF EXISTS idx_utilities_default_bill_template_id`)
+		if err := db.Migrator().DropConstraint(&models.Utility{}, "fk_utilities_default_bill_template"); err != nil {
+			return fmt.Errorf("failed to drop fk_utilities_default_bill_template: %w", err)
+		}
+		if err := db.Migrator().DropColumn(&models.Utility{}, "default_bill_template_id"); err != nil {
+			return fmt.Errorf("failed to drop utilities.default_bill_template_id: %w", err)
+		}
+	}
+
 	err := db.AutoMigrate(
 		&models.User{},
 		&models.Property{},
@@ -112,95 +125,7 @@ func AutoMigrate(db *gorm.DB) error {
 		return fmt.Errorf("failed to migrate database: %w", err)
 	}
 
-	// Data migration: set default role for existing project members
-	db.Exec(`UPDATE project_members SET role = 'member' WHERE role IS NULL OR role = ''`)
-
-	// Data migration: mark existing metered services. Guarded, because this runs
-	// on every start: unguarded it would discard an explicit is_metered=false,
-	// which a metered service is allowed to carry (a flat-rate water contract).
-	runOnce(db, "2026-08-utility-metered-classification", func(tx *gorm.DB) error {
-		return tx.Exec(`UPDATE utilities SET is_metered = 1 WHERE type IN ('electricity', 'gas', 'water')`).Error
-	})
-
-	// Not guarded, unlike the backfill above: for a fixed-cost type is_metered=0
-	// is an invariant rather than a user choice — there is no meter on a mortgage
-	// or a TARI bill, so re-asserting it every boot cannot discard anything the
-	// user picked. It self-heals rows written by a build that still took
-	// is_metered from the client (see handlers.UtilityHandler.Create).
-	db.Exec(`UPDATE utilities SET is_metered = 0 WHERE type IN ? AND is_metered = 1`, models.FixedCostTypes())
-	// Default billing frequency for existing utilities
-	db.Exec(`UPDATE utilities SET billing_interval = 1 WHERE billing_interval IS NULL OR billing_interval = 0`)
-	db.Exec(`UPDATE utilities SET billing_unit = 'month' WHERE billing_unit IS NULL OR billing_unit = ''`)
-
-	// Data migration: backfill SettledAmount for splits settled before the
-	// partial-settlement ledger existed (SettledAmount added as a new column,
-	// defaults to 0 for all pre-existing rows).
-	db.Exec(`UPDATE expense_splits SET settled_amount = amount WHERE is_settled = 1 AND settled_amount = 0`)
-	// Backfill settlement_allocations for legacy fully-settled splits so a
-	// future partial reversal of an old settlement has ledger detail to work
-	// with instead of an orphaned SettlementID. Idempotent: skips splits that
-	// already have an allocation row.
-	db.Exec(`INSERT INTO settlement_allocations (settlement_id, expense_split_id, amount, created_at)
-		SELECT settlement_id, id, amount, COALESCE(settled_at, CURRENT_TIMESTAMP)
-		FROM expense_splits
-		WHERE is_settled = 1 AND settlement_id IS NOT NULL
-		AND id NOT IN (SELECT expense_split_id FROM settlement_allocations)`)
-
-	// Data migration: ensure property owners have admin role on their HouseholdMember
-	// This backfills existing databases where HouseholdMember.Role was not set to "admin"
-	db.Exec(`UPDATE household_members SET role = 'admin'
-		WHERE user_id IS NOT NULL AND role != 'admin'
-		AND EXISTS (
-			SELECT 1 FROM properties WHERE properties.id = household_members.property_id
-			AND properties.user_id = household_members.user_id
-		)`)
-	// Ensure non-owner members have at least 'member' role
-	db.Exec(`UPDATE household_members SET role = 'member' WHERE (role IS NULL OR role = '') AND user_id IS NOT NULL`)
-
-	// Data migration: mark onboarding as completed for existing users who already have a property
-	db.Exec(`UPDATE user_settings SET onboarding_completed = 1
-		WHERE onboarding_completed = 0
-		AND user_id IN (
-			SELECT DISTINCT user_id FROM household_members WHERE user_id IS NOT NULL
-		)`)
-
-	// Data migration: backfill 1 installment per existing bill (one-time).
-	// After this migration, every Bill has at least one BillInstallment mirroring its
-	// due_date/amount/is_paid, so the payment flow can treat all bills uniformly.
-	var biCount int64
-	db.Model(&models.BillInstallment{}).Count(&biCount)
-	if biCount == 0 {
-		db.Exec(`INSERT INTO bill_installments
-			(created_at, updated_at, bill_id, number, due_date, amount, is_paid, paid_at, expense_id)
-			SELECT b.created_at, b.updated_at, b.id, 1, b.due_date, b.amount_total, b.is_paid, b.paid_date,
-			       (SELECT id FROM expenses WHERE expenses.bill_id = b.id AND expenses.deleted_at IS NULL LIMIT 1)
-			FROM bills b
-			WHERE b.deleted_at IS NULL`)
-	}
-
-	// Data migration: fix payer splits for bill-originated expenses.
-	// Earlier versions of the bill → expense auto-creation left the payer's own
-	// split at is_settled=false, which blocked the "fully settled" status after
-	// a Settlement run (the payer split is excluded from settle-up queries by
-	// design).
-	db.Exec(`UPDATE expense_splits
-		SET is_settled = 1, settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP)
-		WHERE is_settled = 0
-		AND expense_id IN (
-			SELECT id FROM expenses WHERE bill_id IS NOT NULL
-		)
-		AND member_id IN (
-			SELECT paid_by_member_id FROM expenses
-			WHERE expenses.id = expense_splits.expense_id
-			AND expenses.paid_by_member_id IS NOT NULL
-		)`)
-
-	// Backfill price changes from existing bills of fixed-cost services (one-time)
-	var pcCount int64
-	db.Model(&models.PriceChange{}).Count(&pcCount)
-	if pcCount == 0 {
-		backfillPriceChanges(db)
-	}
+	db.Exec(`DROP TABLE IF EXISTS applied_migrations`)
 
 	// Global search: FTS5 virtual table + one-time backfill from existing rows.
 	// GORM hooks (see models) keep it in sync on subsequent writes.
@@ -211,79 +136,6 @@ func AutoMigrate(db *gorm.DB) error {
 
 	log.Println("✅ Database migrations completed")
 	return nil
-}
-
-// runOnce runs fn the first time it is called for key, then records key in
-// applied_migrations so later boots skip it. Data fixes that overwrite a value
-// the user can set belong here: replayed on every start they silently revert
-// the user's choice. Failures are logged, not fatal — the key stays unrecorded
-// so the next start retries.
-func runOnce(db *gorm.DB, key string, fn func(tx *gorm.DB) error) {
-	if err := db.Exec(`CREATE TABLE IF NOT EXISTS applied_migrations (
-		key TEXT PRIMARY KEY,
-		applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-	)`).Error; err != nil {
-		log.Printf("⚠️  migration %s skipped: %v", key, err)
-		return
-	}
-
-	var applied int64
-	if err := db.Raw(`SELECT COUNT(*) FROM applied_migrations WHERE key = ?`, key).Scan(&applied).Error; err != nil {
-		log.Printf("⚠️  migration %s skipped: %v", key, err)
-		return
-	}
-	if applied > 0 {
-		return
-	}
-
-	if err := db.Transaction(func(tx *gorm.DB) error {
-		if err := fn(tx); err != nil {
-			return err
-		}
-		return tx.Exec(`INSERT INTO applied_migrations (key) VALUES (?)`, key).Error
-	}); err != nil {
-		log.Printf("⚠️  migration %s failed: %v", key, err)
-		return
-	}
-	log.Printf("✅ migration %s applied", key)
-}
-
-// backfillPriceChanges scans existing bills of fixed-cost services and creates
-// PriceChange records for any consecutive bills with different amounts.
-func backfillPriceChanges(db *gorm.DB) {
-	var utilities []models.Utility
-	db.Where("is_metered = ?", false).Find(&utilities)
-
-	for _, u := range utilities {
-		var bills []models.Bill
-		db.Where("utility_id = ?", u.ID).Order("period_start ASC").Find(&bills)
-
-		for i := 1; i < len(bills); i++ {
-			if bills[i].AmountTotal != bills[i-1].AmountTotal {
-				// Check if this exact change already exists (idempotent)
-				var existing models.PriceChange
-				if db.Where("utility_id = ? AND source_bill_id = ?", u.ID, bills[i].ID).
-					First(&existing).Error == nil {
-					continue
-				}
-				change := models.PriceChange{
-					UtilityID:     u.ID,
-					EffectiveDate: bills[i].PeriodStart,
-					OldAmount:     bills[i-1].AmountTotal,
-					NewAmount:     bills[i].AmountTotal,
-					SourceBillID:  &bills[i].ID,
-				}
-				db.Create(&change)
-			}
-		}
-
-		// Update recurring_amount to the latest bill's amount
-		if len(bills) > 0 {
-			db.Model(&u).Update("recurring_amount", bills[len(bills)-1].AmountTotal)
-		}
-	}
-
-	log.Println("✅ Price changes backfill completed")
 }
 
 // SeedDefaultData seeds user settings for new users (categories are now global)

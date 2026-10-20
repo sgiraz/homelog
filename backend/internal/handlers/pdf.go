@@ -278,8 +278,8 @@ func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 }
 
 // resolveBillTemplate picks the template for a bill of utility, always among
-// the templates of the utility's property: the one requested, else the
-// utility's default, else one matching its provider and type (default first).
+// the templates of the utility's property: the one requested, else one matching
+// its provider and type (default first).
 func (h *PDFHandler) resolveBillTemplate(utility models.Utility, requestedID string) (models.BillTemplate, bool) {
 	var template models.BillTemplate
 	inProperty := func() *gorm.DB { return h.db.Where("property_id = ?", utility.PropertyID) }
@@ -289,10 +289,6 @@ func (h *PDFHandler) resolveBillTemplate(utility models.Utility, requestedID str
 			return template, true
 		}
 		log.Printf("Requested template ID %s not found, falling back to auto-detection", requestedID)
-	}
-	if utility.DefaultBillTemplateID != nil &&
-		inProperty().Where("id = ?", *utility.DefaultBillTemplateID).First(&template).Error == nil {
-		return template, true
 	}
 	err := inProperty().
 		Where("utility_type = ? AND LOWER(TRIM(provider)) = LOWER(TRIM(?))", utility.Type, utility.Provider).
@@ -633,13 +629,7 @@ func (h *PDFHandler) DeleteBillTemplate(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Unscoped().Model(&models.Utility{}).Where("default_bill_template_id = ?", template.ID).
-			Update("default_bill_template_id", nil).Error; err != nil {
-			return err
-		}
-		return tx.Delete(&template).Error
-	}); err != nil {
+	if err := h.db.Delete(&template).Error; err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete template")
 		return
 	}

@@ -340,31 +340,6 @@
         </p>
       </div>
 
-      <!-- Default Bill Template -->
-      <div v-if="billTemplates.length > 0">
-        <label class="block text-sm text-ink-soft mb-1">
-          {{ t('utilities.editUtilityModal.billTemplateLabel') }}
-        </label>
-        <select
-          v-model="form.default_bill_template_id"
-          class="w-full px-3 py-3 border border-line rounded-lg
-                 bg-surface text-ink text-base
-                 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option :value="null">{{ t('utilities.editUtilityModal.billTemplateNone') }}</option>
-          <option
-            v-for="tpl in billTemplates"
-            :key="tpl.id"
-            :value="tpl.id"
-          >
-            {{ t('utilities.editUtilityModal.billTemplateOption', { name: tpl.name, provider: tpl.provider }) }}
-          </option>
-        </select>
-        <p class="text-xs text-ink-faint mt-1">
-          {{ t('utilities.editUtilityModal.billTemplateHint') }}
-        </p>
-      </div>
-
       <!-- Default Category -->
       <div v-if="form.default_category_id !== undefined">
         <input type="hidden" v-model="form.default_category_id" />
@@ -407,7 +382,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { currencies, currencyOptionLabel } from '@/utils/currencies'
-import { utilitiesAPI, membersAPI, templatesAPI } from '@/api/client'
+import { utilitiesAPI, membersAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -437,7 +412,6 @@ const currencyOptions = computed(() => {
 const loading = ref(false)
 const error = ref(null)
 const members = ref([])
-const billTemplates = ref([])
 const splitMemberIds = ref([])
 
 function typeLabel(value) {
@@ -533,7 +507,6 @@ const form = ref({
   comparison_threshold: props.utility.comparison_threshold || 5,
   threshold_per_day: props.utility.threshold_per_day || null,
   default_category_id: props.utility.default_category_id || null,
-  default_bill_template_id: props.utility.default_bill_template_id || null,
   split_override: props.utility.split_override || '',
   is_domiciled: props.utility.is_domiciled || false,
   is_installment_based: props.utility.is_installment_based || false,
@@ -568,15 +541,6 @@ async function fetchMembers() {
   }
 }
 
-async function fetchBillTemplates() {
-  try {
-    const { data } = await templatesAPI.listBillTemplates({ utility_id: props.utility.id })
-    billTemplates.value = (data || []).filter(tpl => tpl.utility_type === props.utility.type)
-  } catch (err) {
-    console.error('Error fetching bill templates:', err)
-  }
-}
-
 async function handleSubmit() {
   if (!form.value.provider) {
     error.value = t('utilities.editUtilityModal.providerRequired')
@@ -606,7 +570,6 @@ async function handleSubmit() {
       comparison_threshold: form.value.comparison_threshold,
       threshold_per_day: form.value.threshold_per_day ? parseFloat(form.value.threshold_per_day) : 0,
       default_category_id: form.value.default_category_id || undefined,
-      default_bill_template_id: form.value.default_bill_template_id || undefined,
       split_override: form.value.split_override,
       split_member_ids: form.value.split_override === 'custom' ? JSON.stringify(splitMemberIds.value) : '',
       is_domiciled: form.value.is_domiciled,
@@ -625,6 +588,5 @@ async function handleSubmit() {
 
 onMounted(() => {
   fetchMembers()
-  fetchBillTemplates()
 })
 </script>

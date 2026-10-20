@@ -192,8 +192,8 @@ var MeteredByType = map[string]bool{
 	"mutuo":       false, // a bank loan: instalments on an amortisation plan
 }
 
-// FixedCostTypes lists the types that can never be metered, sorted so callers
-// (SQL IN clauses, tests) see a stable order despite Go's map iteration.
+// FixedCostTypes lists the types that can never be metered, sorted so tests
+// see a stable order despite Go's map iteration.
 func FixedCostTypes() []string {
 	types := make([]string, 0, len(MeteredByType))
 	for t, metered := range MeteredByType {
@@ -319,9 +319,6 @@ type Utility struct {
 	SplitOverride  string `gorm:"not null;default:''" json:"split_override"` // "": use global default, "no_split": never split, "custom": use split_member_ids
 	SplitMemberIDs string `json:"split_member_ids,omitempty"`                // JSON array of member IDs e.g. "[2,3]" (used when split_override="custom")
 
-	// Template
-	DefaultBillTemplateID *uint `gorm:"index" json:"default_bill_template_id,omitempty"` // Default bill extraction template
-
 	// Common fields
 	CustomerPortal string `json:"customer_portal,omitempty"`
 	Notes          string `json:"notes,omitempty"`
@@ -339,15 +336,14 @@ type Utility struct {
 	IsCurrencyLocked bool `gorm:"-" json:"is_currency_locked"`
 
 	// Relations
-	Property            Property               `json:"property"`
-	DefaultCategory     *Category              `gorm:"foreignKey:DefaultCategoryID" json:"default_category,omitempty"`
-	PaidByMember        *HouseholdMember       `gorm:"foreignKey:PaidByMemberID" json:"paid_by_member,omitempty"`
-	DefaultBillTemplate *BillTemplate          `gorm:"foreignKey:DefaultBillTemplateID" json:"default_bill_template,omitempty"`
-	Readings            []MeterReading         `gorm:"foreignKey:UtilityID" json:"readings,omitempty"`
-	Bills               []Bill                 `gorm:"foreignKey:UtilityID" json:"bills,omitempty"`
-	Rates               []UtilityRate          `gorm:"foreignKey:UtilityID" json:"rates,omitempty"`
-	PriceChanges        []PriceChange          `gorm:"foreignKey:UtilityID" json:"price_changes,omitempty"`
-	Communications      []ServiceCommunication `gorm:"foreignKey:UtilityID" json:"communications,omitempty"`
+	Property        Property               `json:"property"`
+	DefaultCategory *Category              `gorm:"foreignKey:DefaultCategoryID" json:"default_category,omitempty"`
+	PaidByMember    *HouseholdMember       `gorm:"foreignKey:PaidByMemberID" json:"paid_by_member,omitempty"`
+	Readings        []MeterReading         `gorm:"foreignKey:UtilityID" json:"readings,omitempty"`
+	Bills           []Bill                 `gorm:"foreignKey:UtilityID" json:"bills,omitempty"`
+	Rates           []UtilityRate          `gorm:"foreignKey:UtilityID" json:"rates,omitempty"`
+	PriceChanges    []PriceChange          `gorm:"foreignKey:UtilityID" json:"price_changes,omitempty"`
+	Communications  []ServiceCommunication `gorm:"foreignKey:UtilityID" json:"communications,omitempty"`
 }
 
 // PriceChange tracks historical price changes for fixed-cost services
