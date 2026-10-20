@@ -32,24 +32,24 @@ func tableValue(t *testing.T, words []WordInfo, rule BillTemplateRule) string {
 // column in the field's format, a record line without one does not count.
 func TestTableRuleReadsTheColumnCell(t *testing.T) {
 	words := page(
-		line(10, 100, "Tipo lettura"), line(100, 100, "Data lettura"), line(200, 100, "Lettura"),
-		line(10, 112, "Rilevata"), line(100, 112, "03/01/2026"), line(200, 112, "89"),
-		line(10, 124, "Autolettura nota"),
-		line(10, 136, "MA - Stimata"), line(100, 136, "16/06/2026"), line(200, 136, "122"),
-		line(10, 148, "Consumi del periodo"),
-		line(10, 160, "Rilevata"), line(100, 160, "20/06/2026"), line(200, 160, "130"),
+		line(10, 100, "Reading type"), line(100, 100, "Reading date"), line(200, 100, "Reading"),
+		line(10, 112, "Actual"), line(100, 112, "05/01/2026"), line(200, 112, "410"),
+		line(10, 124, "Customer note"),
+		line(10, 136, "R3 - Estimated"), line(100, 136, "15/06/2026"), line(200, 136, "498"),
+		line(10, 148, "Period consumption"),
+		line(10, 160, "Actual"), line(100, 160, "22/06/2026"), line(200, 160, "512"),
 	)
-	stop := "Consumi del periodo"
-	reading := BillTemplateRule{Field: "provider_reading", ValuePattern: `(\d+)`, Table: &TableRule{Column: "Lettura", Stop: stop}}
-	if got := tableValue(t, words, reading); got != "122" {
-		t.Errorf("last reading = %q, want 122", got)
+	stop := "Period consumption"
+	reading := BillTemplateRule{Field: "provider_reading", ValuePattern: `(\d+)`, Table: &TableRule{Column: "Reading", Stop: stop}}
+	if got := tableValue(t, words, reading); got != "498" {
+		t.Errorf("last reading = %q, want 498", got)
 	}
 	reading.Table.Cell = "first"
-	if got := tableValue(t, words, reading); got != "89" {
-		t.Errorf("first reading = %q, want 89", got)
+	if got := tableValue(t, words, reading); got != "410" {
+		t.Errorf("first reading = %q, want 410", got)
 	}
-	kind := BillTemplateRule{Field: "reading_type", ValuePattern: `([A-Za-z]+)`, Table: &TableRule{Column: "Tipo lettura", Stop: stop}}
-	if got := tableValue(t, words, kind); got != "MA - Stimata" {
+	kind := BillTemplateRule{Field: "reading_type", ValuePattern: `([A-Za-z]+)`, Table: &TableRule{Column: "Reading type", Stop: stop}}
+	if got := tableValue(t, words, kind); got != "R3 - Estimated" {
 		t.Errorf("reading type cell = %q, want the whole cell", got)
 	}
 }
@@ -58,35 +58,35 @@ func TestTableRuleReadsTheColumnCell(t *testing.T) {
 // another table further down; the stop label tells the tables apart.
 func TestTableRuleOccurrenceAndStop(t *testing.T) {
 	words := page(
-		line(100, 100, "Lettura"), line(200, 100, "Lettura"), line(300, 100, "Lettura"),
-		line(100, 110, "finale"), line(200, 110, "iniziale"), line(300, 110, "finale"),
-		line(95, 124, "2.322,88 -"), line(195, 124, "2.251,87 ="), line(295, 124, "3.078,26 -"),
-		line(10, 136, "Costante"),
-		line(100, 200, "Lettura"), line(100, 210, "finale"),
+		line(100, 100, "Reading"), line(200, 100, "Reading"), line(300, 100, "Reading"),
+		line(100, 110, "end"), line(200, 110, "start"), line(300, 110, "end"),
+		line(95, 124, "1.234,56 -"), line(195, 124, "1.111,11 ="), line(295, 124, "2.468,02 -"),
+		line(10, 136, "Multiplier"),
+		line(100, 200, "Reading"), line(100, 210, "end"),
 		line(95, 224, "9.999,99"),
 	)
 	rule := BillTemplateRule{Field: "provider_reading_f3", ValuePattern: `(\d{1,3}(?:[.\s]\d{3})*(?:,\d+)?)`,
-		Table: &TableRule{Column: "Lettura finale", Occurrence: 2, Stop: "Costante"}}
-	if got := tableValue(t, words, rule); got != "3.078,26" {
-		t.Errorf("second 'Lettura finale' = %q, want 3.078,26", got)
+		Table: &TableRule{Column: "Reading end", Occurrence: 2, Stop: "Multiplier"}}
+	if got := tableValue(t, words, rule); got != "2.468,02" {
+		t.Errorf("second 'Reading end' = %q, want 2.468,02", got)
 	}
 	rule.Table.Occurrence = 1
-	if got := tableValue(t, words, rule); got != "2.322,88" {
-		t.Errorf("first 'Lettura finale' = %q, want 2.322,88 from the table that ends at the stop label", got)
+	if got := tableValue(t, words, rule); got != "1.234,56" {
+		t.Errorf("first 'Reading end' = %q, want 1.234,56 from the table that ends at the stop label", got)
 	}
 }
 
 func TestTableRuleRowLabel(t *testing.T) {
 	words := page(
-		line(10, 100, "Descrizione"), line(200, 100, "Data inizio"), line(300, 100, "Data fine"),
-		line(10, 112, "Componenti nucleo"), line(200, 112, "19/09/2024"), line(300, 112, "31/07/2026"),
-		line(10, 124, "Superficie imponibile"), line(200, 124, "02/06/2024"), line(300, 124, "31/07/2026"),
-		line(10, 140, "DETTAGLIO SUPERFICI"),
+		line(10, 100, "Item"), line(200, 100, "Start date"), line(300, 100, "End date"),
+		line(10, 112, "Household size"), line(200, 112, "01/03/2024"), line(300, 112, "30/06/2026"),
+		line(10, 124, "Taxable area"), line(200, 124, "15/04/2024"), line(300, 124, "30/06/2026"),
+		line(10, 140, "SURFACE DETAILS"),
 	)
 	rule := BillTemplateRule{Field: "period_start", ValuePattern: `(\d{2}/\d{2}/\d{4})`,
-		Table: &TableRule{Column: "Data inizio", Stop: "DETTAGLIO SUPERFICI", Cell: "row", RowLabel: "Superficie imponibile"}}
-	if got := tableValue(t, words, rule); got != "02/06/2024" {
-		t.Errorf("start on the labelled row = %q, want 02/06/2024", got)
+		Table: &TableRule{Column: "Start date", Stop: "SURFACE DETAILS", Cell: "row", RowLabel: "Taxable area"}}
+	if got := tableValue(t, words, rule); got != "15/04/2024" {
+		t.Errorf("start on the labelled row = %q, want 15/04/2024", got)
 	}
 }
 
@@ -94,12 +94,12 @@ func TestTableRuleRowLabel(t *testing.T) {
 // A word of the label further along the same line is not part of it.
 func TestAnchorOnTwoLinesWithAMultiWordValue(t *testing.T) {
 	words := page(
-		line(100, 100, "Scadenza"), line(400, 100, "PAGAMENTO"),
-		line(95, 111, "pagamento"),
+		line(100, 100, "Payment"), line(400, 100, "DEADLINE"),
+		line(95, 111, "deadline"),
 		line(90, 125, "12 ottobre 2026"),
 		line(400, 112, "01 gennaio 2020"),
 	)
-	rule := BillTemplateRule{Field: "due_date", AnchorText: "Scadenza pagamento", AnchorDirection: "below",
+	rule := BillTemplateRule{Field: "due_date", AnchorText: "Payment deadline", AnchorDirection: "below",
 		ValuePattern: `(\d{1,2}\s+[a-z]+\s+\d{4})`}
 	if got := tableValue(t, words, rule); got != "12 ottobre 2026" {
 		t.Errorf("due date = %q, want 12 ottobre 2026", got)
@@ -107,15 +107,15 @@ func TestAnchorOnTwoLinesWithAMultiWordValue(t *testing.T) {
 }
 
 func TestReadingType(t *testing.T) {
-	words := []string{"stimata", "presunta"}
+	words := []string{"estimated", "provisional"}
 	for text, want := range map[string]string{
-		"MA - Stimata": "estimated", "Presunta Stimata E.ON": "estimated", "Effettiva : Rilevata": "actual",
+		"R3 - Estimated": "estimated", "Provisional Estimated": "estimated", "Actual : Measured": "actual",
 	} {
 		if got := readingType(text, words); got != want {
 			t.Errorf("%q = %s, want %s", text, got, want)
 		}
 	}
-	if got := readingType("MA - Stimata", nil); got != "actual" {
+	if got := readingType("R3 - Estimated", nil); got != "actual" {
 		t.Errorf("without the template's words nothing is an estimate, got %s", got)
 	}
 }

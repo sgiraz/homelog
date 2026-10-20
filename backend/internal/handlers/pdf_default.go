@@ -47,8 +47,8 @@ func (h *PDFHandler) parseAmount(value string) float64 {
 }
 
 // italianTextDateRe matches the extended Italian date form "01 aprile 2026"
-// (day, month name, year). Newer bills (e.g. Eon) write the billing period this
-// way instead of the numeric dd/mm/yyyy form.
+// (day, month name, year). Some bills write the billing period this way
+// instead of the numeric dd/mm/yyyy form.
 var italianTextDateRe = regexp.MustCompile(`(?i)^(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})$`)
 
 // parseDate parses various date formats to ISO (YYYY-MM-DD), accepting both the

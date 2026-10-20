@@ -17,6 +17,7 @@ import (
 	"github.com/sgiraz/homelog/internal/database"
 	"github.com/sgiraz/homelog/internal/handlers"
 	"github.com/sgiraz/homelog/internal/middleware"
+	"gorm.io/gorm"
 )
 
 // appVersion is set at build time via -ldflags "-X main.appVersion=...".
@@ -95,6 +96,34 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	// Reclaim uploads that never got attached to a record (abandoned flows,
+	// contract PDFs, wizard renders). Once at startup, then hourly.
+	uploadsDir := filepath.Join(database.DataDir(), "uploads")
+	go func() {
+		handlers.SweepUploads(db, uploadsDir, 24*time.Hour)
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			handlers.SweepUploads(db, uploadsDir, 24*time.Hour)
+		}
+	}()
+
+	router := newRouter(db)
+
+	// Start server
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("🏠 HomeLog API v%s starting on port %s...", appVersion, port)
+	if err := router.Run(":" + port); err != nil {
+		log.Fatal("Failed to start server:", err)
+	}
+}
+
+// newRouter wires the middleware, the API routes and the embedded frontend.
+func newRouter(db *gorm.DB) *gin.Engine {
 	// Initialize router
 	router := gin.Default()
 
@@ -105,7 +134,6 @@ func main() {
 
 	// Apply middleware
 	router.Use(middleware.CORS())
-	router.Use(middleware.RateLimiter())
 	router.Use(middleware.Logger())
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
@@ -129,7 +157,9 @@ func main() {
 	})
 
 	// API v1 routes
-	v1 := router.Group("/api/v1")
+	// Rate-limited apart from the frontend: a page load fetches some twenty
+	// assets, and counting them let one failing page lock out the whole app.
+	v1 := router.Group("/api/v1", middleware.RateLimiter())
 	{
 		// Version check (public, no auth required)
 		v1.GET("/version", func(c *gin.Context) {
@@ -436,18 +466,7 @@ func main() {
 
 	// Serve uploaded files from the directory the handlers write to.
 	baseDataDir := database.DataDir()
-
-	// Reclaim uploads that never got attached to a record (abandoned flows,
-	// contract PDFs, wizard renders). Once at startup, then hourly.
 	uploadsDir := filepath.Join(baseDataDir, "uploads")
-	go func() {
-		handlers.SweepUploads(db, uploadsDir, 24*time.Hour)
-		ticker := time.NewTicker(1 * time.Hour)
-		defer ticker.Stop()
-		for range ticker.C {
-			handlers.SweepUploads(db, uploadsDir, 24*time.Hour)
-		}
-	}()
 	// Only template page previews are public; PDFs go through the API.
 	uploadsHandler := handlers.PublicUploads(uploadsDir)
 	router.GET("/uploads/:name", uploadsHandler)
@@ -456,17 +475,7 @@ func main() {
 
 	// Serve embedded frontend (SPA + static assets)
 	serveFrontend(router)
-
-	// Start server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	log.Printf("🏠 HomeLog API v%s starting on port %s...", appVersion, port)
-	if err := router.Run(":" + port); err != nil {
-		log.Fatal("Failed to start server:", err)
-	}
+	return router
 }
 
 func normalizeVersionTag(v string) string {

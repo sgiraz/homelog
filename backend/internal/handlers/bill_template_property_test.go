@@ -89,7 +89,7 @@ func TestBillTemplatesBelongToTheProperty(t *testing.T) {
 	f := setupTemplateFixture(t)
 
 	rec := doJSON(t, f.router, http.MethodPost, "/templates/bills", f.ownerTok, map[string]any{
-		"property_id": f.home.ID, "name": "Etra 2026", "provider": "Etra", "utility_type": "water",
+		"property_id": f.home.ID, "name": "Acme 2026", "provider": "Acme", "utility_type": "water",
 		"extraction_rules": []map[string]any{{"field": "bill_number", "pattern": `n\. (\d+)`}},
 	})
 	if rec.Code != http.StatusCreated {
@@ -103,7 +103,7 @@ func TestBillTemplatesBelongToTheProperty(t *testing.T) {
 	if got := f.list(t, f.partnerTok, fmt.Sprintf("?property_id=%d", f.home.ID)); len(got) != 1 || got[0].ID != created.ID {
 		t.Fatalf("partner list = %+v", got)
 	}
-	if rec := doJSON(t, f.router, http.MethodPut, path, f.partnerTok, map[string]any{"name": "Etra (edited)"}); rec.Code != http.StatusOK {
+	if rec := doJSON(t, f.router, http.MethodPut, path, f.partnerTok, map[string]any{"name": "Acme (edited)"}); rec.Code != http.StatusOK {
 		t.Fatalf("partner update: %d %s", rec.Code, rec.Body)
 	}
 	pdf := &ExtractedTextWithPositions{RawText: "Bolletta n. 42"}
@@ -132,8 +132,8 @@ func TestBillTemplatesBelongToTheProperty(t *testing.T) {
 	}); rec.Code != http.StatusForbidden {
 		t.Errorf("neighbour create in home: %d", rec.Code)
 	}
-	homeUtility := models.Utility{UserID: f.owner.ID, PropertyID: f.home.ID, Type: "water", Provider: "Etra"}
-	awayUtility := models.Utility{UserID: f.neighbour.ID, PropertyID: f.away.ID, Type: "water", Provider: "Etra"}
+	homeUtility := models.Utility{UserID: f.owner.ID, PropertyID: f.home.ID, Type: "water", Provider: "Acme"}
+	awayUtility := models.Utility{UserID: f.neighbour.ID, PropertyID: f.away.ID, Type: "water", Provider: "Acme"}
 	mustCreate(t, f.db, &homeUtility, &awayUtility)
 	if got := f.list(t, f.nTok, fmt.Sprintf("?utility_id=%d", homeUtility.ID)); len(got) != 0 {
 		t.Errorf("neighbour list by home utility = %+v", got)
@@ -149,11 +149,11 @@ func TestBillTemplatesBelongToTheProperty(t *testing.T) {
 
 func TestBillTemplateDefaultIsUniquePerProperty(t *testing.T) {
 	f := setupTemplateFixture(t)
-	first := f.addTemplate(t, f.home.ID, "Etra", "water", true)
-	elsewhere := f.addTemplate(t, f.away.ID, "Etra", "water", true)
+	first := f.addTemplate(t, f.home.ID, "Acme", "water", true)
+	elsewhere := f.addTemplate(t, f.away.ID, "Acme", "water", true)
 
 	rec := doJSON(t, f.router, http.MethodPost, "/templates/bills", f.partnerTok, map[string]any{
-		"property_id": f.home.ID, "name": "new", "provider": " etra", "utility_type": "water", "is_default": true,
+		"property_id": f.home.ID, "name": "new", "provider": " acme", "utility_type": "water", "is_default": true,
 	})
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", rec.Code, rec.Body)
@@ -171,7 +171,7 @@ func TestBillTemplateDefaultIsUniquePerProperty(t *testing.T) {
 func TestImportBillTemplate(t *testing.T) {
 	f := setupTemplateFixture(t)
 	file := map[string]any{
-		"format": billTemplateFileFormat, "name": "Etra", "provider": "Etra", "utility_type": "water",
+		"format": billTemplateFileFormat, "name": "Acme", "provider": "Acme", "utility_type": "water",
 		"extraction_rules": []map[string]any{{"field": "amount_total", "anchor_text": "Totale", "value_pattern": `(\d+,\d{2})`}},
 	}
 	withProperty := func(id uint, overrides map[string]any) map[string]any {
@@ -189,7 +189,7 @@ func TestImportBillTemplate(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("import: %d %s", rec.Code, rec.Body)
 	}
-	if got := f.list(t, f.ownerTok, fmt.Sprintf("?property_id=%d", f.home.ID)); len(got) != 1 || got[0].Provider != "Etra" {
+	if got := f.list(t, f.ownerTok, fmt.Sprintf("?property_id=%d", f.home.ID)); len(got) != 1 || got[0].Provider != "Acme" {
 		t.Errorf("owner list after import = %+v", got)
 	}
 
@@ -219,12 +219,12 @@ func TestImportBillTemplate(t *testing.T) {
 // else the service's default, else one matching provider and type.
 func TestResolveBillTemplateOrder(t *testing.T) {
 	f := setupTemplateFixture(t)
-	plain := f.addTemplate(t, f.home.ID, "Etra", "water", false)
-	byDefault := f.addTemplate(t, f.home.ID, "  ETRA ", "water", true)
-	foreign := f.addTemplate(t, f.away.ID, "Etra", "water", true)
-	f.addTemplate(t, f.home.ID, "Etra", "gas", true)
+	plain := f.addTemplate(t, f.home.ID, "Acme", "water", false)
+	byDefault := f.addTemplate(t, f.home.ID, "  ACME ", "water", true)
+	foreign := f.addTemplate(t, f.away.ID, "Acme", "water", true)
+	f.addTemplate(t, f.home.ID, "Acme", "gas", true)
 
-	utility := models.Utility{PropertyID: f.home.ID, Type: "water", Provider: "Etra"}
+	utility := models.Utility{PropertyID: f.home.ID, Type: "water", Provider: "Acme"}
 	resolve := func(requested string) uint {
 		t.Helper()
 		tpl, ok := f.h.resolveBillTemplate(utility, requested)
@@ -244,7 +244,7 @@ func TestResolveBillTemplateOrder(t *testing.T) {
 		t.Errorf("another property's template must be ignored: got %d", got)
 	}
 
-	utility = models.Utility{PropertyID: f.home.ID, Type: "water", Provider: "Eon"}
+	utility = models.Utility{PropertyID: f.home.ID, Type: "water", Provider: "Volta"}
 	if got := resolve(""); got != 0 {
 		t.Errorf("no provider match: got %d", got)
 	}

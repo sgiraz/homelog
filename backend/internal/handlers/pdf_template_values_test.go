@@ -26,7 +26,7 @@ func TestTemplateValuesForAnalysis(t *testing.T) {
 		t.Fatal(err)
 	}
 	tpl := models.BillTemplate{
-		PropertyID: prop.ID, Name: "Etra", Provider: "Etra", UtilityType: "water",
+		PropertyID: prop.ID, Name: "Acme", Provider: "Acme", UtilityType: "water",
 		ExtractionRules: `[{"field":"consumption_total","anchor_text":"Consumo fatturato","anchor_direction":"right","value_pattern":"(\\d{1,3}(?:[.\\s]\\d{3})*(?:,\\d+)?)"},
 			{"field":"bill_number","pattern":"Bolletta\\s+n\\.\\s+(\\d+)"},
 			{"field":"due_date","anchor_text":"Scadenza","value_pattern":"(\\d{4}-\\d{2}-\\d{2})"}]`,
@@ -36,17 +36,17 @@ func TestTemplateValuesForAnalysis(t *testing.T) {
 	}
 
 	pdf := &ExtractedTextWithPositions{
-		RawText: "Bolletta n. 1079599\nConsumo fatturato dal 29/05/2026 al 07/10/2026   27 mc\n",
+		RawText: "Bolletta n. 100200\nConsumo fatturato dal 01/05/2026 al 30/09/2026   31 mc\n",
 		Words: []WordInfo{
 			{Text: "Consumo", X: 100, Y: 400, Width: 30, Height: 8},
 			{Text: "fatturato", X: 132, Y: 400, Width: 30, Height: 8},
-			{Text: "27", X: 300, Y: 400, Width: 8, Height: 8},
+			{Text: "31", X: 300, Y: 400, Width: 8, Height: 8},
 			{Text: "mc", X: 310, Y: 400, Width: 8, Height: 8},
 		},
 	}
 
 	got := h.templateValuesForAnalysis(fmt.Sprint(tpl.ID), owner.ID, pdf)
-	want := map[string]string{"consumption_total": "27", "bill_number": "1079599"}
+	want := map[string]string{"consumption_total": "31", "bill_number": "100200"}
 	if len(got) != len(want) {
 		t.Fatalf("got %v, want %v", got, want)
 	}

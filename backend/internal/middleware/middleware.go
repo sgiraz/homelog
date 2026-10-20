@@ -222,7 +222,7 @@ func newRateLimiter(limit int, window time.Duration) gin.HandlerFunc {
 	}
 }
 
-// RateLimiter is the global limiter applied to every request (100 req/min/IP).
+// RateLimiter is the limiter applied to every API request (100 req/min/IP).
 func RateLimiter() gin.HandlerFunc {
 	return newRateLimiter(100, time.Minute)
 }
