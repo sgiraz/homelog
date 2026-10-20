@@ -66,9 +66,11 @@
     "ruleStop": "table up to “{stop}”",
     "ruleAnchor": "“{anchor}” → {direction}",
     "otherRule": "Another rule ({n}/{total})",
-    "estimatedHint": "Tap the words that mean an estimated reading:",
+    "estimatedHint": "Words that mean an estimated reading (tap, or add the one your provider uses):",
     "readsAsEstimated": "On this bill: estimated reading",
-    "readsAsActual": "On this bill: actual reading"
+    "readsAsActual": "On this bill: actual reading",
+    "estimatedAddPlaceholder": "Add a word…",
+    "estimatedAdd": "Add"
   },
   "wizardStepInfo": {
     "intro": "Upload a sample PDF from the provider to create the extraction rules.",

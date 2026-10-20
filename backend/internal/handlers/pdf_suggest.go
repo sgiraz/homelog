@@ -11,8 +11,11 @@ import (
 
 const (
 	numberPattern = `(\d{1,3}(?:[.\s]\d{3})*(?:,\d+)?)`
-	datePattern   = `(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{1,2}\s+(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+\d{4})`
+	monthPattern  = `(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)`
+	datePattern   = `(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{1,2}\s+` + monthPattern + `\s+\d{4})`
 )
+
+var monthWord = regexp.MustCompile(`(?i)^` + monthPattern + `$`)
 
 // valuePatterns is the format each field's value is read in. Go RE2.
 var valuePatterns = map[string]string{
@@ -182,9 +185,13 @@ func contextPattern(before []WordInfo, pattern string, after []WordInfo) string 
 
 var digitRun = regexp.MustCompile(`\d+`)
 
-// generalize quotes text for a pattern, digits standing for any number: the
-// context words of a sample bill must not carry its values.
+// generalize quotes text for a pattern, digits standing for any number and a
+// month name for any month: the context words of a sample bill must not carry
+// its values, a period's other date included.
 func generalize(text string) string {
+	if monthWord.MatchString(text) {
+		return monthPattern
+	}
 	var b strings.Builder
 	last := 0
 	for _, loc := range digitRun.FindAllStringIndex(text, -1) {
