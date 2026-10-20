@@ -293,9 +293,11 @@ export const pdfAPI = {
     })
   },
   // Analyze PDF for template creation (Textract-like view)
-  analyzePDF: (file) => {
+  // With templateId, the response also carries what that template extracts.
+  analyzePDF: (file, templateId) => {
     const formData = new FormData()
     formData.append('pdf_file', file)
+    if (templateId) formData.append('template_id', templateId)
     return apiClient.post('/pdf/analyze', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })

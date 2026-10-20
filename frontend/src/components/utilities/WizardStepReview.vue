@@ -40,7 +40,8 @@
           class="flex items-center justify-between py-1 border-b border-line last:border-0"
         >
           <span class="text-sm text-ink-soft">{{ getFieldLabel(fieldKey) }}</span>
-          <span class="text-sm font-mono text-ink">{{ mapping.token.text }}</span>
+          <span v-if="mapping.notFound" class="text-sm text-warning-soft">{{ t('utilities.wizardStepMapping.notFoundInPdf') }}</span>
+          <span v-else class="text-sm font-mono text-ink">{{ mapping.token.text }}</span>
         </div>
       </div>
     </div>
