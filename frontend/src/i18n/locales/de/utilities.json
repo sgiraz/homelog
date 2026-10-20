@@ -40,29 +40,35 @@
     "summaryType": "Typ:",
     "summaryFieldsMapped": "Zugeordnete Felder:",
     "rulesTitle": "Extraktionsregeln",
-    "useAsDefault": "Als Standardvorlage für {provider} verwenden"
+    "useAsDefault": "Als Standardvorlage für {provider} verwenden",
+    "tryTitle": "An einer weiteren Rechnung prüfen (optional)",
+    "tryHint": "Wähle eine zweite Rechnung desselben Anbieters: Zu jedem Feld siehst du, was die Vorlage dort liest.",
+    "tryButton": "PDF auswählen",
+    "trying": "Wird gelesen…",
+    "tryNotFound": "nicht gefunden"
   },
   "wizardStepMapping": {
-    "intro": "Ziehe Werte aus der PDF auf die entsprechenden Felder rechts.",
+    "intro": "Ziehe jeden Wert aus dem PDF auf sein Feld. HomeLog ermittelt, wie er zu finden ist, und prüft die Regel an dieser Rechnung.",
     "fieldsTitle": "Zuzuordnende Felder",
     "removeMapping": "Zuordnung entfernen",
     "notFoundInPdf": "In diesem PDF nicht gefunden: Wert erneut ziehen",
     "positionOnly": "Kein Anker: nur über die Position auf der Seite gefunden, bei anderen Rechnungen kann ein falscher Wert entstehen",
-    "anchorTooltip": "Anker: \"{anchor}\" → {direction}",
-    "context": "Kontext",
     "dropMultiLine": "Ziehe ein Wort aus dem Kommunikationsbereich...",
     "dropHere": "Hier ablegen...",
     "multiLineNotice": "Mehrzeilige Extraktion: Der Text unterhalb des Ankers wird automatisch erfasst",
-    "testButton": "Muster testen",
-    "testing": "Wird getestet...",
-    "testResultsTitle": "Testergebnisse",
-    "fieldLabel": "{field}:",
-    "positionInfo": "Seite {page}, Pos.: ({x}, {y})",
-    "testErrors": {
-      "emptyInput": "Muster oder Text ist leer",
-      "noMatch": "Keine Übereinstimmung gefunden",
-      "invalidRegex": "Ungültiger regulärer Ausdruck"
-    }
+    "suggesting": "Suche eine Regel…",
+    "noRule": "Keine Regel liest „{value}“ aus dieser Rechnung zurück: Ziehe den Wert dort heraus, wo er neben seiner Beschriftung oder in seiner Tabelle steht.",
+    "ruleTable": "Spalte „{column}“",
+    "ruleOccurrence": "Nr. {n} von links",
+    "ruleCellLast": "letzte Zeile",
+    "ruleCellFirst": "erste Zeile",
+    "ruleCellRow": "Zeile „{label}“",
+    "ruleStop": "Tabelle bis „{stop}“",
+    "ruleAnchor": "„{anchor}“ → {direction}",
+    "otherRule": "Andere Regel ({n}/{total})",
+    "estimatedHint": "Tippe auf die Wörter, die einen geschätzten Zählerstand bedeuten:",
+    "readsAsEstimated": "In dieser Rechnung: geschätzter Zählerstand",
+    "readsAsActual": "In dieser Rechnung: tatsächlicher Zählerstand"
   },
   "wizardStepInfo": {
     "intro": "Lade eine Beispiel-PDF des Anbieters hoch, um die Extraktionsregeln zu erstellen.",
@@ -114,7 +120,8 @@
       "right": "rechts",
       "below": "unterhalb",
       "right_or_below": "rechts/unterhalb"
-    }
+    },
+    "suggestError": "Für diesen Wert konnte keine Regel gesucht werden"
   },
   "templatesManager": {
     "title": "Extraktionsvorlagen",
@@ -453,7 +460,9 @@
     "dropPromptInvoice": "Rechnungs-PDF hier ablegen",
     "dropSubtitle": "oder zum Auswählen klicken",
     "uploadOnlyPdf": "Bitte lade eine PDF-Datei hoch",
-    "extractError": "Fehler beim Extrahieren der Daten aus der PDF"
+    "extractError": "Fehler beim Extrahieren der Daten aus der PDF",
+    "layoutMismatch": "Diese Rechnung scheint nicht das Layout der Vorlage zu haben: Prüfe die Felder oder verwende eine andere Vorlage.",
+    "useTemplate": "Mit „{name}“ lesen"
   },
   "addReadingModal": {
     "editTitle": "Zählerstand bearbeiten",

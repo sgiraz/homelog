@@ -27,9 +27,11 @@
               'border rounded-lg p-3 transition-all',
               dragOverField === field.key
                 ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : mappings[field.key]
-                  ? 'border-positive/30 bg-positive/10'
-                  : 'border-line'
+                : fieldErrors[field.key]
+                  ? 'border-danger/40 bg-danger/10'
+                  : mappings[field.key]
+                    ? 'border-positive/30 bg-positive/10'
+                    : 'border-line'
             ]"
             @dragover.prevent="emit('update:dragOverField', field.key)"
             @dragleave.prevent="emit('update:dragOverField', null)"
@@ -52,61 +54,54 @@
               </button>
             </div>
 
+            <div v-if="suggesting === field.key" class="text-xs text-ink-muted py-2">
+              {{ t('utilities.wizardStepMapping.suggesting') }}
+            </div>
+
+            <div v-else-if="fieldErrors[field.key]" class="text-xs text-danger-soft py-1">
+              {{ t('utilities.wizardStepMapping.noRule', { value: fieldErrors[field.key] }) }}
+            </div>
+
             <!-- Drop zone content -->
-            <div v-if="mappings[field.key]" class="space-y-1">
-              <div class="flex items-center gap-2">
-                <Badge v-if="mappings[field.key].notFound" variant="warning" class="text-sm">
-                  {{ t('utilities.wizardStepMapping.notFoundInPdf') }}
-                </Badge>
-                <Badge v-else variant="positive" class="text-sm">
-                  {{ mappings[field.key].token.text }}
-                </Badge>
-                <svg v-if="!mappings[field.key].notFound" class="w-4 h-4 text-positive-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
+            <div v-else-if="mappings[field.key]" class="space-y-1">
+              <Badge v-if="mappings[field.key].notFound" variant="warning" class="text-sm">
+                {{ t('utilities.wizardStepMapping.notFoundInPdf') }}
+              </Badge>
+              <Badge v-else variant="positive" class="text-sm">
+                {{ mappingValue(field.key) }}
+              </Badge>
+              <div class="text-[11px] text-ink-muted">
+                {{ describeRule(mappingRule(field.key)) }}
               </div>
-              <!-- Anchor/strategy feedback -->
-              <div v-if="mappings[field.key].anchorText" class="text-[10px] text-ink-faint truncate" :title="t('utilities.wizardStepMapping.anchorTooltip', { anchor: mappings[field.key].anchorText, direction: getDirectionLabel(mappings[field.key].anchorDirection) })">
-                {{ mappings[field.key].anchorText }} → {{ getDirectionLabel(mappings[field.key].anchorDirection) }}
-              </div>
-              <div v-else class="text-[10px] text-warning-soft">
-                {{ t('utilities.wizardStepMapping.positionOnly') }}
-              </div>
+              <button
+                v-if="(mappings[field.key].suggestions?.length || 0) > 1"
+                @click="emit('next-suggestion', field.key)"
+                class="text-xs text-accent-soft hover:underline"
+              >
+                {{ t('utilities.wizardStepMapping.otherRule', { n: mappings[field.key].choice + 1, total: mappings[field.key].suggestions.length }) }}
+              </button>
 
-              <!-- Context Editor (collapsible) -->
-              <div v-if="mappings[field.key].allNeighbors" class="mt-1">
-                <button @click="emit('toggle-context-editor', field.key)"
-                        class="text-xs text-accent-soft hover:underline flex items-center gap-1">
-                  <svg class="w-3 h-3 transition-transform" :class="contextEditorOpen === field.key ? 'rotate-90' : ''"
-                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                  {{ t('utilities.wizardStepMapping.context') }} {{ getContextSummary(field.key) }}
-                </button>
-
-                <div v-if="contextEditorOpen === field.key" class="mt-1.5 space-y-1.5 text-xs">
-                  <div v-for="dir in ['left', 'above', 'right']" :key="dir">
-                    <div v-if="getNeighborWords(field.key, dir).length > 0"
-                         class="flex flex-wrap items-center gap-1">
-                      <span class="text-ink-faint w-8 text-[10px] flex-shrink-0">{{ directionLabels[dir] }}</span>
-                      <button v-for="word in getNeighborWords(field.key, dir)" :key="word.id"
-                              @click="emit('toggle-context-word', { fieldKey: field.key, word, direction: dir })"
-                              :class="[
-                                'px-1.5 py-0.5 rounded border text-[11px] transition-all cursor-pointer',
-                                isContextWordSelected(field.key, word.id)
-                                  ? 'bg-blue-100 border-blue-400 text-blue-700 dark:bg-blue-900/40 dark:border-blue-500 dark:text-blue-300'
-                                  : 'bg-surface border-line text-ink-muted hover:border-blue-300 dark:hover:border-blue-500'
-                              ]">
-                        {{ word.text }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Pattern preview -->
-                  <div class="mt-1 p-1.5 bg-surface-2 rounded font-mono text-[10px] text-ink-soft break-all">
-                    {{ mappings[field.key].pattern }}
-                  </div>
+              <!-- Words that mark an estimated reading -->
+              <div v-if="field.key === 'reading_type' && mappings[field.key].cell" class="pt-1 space-y-1">
+                <p class="text-[11px] text-ink-soft">{{ t('utilities.wizardStepMapping.estimatedHint') }}</p>
+                <div class="flex flex-wrap gap-1">
+                  <button
+                    v-for="word in cellWords(mappings[field.key].cell)"
+                    :key="word"
+                    @click="emit('toggle-estimated-word', { fieldKey: field.key, word })"
+                    :class="[
+                      'px-1.5 py-0.5 rounded border text-[11px] transition-all',
+                      mappings[field.key].estimatedWords.includes(word)
+                        ? 'bg-warning/15 border-warning/50 text-warning-soft'
+                        : 'bg-surface border-line text-ink-muted hover:border-ink-faint'
+                    ]"
+                  >
+                    {{ word }}
+                  </button>
                 </div>
+                <p class="text-[11px]" :class="mappings[field.key].estimatedWords.length ? 'text-warning-soft' : 'text-ink-muted'">
+                  {{ mappings[field.key].estimatedWords.length ? t('utilities.wizardStepMapping.readsAsEstimated') : t('utilities.wizardStepMapping.readsAsActual') }}
+                </p>
               </div>
             </div>
             <div
@@ -120,43 +115,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Test Pattern Button -->
-        <div class="pt-3 mt-3 border-t border-line">
-          <Button
-            @click="emit('test-patterns')"
-            :disabled="testing || Object.keys(mappings).length === 0"
-            variant="secondary"
-            size="sm"
-            class="w-full"
-          >
-            {{ testing ? t('utilities.wizardStepMapping.testing') : t('utilities.wizardStepMapping.testButton') }}
-          </Button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Test Results -->
-    <div v-if="hasTestedPatterns && Object.keys(testResults).length > 0"
-         class="bg-surface rounded-lg p-3 space-y-2">
-      <h5 class="text-sm font-medium text-ink mb-2">{{ t('utilities.wizardStepMapping.testResultsTitle') }}</h5>
-      <div v-for="(result, fieldKey) in testResults" :key="fieldKey" class="flex flex-col gap-1 text-sm py-1 border-b border-line last:border-0">
-        <div class="flex items-center gap-2">
-          <svg v-if="result.success" class="w-4 h-4 text-positive-soft flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-          <svg v-else class="w-4 h-4 text-warning-soft flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span class="text-ink-soft">{{ t('utilities.wizardStepMapping.fieldLabel', { field: getFieldLabel(fieldKey) }) }}</span>
-          <span :class="result.success ? 'text-positive-soft font-medium' : 'text-warning-soft'">
-            {{ result.success ? result.value : testErrorText(result) }}
-          </span>
-        </div>
-        <div v-if="result.hasPosition" class="text-xs text-ink-faint ml-6">
-          {{ t('utilities.wizardStepMapping.positionInfo', { page: result.page + 1, x: Math.round(result.x), y: Math.round(result.y) }) }}
-          <span v-if="result.contextLeft"> | ← "{{ result.contextLeft }}"</span>
-        </div>
       </div>
     </div>
   </div>
@@ -166,75 +124,19 @@
 import { useI18n } from 'vue-i18n'
 import Badge from '@/components/common/Badge.vue'
 import PDFTextractView from './PDFTextractView.vue'
-import Button from '@/components/common/Button.vue'
 
 defineOptions({ name: 'WizardStepMapping' })
 
-defineProps({
-  pdfAnalysis: {
-    type: Object,
-    default: null
-  },
-  extracting: {
-    type: Boolean,
-    default: false
-  },
-  mappedTokenIds: {
-    type: [Set, Array],
-    required: true
-  },
-  extractionFields: {
-    type: Array,
-    required: true
-  },
-  dragOverField: {
-    type: String,
-    default: null
-  },
-  mappings: {
-    type: Object,
-    required: true
-  },
-  testing: {
-    type: Boolean,
-    default: false
-  },
-  hasTestedPatterns: {
-    type: Boolean,
-    default: false
-  },
-  testResults: {
-    type: Object,
-    required: true
-  },
-  contextEditorOpen: {
-    type: String,
-    default: null
-  },
-  getDirectionLabel: {
-    type: Function,
-    required: true
-  },
-  getContextSummary: {
-    type: Function,
-    required: true
-  },
-  getNeighborWords: {
-    type: Function,
-    required: true
-  },
-  isContextWordSelected: {
-    type: Function,
-    required: true
-  },
-  getFieldLabel: {
-    type: Function,
-    required: true
-  },
-  directionLabels: {
-    type: Object,
-    required: true
-  }
+const props = defineProps({
+  pdfAnalysis: { type: Object, default: null },
+  extracting: { type: Boolean, default: false },
+  mappedTokenIds: { type: [Set, Array], required: true },
+  extractionFields: { type: Array, required: true },
+  dragOverField: { type: String, default: null },
+  mappings: { type: Object, required: true },
+  fieldErrors: { type: Object, required: true },
+  suggesting: { type: String, default: null },
+  describeRule: { type: Function, required: true }
 })
 
 const emit = defineEmits([
@@ -242,19 +144,24 @@ const emit = defineEmits([
   'drag-end',
   'field-drop',
   'clear-mapping',
-  'toggle-context-editor',
-  'toggle-context-word',
-  'test-patterns',
+  'next-suggestion',
+  'toggle-estimated-word',
   'update:dragOverField'
 ])
 
 const { t } = useI18n()
 
-// testPattern reports failures as a key plus an optional raw detail (a regex
-// engine message), so the wording is translated here rather than in the util.
-function testErrorText(result) {
-  if (!result.errorKey) return ''
-  const message = t(`utilities.wizardStepMapping.testErrors.${result.errorKey}`)
-  return result.errorDetail ? `${message}: ${result.errorDetail}` : message
+function mappingRule(fieldKey) {
+  const m = props.mappings[fieldKey]
+  return m.suggestions ? m.suggestions[m.choice].rule : m.rule
+}
+
+function mappingValue(fieldKey) {
+  const m = props.mappings[fieldKey]
+  return m.suggestions ? m.suggestions[m.choice].value : m.token.text
+}
+
+function cellWords(cell) {
+  return [...new Set(cell.split(/\s+/).filter(w => /\p{L}{2,}/u.test(w)))]
 }
 </script>

@@ -13,11 +13,15 @@ reading, and more.
 
 1. **Upload a sample bill.** HomeLog converts the PDF to text and detects tokens
    like amounts, dates, meter codes (POD/PDR), and numbers.
-2. **Tag the fields.** In a 3-step wizard, point at the value you want for each
-   field (total amount, period, provider reading…). HomeLog records where it sits
-   on the page and how to recognise it.
-3. **Save the template.** Assign it as the default for a service, and future bills
-   from the same provider are parsed automatically.
+2. **Tag the fields.** Drag the value you want onto each field (total amount,
+   period, provider reading…). HomeLog works out how to find it again — by the
+   label next to it, or by the column of its table and which row — and shows the
+   rule with the value it reads back from that same bill. A value no rule can
+   read back stays red: take it from where it sits by its label or in its table.
+   For the reading type, tap the words that mean an estimated reading.
+3. **Check and save.** Optionally try the template on a second bill of the same
+   provider, then save it. Assign it as the default for a service, and future
+   bills from the same provider are parsed automatically.
 
 The fields on offer depend on the service. Meter-specific ones (the reading the
 bill closes on, its date and type, the meter serial number) appear only for
