@@ -62,7 +62,13 @@
           </svg>
           <div class="text-left">
             <p class="text-sm font-medium text-ink">{{ uploadedFile.name }}</p>
-            <p class="text-xs text-ink-muted">{{ t('utilities.pdfUploadZone.extractedAuto') }}</p>
+            <p v-if="!extraction?.template_id" class="text-xs text-warning-soft">{{ t('utilities.pdfUploadZone.noTemplate') }}</p>
+            <template v-else>
+              <p class="text-xs text-ink-muted">{{ t('utilities.pdfUploadZone.extractedAuto') }}</p>
+              <p v-if="extraction.not_found?.length" class="text-xs text-warning-soft">
+                {{ t('utilities.pdfUploadZone.notFound', { fields: extraction.not_found.map(f => t(`utilities.templateWizard.fields.${f}`)).join(', ') }) }}
+              </p>
+            </template>
           </div>
           <button
             type="button"
@@ -123,6 +129,7 @@ const isDragging = ref(false)
 const processing = ref(false)
 const error = ref(null)
 const uploadedFile = ref(null)
+const extraction = ref(null)
 
 const availableTemplates = ref([])
 const selectedTemplateId = ref(null)
@@ -189,6 +196,7 @@ async function processFile(file) {
   try {
     const { data } = await utilitiesAPI.uploadBillPDF(props.utilityId, file, selectedTemplateId.value)
     uploadedFile.value = file
+    extraction.value = data
 
     if (data) {
       const normalized = { ...data }
@@ -209,6 +217,7 @@ async function processFile(file) {
 
 function clearUploadedFile() {
   uploadedFile.value = null
+  extraction.value = null
   if (fileInput.value) fileInput.value.value = ''
 }
 

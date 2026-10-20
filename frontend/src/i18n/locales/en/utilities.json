@@ -447,6 +447,8 @@
     "templateHint": "Select the template to extract data from the PDF",
     "extracting": "Extracting data from PDF...",
     "extractedAuto": "Data extracted automatically",
+    "noTemplate": "No template for this service: nothing was extracted, fill in the bill by hand, or create a template from this PDF with “Manage extraction templates” on the Services page.",
+    "notFound": "Not found in this bill: {fields}",
     "dropPromptBill": "Drop the bill PDF here",
     "dropPromptInvoice": "Drop the invoice PDF here",
     "dropSubtitle": "or click to select",

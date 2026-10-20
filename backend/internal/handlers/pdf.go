@@ -166,6 +166,11 @@ type ExtractedBillData struct {
 
 	// Communication text (extracted from bill)
 	CommunicationText string `json:"communication_text,omitempty"`
+
+	// TemplateID is the template the bill was read with, nil without one.
+	TemplateID *uint `json:"template_id,omitempty"`
+	// NotFound lists the template's fields this bill did not yield.
+	NotFound []string `json:"not_found,omitempty"`
 }
 
 // ExtractedContractData represents data extracted from a contract PDF
@@ -242,10 +247,8 @@ func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 
 	template, templateFound := h.resolveBillTemplate(utility, c.PostForm("template_id"))
 
-	var extracted ExtractedBillData
-	extracted.PDFURL = pdfURL
-	extracted.RawText = text
-
+	// Without a template nothing is extracted: the bill is filled in by hand.
+	extracted := ExtractedBillData{PDFURL: pdfURL, RawText: text}
 	if templateFound {
 		// Extract words with positions for position-based matching
 		var words []WordInfo
@@ -257,18 +260,8 @@ func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 
 		// Extract data using template rules with position data
 		extracted = h.extractBillDataWithTemplateAndWords(text, template, pdfURL, words)
-
-		// Build set of fields the template defines rules for
-		templateFields := h.getTemplateFieldSet(template)
-
-		// Only supplement fields the template does NOT define rules for.
-		// When a template has a rule for a field, trust it (even if empty) -
-		// wrong default values are worse than missing values.
-		defaultExtracted := h.extractBillDataDefault(text, utility.Type, pdfURL)
-		extracted = h.mergeExtracted(extracted, defaultExtracted, templateFields)
-	} else {
-		// Use default extraction patterns
-		extracted = h.extractBillDataDefault(text, utility.Type, pdfURL)
+		extracted.TemplateID = &template.ID
+		extracted.NotFound = notFoundFields(extracted, template)
 	}
 
 	log.Printf("Extracted bill data: %+v", extracted)

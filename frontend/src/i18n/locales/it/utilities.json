@@ -527,6 +527,8 @@
     "templateHint": "Seleziona il template per estrarre i dati dal PDF",
     "extracting": "Estrazione dati dal PDF...",
     "extractedAuto": "Dati estratti automaticamente",
+    "noTemplate": "Nessun template per questo servizio: non è stato estratto nulla, compila la bolletta a mano, oppure crea un template da questo PDF con «Gestisci template estrazione» nella pagina Servizi.",
+    "notFound": "Non trovati in questa bolletta: {fields}",
     "dropPromptBill": "Trascina qui il PDF della bolletta",
     "dropPromptInvoice": "Trascina qui il PDF della fattura",
     "dropSubtitle": "oppure clicca per selezionare",
