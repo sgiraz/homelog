@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Stage 1: Build frontend (native platform, output is static files)
-FROM --platform=$BUILDPLATFORM node:24-alpine AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:24.22.1-alpine AS frontend-builder
 ARG APP_VERSION=dev
 WORKDIR /build
 COPY frontend/package*.json ./
@@ -32,7 +32,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go build -ldflags="-s -w" -o upgrade ./cmd/upgrade/
 
 # Stage 3: Minimal runtime
-FROM alpine:3.19
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates tzdata wget poppler-utils && \
     addgroup -g 1000 homelog && adduser -D -u 1000 -G homelog homelog
 WORKDIR /app
