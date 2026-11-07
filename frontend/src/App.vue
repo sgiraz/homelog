@@ -38,6 +38,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useDemoMode } from '@/composables/useDemoMode'
+import { useViewCache } from '@/composables/useViewCache'
 import { initAnalytics } from '@/utils/analytics'
 import { setI18nLocale } from '@/i18n'
 import Navbar from '@/components/layout/Navbar.vue'
@@ -59,7 +60,7 @@ useDemoMode().initDemoMode()
 initAnalytics(router, analyticsSite)
 
 // Cache main views to avoid re-mount flicker on navigation
-const cachedViews = ['DashboardView', 'ExpensesView', 'UtilitiesView', 'ProjectsView', 'SettingsView']
+const { cachedViews } = useViewCache()
 
 if (authStore.isAuthenticated) {
   settingsStore.loadSettings()

@@ -175,7 +175,7 @@
   },
   "properties": {
     "title": "Gestione Abitazioni",
-    "subtitle": "Aggiungi una nuova abitazione al sistema",
+    "subtitle": "Aggiungi, modifica o elimina le tue abitazioni",
     "principalBadge": "Principale",
     "newTitle": "Nuova Abitazione",
     "namePlaceholder": "Nome abitazione *",
@@ -185,7 +185,19 @@
     "setAsPrincipal": "Imposta come principale",
     "createButton": "Crea Abitazione",
     "creatingButton": "Creazione...",
-    "createError": "Errore durante la creazione"
+    "createError": "Errore durante la creazione",
+    "typeLabel": "Tipo di abitazione",
+    "residentsLabel": "Residenti",
+    "editTitle": "Modifica Abitazione",
+    "savingButton": "Salvataggio...",
+    "updateError": "Errore durante il salvataggio",
+    "editAria": "Modifica {name}",
+    "deleteAria": "Elimina {name}",
+    "deleteConfirmTitle": "Eliminare \"{name}\"?",
+    "deleteConfirmMessage": "Vengono eliminati anche servizi, bollette, letture, spese, saldi, progetti, modelli di bolletta e membri, per tutti quelli che la condividono. L'operazione non si può annullare.",
+    "newPrincipalLabel": "Quale abitazione diventa la principale?",
+    "deleteSuccess": "\"{name}\" eliminata",
+    "deleteError": "Errore durante l'eliminazione"
   },
   "categories": {
     "title": "Gestione Categorie",

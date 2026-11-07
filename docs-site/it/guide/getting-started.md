@@ -35,6 +35,13 @@ Quando sei pronto a usarlo sul serio, segui la guida al
 | **Bolletta** | Una fattura del fornitore, eventualmente collegata a una lettura del contatore. |
 | **Progetto** | Un budget per un'attività una tantum — una ristrutturazione, un viaggio, un evento. |
 
+Le abitazioni si gestiscono in **Impostazioni → Proprietà**, dove chi le ha
+create può aggiungerle, modificarle o eliminarle. Eliminare un'abitazione
+elimina anche tutto ciò che le appartiene — utenze, bollette, letture, spese,
+progetti e membri — per tutti quelli che la condividono. Se era la principale,
+scegli tu quale abitazione prende il suo posto; l'unica abitazione non si può
+eliminare.
+
 ## Dove andare ora
 
 - [Self-hosting →](./self-hosting) — metti in piedi la tua istanza.
