@@ -175,7 +175,7 @@
   },
   "properties": {
     "title": "Manage Properties",
-    "subtitle": "Add a new property to the system",
+    "subtitle": "Add, edit or remove your homes",
     "principalBadge": "Primary",
     "newTitle": "New Property",
     "namePlaceholder": "Property name *",
@@ -185,7 +185,19 @@
     "setAsPrincipal": "Set as primary",
     "createButton": "Create Property",
     "creatingButton": "Creating...",
-    "createError": "Error during creation"
+    "createError": "Error during creation",
+    "typeLabel": "Property type",
+    "residentsLabel": "Residents",
+    "editTitle": "Edit Property",
+    "savingButton": "Saving...",
+    "updateError": "Error while saving",
+    "editAria": "Edit {name}",
+    "deleteAria": "Delete {name}",
+    "deleteConfirmTitle": "Delete \"{name}\"?",
+    "deleteConfirmMessage": "Its services, bills, meter readings, expenses, settlements, projects, bill templates and members are deleted too, for everyone who shares it. This cannot be undone.",
+    "newPrincipalLabel": "Which home becomes the primary one?",
+    "deleteSuccess": "\"{name}\" deleted",
+    "deleteError": "Error while deleting"
   },
   "categories": {
     "title": "Manage Categories",
