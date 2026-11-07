@@ -145,7 +145,7 @@ export const propertiesAPI = {
   list: () => apiClient.get('/properties'),
   create: (data) => apiClient.post('/properties', data),
   update: (id, data) => apiClient.put(`/properties/${id}`, data),
-  delete: (id) => apiClient.delete(`/properties/${id}`),
+  delete: (id, params) => apiClient.delete(`/properties/${id}`, { params }),
 }
 
 export const settingsAPI = {

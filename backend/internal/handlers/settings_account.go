@@ -223,7 +223,7 @@ func (h *SettingsHandler) DeleteAccount(c *gin.Context) {
 
 		if otherMemberCount == 0 {
 			// Sole member: cascade delete entire property and all data
-			if err := h.cascadeDeleteProperty(tx, member.PropertyID); err != nil {
+			if err := cascadeDeleteProperty(tx, member.PropertyID); err != nil {
 				tx.Rollback()
 				log.Printf("❌ Error cascade deleting property %d: %v", member.PropertyID, err)
 				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete properties")
@@ -350,59 +350,4 @@ func (h *SettingsHandler) DeleteAccount(c *gin.Context) {
 
 	log.Printf("✅ User ID=%d (%s) self-deleted their account", userID, user.Email)
 	c.JSON(http.StatusOK, gin.H{"message": "Account deleted"})
-}
-
-// cascadeDeleteProperty deletes all data associated with a property (utilities, bills, readings, etc.)
-func (h *SettingsHandler) cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
-	// Collect utility IDs
-	var utilityIDs []uint
-	tx.Model(&models.Utility{}).Where("property_id = ?", propertyID).Pluck("id", &utilityIDs)
-
-	if len(utilityIDs) > 0 {
-		// PriceChanges
-		tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.PriceChange{})
-		// ServiceCommunications
-		tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.ServiceCommunication{})
-		// Bills — collect IDs before delete for search_index cleanup (batch deletes
-		// pass a zero-value struct to AfterDelete, so the hook removes entity_id=0).
-		var billIDs []uint
-		tx.Model(&models.Bill{}).Where("utility_id IN ?", utilityIDs).Pluck("id", &billIDs)
-		tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.Bill{})
-		if len(billIDs) > 0 {
-			tx.Exec("DELETE FROM search_index WHERE entity_type = 'bill' AND entity_id IN ?", billIDs)
-		}
-		// MeterReadings
-		tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.MeterReading{})
-		// UtilityRates
-		tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.UtilityRate{})
-		// Utilities
-		tx.Exec("DELETE FROM search_index WHERE entity_type = 'utility' AND entity_id IN ?", utilityIDs)
-		tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.Utility{})
-	}
-
-	// Delete expenses associated with this property (and their splits)
-	var propertyExpenseIDs []uint
-	tx.Model(&models.Expense{}).Where("property_id = ?", propertyID).Pluck("id", &propertyExpenseIDs)
-	if len(propertyExpenseIDs) > 0 {
-		tx.Unscoped().Where("expense_id IN ?", propertyExpenseIDs).Delete(&models.ExpenseSplit{})
-		tx.Exec("DELETE FROM search_index WHERE entity_type = 'expense' AND entity_id IN ?", propertyExpenseIDs)
-		tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.Expense{})
-	}
-
-	// BillTemplates
-	tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.BillTemplate{})
-	// Settlements
-	tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.Settlement{})
-	// HouseholdSettings
-	tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.HouseholdSettings{})
-	// Join requests
-	tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.PropertyJoinRequest{})
-	// Household members (remaining)
-	tx.Unscoped().Where("property_id = ?", propertyID).Delete(&models.HouseholdMember{})
-	// Property
-	if err := tx.Unscoped().Delete(&models.Property{}, propertyID).Error; err != nil {
-		return err
-	}
-
-	return nil
 }

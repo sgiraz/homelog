@@ -592,13 +592,12 @@ type UserSettings struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	UserID            uint   `gorm:"uniqueIndex;not null" json:"user_id"`
-	DefaultPropertyID *uint  `json:"default_property_id,omitempty"`
-	Language          string `gorm:"not null;default:'en'" json:"language"`
-	Currency          string `gorm:"not null;default:'EUR'" json:"currency"`
-	Theme             string `gorm:"not null;default:'auto'" json:"theme"`        // auto, light, dark
-	ColorTheme        string `gorm:"not null;default:'slate'" json:"color_theme"` // slate (default), paper, forest, ocean, plum
-	DateFormat        string `gorm:"not null;default:'DD/MM/YYYY'" json:"date_format"`
+	UserID     uint   `gorm:"uniqueIndex;not null" json:"user_id"`
+	Language   string `gorm:"not null;default:'en'" json:"language"`
+	Currency   string `gorm:"not null;default:'EUR'" json:"currency"`
+	Theme      string `gorm:"not null;default:'auto'" json:"theme"`        // auto, light, dark
+	ColorTheme string `gorm:"not null;default:'slate'" json:"color_theme"` // slate (default), paper, forest, ocean, plum
+	DateFormat string `gorm:"not null;default:'DD/MM/YYYY'" json:"date_format"`
 
 	// Split preferences
 	DefaultSplitWithMemberIDs string `json:"default_split_with_member_ids,omitempty"` // JSON array as string e.g. "[2,3]"
