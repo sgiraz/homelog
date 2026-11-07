@@ -14,7 +14,7 @@
 
 ### 🌐 [Live Demo](https://demo.homelog.dev) &nbsp;·&nbsp; 🏠 [Website](https://homelog.dev) &nbsp;·&nbsp; 📖 [Documentation](https://docs.homelog.dev)
 
-> Try the **[live demo](https://demo.homelog.dev)** with sample data (resets hourly) — then self-host your own private instance with the [Quick Start](#quick-start) below.
+> Try the **[live demo](https://demo.homelog.dev)** with sample data — then self-host your own private instance with the [Quick Start](#quick-start) below.
 
 ## Screenshots
 
