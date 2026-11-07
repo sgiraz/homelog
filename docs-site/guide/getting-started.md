@@ -34,6 +34,12 @@ guide to deploy your own private instance.
 | **Bill** | A provider invoice, optionally linked to a meter reading. |
 | **Project** | A budget for a one-off effort — a renovation, a trip, an event. |
 
+Homes are managed in **Settings → Properties**, where their owner can add,
+edit or delete them. Deleting a home also deletes everything that belongs to it
+— utilities, bills, readings, expenses, projects and members — for everyone who
+shares it. If it was your primary home, you choose which home takes its place;
+your only home can't be deleted.
+
 ## Where to next
 
 - [Self-Hosting →](./self-hosting) — get your own instance running.
