@@ -28,6 +28,7 @@
     <Toast />
     <ConfirmDialog />
     <PwaUpdatePrompt />
+    <DemoWakeupNotice />
   </div>
 </template>
 
@@ -44,6 +45,7 @@ import Toast from '@/components/common/Toast.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import PwaUpdatePrompt from '@/components/common/PwaUpdatePrompt.vue'
 import DemoBanner from '@/components/common/DemoBanner.vue'
+import DemoWakeupNotice from '@/components/common/DemoWakeupNotice.vue'
 
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
