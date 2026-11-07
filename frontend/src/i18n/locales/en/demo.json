@@ -17,5 +17,10 @@
     "button": "Enter demo",
     "selfHostPrompt": "Like it and want it for your own home?",
     "selfHostLink": "Self-host it from GitHub"
+  },
+  "wakeup": {
+    "title": "Waking up the demo server",
+    "message": "The demo goes to sleep when nobody is using it and takes up to a minute to start again. This page will reload by itself as soon as it is ready.",
+    "retry": "Reload now"
   }
 }

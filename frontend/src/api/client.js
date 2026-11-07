@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { suspectColdStart, SLOW_REQUEST_MS } from '@/composables/useDemoWakeup'
 
 const apiClient = axios.create({
   baseURL: '/api/v1',
@@ -21,6 +22,28 @@ apiClient.interceptors.request.use(config => {
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
+
+// Demo cold-start detection (see useDemoWakeup). Registered before the refresh
+// interceptor so it sees the raw outcome of every request.
+apiClient.interceptors.request.use(config => {
+  config._slowTimer = setTimeout(suspectColdStart, SLOW_REQUEST_MS)
+  return config
+})
+
+apiClient.interceptors.response.use(
+  response => {
+    clearTimeout(response.config._slowTimer)
+    return response
+  },
+  error => {
+    clearTimeout(error.config?._slowTimer)
+    const status = error.response?.status
+    if (!error.response || status === 502 || status === 503 || status === 504) {
+      suspectColdStart()
+    }
+    return Promise.reject(error)
+  }
+)
 
 // Refresh token interceptor
 let isRefreshing = false

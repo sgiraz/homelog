@@ -16,7 +16,7 @@ Questa informativa riguarda i tre siti pubblici di HomeLog:
 **Non** riguarda un'istanza di HomeLog installata su un tuo server: in quel caso
 il titolare del trattamento sei tu — vedi [Installazioni self-hosted](#installazioni-self-hosted).
 
-**Ultimo aggiornamento:** 16 settembre 2026
+**Ultimo aggiornamento:** 7 novembre 2026
 
 ## Chi è il titolare
 
@@ -61,6 +61,7 @@ dell'art. 5(3) della Direttiva ePrivacy (in Italia art. 122 del Codice Privacy)
 | `demo.homelog.dev` | `token`, `user` (`localStorage`) | Ti mantiene autenticato sull'account demo | Fino al logout o alla cancellazione dei dati del sito |
 | `demo.homelog.dev` | `homelog_refresh` (**cookie**, HttpOnly, SameSite=Strict) | Rinnova il token di accesso a breve scadenza senza chiederti di autenticarti di nuovo | 7 giorni, o fino al logout |
 | `demo.homelog.dev` | `themeMode`, `colorTheme`, `locale` | Preferenze di aspetto e lingua | Finché non cancelli i dati del sito |
+| `demo.homelog.dev` | `demoInstance` | Ricorda che il sito è la demo, così può avvisarti quando il server si sta riavviando dopo una pausa | Finché non cancelli i dati del sito |
 
 Puoi cancellare tutto in qualsiasi momento dalla funzione "cancella dati del
 sito" del browser. I siti continuano a funzionare: dimenticano solo le tue

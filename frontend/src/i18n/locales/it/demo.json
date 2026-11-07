@@ -17,5 +17,10 @@
     "button": "Entra nella demo",
     "selfHostPrompt": "Ti piace e la vuoi a casa tua?",
     "selfHostLink": "Installala da GitHub"
+  },
+  "wakeup": {
+    "title": "Avvio del server demo",
+    "message": "La demo va in pausa quando nessuno la usa e impiega fino a un minuto per ripartire. La pagina si ricaricherà da sola appena è pronta.",
+    "retry": "Ricarica ora"
   }
 }

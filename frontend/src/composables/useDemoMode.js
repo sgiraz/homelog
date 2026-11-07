@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { versionAPI, demoAPI } from '@/api/client'
 import { trackEvent } from '@/utils/analytics'
+import { rememberDemoInstance } from '@/composables/useDemoWakeup'
 
 // Module-level state — fetched once and shared across every component.
 const isDemoMode = ref(false)
@@ -30,6 +31,7 @@ export function useDemoMode() {
       try {
         const { data } = await versionAPI.check()
         isDemoMode.value = !!data.demo_mode
+        rememberDemoInstance(isDemoMode.value)
         appVersion.value = data.current && data.current !== 'dev' ? data.current : ''
         updateAvailable.value = !!data.update_available
         latestUrl.value = data.latest_url || ''

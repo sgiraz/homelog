@@ -17,5 +17,10 @@
     "button": "Demo starten",
     "selfHostPrompt": "Gefällt dir HomeLog und du möchtest es für dein eigenes Zuhause?",
     "selfHostLink": "Von GitHub selbst hosten"
+  },
+  "wakeup": {
+    "title": "Demo-Server wird gestartet",
+    "message": "Die Demo pausiert, wenn sie niemand nutzt, und braucht bis zu einer Minute zum Neustart. Diese Seite lädt automatisch neu, sobald sie bereit ist.",
+    "retry": "Jetzt neu laden"
   }
 }

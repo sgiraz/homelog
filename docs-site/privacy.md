@@ -16,7 +16,7 @@ This policy covers the three public HomeLog sites:
 It does **not** cover a HomeLog instance you install on your own server. There,
 you are the data controller — see [Self-hosted installations](#self-hosted-installations).
 
-**Last updated:** 16 September 2026
+**Last updated:** 7 November 2026
 
 ## Who is responsible
 
@@ -57,6 +57,7 @@ preference you set yourself, so under Article 5(3) of the ePrivacy Directive
 | `demo.homelog.dev` | `token`, `user` (`localStorage`) | Keeps you signed in to the demo account | Until logout or clearing site data |
 | `demo.homelog.dev` | `homelog_refresh` (**cookie**, HttpOnly, SameSite=Strict) | Renews the short-lived login token without asking you to sign in again | 7 days, or until logout |
 | `demo.homelog.dev` | `themeMode`, `colorTheme`, `locale` | Appearance and language preferences | Until you clear site data |
+| `demo.homelog.dev` | `demoInstance` | Remembers that the site is the demo, so it can tell you when the server is waking up from sleep | Until you clear site data |
 
 You can delete all of it at any time through your browser's "clear site data"
 function. The sites keep working; they just forget your preferences.
