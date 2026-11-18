@@ -12,7 +12,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
@@ -28,7 +27,7 @@ func main() {
 	if _, err := os.Stat(path); err != nil {
 		log.Fatalf("❌ No database at %s: %v", path, err)
 	}
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
+	db, err := database.Open(path, &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
 		log.Fatalf("❌ Cannot open %s: %v", path, err)
 	}
@@ -44,20 +43,25 @@ func upgrade(db *gorm.DB) error {
 		return nil
 	}
 	// Rebuilding a table fails while other tables reference it.
-	db.Exec("PRAGMA foreign_keys=OFF")
-	for _, step := range []struct {
-		name string
-		run  func(*gorm.DB) error
-	}{
-		// Before the default template goes: it tells which property a template serves.
-		{"bill templates moved to their property", moveBillTemplatesToProperty},
-		{"bill estimates moved to the closing reading", moveEstimatesToClosingReading},
-		{"per-service default template removed", dropServiceDefaultTemplate},
-	} {
-		if err := step.run(db); err != nil {
-			return fmt.Errorf("%s: %w", step.name, err)
+	err := database.WithoutForeignKeys(db, func(conn *gorm.DB) error {
+		for _, step := range []struct {
+			name string
+			run  func(*gorm.DB) error
+		}{
+			// Before the default template goes: it tells which property a template serves.
+			{"bill templates moved to their property", moveBillTemplatesToProperty},
+			{"bill estimates moved to the closing reading", moveEstimatesToClosingReading},
+			{"per-service default template removed", dropServiceDefaultTemplate},
+		} {
+			if err := step.run(conn); err != nil {
+				return fmt.Errorf("%s: %w", step.name, err)
+			}
+			log.Printf("✅ %s", step.name)
 		}
-		log.Printf("✅ %s", step.name)
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	log.Println("✅ Done. Start HomeLog: it migrates the rest on startup.")
 	return nil

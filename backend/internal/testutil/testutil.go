@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/glebarez/sqlite"
 	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -25,13 +24,12 @@ const TestJWTSecret = "test-secret-do-not-use-in-prod"
 // Each call returns an isolated database so tests never share state.
 func NewDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+	db, err := database.Open(":memory:", &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
 		t.Fatalf("failed to open in-memory sqlite: %v", err)
 	}
-	db.Exec("PRAGMA foreign_keys=ON;")
 	if err := database.AutoMigrate(db); err != nil {
 		t.Fatalf("failed to migrate schema: %v", err)
 	}

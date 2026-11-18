@@ -3,6 +3,7 @@ package database
 import (
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/sgiraz/homelog/internal/models"
@@ -58,19 +59,35 @@ var demoTables = []string{
 	"users",
 }
 
-// ResetDemoData wipes every row and rebuilds the demo dataset from scratch.
-// It mirrors AutoMigrate's approach of toggling foreign keys off around a bulk
-// mutation rather than wrapping in a transaction, because SQLite cannot change
-// the foreign_keys pragma inside an open transaction. The window of
-// inconsistency is sub-100ms for the small demo dataset and acceptable for a
-// public demo. Deleting all rows resets each table's implicit rowid counter, so
-// the demo user is recreated with ID 1 and existing demo JWTs stay valid.
+// demoResetMu serializes resets: any visitor can ask for one (/demo/reset)
+// while the hourly ticker may be running another.
+var demoResetMu sync.Mutex
+
+// ResetDemoData wipes every row and rebuilds the demo dataset from scratch, in
+// one transaction: visitors see the old dataset or the new one, never a
+// half-built one, and a failed seed leaves the old one in place. Foreign keys
+// are checked at commit (defer_foreign_keys) rather than per statement, so the
+// wipe may run in any order. Clearing the AUTOINCREMENT counters recreates the
+// demo user with ID 1, so existing demo JWTs stay valid.
 func ResetDemoData(db *gorm.DB) error {
+	demoResetMu.Lock()
+	defer demoResetMu.Unlock()
+
 	log.Println("🎭 Resetting demo data...")
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("PRAGMA defer_foreign_keys=ON").Error; err != nil {
+			return err
+		}
+		return resetDemoData(tx)
+	})
+	if err != nil {
+		return err
+	}
+	log.Println("✅ Demo data reset complete")
+	return nil
+}
 
-	db.Exec("PRAGMA foreign_keys=OFF;")
-	defer db.Exec("PRAGMA foreign_keys=ON;")
-
+func resetDemoData(db *gorm.DB) error {
 	for _, t := range demoTables {
 		if err := db.Exec("DELETE FROM " + t).Error; err != nil {
 			// search_index may not exist on a brand-new DB before initSearchIndex;
@@ -85,12 +102,7 @@ func ResetDemoData(db *gorm.DB) error {
 	// and previously issued demo JWTs (which embed user_id=1) keep working.
 	db.Exec("DELETE FROM sqlite_sequence")
 
-	if err := seedDemoData(db); err != nil {
-		return err
-	}
-
-	log.Println("✅ Demo data reset complete")
-	return nil
+	return seedDemoData(db)
 }
 
 // SeedDemoIfNeeded seeds the demo dataset at startup when DEMO_MODE is on and
