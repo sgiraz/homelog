@@ -7,16 +7,17 @@ import (
 )
 
 // cascadeDeleteProperty hard-deletes a property and everything hanging off it:
-// utilities (with bills, readings, rates, price changes, communications),
-// expenses and splits, projects, settlements, bill templates, household
-// settings, members, join requests and notifications. Run it inside a
-// transaction: it stops at the first failing statement so the caller can roll
-// back. Bill attachments left on disk are reclaimed by SweepUploads.
+// utilities (with bills, installments, readings, rates, price changes,
+// communications), expenses and splits, projects, settlements and their
+// allocations, bill templates, household settings, members, join requests and
+// notifications. Run it inside a transaction: it stops at the first failing
+// statement so the caller can roll back. Bill attachments left on disk are
+// reclaimed by SweepUploads.
 //
 // search_index rows are removed explicitly: batch deletes hand AfterDelete a
 // zero-value struct, so the hooks would only remove entity_id=0.
 func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
-	var utilityIDs, billIDs, expenseIDs, projectIDs []uint
+	var utilityIDs, billIDs, expenseIDs, splitIDs, projectIDs, settlementIDs []uint
 	if err := tx.Model(&models.Utility{}).Where("property_id = ?", propertyID).Pluck("id", &utilityIDs).Error; err != nil {
 		return err
 	}
@@ -28,7 +29,15 @@ func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 	if err := tx.Model(&models.Expense{}).Where("property_id = ?", propertyID).Pluck("id", &expenseIDs).Error; err != nil {
 		return err
 	}
+	if len(expenseIDs) > 0 {
+		if err := tx.Model(&models.ExpenseSplit{}).Where("expense_id IN ?", expenseIDs).Pluck("id", &splitIDs).Error; err != nil {
+			return err
+		}
+	}
 	if err := tx.Model(&models.Project{}).Where("property_id = ?", propertyID).Pluck("id", &projectIDs).Error; err != nil {
+		return err
+	}
+	if err := tx.Model(&models.Settlement{}).Where("property_id = ?", propertyID).Pluck("id", &settlementIDs).Error; err != nil {
 		return err
 	}
 
@@ -40,6 +49,19 @@ func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 		steps = append(steps, func() error { return tx.Exec(sql, args...).Error })
 	}
 
+	// Settlements reference splits (allocations) and expenses (target), so
+	// they go before the expenses.
+	if len(settlementIDs) > 0 {
+		del(&models.SettlementAllocation{}, "settlement_id IN ?", settlementIDs)
+	}
+	if len(splitIDs) > 0 {
+		del(&models.SettlementAllocation{}, "expense_split_id IN ?", splitIDs)
+	}
+	del(&models.Settlement{}, "property_id = ?", propertyID)
+
+	if len(billIDs) > 0 {
+		del(&models.BillInstallment{}, "bill_id IN ?", billIDs)
+	}
 	if len(utilityIDs) > 0 {
 		del(&models.PriceChange{}, "utility_id IN ?", utilityIDs)
 		del(&models.ServiceCommunication{}, "utility_id IN ?", utilityIDs)
@@ -72,7 +94,6 @@ func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 		exec("DELETE FROM search_index WHERE entity_type = 'project' AND entity_id IN ?", projectIDs)
 	}
 	del(&models.BillTemplate{}, "property_id = ?", propertyID)
-	del(&models.Settlement{}, "property_id = ?", propertyID)
 	del(&models.HouseholdSettings{}, "property_id = ?", propertyID)
 	del(&models.PropertyJoinRequest{}, "property_id = ?", propertyID)
 	del(&models.Notification{}, "property_id = ?", propertyID)

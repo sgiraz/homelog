@@ -51,21 +51,23 @@ func setupPropertyFixture(t *testing.T) *propertyFixture {
 	reading := 100.0
 	util := models.Utility{UserID: owner.ID, PropertyID: home.ID, Type: "gas", Provider: "Acme Gas", IsMetered: true, IsActive: true}
 	mustCreate(t, db, &util)
-	mustCreate(t, db,
-		&models.Bill{UtilityID: util.ID, BillNumber: "G-1", IssueDate: now, PeriodStart: now, PeriodEnd: now, DueDate: now, AmountTotal: 50},
-		&models.MeterReading{UtilityID: util.ID, ReadingDate: now, Value: &reading},
-	)
+	bill := models.Bill{UtilityID: util.ID, BillNumber: "G-1", IssueDate: now, PeriodStart: now, PeriodEnd: now, DueDate: now, AmountTotal: 50}
+	mustCreate(t, db, &bill, &models.MeterReading{UtilityID: util.ID, ReadingDate: now, Value: &reading})
+	mustCreate(t, db, &models.BillInstallment{BillID: bill.ID, Number: 1, DueDate: now, Amount: 50})
 	project := models.Project{UserID: owner.ID, PropertyID: &home.ID, Name: "Kitchen", Budget: 1000, StartDate: now, EndDate: now}
 	mustCreate(t, db, &project)
 	mustCreate(t, db, &models.ProjectMember{ProjectID: project.ID, UserID: member.ID, Role: "member"})
 	exp := models.Expense{UserID: owner.ID, PropertyID: &home.ID, ProjectID: &project.ID, CategoryID: cat.ID, Amount: 40, Date: now, Description: "Tiles", PaidByMemberID: mOwner.ID}
 	mustCreate(t, db, &exp)
+	memberSplit := models.ExpenseSplit{ExpenseID: exp.ID, MemberID: mMember.ID, Amount: 20}
+	settlement := models.Settlement{PropertyID: home.ID, FromMemberID: mMember.ID, ToMemberID: mOwner.ID, Amount: 5, Date: now, TargetExpenseID: &exp.ID}
 	mustCreate(t, db,
 		&models.ExpenseSplit{ExpenseID: exp.ID, MemberID: mOwner.ID, Amount: 20, IsSettled: true, SettledAt: &now},
-		&models.ExpenseSplit{ExpenseID: exp.ID, MemberID: mMember.ID, Amount: 20},
-		&models.Settlement{PropertyID: home.ID, FromMemberID: mMember.ID, ToMemberID: mOwner.ID, Amount: 5, Date: now},
+		&memberSplit,
+		&settlement,
 		&models.Notification{UserID: member.ID, Type: "expense_shared", Title: "Shared", PropertyID: &home.ID},
 	)
+	mustCreate(t, db, &models.SettlementAllocation{SettlementID: settlement.ID, ExpenseSplitID: memberSplit.ID, Amount: 5})
 
 	// A record on the other home that must survive.
 	mustCreate(t, db, &models.Expense{UserID: owner.ID, PropertyID: &other.ID, CategoryID: cat.ID, Amount: 10, Date: now, Description: "Rent", PaidByMemberID: mOther.ID})
@@ -131,6 +133,8 @@ func TestDeleteProperty_CascadesAndPromotesChosenPrincipal(t *testing.T) {
 		model any
 	}{
 		{"bills", &models.Bill{}},
+		{"bill_installments", &models.BillInstallment{}},
+		{"settlement_allocations", &models.SettlementAllocation{}},
 		{"meter_readings", &models.MeterReading{}},
 		{"expense_splits", &models.ExpenseSplit{}},
 		{"project_members", &models.ProjectMember{}},

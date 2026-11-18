@@ -1120,6 +1120,7 @@ func setupAccountFixture(t *testing.T, withSecondMember bool) *accountFixture {
 	mustCreate(t, db, &util)
 	bill := models.Bill{UtilityID: util.ID, BillNumber: "G-1", IssueDate: now, PeriodStart: now, PeriodEnd: now, DueDate: now, AmountTotal: 50}
 	mustCreate(t, db, &bill)
+	mustCreate(t, db, &models.BillInstallment{BillID: bill.ID, Number: 1, DueDate: now, Amount: 50})
 	// A solo expense owned by the user.
 	mustCreate(t, db, &models.Expense{UserID: user.ID, PropertyID: &prop.ID, CategoryID: homeCat.ID, Amount: 30, Date: now, Description: "Spesa", PaidByMemberID: member.ID})
 
@@ -1164,6 +1165,7 @@ func TestDeleteAccount_CascadesAndCleansSearchIndex(t *testing.T) {
 		{"household_members", &models.HouseholdMember{}},
 		{"utilities", &models.Utility{}},
 		{"bills", &models.Bill{}},
+		{"bill_installments", &models.BillInstallment{}},
 		{"expenses", &models.Expense{}},
 		{"expense_splits", &models.ExpenseSplit{}},
 		{"settlements", &models.Settlement{}},
