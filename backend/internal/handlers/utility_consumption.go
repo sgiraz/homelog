@@ -398,9 +398,9 @@ func sameMeter(a, b models.Bill) bool {
 //
 // Algorithm (deterministic):
 //   - Sort bills by period_end ascending.
-//   - For each bill define its “effective user reading value”:
-//     • If bill.UserReading != nil → use the explicitly associated self-reading value.
-//     • Otherwise              → fall back to bill.ProviderReading (so Δactual = Δbilled).
+//   - Each bill's “effective user reading value” is the explicitly associated
+//     self-reading (bill.UserReading) when set, otherwise bill.ProviderReading
+//     (so Δactual = Δbilled).
 //   - Billed consumption[i]  = providerReading[i]  − providerReading[i-1]  (consecutive absolute bill readings)
 //   - Actual consumption[i]  = effectiveReading[i] − effectiveReading[i-1] (consecutive effective readings)
 //   - Period rows start from index 1 (bill[0] is the reference anchor; no row generated for it).

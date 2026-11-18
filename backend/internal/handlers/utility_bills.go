@@ -82,26 +82,26 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 		ProviderReadingF2   *float64   `json:"provider_reading_f2"`
 		ProviderReadingF3   *float64   `json:"provider_reading_f3"`
 		ProviderReading     *float64   `json:"provider_reading"`
-		ConsumptionTotal      float64    `json:"consumption_total"`
-		ConsumptionF1         *float64   `json:"consumption_f1"`
-		ConsumptionF2         *float64   `json:"consumption_f2"`
-		ConsumptionF3         *float64   `json:"consumption_f3"`
-		AmountTotal           float64    `json:"amount_total"`
+		ConsumptionTotal    float64    `json:"consumption_total"`
+		ConsumptionF1       *float64   `json:"consumption_f1"`
+		ConsumptionF2       *float64   `json:"consumption_f2"`
+		ConsumptionF3       *float64   `json:"consumption_f3"`
+		AmountTotal         float64    `json:"amount_total"`
 		// Original-currency snapshot. When the utility bills in a non-user currency
 		// the frontend converts via exchangeAPI and sends both figures; server
 		// persists them as-is. AmountTotal is always in user currency.
-		OriginalAmount        *float64   `json:"original_amount"`
-		OriginalCurrency      string     `json:"original_currency"`
-		ConversionCoefficient *float64   `json:"conversion_coefficient"`
-		AmountEnergy        *float64   `json:"amount_energy"`
-		AmountFixed         *float64   `json:"amount_fixed"`
-		AmountTaxes         *float64   `json:"amount_taxes"`
-		AmountVAT           *float64   `json:"amount_vat"`
-		IsPaid              bool       `json:"is_paid"`
+		OriginalAmount        *float64 `json:"original_amount"`
+		OriginalCurrency      string   `json:"original_currency"`
+		ConversionCoefficient *float64 `json:"conversion_coefficient"`
+		AmountEnergy          *float64 `json:"amount_energy"`
+		AmountFixed           *float64 `json:"amount_fixed"`
+		AmountTaxes           *float64 `json:"amount_taxes"`
+		AmountVAT             *float64 `json:"amount_vat"`
+		IsPaid                bool     `json:"is_paid"`
 		// PaidDate/PaidAt are plain "YYYY-MM-DD" calendar dates, not full
 		// timestamps — see parseOptionalDate.
-		PaidDate            *string `json:"paid_date"`
-		PDFURL              string  `json:"pdf_url"`
+		PaidDate *string `json:"paid_date"`
+		PDFURL   string  `json:"pdf_url"`
 		// Communication (optional note from bill/invoice)
 		CommunicationText string `json:"communication_text"`
 		// Installments: optional — when the utility is installment-based, the client
@@ -523,7 +523,6 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 	c.JSON(http.StatusOK, bill)
 }
 
-
 // DeleteBill removes a bill
 func (h *UtilityHandler) DeleteBill(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
@@ -705,28 +704,28 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	}
 
 	var input struct {
-		BillNumber            string     `json:"bill_number" binding:"required"`
-		UserReadingID         *uint      `json:"user_reading_id"`
-		IssueDate             time.Time  `json:"issue_date"`
-		PeriodStart           time.Time  `json:"period_start"`
-		PeriodEnd             time.Time  `json:"period_end"`
-		DueDate               time.Time  `json:"due_date"`
-		ConsumptionTotal      float64    `json:"consumption_total"`
-		AmountTotal           float64    `json:"amount_total"`
-		OriginalAmount        *float64   `json:"original_amount"`
-		OriginalCurrency      string     `json:"original_currency"`
-		ConversionCoefficient *float64   `json:"conversion_coefficient"`
-		ReadingType           string     `json:"reading_type"`
-		MeterSerial           string     `json:"meter_serial"`
-		IsPaid                bool       `json:"is_paid"`
+		BillNumber            string    `json:"bill_number" binding:"required"`
+		UserReadingID         *uint     `json:"user_reading_id"`
+		IssueDate             time.Time `json:"issue_date"`
+		PeriodStart           time.Time `json:"period_start"`
+		PeriodEnd             time.Time `json:"period_end"`
+		DueDate               time.Time `json:"due_date"`
+		ConsumptionTotal      float64   `json:"consumption_total"`
+		AmountTotal           float64   `json:"amount_total"`
+		OriginalAmount        *float64  `json:"original_amount"`
+		OriginalCurrency      string    `json:"original_currency"`
+		ConversionCoefficient *float64  `json:"conversion_coefficient"`
+		ReadingType           string    `json:"reading_type"`
+		MeterSerial           string    `json:"meter_serial"`
+		IsPaid                bool      `json:"is_paid"`
 		// PaidDate is a plain "YYYY-MM-DD" calendar date, not a full
 		// timestamp — see parseOptionalDate.
-		PaidDate              *string    `json:"paid_date"`
-		ProviderReadingDate   *time.Time `json:"provider_reading_date"`
-		ProviderReadingF1     *float64   `json:"provider_reading_f1"`
-		ProviderReadingF2     *float64   `json:"provider_reading_f2"`
-		ProviderReadingF3     *float64   `json:"provider_reading_f3"`
-		ProviderReading       *float64   `json:"provider_reading"`
+		PaidDate            *string    `json:"paid_date"`
+		ProviderReadingDate *time.Time `json:"provider_reading_date"`
+		ProviderReadingF1   *float64   `json:"provider_reading_f1"`
+		ProviderReadingF2   *float64   `json:"provider_reading_f2"`
+		ProviderReadingF3   *float64   `json:"provider_reading_f3"`
+		ProviderReading     *float64   `json:"provider_reading"`
 		// Communication (optional note from bill/invoice)
 		CommunicationText string `json:"communication_text"`
 	}
@@ -849,4 +848,3 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 
 	c.JSON(http.StatusOK, bill)
 }
-

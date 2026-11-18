@@ -58,8 +58,8 @@ func LocalizedCategoryLanguages() []string {
 // up by hand. Never match a default category by its Name — the name is a
 // localized, user-renameable label; the slug is the stable identity.
 const (
-	SlugHome          = "home"
-	SlugHomeUtilities = "home_utilities"
+	SlugHome             = "home"
+	SlugHomeUtilities    = "home_utilities"
 	SlugHomeRentMortgage = "home_rent_mortgage"
 )
 

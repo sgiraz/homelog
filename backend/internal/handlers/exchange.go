@@ -36,7 +36,7 @@ type cachedRate struct {
 }
 
 var (
-	rateCache   sync.Map
+	rateCache    sync.Map
 	rateCacheTTL = 24 * time.Hour
 )
 

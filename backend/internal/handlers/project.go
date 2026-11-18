@@ -38,7 +38,7 @@ type CreateProjectRequest struct {
 	EndDate           string            `json:"end_date" binding:"required"`
 	Status            string            `json:"status"`
 	SharedWithUserIDs []uint            `json:"shared_with_user_ids"` // backward compat
-	Members           []MemberRoleInput `json:"members,omitempty"`   // new: with roles
+	Members           []MemberRoleInput `json:"members,omitempty"`    // new: with roles
 }
 
 type ProjectStatsResponse struct {
