@@ -301,7 +301,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 
 	// Verify category belongs to user
 	var category models.Category
-	if err := h.db.Where("id = ? AND (user_id = ? OR user_id IS NULL)", req.CategoryID, userID).First(&category).Error; err != nil {
+	if err := h.db.Where("id = ? AND (is_default = true OR user_id = ?)", req.CategoryID, userID).First(&category).Error; err != nil {
 		log.Printf("❌ EXPENSE CREATE: Invalid category %d for user %d", req.CategoryID, userID)
 		apierr.Fail(c, http.StatusBadRequest, "invalid_category", "Invalid category")
 		return

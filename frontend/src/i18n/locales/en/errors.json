@@ -1,6 +1,6 @@
 {
   "account_inactive": "This account is inactive",
-  "admin_successor_required": "Appoint an admin for every property before deleting your account",
+  "admin_successor_required": "Every shared home needs another admin before this account can be deleted",
   "already_property_member": "You are already a member of this property",
   "amount_exceeds_debt": "The amount is larger than the debt left between these members",
   "amount_must_be_positive": "The amount must be greater than zero",
@@ -111,6 +111,7 @@
   "not_property_admin": "You are not an admin of this property",
   "not_property_member": "You are not a member of this property",
   "notification_not_found": "Notification not found",
+  "open_balances_remaining": "Balances in shared homes must be settled before this account can be deleted",
   "other_member_not_found": "The other member was not found",
   "password_wrong": "The password is not correct",
   "payer_not_in_property": "The payer is not a member of this property",

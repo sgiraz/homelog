@@ -303,9 +303,10 @@ func (h *MemberHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Member deleted successfully"})
 }
 
-// cleanupSplitDefaults removes deleted member IDs from every user's
-// default_split_with_member_ids. The column is JSON, so no foreign key keeps
-// it in step with household_members.
+// cleanupSplitDefaults removes deleted member IDs from the lists that name
+// who shares an expense by default: every user's default_split_with_member_ids
+// and every service's split_member_ids. Both are JSON, so no foreign key keeps
+// them in step with household_members.
 func cleanupSplitDefaults(db *gorm.DB, deletedMemberIDs ...uint) error {
 	if len(deletedMemberIDs) == 0 {
 		return nil
@@ -314,31 +315,42 @@ func cleanupSplitDefaults(db *gorm.DB, deletedMemberIDs ...uint) error {
 	for _, id := range deletedMemberIDs {
 		gone[id] = true
 	}
-
-	var allSettings []models.UserSettings
-	if err := db.Where("default_split_with_member_ids IS NOT NULL AND default_split_with_member_ids != ''").
-		Find(&allSettings).Error; err != nil {
+	if err := pruneMemberLists(db, &models.UserSettings{}, "default_split_with_member_ids", gone); err != nil {
 		return err
 	}
-	for _, s := range allSettings {
+	return pruneMemberLists(db, &models.Utility{}, "split_member_ids", gone)
+}
+
+// pruneMemberLists drops the gone IDs from a JSON member list column. A list
+// that does not parse is left alone: nothing in it can be trusted to remove.
+func pruneMemberLists(db *gorm.DB, model any, column string, gone map[uint]bool) error {
+	var rows []struct {
+		ID   uint
+		List string
+	}
+	if err := db.Unscoped().Model(model).Select("id, " + column + " AS list").
+		Where(column + " IS NOT NULL AND " + column + " != ''").Scan(&rows).Error; err != nil {
+		return err
+	}
+	for _, row := range rows {
 		var ids []uint
-		if err := json.Unmarshal([]byte(s.DefaultSplitWithMemberIDs), &ids); err != nil {
+		if err := json.Unmarshal([]byte(row.List), &ids); err != nil {
 			continue
 		}
-		filtered := make([]uint, 0, len(ids))
+		kept := make([]uint, 0, len(ids))
 		for _, id := range ids {
 			if !gone[id] {
-				filtered = append(filtered, id)
+				kept = append(kept, id)
 			}
 		}
-		if len(filtered) == len(ids) {
+		if len(kept) == len(ids) {
 			continue
 		}
-		newJSON, err := json.Marshal(filtered)
+		list, err := json.Marshal(kept)
 		if err != nil {
 			return err
 		}
-		if err := db.Model(&s).Update("default_split_with_member_ids", string(newJSON)).Error; err != nil {
+		if err := db.Unscoped().Model(model).Where("id = ?", row.ID).UpdateColumn(column, string(list)).Error; err != nil {
 			return err
 		}
 	}
