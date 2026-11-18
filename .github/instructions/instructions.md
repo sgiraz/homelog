@@ -1,13 +1,13 @@
 # Copilot Instructions — HomeLog
 
-HomeLog is a self-hosted family expense & utilities manager. Stack: **Go 1.25 / Gin / GORM / SQLite** backend, **Vue 3 (Composition API) / Vite / Tailwind / Pinia** frontend. Target: Raspberry Pi 3B+ via Docker (256 MB RAM limit).
+HomeLog is a self-hosted family expense & utilities manager. Stack: **Go 1.27 / Gin / GORM / SQLite** backend, **Vue 3 (Composition API) / Vite / Tailwind / Pinia** frontend. Target: Raspberry Pi 3B+ via Docker (256 MB RAM limit).
 
 ---
 
 ## Go — avoid false positives
 
-- **Go version is 1.25.** `for i := range n` (integer range) is valid Go 1.22+ syntax — do not flag it.
-- **`go 1.25.0` in `go.mod` is valid.** Patch-version `go` directives are intentional since Go 1.21 (toolchain selection). Do not suggest removing the patch version.
+- **Go version is 1.27.** `for i := range n` (integer range) is valid Go 1.22+ syntax — do not flag it.
+- **`go 1.27.0` in `go.mod` is valid.** Patch-version `go` directives are intentional since Go 1.21 (toolchain selection). Do not suggest removing the patch version.
 - **`gorm:"-"` fields may be populated in handlers**, not in the model itself. Check the handler before flagging a `gorm:"-"` field as always-zero (e.g. `IsCurrencyLocked` is set in list/get/update handlers via `isUtilityCurrencyLocked()`).
 
 ## Go — security-critical patterns to enforce
