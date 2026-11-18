@@ -1,6 +1,7 @@
 package database
 
 import (
+	"sync"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
@@ -143,5 +144,81 @@ func TestResetDemoData_Idempotent(t *testing.T) {
 	db.Model(&models.User{}).Count(&users)
 	if users != 1 {
 		t.Errorf("user count = %d after two resets, want 1", users)
+	}
+}
+
+// demoCounts fingerprints the demo dataset by row counts.
+func demoCounts(t *testing.T, db *gorm.DB) map[string]int64 {
+	t.Helper()
+	out := map[string]int64{}
+	for _, table := range demoTables {
+		var n int64
+		if err := db.Table(table).Count(&n).Error; err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
+		out[table] = n
+	}
+	return out
+}
+
+// Any visitor can reset the demo while the hourly ticker may be resetting it
+// too: concurrent resets must end in exactly one dataset.
+func TestResetDemoData_ConcurrentResetsLeaveOneDataset(t *testing.T) {
+	db, _ := openFile(t)
+	if err := ResetDemoData(db); err != nil {
+		t.Fatalf("first reset: %v", err)
+	}
+	want := demoCounts(t, db)
+
+	var wg sync.WaitGroup
+	errs := make(chan error, 4)
+	for range 4 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs <- ResetDemoData(db)
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Errorf("concurrent reset: %v", err)
+		}
+	}
+
+	got := demoCounts(t, db)
+	for table, n := range want {
+		if got[table] != n {
+			t.Errorf("%s: %d rows after concurrent resets, want %d", table, got[table], n)
+		}
+	}
+	var user models.User
+	db.Where("email = ?", DemoEmail).First(&user)
+	if user.ID != 1 {
+		t.Errorf("demo user ID = %d, want 1", user.ID)
+	}
+}
+
+// A reset that fails half way leaves the previous dataset untouched.
+func TestResetDemoData_FailedResetKeepsTheOldDataset(t *testing.T) {
+	db, _ := openFile(t)
+	if err := ResetDemoData(db); err != nil {
+		t.Fatalf("first reset: %v", err)
+	}
+	want := demoCounts(t, db)
+
+	if err := db.Exec("CREATE TRIGGER fail_seed BEFORE INSERT ON users BEGIN SELECT RAISE(ABORT, 'seed fails'); END").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := ResetDemoData(db); err == nil {
+		t.Fatal("reset succeeded although the seed cannot insert the demo user")
+	}
+
+	got := demoCounts(t, db)
+	for table, n := range want {
+		if got[table] != n {
+			t.Errorf("%s: %d rows after a failed reset, want %d (the old dataset)", table, got[table], n)
+		}
 	}
 }

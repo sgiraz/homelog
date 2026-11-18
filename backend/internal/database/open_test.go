@@ -86,6 +86,24 @@ func TestOpen_EveryConnectionGetsThePragmas(t *testing.T) {
 	})
 }
 
+// The server opens its database through InitDatabase: that is where the
+// pragmas used to reach only the first connection.
+func TestInitDatabase_EveryConnectionGetsThePragmas(t *testing.T) {
+	t.Setenv("DB_PATH", filepath.Join(t.TempDir(), "homelog.db"))
+	t.Setenv("GIN_MODE", "release")
+	db, err := InitDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, _ := db.DB()
+	t.Cleanup(func() { sqlDB.Close() })
+	eachConn(t, sqlDB, 3, func(i int, c *sql.Conn) {
+		if got := pragma(t, c, "foreign_keys"); got != "1" {
+			t.Errorf("connection %d: foreign_keys = %s, want 1", i, got)
+		}
+	})
+}
+
 // Each connection to :memory: is a new, empty database: the pool must never
 // open a second one.
 func TestOpen_MemoryStaysOneDatabase(t *testing.T) {
