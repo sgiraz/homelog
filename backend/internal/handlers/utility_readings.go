@@ -12,7 +12,6 @@ import (
 	"github.com/sgiraz/homelog/internal/models"
 )
 
-
 // AddReading adds a meter reading for a utility
 func (h *UtilityHandler) AddReading(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)

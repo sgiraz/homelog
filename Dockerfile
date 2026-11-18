@@ -11,7 +11,7 @@ RUN APP_VERSION=${APP_VERSION} npm run build
 
 # Stage 2: Build backend with embedded frontend
 # Use BUILDPLATFORM so Go compiles natively (no QEMU emulation)
-FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS backend-builder
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS backend-builder
 ARG TARGETOS TARGETARCH
 # ARG scope is per-stage: without re-declaring it here, ${APP_VERSION} below
 # expands to empty and the binary ships with no version at all — which makes

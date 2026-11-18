@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/database"
 	"github.com/sgiraz/homelog/internal/i18n"
-	"github.com/sgiraz/homelog/internal/apierr"
 	"github.com/sgiraz/homelog/internal/middleware"
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
