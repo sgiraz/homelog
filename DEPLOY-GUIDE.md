@@ -204,14 +204,11 @@ docker buildx build \
 
 #### On the Raspberry Pi
 
-Edit `docker-compose.yml` to pull the pre-built image instead of building locally:
+`docker-compose.yml` pulls the official `sgira/homelog` image. To run your own build, point `image:` at it:
 
 ```bash
-# Replace the build: block with image: in docker-compose.yml
-# Change:
-#   build:
-#     context: .
-#     dockerfile: Dockerfile
+# In docker-compose.yml, change:
+#   image: sgira/homelog:${HOMELOG_TAG:-latest}
 # To:
 #   image: YOUR_DOCKERHUB_USERNAME/homelog:latest
 

@@ -1,5 +1,5 @@
 # Development docker-compose with hot-reload support
-# Usage: docker-compose -f docker-compose.dev.yml up --build
+# Usage: docker compose -f docker-compose.dev.yml up --build
 
 services:
   backend:
