@@ -12,79 +12,75 @@ import (
 
 // TestCascadeDeleteProperty_CoversSchema reads the foreign keys of the real
 // schema and fails on any edge into a table cascadeDeleteProperty empties that
-// the cascade does not handle. Adding such a key means teaching the cascade
-// about it, then listing it here.
+// is left to nobody: the schema either deletes or unlinks the child itself
+// (CASCADE, SET NULL), or the cascade deletes the child first. Adding such a
+// key means declaring its action or teaching the cascade, then listing it.
 func TestCascadeDeleteProperty_CoversSchema(t *testing.T) {
 	db := testutil.NewDB(t)
 
 	tree := map[string]bool{
 		"properties": true, "household_members": true, "utilities": true,
-		"bills": true, "meter_readings": true, "expenses": true,
-		"expense_splits": true, "settlements": true, "projects": true,
+		"bills": true, "bill_installments": true, "meter_readings": true,
+		"expenses": true, "expense_splits": true, "settlements": true, "projects": true,
 	}
-	handled := map[string]string{
-		"bill_installments.bill_id":               "deleted with its bill",
-		"bills.utility_id":                        "deleted with its utility",
-		"bills.user_reading_id":                   "bills go before readings",
-		"expense_splits.expense_id":               "deleted with its expense",
-		"expense_splits.member_id":                "deleted with its expense",
-		"expense_splits.settlement_id":            "unlinked",
-		"expense_templates.project_id":            "unlinked",
-		"expenses.project_id":                     "unlinked",
-		"expenses.paid_by_member_id":              "deleted with the property",
+	// Edges the database refuses to orphan: the cascade deletes these children
+	// before their parent.
+	deletedFirst := map[string]string{
+		"bills.user_reading_id":                   "bills go before the utility takes its readings",
+		"bills.utility_id":                        "bills go before their utility",
+		"bill_templates.property_id":              "deleted with the property",
+		"expense_splits.member_id":                "splits go with their expenses, before the members",
+		"expenses.bill_id":                        "expenses go before the bills",
+		"expenses.bill_installment_id":            "expenses go before the bills",
+		"expenses.paid_by_member_id":              "expenses go before the members",
 		"expenses.property_id":                    "deleted with the property",
 		"household_members.property_id":           "deleted with the property",
 		"household_settings.property_id":          "deleted with the property",
-		"meter_readings.utility_id":               "deleted with its utility",
 		"notifications.property_id":               "deleted with the property",
-		"price_changes.utility_id":                "deleted with its utility",
-		"project_members.project_id":              "deleted with its project",
 		"projects.property_id":                    "deleted with the property",
 		"property_join_requests.property_id":      "deleted with the property",
-		"service_communications.utility_id":       "deleted with its utility",
-		"settlement_allocations.settlement_id":    "deleted with its settlement",
-		"settlement_allocations.expense_split_id": "deleted with its split",
-		"settlements.from_member_id":              "deleted with the property",
-		"settlements.to_member_id":                "deleted with the property",
-		"settlements.property_id":                 "deleted with the property",
-		"settlements.target_expense_id":           "unlinked",
-		"utilities.paid_by_member_id":             "deleted with the property",
+		"settlement_allocations.expense_split_id": "deleteExpenses deletes them first",
+		"settlements.from_member_id":              "settlements go first",
+		"settlements.to_member_id":                "settlements go first",
+		"settlements.property_id":                 "settlements go first",
+		"utilities.paid_by_member_id":             "utilities go before the members",
 		"utilities.property_id":                   "deleted with the property",
-		"utility_rates.utility_id":                "deleted with its utility",
 	}
 
-	var tables []string
-	if err := db.Raw("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").Scan(&tables).Error; err != nil {
+	var edges []struct {
+		Child    string
+		Column   string
+		Parent   string
+		OnDelete string
+	}
+	if err := db.Raw(`SELECT m.name AS child, f."from" AS "column", f."table" AS parent, f.on_delete
+		FROM sqlite_master m, pragma_foreign_key_list(m.name) f WHERE m.type = 'table'`).Scan(&edges).Error; err != nil {
 		t.Fatal(err)
 	}
 	seen := map[string]bool{}
 	var missing []string
-	for _, table := range tables {
-		var keys []struct {
-			Table string `gorm:"column:table"`
-			From  string `gorm:"column:from"`
+	for _, e := range edges {
+		if !tree[e.Parent] {
+			continue
 		}
-		if err := db.Raw("SELECT \"table\", \"from\" FROM pragma_foreign_key_list(?)", table).Scan(&keys).Error; err != nil {
-			t.Fatal(err)
-		}
-		for _, k := range keys {
-			if !tree[k.Table] {
-				continue
-			}
-			edge := table + "." + k.From
-			seen[edge] = true
-			if _, ok := handled[edge]; !ok {
-				missing = append(missing, edge+" -> "+k.Table)
-			}
+		edge := e.Child + "." + e.Column
+		seen[edge] = true
+		_, listed := deletedFirst[edge]
+		declared := e.OnDelete == "CASCADE" || e.OnDelete == "SET NULL"
+		switch {
+		case declared && listed:
+			t.Errorf("%s is ON DELETE %s: drop it from the list", edge, e.OnDelete)
+		case !declared && !listed:
+			missing = append(missing, edge+" -> "+e.Parent)
 		}
 	}
 	sort.Strings(missing)
 	for _, m := range missing {
-		t.Errorf("foreign key %s is not handled by cascadeDeleteProperty", m)
+		t.Errorf("foreign key %s is left to nobody: declare its ON DELETE or delete it in cascadeDeleteProperty", m)
 	}
-	for edge := range handled {
+	for edge := range deletedFirst {
 		if !seen[edge] {
-			t.Errorf("%s is listed as handled but no longer exists in the schema", edge)
+			t.Errorf("%s is listed but no longer exists in the schema", edge)
 		}
 	}
 }

@@ -91,6 +91,26 @@ func AutoMigrate(db *gorm.DB) error {
 }
 
 func autoMigrate(db *gorm.DB) error {
+	if err := alignForeignKeys(db); err != nil {
+		return fmt.Errorf("failed to align foreign keys: %w", err)
+	}
+	if err := migrateModels(db); err != nil {
+		return err
+	}
+
+	db.Exec(`DROP TABLE IF EXISTS applied_migrations`)
+
+	// Global search: FTS5 virtual table + one-time backfill from existing rows.
+	// GORM hooks (see models) keep it in sync on subsequent writes.
+	if err := initSearchIndex(db); err != nil {
+		return fmt.Errorf("failed to init search index: %w", err)
+	}
+	backfillSearchIndex(db)
+	return nil
+}
+
+// migrateModels creates or extends every model's table.
+func migrateModels(db *gorm.DB) error {
 	// Register custom join table for Project <-> User with role column
 	if err := db.SetupJoinTable(&models.Project{}, "SharedWith", &models.ProjectMember{}); err != nil {
 		return fmt.Errorf("failed to setup project_members join table: %w", err)
@@ -126,15 +146,6 @@ func autoMigrate(db *gorm.DB) error {
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
 	}
-
-	db.Exec(`DROP TABLE IF EXISTS applied_migrations`)
-
-	// Global search: FTS5 virtual table + one-time backfill from existing rows.
-	// GORM hooks (see models) keep it in sync on subsequent writes.
-	if err := initSearchIndex(db); err != nil {
-		return fmt.Errorf("failed to init search index: %w", err)
-	}
-	backfillSearchIndex(db)
 	return nil
 }
 
