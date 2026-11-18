@@ -1,6 +1,6 @@
 {
   "account_inactive": "Questo account non è attivo",
-  "admin_successor_required": "Devi nominare un admin per ogni proprietà prima di eliminare l'account",
+  "admin_successor_required": "Ogni casa condivisa deve avere un altro admin prima di poter eliminare questo account",
   "already_property_member": "Sei già membro di questa proprietà",
   "amount_exceeds_debt": "L'importo supera il debito residuo tra questi membri",
   "amount_must_be_positive": "L'importo deve essere maggiore di zero",
@@ -111,6 +111,7 @@
   "not_property_admin": "Non sei amministratore di questa proprietà",
   "not_property_member": "Non sei membro di questa proprietà",
   "notification_not_found": "Notifica non trovata",
+  "open_balances_remaining": "I saldi nelle case condivise vanno pareggiati prima di poter eliminare questo account",
   "other_member_not_found": "L'altro membro non è stato trovato",
   "password_wrong": "La password non è corretta",
   "payer_not_in_property": "Chi ha pagato non è membro di questa proprietà",

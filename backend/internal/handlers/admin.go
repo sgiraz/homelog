@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -22,7 +23,8 @@ func NewAdminHandler(db *gorm.DB) *AdminHandler {
 	return &AdminHandler{db: db}
 }
 
-// DeleteUser permanently deletes a user account and all associated data
+// DeleteUser deletes another user's account, under the same rules as deleting
+// one's own (see deleteAccount).
 func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	adminUserID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -30,259 +32,42 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	targetUserID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	parsed, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		apierr.Fail(c, http.StatusBadRequest, "invalid_user_id", "Invalid user id")
 		return
 	}
-
-	if adminUserID == uint(targetUserID) {
+	targetID := uint(parsed)
+	if adminUserID == targetID {
 		apierr.Fail(c, http.StatusBadRequest, "cannot_delete_own_account", "You cannot delete your own account from here")
 		return
 	}
 
-	// Load target user (including soft-deleted)
-	var targetUser models.User
-	userFound := true
-	if err := h.db.Unscoped().First(&targetUser, targetUserID).Error; err != nil {
-		// User record may have been deleted in a previous partial cleanup.
-		// Check if orphaned HouseholdMember records exist for this user_id.
-		var orphanCount int64
-		h.db.Unscoped().Model(&models.HouseholdMember{}).Where("user_id = ?", targetUserID).Count(&orphanCount)
-		if orphanCount == 0 {
+	var target models.User
+	if err := h.db.Unscoped().First(&target, targetID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			apierr.Fail(c, http.StatusNotFound, "user_not_found", "User not found")
 			return
 		}
-		userFound = false
-		targetUser.ID = uint(targetUserID)
-	}
-
-	// Begin transaction
-	tx := h.db.Begin()
-	if tx.Error != nil {
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Internal error")
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch user")
 		return
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	targetID := uint(targetUserID)
-
-	// Step A: Collect property IDs
-	var propertyIDs []uint
-	tx.Unscoped().Model(&models.Property{}).Where("user_id = ?", targetID).Pluck("id", &propertyIDs)
-
-	// Step B: Collect utility IDs
-	var utilityIDs []uint
-	if len(propertyIDs) > 0 {
-		tx.Unscoped().Model(&models.Utility{}).Where("property_id IN ?", propertyIDs).Pluck("id", &utilityIDs)
-	}
-
-	// Step C: Collect household member IDs (owned properties + user's own member records)
-	var memberIDs []uint
-	if len(propertyIDs) > 0 {
-		tx.Unscoped().Model(&models.HouseholdMember{}).Where("property_id IN ?", propertyIDs).Pluck("id", &memberIDs)
-	}
-	// Also collect member records directly linked to this user (e.g., in other users' properties)
-	var userMemberIDs []uint
-	tx.Unscoped().Model(&models.HouseholdMember{}).Where("user_id = ?", targetID).Pluck("id", &userMemberIDs)
-	for _, id := range userMemberIDs {
-		found := false
-		for _, existing := range memberIDs {
-			if id == existing {
-				found = true
-				break
-			}
-		}
-		if !found {
-			memberIDs = append(memberIDs, id)
-		}
-	}
-
-	// Step D: Cascade delete in FK-safe order
-
-	// 1. ExpenseSplits (by member_id OR by expense owner)
-	if len(memberIDs) > 0 {
-		if err := tx.Unscoped().Where("member_id IN ?", memberIDs).Delete(&models.ExpenseSplit{}).Error; err != nil {
-			tx.Rollback()
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete expense splits")
-			return
-		}
-	}
-	// Also delete splits on expenses owned by this user
-	var userExpenseIDs []uint
-	tx.Unscoped().Model(&models.Expense{}).Where("user_id = ?", targetID).Pluck("id", &userExpenseIDs)
-	if len(userExpenseIDs) > 0 {
-		if err := tx.Unscoped().Where("expense_id IN ?", userExpenseIDs).Delete(&models.ExpenseSplit{}).Error; err != nil {
-			tx.Rollback()
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete expense splits")
-			return
-		}
-	}
-
-	// 2. Settlements
-	if len(propertyIDs) > 0 {
-		if err := tx.Unscoped().Where("property_id IN ?", propertyIDs).Delete(&models.Settlement{}).Error; err != nil {
-			tx.Rollback()
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete settlements")
-			return
-		}
-	}
-
-	// 3. Expenses
-	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.Expense{}).Error; err != nil {
-		tx.Rollback()
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete expenses")
+	err = h.db.Transaction(func(tx *gorm.DB) error { return deleteAccount(tx, targetID) })
+	var blocked *accountBlockedError
+	if errors.As(err, &blocked) {
+		refuseAccountDelete(c, blocked.check)
 		return
 	}
-
-	// 4. Bills
-	if len(utilityIDs) > 0 {
-		if err := tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.Bill{}).Error; err != nil {
-			tx.Rollback()
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete bills")
-			return
-		}
-	}
-
-	// 5. MeterReadings
-	if len(utilityIDs) > 0 {
-		if err := tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.MeterReading{}).Error; err != nil {
-			tx.Rollback()
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete readings")
-			return
-		}
-	}
-
-	// 6. UtilityRates
-	if len(utilityIDs) > 0 {
-		if err := tx.Unscoped().Where("utility_id IN ?", utilityIDs).Delete(&models.UtilityRate{}).Error; err != nil {
-			tx.Rollback()
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete rates")
-			return
-		}
-	}
-
-	// 7. Utilities
-	if len(propertyIDs) > 0 {
-		if err := tx.Unscoped().Where("property_id IN ?", propertyIDs).Delete(&models.Utility{}).Error; err != nil {
-			tx.Rollback()
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete utilities")
-			return
-		}
-	}
-
-	// 8. HouseholdSettings
-	if len(propertyIDs) > 0 {
-		if err := tx.Unscoped().Where("property_id IN ?", propertyIDs).Delete(&models.HouseholdSettings{}).Error; err != nil {
-			tx.Rollback()
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete household settings")
-			return
-		}
-	}
-
-	// 9. HouseholdMembers (owned properties + user's own member records in other properties)
-	if len(memberIDs) > 0 {
-		if err := cleanupSplitDefaults(tx, memberIDs...); err != nil {
-			tx.Rollback()
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to clean split defaults")
-			return
-		}
-		if err := tx.Unscoped().Where("id IN ?", memberIDs).Delete(&models.HouseholdMember{}).Error; err != nil {
-			tx.Rollback()
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete members")
-			return
-		}
-	}
-
-	// 10. Properties
-	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.Property{}).Error; err != nil {
-		tx.Rollback()
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete properties")
+	if err != nil {
+		log.Printf("❌ Admin %d deleting user %d: %v", adminUserID, targetID, err)
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete the user")
 		return
 	}
+	removeAvatar(target.AvatarPath)
 
-	// 11. project_members join table (no GORM model)
-	if err := tx.Exec("DELETE FROM project_members WHERE user_id = ?", targetID).Error; err != nil {
-		tx.Rollback()
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete project associations")
-		return
-	}
-
-	// 12. Projects
-	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.Project{}).Error; err != nil {
-		tx.Rollback()
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete projects")
-		return
-	}
-
-	// 13. Subcategories (for user's custom categories)
-	var categoryIDs []uint
-	tx.Unscoped().Model(&models.Category{}).Where("user_id = ?", targetID).Pluck("id", &categoryIDs)
-	if len(categoryIDs) > 0 {
-		if err := tx.Unscoped().Where("category_id IN ?", categoryIDs).Delete(&models.Subcategory{}).Error; err != nil {
-			tx.Rollback()
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete subcategories")
-			return
-		}
-	}
-
-	// 14. Categories (user-created only)
-	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.Category{}).Error; err != nil {
-		tx.Rollback()
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete categories")
-		return
-	}
-
-	// 15. BillTemplates: those of owned properties go with them, the other
-	// households keep theirs without an author.
-	if len(propertyIDs) > 0 {
-		if err := tx.Unscoped().Where("property_id IN ?", propertyIDs).Delete(&models.BillTemplate{}).Error; err != nil {
-			tx.Rollback()
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete bill templates")
-			return
-		}
-	}
-	if err := tx.Model(&models.BillTemplate{}).Where("user_id = ?", targetID).Update("user_id", nil).Error; err != nil {
-		tx.Rollback()
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete bill templates")
-		return
-	}
-
-	// 16. ContractTemplates
-	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.ContractTemplate{}).Error; err != nil {
-		tx.Rollback()
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete contract templates")
-		return
-	}
-
-	// 17. UserSettings
-	if err := tx.Unscoped().Where("user_id = ?", targetID).Delete(&models.UserSettings{}).Error; err != nil {
-		tx.Rollback()
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete user settings")
-		return
-	}
-
-	// 18. User
-	if userFound {
-		if err := tx.Unscoped().Delete(&models.User{}, targetID).Error; err != nil {
-			tx.Rollback()
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete user")
-			return
-		}
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to commit transaction")
-		return
-	}
-
-	log.Printf("ADMIN: User %d deleted user %d (%s)", adminUserID, targetUser.ID, targetUser.Email)
-	c.JSON(http.StatusOK, gin.H{"message": "Account and all associated data deleted"})
+	log.Printf("ADMIN: User %d deleted user %d (%s)", adminUserID, targetID, target.Email)
+	c.JSON(http.StatusOK, gin.H{"message": "Account deleted"})
 }
 
 // ToggleAdmin changes a user's role between admin and user

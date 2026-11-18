@@ -25,7 +25,7 @@ import (
 func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 	// A Session makes the handle safe to reuse: each chain starts clean.
 	all := tx.Unscoped().Session(&gorm.Session{})
-	var utilityIDs, billIDs, expenseIDs, splitIDs, projectIDs, settlementIDs, memberIDs []uint
+	var utilityIDs, billIDs, expenseIDs, projectIDs, settlementIDs, memberIDs []uint
 	lookups := []func() error{
 		func() error {
 			return all.Model(&models.Utility{}).Where("property_id = ?", propertyID).Pluck("id", &utilityIDs).Error
@@ -36,10 +36,6 @@ func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 		},
 		func() error {
 			return all.Model(&models.Expense{}).Where("property_id = ?", propertyID).Pluck("id", &expenseIDs).Error
-		},
-		func() error {
-			return all.Model(&models.ExpenseSplit{}).Where("expense_id IN (?)",
-				all.Model(&models.Expense{}).Select("id").Where("property_id = ?", propertyID)).Pluck("id", &splitIDs).Error
 		},
 		func() error {
 			return all.Model(&models.Project{}).Where("property_id = ?", propertyID).Pluck("id", &projectIDs).Error
@@ -94,24 +90,11 @@ func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 		unindex("utility", utilityIDs)
 	}
 
-	if len(splitIDs) > 0 {
-		del(&models.SettlementAllocation{}, "expense_split_id IN ?", splitIDs)
-	}
-	if len(expenseIDs) > 0 {
-		unlink(&models.Settlement{}, "target_expense_id", expenseIDs)
-		del(&models.ExpenseSplit{}, "expense_id IN ?", expenseIDs)
-		del(&models.Expense{}, "id IN ?", expenseIDs)
-		unindex("expense", expenseIDs)
-	}
-
-	if len(projectIDs) > 0 {
+	steps = append(steps,
+		func() error { return deleteExpenses(tx, expenseIDs) },
 		// Expenses of these projects filed under another property survive, unlinked.
-		unlink(&models.Expense{}, "project_id", projectIDs)
-		unlink(&models.ExpenseTemplate{}, "project_id", projectIDs)
-		del(&models.ProjectMember{}, "project_id IN ?", projectIDs)
-		del(&models.Project{}, "id IN ?", projectIDs)
-		unindex("project", projectIDs)
-	}
+		func() error { return deleteProjects(tx, projectIDs) },
+	)
 
 	del(&models.BillTemplate{}, "property_id = ?", propertyID)
 	del(&models.HouseholdSettings{}, "property_id = ?", propertyID)
@@ -121,6 +104,63 @@ func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 	del(&models.HouseholdMember{}, "property_id = ?", propertyID)
 	del(&models.Property{}, "id = ?", propertyID)
 
+	for _, step := range steps {
+		if err := step(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// deleteExpenses hard-deletes expenses with their splits and the allocations
+// that settled them. A settlement aimed at one of them stays, untargeted.
+func deleteExpenses(tx *gorm.DB, expenseIDs []uint) error {
+	if len(expenseIDs) == 0 {
+		return nil
+	}
+	all := tx.Unscoped().Session(&gorm.Session{})
+	splits := all.Model(&models.ExpenseSplit{}).Select("id").Where("expense_id IN ?", expenseIDs)
+	steps := []func() error{
+		func() error {
+			return all.Where("expense_split_id IN (?)", splits).Delete(&models.SettlementAllocation{}).Error
+		},
+		func() error {
+			return all.Model(&models.Settlement{}).Where("target_expense_id IN ?", expenseIDs).Update("target_expense_id", nil).Error
+		},
+		func() error { return all.Where("expense_id IN ?", expenseIDs).Delete(&models.ExpenseSplit{}).Error },
+		func() error { return all.Where("id IN ?", expenseIDs).Delete(&models.Expense{}).Error },
+		func() error {
+			return tx.Exec("DELETE FROM search_index WHERE entity_type = 'expense' AND entity_id IN ?", expenseIDs).Error
+		},
+	}
+	for _, step := range steps {
+		if err := step(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// deleteProjects hard-deletes projects and their member lists. Expenses and
+// expense templates filed under them stay, unfiled.
+func deleteProjects(tx *gorm.DB, projectIDs []uint) error {
+	if len(projectIDs) == 0 {
+		return nil
+	}
+	all := tx.Unscoped().Session(&gorm.Session{})
+	steps := []func() error{
+		func() error {
+			return all.Model(&models.Expense{}).Where("project_id IN ?", projectIDs).Update("project_id", nil).Error
+		},
+		func() error {
+			return all.Model(&models.ExpenseTemplate{}).Where("project_id IN ?", projectIDs).Update("project_id", nil).Error
+		},
+		func() error { return all.Where("project_id IN ?", projectIDs).Delete(&models.ProjectMember{}).Error },
+		func() error { return all.Where("id IN ?", projectIDs).Delete(&models.Project{}).Error },
+		func() error {
+			return tx.Exec("DELETE FROM search_index WHERE entity_type = 'project' AND entity_id IN ?", projectIDs).Error
+		},
+	}
 	for _, step := range steps {
 		if err := step(); err != nil {
 			return err

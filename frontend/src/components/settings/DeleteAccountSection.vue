@@ -17,15 +17,26 @@
       {{ t('settings.deleteAccount.loading') }}
     </div>
 
-    <!-- Step 1: Blocking — must nominate admins -->
+    <!-- Step 1: Blocking — nominate admins, settle balances -->
     <div v-else-if="deleteStep === 'blocking'" class="space-y-4">
-      <div class="p-3 bg-warning/10 border border-warning/30 rounded-lg">
+      <div v-if="deleteCheckResult.open_balance_properties?.length > 0"
+           class="p-3 bg-warning/10 border border-warning/30 rounded-lg">
+        <p class="text-sm font-medium text-warning-soft mb-1">
+          {{ t('settings.deleteAccount.openBalancesHeader') }}
+        </p>
+        <ul class="text-sm text-warning-soft list-disc list-inside">
+          <li v-for="name in deleteCheckResult.open_balance_properties" :key="name">{{ name }}</li>
+        </ul>
+      </div>
+
+      <div v-if="deleteCheckResult.blocking_properties?.length > 0"
+           class="p-3 bg-warning/10 border border-warning/30 rounded-lg">
         <p class="text-sm font-medium text-warning-soft mb-2">
           {{ t('settings.deleteAccount.blockingHeader') }}
         </p>
       </div>
 
-      <div v-for="bp in deleteCheckResult.blocking_properties" :key="bp.property_id"
+      <div v-for="bp in deleteCheckResult.blocking_properties ?? []" :key="bp.property_id"
            class="p-3 border border-line rounded-lg space-y-2">
         <div class="font-medium text-ink">{{ bp.property_name }}</div>
         <div class="flex items-center gap-2">
@@ -66,6 +77,8 @@
           <li v-for="name in deleteCheckResult.data_loss_properties" :key="name">{{ name }}</li>
         </ul>
       </div>
+
+      <p class="text-sm text-ink-soft">{{ t('settings.deleteAccount.sharedHistoryNote') }}</p>
 
       <Input
         v-model="deletePassword"
@@ -134,7 +147,7 @@ async function startDeleteAccount() {
     deleteCheckResult.value = data
     if (!data.can_delete) {
       adminNominations.value = {}
-      for (const bp of data.blocking_properties) {
+      for (const bp of data.blocking_properties ?? []) {
         adminNominations.value[bp.property_id] = null
       }
       deleteStep.value = 'blocking'

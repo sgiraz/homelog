@@ -114,7 +114,7 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 	}
 
 	// Categories: user's custom + system defaults
-	h.db.Where("user_id = ? OR user_id IS NULL", userID).Find(&data.Categories)
+	h.db.Where("is_default = true OR user_id = ?", userID).Find(&data.Categories)
 
 	// Expenses
 	h.db.Where("user_id = ?", userID).Find(&data.Expenses)

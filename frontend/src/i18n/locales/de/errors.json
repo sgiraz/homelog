@@ -1,6 +1,6 @@
 {
 "account_inactive": "Dieses Konto ist inaktiv",
-"admin_successor_required": "Bestimmen Sie für jede Immobilie einen Administrator, bevor Sie Ihr Konto löschen",
+"admin_successor_required": "Jedes geteilte Zuhause braucht einen weiteren Administrator, bevor dieses Konto gelöscht werden kann",
 "already_property_member": "Sie sind bereits Mitglied dieser Immobilie",
 "amount_exceeds_debt": "Der Betrag ist höher als die noch bestehende Schuld zwischen diesen Mitgliedern",
 "amount_must_be_positive": "Der Betrag muss größer als null sein",
@@ -111,6 +111,7 @@
 "not_property_admin": "Sie sind kein Administrator dieser Immobilie",
 "not_property_member": "Sie sind kein Mitglied dieser Immobilie",
 "notification_not_found": "Benachrichtigung nicht gefunden",
+"open_balances_remaining": "Offene Salden in geteilten Zuhause müssen ausgeglichen sein, bevor dieses Konto gelöscht werden kann",
 "other_member_not_found": "Das andere Mitglied wurde nicht gefunden",
 "password_wrong": "Das Passwort ist nicht korrekt",
 "payer_not_in_property": "Der Zahler ist kein Mitglied dieser Immobilie",

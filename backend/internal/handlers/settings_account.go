@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -20,9 +21,13 @@ import (
 
 // DeleteAccountCheckResponse is the pre-flight check for account deletion
 type DeleteAccountCheckResponse struct {
-	CanDelete          bool                   `json:"can_delete"`
+	CanDelete bool `json:"can_delete"`
+	// BlockingProperties are shared homes that need another admin first.
 	BlockingProperties []BlockingPropertyInfo `json:"blocking_properties,omitempty"`
-	DataLossProperties []string               `json:"data_loss_properties,omitempty"`
+	// OpenBalanceProperties are shared homes where the user still owes or is owed.
+	OpenBalanceProperties []string `json:"open_balance_properties,omitempty"`
+	// DataLossProperties are homes nobody else lives in: they go with the account.
+	DataLossProperties []string `json:"data_loss_properties,omitempty"`
 }
 
 // BlockingPropertyInfo describes a property where the user must nominate a new admin before deleting
@@ -39,59 +44,6 @@ type MemberOption struct {
 	Name     string `json:"name"`
 }
 
-// computeDeleteCheck returns the deletion pre-flight status for a user
-func (h *SettingsHandler) computeDeleteCheck(userID uint) DeleteAccountCheckResponse {
-	resp := DeleteAccountCheckResponse{CanDelete: true}
-
-	// Find properties where user is admin (via HouseholdMember role)
-	var adminMembers []models.HouseholdMember
-	h.db.Where("user_id = ? AND role = 'admin'", userID).Preload("Property").Find(&adminMembers)
-
-	for _, am := range adminMembers {
-		// Count other admins in this property
-		var otherAdminCount int64
-		h.db.Model(&models.HouseholdMember{}).
-			Where("property_id = ? AND role = 'admin' AND user_id != ? AND is_virtual = false", am.PropertyID, userID).
-			Count(&otherAdminCount)
-
-		if otherAdminCount > 0 {
-			continue // other admins exist, no problem
-		}
-
-		// No other admin — check if there are other (non-virtual) members
-		var otherMembers []models.HouseholdMember
-		h.db.Where("property_id = ? AND user_id != ? AND is_virtual = false", am.PropertyID, userID).
-			Find(&otherMembers)
-
-		if len(otherMembers) > 0 {
-			// Blocking: must nominate a new admin
-			resp.CanDelete = false
-			members := make([]MemberOption, len(otherMembers))
-			for i, m := range otherMembers {
-				uid := uint(0)
-				if m.UserID != nil {
-					uid = *m.UserID
-				}
-				members[i] = MemberOption{
-					MemberID: m.ID,
-					UserID:   uid,
-					Name:     m.Name,
-				}
-			}
-			resp.BlockingProperties = append(resp.BlockingProperties, BlockingPropertyInfo{
-				PropertyID:   am.PropertyID,
-				PropertyName: am.Property.Name,
-				Members:      members,
-			})
-		} else {
-			// Sole member — data loss warning
-			resp.DataLossProperties = append(resp.DataLossProperties, am.Property.Name)
-		}
-	}
-
-	return resp
-}
-
 // DeleteAccountCheck - GET /api/v1/settings/account/delete-check
 func (h *SettingsHandler) DeleteAccountCheck(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
@@ -100,7 +52,13 @@ func (h *SettingsHandler) DeleteAccountCheck(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, h.computeDeleteCheck(userID))
+	check, err := accountDeleteCheck(h.db, userID)
+	if err != nil {
+		log.Printf("❌ Account delete check for user %d: %v", userID, err)
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to check the account")
+		return
+	}
+	c.JSON(http.StatusOK, check)
 }
 
 // PromoteAdminRequest is the request body to promote a member to admin
@@ -180,177 +138,29 @@ func (h *SettingsHandler) DeleteAccount(c *gin.Context) {
 		return
 	}
 
-	// Re-run delete check
-	check := h.computeDeleteCheck(userID)
-	if !check.CanDelete {
-		// Carries the blocking properties alongside the standard error shape,
-		// so the UI can name them; apierr.Response only models string params.
-		c.JSON(http.StatusConflict, gin.H{
-			"error":               "Appoint an admin for every property before deleting your account",
-			"error_code":          "admin_successor_required",
-			"blocking_properties": check.BlockingProperties,
-		})
+	err := h.db.Transaction(func(tx *gorm.DB) error { return deleteAccount(tx, userID) })
+	var blocked *accountBlockedError
+	if errors.As(err, &blocked) {
+		refuseAccountDelete(c, blocked.check)
 		return
 	}
-
-	// Begin transaction
-	tx := h.db.Begin()
-	if tx.Error != nil {
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Internal error")
+	if err != nil {
+		log.Printf("❌ Deleting account %d: %v", userID, err)
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete the account")
 		return
 	}
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// Collect user's household member IDs (across all properties)
-	var userMemberIDs []uint
-	tx.Model(&models.HouseholdMember{}).Where("user_id = ?", userID).Pluck("id", &userMemberIDs)
-
-	// Collect user's household members with property info
-	var userMembers []models.HouseholdMember
-	tx.Where("user_id = ?", userID).Find(&userMembers)
-
-	// For each property the user belongs to, decide: full cascade or just leave
-	for _, member := range userMembers {
-		// Count other non-virtual members in this property
-		var otherMemberCount int64
-		tx.Model(&models.HouseholdMember{}).
-			Where("property_id = ? AND id != ? AND is_virtual = false", member.PropertyID, member.ID).
-			Count(&otherMemberCount)
-
-		if otherMemberCount == 0 {
-			// Sole member: cascade delete entire property and all data
-			if err := cascadeDeleteProperty(tx, member.PropertyID); err != nil {
-				tx.Rollback()
-				log.Printf("❌ Error cascade deleting property %d: %v", member.PropertyID, err)
-				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete properties")
-				return
-			}
-			// Delete the member record itself
-			tx.Unscoped().Delete(&models.HouseholdMember{}, member.ID)
-		} else {
-			// Other members exist: check if this member has associated expenses/splits
-			var splitCount int64
-			tx.Model(&models.ExpenseSplit{}).Where("member_id = ?", member.ID).Count(&splitCount)
-
-			var paidExpenseCount int64
-			tx.Model(&models.Expense{}).Where("paid_by_member_id = ?", member.ID).Count(&paidExpenseCount)
-
-			if splitCount > 0 || paidExpenseCount > 0 {
-				// Convert to virtual member to preserve expense history
-				tx.Model(&member).Updates(map[string]any{
-					"is_virtual": true,
-					"user_id":    nil,
-				})
-			} else {
-				// No expense references, safe to delete
-				tx.Unscoped().Delete(&models.HouseholdMember{}, member.ID)
-			}
-
-			// Decrement residents
-			tx.Model(&models.Property{}).Where("id = ?", member.PropertyID).
-				UpdateColumn("residents", gorm.Expr("CASE WHEN residents > 1 THEN residents - 1 ELSE 1 END"))
-
-			if err := cleanupSplitDefaults(tx, member.ID); err != nil {
-				tx.Rollback()
-				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to clean split defaults")
-				return
-			}
-		}
-	}
-
-	// Handle user's expenses:
-	// - Shared expenses (with splits involving other members): keep expense, remove user's splits only
-	// - Solo expenses (no other splits): delete entirely
-	var userExpenseIDs []uint
-	tx.Model(&models.Expense{}).Where("user_id = ?", userID).Pluck("id", &userExpenseIDs)
-
-	for _, expID := range userExpenseIDs {
-		// Check if this expense has splits from OTHER members (not user's members)
-		var otherSplitCount int64
-		if len(userMemberIDs) > 0 {
-			tx.Model(&models.ExpenseSplit{}).
-				Where("expense_id = ? AND member_id NOT IN ?", expID, userMemberIDs).
-				Count(&otherSplitCount)
-		}
-
-		if otherSplitCount > 0 {
-			// Shared expense: keep it, only remove user's splits
-			if len(userMemberIDs) > 0 {
-				tx.Unscoped().Where("expense_id = ? AND member_id IN ?", expID, userMemberIDs).
-					Delete(&models.ExpenseSplit{})
-			}
-			// Leave the expense record as-is (user_id stays, PaidBy member is now virtual)
-		} else {
-			// Solo expense: delete splits and expense.
-			// Explicit search_index removal is required because batch/ID-form
-			// deletes pass a zero-value struct to AfterDelete, so the hook
-			// calls search.Remove with ID=0 and leaves the entry behind.
-			tx.Unscoped().Where("expense_id = ?", expID).Delete(&models.ExpenseSplit{})
-			tx.Unscoped().Delete(&models.Expense{}, expID)
-			tx.Exec("DELETE FROM search_index WHERE entity_type = 'expense' AND entity_id = ?", expID)
-		}
-	}
-
-	// Delete remaining splits where user's members are involved but expense belongs to someone else
-	if len(userMemberIDs) > 0 {
-		tx.Unscoped().Where("member_id IN ?", userMemberIDs).Delete(&models.ExpenseSplit{})
-	}
-
-	// Delete PropertyJoinRequests
-	tx.Unscoped().Where("user_id = ?", userID).Delete(&models.PropertyJoinRequest{})
-
-	// Delete project_members join table
-	tx.Exec("DELETE FROM project_members WHERE user_id = ?", userID)
-
-	// Delete owned projects (collect IDs first for search_index cleanup).
-	var projectIDs []uint
-	tx.Model(&models.Project{}).Where("user_id = ?", userID).Pluck("id", &projectIDs)
-	tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Project{})
-	if len(projectIDs) > 0 {
-		tx.Exec("DELETE FROM search_index WHERE entity_type = 'project' AND entity_id IN ?", projectIDs)
-	}
-
-	// Delete custom categories and subcategories
-	var categoryIDs []uint
-	tx.Model(&models.Category{}).Where("user_id = ?", userID).Pluck("id", &categoryIDs)
-	if len(categoryIDs) > 0 {
-		tx.Unscoped().Where("category_id IN ?", categoryIDs).Delete(&models.Subcategory{})
-	}
-	tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Category{})
-
-	// The household keeps the bill templates this user wrote
-	tx.Model(&models.BillTemplate{}).Where("user_id = ?", userID).Update("user_id", nil)
-
-	// Delete ContractTemplates
-	tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ContractTemplate{})
-
-	// Delete ExpenseTemplates
-	tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ExpenseTemplate{})
-
-	// Delete UserSettings
-	tx.Unscoped().Where("user_id = ?", userID).Delete(&models.UserSettings{})
-
-	// Delete avatar file
-	if user.AvatarPath != "" {
-		os.Remove(filepath.Join(database.DataDir(), user.AvatarPath))
-	}
-
-	// Delete User
-	if err := tx.Unscoped().Delete(&models.User{}, userID).Error; err != nil {
-		tx.Rollback()
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to delete user")
-		return
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to commit transaction")
-		return
-	}
+	removeAvatar(user.AvatarPath)
 
 	log.Printf("✅ User ID=%d (%s) self-deleted their account", userID, user.Email)
 	c.JSON(http.StatusOK, gin.H{"message": "Account deleted"})
+}
+
+// removeAvatar deletes an avatar file once the account it belonged to is gone.
+func removeAvatar(path string) {
+	if path == "" {
+		return
+	}
+	if err := os.Remove(filepath.Join(database.DataDir(), path)); err != nil && !os.IsNotExist(err) {
+		log.Printf("⚠️  Could not remove avatar %s: %v", path, err)
+	}
 }
