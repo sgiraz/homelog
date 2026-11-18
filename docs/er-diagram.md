@@ -23,7 +23,6 @@ erDiagram
         string currency
         string theme "auto | light | dark"
         string date_format
-        uint default_property_id FK
         string default_split_member_ids "JSON"
         string default_templates "JSON"
         bool email_notifications

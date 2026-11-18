@@ -62,14 +62,14 @@ func subcategoryArgs(value string) []any {
 	return []any{value}
 }
 
-// UpdateExpenseRequest represents the request body for updating an expense
+// UpdateExpenseRequest represents the request body for updating an expense.
+// The property is fixed at creation: payer and splits are members of it.
 type UpdateExpenseRequest struct {
 	Amount           *float64 `json:"amount"`
 	OriginalAmount   *float64 `json:"original_amount"`
 	OriginalCurrency *string  `json:"original_currency"`
 	Description      *string  `json:"description"`
 	CategoryID       *uint    `json:"category_id"`
-	PropertyID       *uint    `json:"property_id"`
 	SubcategoryID    *uint    `json:"subcategory_id"`
 	ProjectID        *uint    `json:"project_id"`
 	Date             *string  `json:"date"`
@@ -313,6 +313,45 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		if err := h.db.Where("property_id = ? AND user_id = ?", *req.PropertyID, userID).First(&member).Error; err != nil {
 			log.Printf("❌ EXPENSE CREATE: User %d is not a member of property %d", userID, *req.PropertyID)
 			apierr.Fail(c, http.StatusBadRequest, "not_property_member", "You are not a member of this property")
+			return
+		}
+	}
+
+	// Payer and split members must belong to the expense's property: a member
+	// of another home would get a share of this expense (and a notification).
+	if req.PropertyID == nil {
+		apierr.Fail(c, http.StatusBadRequest, "payer_not_in_property", "The payer is not a member of this property")
+		return
+	}
+	var payerCount int64
+	if err := h.db.Model(&models.HouseholdMember{}).
+		Where("id = ? AND property_id = ?", paidByMemberID, *req.PropertyID).
+		Count(&payerCount).Error; err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to check payer")
+		return
+	}
+	if payerCount == 0 {
+		apierr.Fail(c, http.StatusBadRequest, "payer_not_in_property", "The payer is not a member of this property")
+		return
+	}
+	if req.IsSplit && len(req.SplitWithMemberIDs) > 0 {
+		unique := make(map[uint]bool, len(req.SplitWithMemberIDs))
+		for _, id := range req.SplitWithMemberIDs {
+			unique[id] = true
+		}
+		if len(unique) != len(req.SplitWithMemberIDs) || unique[paidByMemberID] {
+			apierr.Fail(c, http.StatusBadRequest, "split_members_invalid", "The selected members are not valid")
+			return
+		}
+		var validCount int64
+		if err := h.db.Model(&models.HouseholdMember{}).
+			Where("id IN ? AND property_id = ?", req.SplitWithMemberIDs, *req.PropertyID).
+			Count(&validCount).Error; err != nil {
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to check split members")
+			return
+		}
+		if validCount != int64(len(req.SplitWithMemberIDs)) {
+			apierr.Fail(c, http.StatusBadRequest, "split_members_not_in_property", "Some of the selected members do not belong to this property")
 			return
 		}
 	}
@@ -573,15 +612,6 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 		}
 		if req.OriginalCurrency != nil {
 			updates["original_currency"] = *req.OriginalCurrency
-		}
-
-		if req.PropertyID != nil {
-			var member models.HouseholdMember
-			if err := h.db.Where("property_id = ? AND user_id = ?", *req.PropertyID, userID).First(&member).Error; err != nil {
-				apierr.Fail(c, http.StatusBadRequest, "not_property_member", "You are not a member of this property")
-				return
-			}
-			updates["property_id"] = *req.PropertyID
 		}
 
 		if req.ProjectID != nil {

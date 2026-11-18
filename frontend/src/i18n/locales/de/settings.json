@@ -174,7 +174,7 @@
   },
   "properties": {
     "title": "Immobilien verwalten",
-    "subtitle": "Eine neue Immobilie zum System hinzufügen",
+    "subtitle": "Immobilien hinzufügen, bearbeiten oder entfernen",
     "principalBadge": "Primär",
     "newTitle": "Neue Immobilie",
     "namePlaceholder": "Name der Immobilie *",
@@ -184,7 +184,19 @@
     "setAsPrincipal": "Als primär festlegen",
     "createButton": "Immobilie erstellen",
     "creatingButton": "Wird erstellt...",
-    "createError": "Fehler beim Erstellen"
+    "createError": "Fehler beim Erstellen",
+    "typeLabel": "Art der Immobilie",
+    "residentsLabel": "Bewohner",
+    "editTitle": "Immobilie bearbeiten",
+    "savingButton": "Wird gespeichert...",
+    "updateError": "Fehler beim Speichern",
+    "editAria": "{name} bearbeiten",
+    "deleteAria": "{name} löschen",
+    "deleteConfirmTitle": "„{name}“ löschen?",
+    "deleteConfirmMessage": "Dienste, Rechnungen, Zählerstände, Ausgaben, Ausgleichszahlungen, Projekte, Rechnungsvorlagen und Mitglieder werden ebenfalls gelöscht, für alle, die sie teilen. Dies kann nicht rückgängig gemacht werden.",
+    "newPrincipalLabel": "Welche Immobilie wird zur primären?",
+    "deleteSuccess": "„{name}“ gelöscht",
+    "deleteError": "Fehler beim Löschen"
   },
   "categories": {
     "title": "Kategorien verwalten",

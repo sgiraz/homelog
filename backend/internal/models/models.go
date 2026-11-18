@@ -63,6 +63,10 @@ type Property struct {
 	EndDate   *time.Time `json:"end_date,omitempty"`
 	IsCurrent bool       `gorm:"not null;default:false" json:"is_current"`
 	Residents int        `gorm:"default:1" json:"residents"`
+
+	// Computed: another account besides the owner is a member, so the home
+	// cannot be deleted.
+	IsShared bool `gorm:"-" json:"is_shared"`
 }
 
 // Category represents an expense category
@@ -592,13 +596,12 @@ type UserSettings struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	UserID            uint   `gorm:"uniqueIndex;not null" json:"user_id"`
-	DefaultPropertyID *uint  `json:"default_property_id,omitempty"`
-	Language          string `gorm:"not null;default:'en'" json:"language"`
-	Currency          string `gorm:"not null;default:'EUR'" json:"currency"`
-	Theme             string `gorm:"not null;default:'auto'" json:"theme"`        // auto, light, dark
-	ColorTheme        string `gorm:"not null;default:'slate'" json:"color_theme"` // slate (default), paper, forest, ocean, plum
-	DateFormat        string `gorm:"not null;default:'DD/MM/YYYY'" json:"date_format"`
+	UserID     uint   `gorm:"uniqueIndex;not null" json:"user_id"`
+	Language   string `gorm:"not null;default:'en'" json:"language"`
+	Currency   string `gorm:"not null;default:'EUR'" json:"currency"`
+	Theme      string `gorm:"not null;default:'auto'" json:"theme"`        // auto, light, dark
+	ColorTheme string `gorm:"not null;default:'slate'" json:"color_theme"` // slate (default), paper, forest, ocean, plum
+	DateFormat string `gorm:"not null;default:'DD/MM/YYYY'" json:"date_format"`
 
 	// Split preferences
 	DefaultSplitWithMemberIDs string `json:"default_split_with_member_ids,omitempty"` // JSON array as string e.g. "[2,3]"
