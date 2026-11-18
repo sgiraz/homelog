@@ -67,6 +67,8 @@ type Property struct {
 	// Computed: another account besides the owner is a member, so the home
 	// cannot be deleted.
 	IsShared bool `gorm:"-" json:"is_shared"`
+
+	Owner *User `gorm:"foreignKey:UserID" json:"-"`
 }
 
 // Category represents an expense category
@@ -88,7 +90,7 @@ type Category struct {
 	Color     string `json:"color"`
 	IsDefault bool   `gorm:"not null;default:false" json:"is_default"`
 
-	Subcategories []Subcategory `gorm:"foreignKey:CategoryID" json:"subcategories,omitempty"`
+	Subcategories []Subcategory `gorm:"foreignKey:CategoryID;constraint:OnDelete:CASCADE" json:"subcategories,omitempty"`
 }
 
 // Subcategory represents an expense subcategory
@@ -138,12 +140,14 @@ type Expense struct {
 	IsLongTermDebt bool `gorm:"not null;default:false;index" json:"is_long_term_debt"`
 
 	// Relations
-	Property    *Property        `json:"property,omitempty"`
-	Category    Category         `json:"category"`
-	Subcategory *Subcategory     `json:"subcategory,omitempty"`
-	Project     *Project         `json:"project,omitempty"`
-	PaidBy      *HouseholdMember `gorm:"foreignKey:PaidByMemberID" json:"paid_by,omitempty"`
-	Splits      []ExpenseSplit   `gorm:"foreignKey:ExpenseID" json:"splits,omitempty"`
+	Property        *Property        `json:"property,omitempty"`
+	Category        Category         `json:"category"`
+	Subcategory     *Subcategory     `json:"subcategory,omitempty"`
+	Project         *Project         `json:"project,omitempty"`
+	PaidBy          *HouseholdMember `gorm:"foreignKey:PaidByMemberID" json:"paid_by,omitempty"`
+	Splits          []ExpenseSplit   `gorm:"foreignKey:ExpenseID;constraint:OnDelete:CASCADE" json:"splits,omitempty"`
+	Bill            *Bill            `gorm:"foreignKey:BillID" json:"-"`
+	BillInstallment *BillInstallment `gorm:"foreignKey:BillInstallmentID" json:"-"`
 }
 
 // SupportedLanguages is the set of UI languages the server accepts. The real
@@ -343,11 +347,11 @@ type Utility struct {
 	Property        Property               `json:"property"`
 	DefaultCategory *Category              `gorm:"foreignKey:DefaultCategoryID" json:"default_category,omitempty"`
 	PaidByMember    *HouseholdMember       `gorm:"foreignKey:PaidByMemberID" json:"paid_by_member,omitempty"`
-	Readings        []MeterReading         `gorm:"foreignKey:UtilityID" json:"readings,omitempty"`
+	Readings        []MeterReading         `gorm:"foreignKey:UtilityID;constraint:OnDelete:CASCADE" json:"readings,omitempty"`
 	Bills           []Bill                 `gorm:"foreignKey:UtilityID" json:"bills,omitempty"`
-	Rates           []UtilityRate          `gorm:"foreignKey:UtilityID" json:"rates,omitempty"`
-	PriceChanges    []PriceChange          `gorm:"foreignKey:UtilityID" json:"price_changes,omitempty"`
-	Communications  []ServiceCommunication `gorm:"foreignKey:UtilityID" json:"communications,omitempty"`
+	Rates           []UtilityRate          `gorm:"foreignKey:UtilityID;constraint:OnDelete:CASCADE" json:"rates,omitempty"`
+	PriceChanges    []PriceChange          `gorm:"foreignKey:UtilityID;constraint:OnDelete:CASCADE" json:"price_changes,omitempty"`
+	Communications  []ServiceCommunication `gorm:"foreignKey:UtilityID;constraint:OnDelete:CASCADE" json:"communications,omitempty"`
 }
 
 // PriceChange tracks historical price changes for fixed-cost services
@@ -363,6 +367,8 @@ type PriceChange struct {
 	Reason               string     `json:"reason,omitempty"`                      // e.g. "Modifica condizioni contrattuali"
 	CancellationDeadline *time.Time `json:"cancellation_deadline,omitempty"`       // Deadline to cancel without penalty
 	SourceBillID         *uint      `gorm:"index" json:"source_bill_id,omitempty"` // Bill that announced this change
+
+	SourceBill *Bill `gorm:"foreignKey:SourceBillID;constraint:OnDelete:SET NULL" json:"-"`
 }
 
 // ServiceCommunication represents an important communication extracted from a bill/invoice
@@ -382,7 +388,8 @@ type ServiceCommunication struct {
 	IsRead         bool       `gorm:"not null;default:false" json:"is_read"`
 
 	// Relations
-	Utility Utility `gorm:"foreignKey:UtilityID" json:"utility,omitempty"`
+	Utility Utility `gorm:"foreignKey:UtilityID;constraint:OnDelete:CASCADE" json:"utility,omitempty"`
+	Bill    *Bill   `gorm:"foreignKey:BillID;constraint:OnDelete:SET NULL" json:"-"`
 }
 
 // Notification represents a generic in-app notification (join requests, shared expenses, etc.)
@@ -505,7 +512,7 @@ type Bill struct {
 
 	// Relations
 	Utility      Utility           `json:"utility"`
-	Installments []BillInstallment `gorm:"foreignKey:BillID" json:"installments,omitempty"`
+	Installments []BillInstallment `gorm:"foreignKey:BillID;constraint:OnDelete:CASCADE" json:"installments,omitempty"`
 
 	// Computed: true if any installment has settled splits on its auto-expense.
 	// A locked bill cannot be toggled paid/unpaid or deleted, since that would
@@ -536,6 +543,8 @@ type BillInstallment struct {
 
 	// Computed: true if the auto-expense has any non-payer settled splits.
 	IsLocked bool `gorm:"-" json:"is_locked"`
+
+	Expense *Expense `gorm:"foreignKey:ExpenseID;constraint:OnDelete:SET NULL" json:"-"`
 }
 
 // UtilityRate represents historical rates for a utility
@@ -577,9 +586,10 @@ type Project struct {
 
 	// Relations
 	Property   *Property       `json:"property,omitempty"`
-	Expenses   []Expense       `gorm:"foreignKey:ProjectID" json:"expenses,omitempty"`
-	SharedWith []User          `gorm:"many2many:project_members;" json:"shared_with,omitempty"`
-	Members    []ProjectMember `gorm:"foreignKey:ProjectID" json:"-"`
+	Expenses   []Expense       `gorm:"foreignKey:ProjectID;constraint:OnDelete:SET NULL" json:"expenses,omitempty"`
+	SharedWith []User          `gorm:"many2many:project_members;constraint:OnDelete:CASCADE" json:"shared_with,omitempty"`
+	Members    []ProjectMember `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"-"`
+	Owner      *User           `gorm:"foreignKey:UserID" json:"-"`
 }
 
 // ProjectMember is the join table for Project <-> User with role
@@ -597,6 +607,7 @@ type UserSettings struct {
 	UpdatedAt time.Time `json:"updated_at"`
 
 	UserID     uint   `gorm:"uniqueIndex;not null" json:"user_id"`
+	User       *User  `gorm:"foreignKey:UserID" json:"-"`
 	Language   string `gorm:"not null;default:'en'" json:"language"`
 	Currency   string `gorm:"not null;default:'EUR'" json:"currency"`
 	Theme      string `gorm:"not null;default:'auto'" json:"theme"`        // auto, light, dark
@@ -681,7 +692,7 @@ type ExpenseSplit struct {
 	// Relations
 	Expense    Expense         `json:"expense"`
 	Member     HouseholdMember `gorm:"foreignKey:MemberID" json:"member"`
-	Settlement *Settlement     `json:"settlement,omitempty"`
+	Settlement *Settlement     `gorm:"constraint:OnDelete:SET NULL" json:"settlement,omitempty"`
 }
 
 // Settlement represents a payment between members to settle debts
@@ -703,13 +714,13 @@ type Settlement struct {
 	// expense flagged IsLongTermDebt). When nil the payment settles the
 	// ordinary running balance instead, oldest share first.
 	TargetExpenseID *uint    `gorm:"index" json:"target_expense_id,omitempty"`
-	TargetExpense   *Expense `gorm:"foreignKey:TargetExpenseID" json:"target_expense,omitempty"`
+	TargetExpense   *Expense `gorm:"foreignKey:TargetExpenseID;constraint:OnDelete:SET NULL" json:"target_expense,omitempty"`
 
 	// Relations
 	Property    Property               `json:"property"`
 	FromMember  HouseholdMember        `gorm:"foreignKey:FromMemberID" json:"from_member"`
 	ToMember    HouseholdMember        `gorm:"foreignKey:ToMemberID" json:"to_member"`
-	Allocations []SettlementAllocation `gorm:"foreignKey:SettlementID" json:"allocations,omitempty"`
+	Allocations []SettlementAllocation `gorm:"foreignKey:SettlementID;constraint:OnDelete:CASCADE" json:"allocations,omitempty"`
 }
 
 // SettlementAllocation records how much of a settlement's amount was applied
@@ -752,7 +763,8 @@ type BillTemplate struct {
 	ExtractionRules string `gorm:"type:text" json:"extraction_rules"`        // JSON with regex patterns for each field
 
 	// Relations
-	User *User `json:"user,omitempty"`
+	User     *User     `json:"user,omitempty"`
+	Property *Property `gorm:"foreignKey:PropertyID" json:"-"`
 }
 
 // ExpenseTemplate represents a reusable expense template for quick entry
@@ -776,7 +788,8 @@ type ExpenseTemplate struct {
 	// Relations
 	Category    Category     `json:"category"`
 	Subcategory *Subcategory `json:"subcategory,omitempty"`
-	Project     *Project     `json:"project,omitempty"`
+	Project     *Project     `gorm:"constraint:OnDelete:SET NULL" json:"project,omitempty"`
+	User        *User        `gorm:"foreignKey:UserID" json:"-"`
 }
 
 // ContractTemplate represents extraction rules for utility contracts
