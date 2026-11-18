@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/glebarez/sqlite"
 	"github.com/sgiraz/homelog/internal/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -52,16 +51,10 @@ func InitDatabase() (*gorm.DB, error) {
 		config.Logger = logger.Default.LogMode(logger.Error)
 	}
 
-	// Open database connection
-	db, err := gorm.Open(sqlite.Open(dbPath), config)
+	db, err := Open(dbPath, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
-
-	// Enable WAL mode for better concurrency
-	db.Exec("PRAGMA journal_mode=WAL;")
-	db.Exec("PRAGMA synchronous=NORMAL;")
-	db.Exec("PRAGMA foreign_keys=ON;")
 
 	log.Println("✅ Database connected successfully")
 	return db, nil
@@ -85,15 +78,19 @@ func PendingUpgrades(db *gorm.DB) []string {
 	return steps
 }
 
-// AutoMigrate runs automatic migrations for all models
+// AutoMigrate runs automatic migrations for all models. Foreign keys are off
+// meanwhile: GORM may recreate a table to add a foreign key, which fails while
+// other tables reference it.
 func AutoMigrate(db *gorm.DB) error {
 	log.Println("🔄 Running database migrations...")
+	if err := WithoutForeignKeys(db, autoMigrate); err != nil {
+		return err
+	}
+	log.Println("✅ Database migrations completed")
+	return nil
+}
 
-	// Disable FK checks during migration — GORM may need to recreate tables
-	// to add new foreign keys, which fails if other tables reference them.
-	db.Exec("PRAGMA foreign_keys=OFF;")
-	defer db.Exec("PRAGMA foreign_keys=ON;")
-
+func autoMigrate(db *gorm.DB) error {
 	// Register custom join table for Project <-> User with role column
 	if err := db.SetupJoinTable(&models.Project{}, "SharedWith", &models.ProjectMember{}); err != nil {
 		return fmt.Errorf("failed to setup project_members join table: %w", err)
@@ -138,8 +135,6 @@ func AutoMigrate(db *gorm.DB) error {
 		return fmt.Errorf("failed to init search index: %w", err)
 	}
 	backfillSearchIndex(db)
-
-	log.Println("✅ Database migrations completed")
 	return nil
 }
 

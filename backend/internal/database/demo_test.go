@@ -3,7 +3,6 @@ package database
 import (
 	"testing"
 
-	"github.com/glebarez/sqlite"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -13,13 +12,12 @@ import (
 
 func newTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+	db, err := Open(":memory:", &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
 		t.Fatalf("open in-memory sqlite: %v", err)
 	}
-	db.Exec("PRAGMA foreign_keys=ON;")
 	if err := AutoMigrate(db); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

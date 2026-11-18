@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
@@ -17,7 +16,7 @@ import (
 // by their author, estimates kept apart, a default template per service.
 func legacyDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "homelog.db")), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
+	db, err := database.Open(filepath.Join(t.TempDir(), "homelog.db"), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +192,7 @@ func TestUpgradeFromTheLastReleaseBeforeTemplatesPerProperty(t *testing.T) {
 
 // A current database has nothing to convert, and the tool leaves it alone.
 func TestUpgradeLeavesACurrentDatabaseAlone(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "homelog.db")), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
+	db, err := database.Open(filepath.Join(t.TempDir(), "homelog.db"), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
 		t.Fatal(err)
 	}
