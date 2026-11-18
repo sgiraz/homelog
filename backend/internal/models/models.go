@@ -63,6 +63,10 @@ type Property struct {
 	EndDate   *time.Time `json:"end_date,omitempty"`
 	IsCurrent bool       `gorm:"not null;default:false" json:"is_current"`
 	Residents int        `gorm:"default:1" json:"residents"`
+
+	// Computed: another account besides the owner is a member, so the home
+	// cannot be deleted.
+	IsShared bool `gorm:"-" json:"is_shared"`
 }
 
 // Category represents an expense category

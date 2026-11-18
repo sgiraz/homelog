@@ -237,9 +237,15 @@ async function saveEdit(prop) {
   }
 }
 
+// A shared home cannot be deleted (the API answers property_has_members): say
+// so before asking for a confirmation that would lead nowhere.
 // Deleting the primary home asks which of the owner's other homes takes its
 // place; with none (only homes they joined) there is nothing to choose.
 async function deleteProperty(prop) {
+  if (prop.is_shared) {
+    window.$toast?.info(t('errors.property_has_members'))
+    return
+  }
   if (prop.is_current && allProperties.value.some((p) => isOwner(p) && p.id !== prop.id)) {
     principalToDelete.value = prop
     return

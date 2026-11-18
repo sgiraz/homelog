@@ -37,9 +37,10 @@ Quando sei pronto a usarlo sul serio, segui la guida al
 
 Le abitazioni si gestiscono in **Impostazioni → Proprietà**, dove chi le ha
 create può aggiungerle, modificarle o eliminarle. Eliminare un'abitazione
-elimina anche tutto ciò che le appartiene — utenze, bollette, letture, spese,
-progetti e membri — per tutti quelli che la condividono. Se era la principale,
-scegli tu quale abitazione prende il suo posto; l'unica abitazione non si può
+elimina anche tutto ciò che le appartiene: utenze, bollette, letture, spese,
+progetti e membri. Un'abitazione condivisa con altri account non si può
+eliminare, perché contiene anche la loro storia. Se era la principale, scegli
+tu quale abitazione prende il suo posto; l'unica abitazione non si può
 eliminare.
 
 ## Dove andare ora

@@ -254,8 +254,11 @@ func (h *SettingsHandler) DeleteAccount(c *gin.Context) {
 			tx.Model(&models.Property{}).Where("id = ?", member.PropertyID).
 				UpdateColumn("residents", gorm.Expr("CASE WHEN residents > 1 THEN residents - 1 ELSE 1 END"))
 
-			// Clean up split defaults referencing this member
-			cleanupSplitDefaults(tx, member.ID)
+			if err := cleanupSplitDefaults(tx, member.ID); err != nil {
+				tx.Rollback()
+				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to clean split defaults")
+				return
+			}
 		}
 	}
 

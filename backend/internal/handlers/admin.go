@@ -187,9 +187,10 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 
 	// 9. HouseholdMembers (owned properties + user's own member records in other properties)
 	if len(memberIDs) > 0 {
-		// Clean up stale member IDs from other users' default split settings
-		for _, mid := range memberIDs {
-			cleanupSplitDefaults(tx, mid)
+		if err := cleanupSplitDefaults(tx, memberIDs...); err != nil {
+			tx.Rollback()
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to clean split defaults")
+			return
 		}
 		if err := tx.Unscoped().Where("id IN ?", memberIDs).Delete(&models.HouseholdMember{}).Error; err != nil {
 			tx.Rollback()

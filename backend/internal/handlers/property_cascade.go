@@ -10,9 +10,9 @@ import (
 // utilities (with bills, installments, readings, rates, price changes,
 // communications), expenses and splits, projects, settlements and their
 // allocations, bill templates, household settings, members, join requests and
-// notifications. Run it inside a transaction: it stops at the first failing
-// statement so the caller can roll back. Bill attachments left on disk are
-// reclaimed by SweepUploads.
+// notifications, and the members' IDs in everyone's default split. Run it
+// inside a transaction: it stops at the first failing statement so the caller
+// can roll back. Bill attachments left on disk are reclaimed by SweepUploads.
 //
 // Soft-deleted rows are part of the tree: they still hold their foreign keys,
 // so every lookup and delete is Unscoped. Rows outside the property that point
@@ -25,7 +25,7 @@ import (
 func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 	// A Session makes the handle safe to reuse: each chain starts clean.
 	all := tx.Unscoped().Session(&gorm.Session{})
-	var utilityIDs, billIDs, expenseIDs, splitIDs, projectIDs, settlementIDs []uint
+	var utilityIDs, billIDs, expenseIDs, splitIDs, projectIDs, settlementIDs, memberIDs []uint
 	lookups := []func() error{
 		func() error {
 			return all.Model(&models.Utility{}).Where("property_id = ?", propertyID).Pluck("id", &utilityIDs).Error
@@ -46,6 +46,9 @@ func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 		},
 		func() error {
 			return all.Model(&models.Settlement{}).Where("property_id = ?", propertyID).Pluck("id", &settlementIDs).Error
+		},
+		func() error {
+			return all.Model(&models.HouseholdMember{}).Where("property_id = ?", propertyID).Pluck("id", &memberIDs).Error
 		},
 	}
 	for _, lookup := range lookups {
@@ -114,6 +117,7 @@ func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 	del(&models.HouseholdSettings{}, "property_id = ?", propertyID)
 	del(&models.PropertyJoinRequest{}, "property_id = ?", propertyID)
 	del(&models.Notification{}, "property_id = ?", propertyID)
+	steps = append(steps, func() error { return cleanupSplitDefaults(tx, memberIDs...) })
 	del(&models.HouseholdMember{}, "property_id = ?", propertyID)
 	del(&models.Property{}, "id = ?", propertyID)
 

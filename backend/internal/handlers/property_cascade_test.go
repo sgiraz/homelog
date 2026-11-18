@@ -93,6 +93,7 @@ func TestCascadeDeleteProperty_CoversSchema(t *testing.T) {
 // at their settlement: both used to make the delete fail.
 func TestDeleteProperty_SoftDeletedAndSettledRows(t *testing.T) {
 	f := setupPropertyFixture(t)
+	f.memberLeaves(t)
 	db := f.db
 	now := time.Now()
 	id := f.home.ID

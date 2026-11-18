@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -20,6 +21,9 @@ type propertyFixture struct {
 	member   *models.User
 	home     models.Property // principal, shared with member, full of data
 	other    models.Property // second home of owner, older
+	mOwner   models.HouseholdMember
+	mMember  models.HouseholdMember
+	mOther   models.HouseholdMember
 	ownerTok string
 	memTok   string
 }
@@ -83,7 +87,18 @@ func setupPropertyFixture(t *testing.T) *propertyFixture {
 
 	return &propertyFixture{
 		router: r, db: db, owner: owner, member: member, home: home, other: other,
+		mOwner: mOwner, mMember: mMember, mOther: mOther,
 		ownerTok: testutil.SignToken(t, owner), memTok: testutil.SignToken(t, member),
+	}
+}
+
+// memberLeaves turns the member's account-linked row virtual, as deleting
+// their account does: the history stays, the home is no longer shared.
+func (f *propertyFixture) memberLeaves(t *testing.T) {
+	t.Helper()
+	if err := f.db.Model(&models.HouseholdMember{}).Where("id = ?", f.mMember.ID).
+		Updates(map[string]any{"is_virtual": true, "user_id": nil}).Error; err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -98,7 +113,10 @@ func (f *propertyFixture) count(t *testing.T, model any, query string, args ...a
 
 func TestDeleteProperty_CascadesAndPromotesChosenPrincipal(t *testing.T) {
 	f := setupPropertyFixture(t)
+	f.memberLeaves(t)
 	id := f.home.ID
+	mustCreate(t, f.db, &models.UserSettings{UserID: f.owner.ID,
+		DefaultSplitWithMemberIDs: "[" + itoa(f.mMember.ID) + "," + itoa(f.mOther.ID) + "]"})
 
 	var before int64
 	if err := f.db.Raw("SELECT COUNT(*) FROM search_index WHERE property_id = ?", id).Scan(&before).Error; err != nil || before == 0 {
@@ -157,10 +175,52 @@ func TestDeleteProperty_CascadesAndPromotesChosenPrincipal(t *testing.T) {
 	if !other.IsCurrent {
 		t.Error("the chosen home should have been promoted to principal")
 	}
+
+	var settings models.UserSettings
+	f.db.Where("user_id = ?", f.owner.ID).First(&settings)
+	if want := "[" + itoa(f.mOther.ID) + "]"; settings.DefaultSplitWithMemberIDs != want {
+		t.Errorf("default split = %s, want %s (deleted members removed)", settings.DefaultSplitWithMemberIDs, want)
+	}
+}
+
+func TestDeleteProperty_SharedHomeIsRefused(t *testing.T) {
+	f := setupPropertyFixture(t)
+
+	isShared := func() map[uint]bool {
+		t.Helper()
+		rec := doJSON(t, f.router, http.MethodGet, "/properties", f.ownerTok, nil)
+		var props []models.Property
+		if err := json.Unmarshal(rec.Body.Bytes(), &props); err != nil {
+			t.Fatalf("decode properties: %v", err)
+		}
+		out := map[uint]bool{}
+		for _, p := range props {
+			out[p.ID] = p.IsShared
+		}
+		return out
+	}
+	if got := isShared(); !got[f.home.ID] || got[f.other.ID] {
+		t.Errorf("is_shared = %v, want home shared and other not", got)
+	}
+
+	rec := doJSON(t, f.router, http.MethodDelete, "/properties/"+itoa(f.home.ID)+"?new_principal_id="+itoa(f.other.ID), f.ownerTok, nil)
+	if rec.Code != http.StatusConflict || errorCode(t, rec) != "property_has_members" {
+		t.Fatalf("delete shared home: status %d, body %s; want 409 property_has_members", rec.Code, rec.Body.String())
+	}
+	if n := f.count(t, &models.Expense{}, "property_id = ?", f.home.ID); n == 0 {
+		t.Error("a refused delete must not touch the property's data")
+	}
+
+	// Virtual members have no account to lose the home from.
+	f.memberLeaves(t)
+	if got := isShared(); got[f.home.ID] {
+		t.Error("a home with only virtual members besides the owner is not shared")
+	}
 }
 
 func TestDeleteProperty_LastOneIsRefused(t *testing.T) {
 	f := setupPropertyFixture(t)
+	f.memberLeaves(t)
 	if rec := doJSON(t, f.router, http.MethodDelete, "/properties/"+itoa(f.other.ID), f.ownerTok, nil); rec.Code != http.StatusOK {
 		t.Fatalf("delete first home: status %d, body %s", rec.Code, rec.Body.String())
 	}
@@ -224,6 +284,7 @@ func TestUpdateProperty(t *testing.T) {
 
 func TestDeleteProperty_PrincipalNeedsAValidSuccessor(t *testing.T) {
 	f := setupPropertyFixture(t)
+	f.memberLeaves(t)
 	foreign := models.Property{UserID: f.member.ID, Name: "Member's flat", Type: "rented", StartDate: time.Now(), Residents: 1}
 	mustCreate(t, f.db, &foreign)
 	base := "/properties/" + itoa(f.home.ID)
