@@ -177,10 +177,23 @@ func deleteAccount(tx *gorm.DB, userID uint) error {
 			return fmt.Errorf("leave home %d: %w", home.property.ID, err)
 		}
 	}
+	// A home the account owns that was deleted before (soft) is nobody's to
+	// keep, but still holds its whole tree.
+	var trashed []uint
+	if err := all.Model(&models.Property{}).Where("user_id = ? AND deleted_at IS NOT NULL", userID).
+		Pluck("id", &trashed).Error; err != nil {
+		return err
+	}
+	for _, id := range trashed {
+		if err := cascadeDeleteProperty(tx, id); err != nil {
+			return fmt.Errorf("delete removed home %d: %w", id, err)
+		}
+	}
 
 	steps := []func() error{
-		func() error { return detachMembers(tx, userID) },
+		// Personal expenses go first: they must not keep a member row alive.
 		func() error { return deletePersonalExpenses(tx, userID) },
+		func() error { return detachMembers(tx, userID) },
 		func() error { return all.Where("user_id = ?", userID).Delete(&models.ExpenseTemplate{}).Error },
 		func() error { return handOverProjects(tx, userID) },
 		func() error { return all.Where("user_id = ?", userID).Delete(&models.ProjectMember{}).Error },

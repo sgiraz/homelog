@@ -3,6 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sort"
 	"testing"
 	"time"
@@ -391,4 +394,108 @@ func TestAdminDeleteUser_SameRulesAsOwnDeletion(t *testing.T) {
 		t.Errorf("bob's member: user_id %v, virtual %v; want virtual", member.UserID, member.IsVirtual)
 	}
 	assertNoForeignKeyViolations(t, f.db)
+}
+
+// A member whose only expenses were their own leaves no trace in the home:
+// those expenses go, and nothing is left to keep a virtual member for.
+func TestDeleteAccount_PersonalExpensesKeepNoMember(t *testing.T) {
+	f := setupMoneyFixture(t)
+	f.accountRoutes(t)
+	mustCreate(t, f.db, &models.Expense{UserID: f.bob.ID, PropertyID: &f.prop.ID, CategoryID: f.homeCatID,
+		Amount: 9, Date: time.Now(), PaidByMemberID: f.mBob.ID})
+
+	if code := f.deleteOwnAccount(t, f.bobTok); code != http.StatusOK {
+		t.Fatalf("delete account: status %d", code)
+	}
+	var n int64
+	f.db.Unscoped().Model(&models.HouseholdMember{}).Where("id = ?", f.mBob.ID).Count(&n)
+	if n != 0 {
+		t.Error("bob's member row survived as a virtual member, though only his deleted expenses referred to it")
+	}
+	assertNoForeignKeyViolations(t, f.db)
+}
+
+// A home the account deleted earlier (soft) goes with the account, tree and all.
+func TestDeleteAccount_RemovedHomeGoesToo(t *testing.T) {
+	f := setupMoneyFixture(t)
+	f.accountRoutes(t)
+	now := time.Now()
+	old := models.Property{UserID: f.bob.ID, Name: "Old flat", Type: "rented", StartDate: now, Residents: 1}
+	mustCreate(t, f.db, &old)
+	member := models.HouseholdMember{PropertyID: old.ID, UserID: &f.bob.ID, Name: "Bob", Role: "admin"}
+	mustCreate(t, f.db, &member)
+	utility := models.Utility{UserID: f.bob.ID, PropertyID: old.ID, Type: "gas", Provider: "Gas Co", IsActive: true}
+	mustCreate(t, f.db, &utility)
+	mustCreate(t, f.db, &models.Expense{UserID: f.bob.ID, PropertyID: &old.ID, CategoryID: f.homeCatID,
+		Amount: 20, Date: now, PaidByMemberID: member.ID, IsSplit: true})
+	f.db.Delete(&old)
+
+	if code := f.deleteOwnAccount(t, f.bobTok); code != http.StatusOK {
+		t.Fatalf("delete account: status %d", code)
+	}
+	for name, q := range map[string]*gorm.DB{
+		"home":    f.db.Unscoped().Model(&models.Property{}).Where("id = ?", old.ID),
+		"service": f.db.Unscoped().Model(&models.Utility{}).Where("property_id = ?", old.ID),
+		"expense": f.db.Unscoped().Model(&models.Expense{}).Where("property_id = ?", old.ID),
+		"member":  f.db.Unscoped().Model(&models.HouseholdMember{}).Where("property_id = ?", old.ID),
+	} {
+		var n int64
+		q.Count(&n)
+		if n != 0 {
+			t.Errorf("removed home: %d %s rows left", n, name)
+		}
+	}
+	assertNoForeignKeyViolations(t, f.db)
+}
+
+// A step that fails rolls the whole deletion back: no half-left account.
+func TestDeleteAccount_FailureChangesNothing(t *testing.T) {
+	f := setupMoneyFixture(t)
+	f.accountRoutes(t)
+	personal := models.Expense{UserID: f.bob.ID, PropertyID: &f.prop.ID, CategoryID: f.homeCatID,
+		Amount: 9, Date: time.Now(), PaidByMemberID: f.mBob.ID}
+	mustCreate(t, f.db, &personal)
+	if err := f.db.Exec("CREATE TRIGGER keep_users BEFORE DELETE ON users BEGIN SELECT RAISE(ABORT, 'no'); END").Error; err != nil {
+		t.Fatal(err)
+	}
+
+	for _, rec := range []*httptest.ResponseRecorder{
+		doJSON(t, f.router, http.MethodDelete, "/settings/account", f.bobTok, map[string]any{"password": acctPassword}),
+		doJSON(t, f.router, http.MethodDelete, "/admin/users/"+itoa(f.bob.ID), f.aliceTok, nil),
+	} {
+		if rec.Code != http.StatusInternalServerError {
+			t.Errorf("status %d, body %s; want 500", rec.Code, rec.Body.String())
+		}
+	}
+	var member models.HouseholdMember
+	f.db.First(&member, f.mBob.ID)
+	if member.UserID == nil || *member.UserID != f.bob.ID {
+		t.Error("bob's member row was detached by a deletion that failed")
+	}
+	if err := f.db.First(&models.Expense{}, personal.ID).Error; err != nil {
+		t.Errorf("bob's expense was deleted by a deletion that failed: %v", err)
+	}
+}
+
+// The avatar file goes with the account.
+func TestDeleteAccount_RemovesTheAvatar(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("DB_PATH", filepath.Join(dir, "homelog.db"))
+	f := setupMoneyFixture(t)
+	f.accountRoutes(t)
+	avatar := filepath.Join(dir, "avatars", "bob.png")
+	if err := os.MkdirAll(filepath.Dir(avatar), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(avatar, []byte("png"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	f.db.Model(f.bob).Update("avatar_path", "avatars/bob.png")
+
+	if code := f.deleteOwnAccount(t, f.bobTok); code != http.StatusOK {
+		t.Fatalf("delete account: status %d", code)
+	}
+	if _, err := os.Stat(avatar); !os.IsNotExist(err) {
+		t.Errorf("avatar still on disk: %v", err)
+	}
 }
