@@ -111,7 +111,6 @@ defineOptions({ name: 'DashboardView' })
 import { ref, computed, onMounted, onActivated, onDeactivated, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { useExpensesStore } from '@/stores/expenses'
 import { useSettingsStore } from '@/stores/settings'
 import { projectsAPI, expensesAPI, utilitiesAPI, balanceAPI } from '@/api/client'
 import { formatDate as _formatDate, formatCurrency as _formatCurrency, formatCurrencyCompact as _formatCurrencyCompact, formatTrendLabel, yearOf, todayDateOnly } from '@/utils/dateFormatter'
@@ -130,7 +129,6 @@ import SettlementModal from '@/components/balance/SettlementModal.vue'
 
 const { t } = useI18n()
 const router = useRouter()
-const expensesStore = useExpensesStore()
 const settingsStore = useSettingsStore()
 
 const showAddExpense = ref(false)
@@ -268,6 +266,10 @@ const trendBarChartData = computed(() => {
 // single endpoint; projects are already fetched for the filters. No N+1.
 const utilities = ref([])
 const balanceInfo = ref(null)
+// The latest expense of any period. Fetched here, never through the expenses
+// store: that list belongs to the Expenses view, kept alive with its own
+// filters (#99).
+const lastExpense = ref(null)
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
@@ -289,6 +291,12 @@ async function fetchActionables() {
     balanceInfo.value = data
   } catch {
     balanceInfo.value = null
+  }
+  try {
+    const { data } = await expensesAPI.list({ limit: 1 })
+    lastExpense.value = data.expenses?.[0] ?? null
+  } catch {
+    lastExpense.value = null
   }
 }
 
@@ -433,9 +441,8 @@ const attentionItems = computed(() => {
 // Micro-line for the calm empty state: last expense + last reading dates.
 const attentionEmptyDetail = computed(() => {
   const parts = []
-  const lastExpense = expensesStore.expenses?.[0]
-  if (lastExpense?.date) {
-    parts.push(t('dashboard.attention.lastExpense', { date: formatDate(lastExpense.date) }))
+  if (lastExpense.value?.date) {
+    parts.push(t('dashboard.attention.lastExpense', { date: formatDate(lastExpense.value.date) }))
   }
   let lastReadingStr = null
   let lastReadingTime = 0
@@ -555,7 +562,6 @@ function setCustomRange({ from, to }) {
 
 function applyFilters() {
   const params = buildStatsParams()
-  expensesStore.fetchExpenses(params)
   // Only the stats endpoint knows how to align the "previous" window to the
   // calendar; a custom range keeps the default same-length one.
   const compare = activePreset.value?.compare
