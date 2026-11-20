@@ -21,7 +21,7 @@
         <h2 class="text-lg font-semibold text-ink">{{ t('dashboard.noProperty.pendingTitle') }}</h2>
         <p class="text-ink-soft">
           <i18n-t keypath="dashboard.noProperty.pendingMessage" tag="span">
-            <template #name><strong>{{ settingsStore.pendingJoinRequest.property_name }}</strong></template>
+            <template #name><strong>{{ settingsStore.pendingJoinRequest.household_name }}</strong></template>
           </i18n-t>
         </p>
       </div>
@@ -98,7 +98,7 @@
       :other-member-name="balanceInfo.other_member_name"
       :other-member-id="balanceInfo.other_member_id"
       :current-member-id="balanceInfo.current_member_id"
-      :property-id="settingsStore.householdPropertyId"
+      :household-id="settingsStore.householdId"
       @close="showSettle = false"
       @created="onSettled"
     />
@@ -287,7 +287,7 @@ async function fetchActionables() {
     utilities.value = []
   }
   try {
-    const { data } = await balanceAPI.get(propertyId)
+    const { data } = await balanceAPI.get(settingsStore.householdId)
     balanceInfo.value = data
   } catch {
     balanceInfo.value = null

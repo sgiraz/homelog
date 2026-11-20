@@ -208,7 +208,7 @@
       :other-member-name="balanceStore.otherMemberName"
       :other-member-id="balanceStore.otherMemberId"
       :current-member-id="balanceStore.currentMemberId"
-      :property-id="currentPropertyId"
+      :household-id="currentHouseholdId"
       @close="showSettlementModal = false"
       @created="onSettlementCreated"
     />
@@ -218,7 +218,7 @@
       v-if="compensatingSplit"
       :split="compensatingSplit"
       :debts="balanceStore.myOpenDebts"
-      :property-id="currentPropertyId"
+      :household-id="currentHouseholdId"
       @close="compensatingSplit = null"
       @created="onSettlementCreated"
     />
@@ -249,7 +249,7 @@ const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 
 const showSettlementModal = ref(false)
-const currentPropertyId = ref(null)
+const currentHouseholdId = ref(null)
 const unsettledOpen = ref(false)
 const actionsFor = ref(null)
 const compensatingSplit = ref(null)
@@ -302,7 +302,7 @@ async function moveToDebts(split) {
   if (!ok) return
 
   try {
-    await balanceStore.setLongTermDebt(split.expense_id, true, currentPropertyId.value)
+    await balanceStore.setLongTermDebt(split.expense_id, true, currentHouseholdId.value)
     actionsFor.value = null
     window.$toast?.success(t('balance.unsettled.moveToDebtsToast'))
   } catch (err) {
@@ -316,8 +316,8 @@ async function onSettlementCreated() {
   showSettlementModal.value = false
   compensatingSplit.value = null
   actionsFor.value = null
-  if (currentPropertyId.value) {
-    await balanceStore.fetchBalanceDetails(currentPropertyId.value)
+  if (currentHouseholdId.value) {
+    await balanceStore.fetchBalanceDetails(currentHouseholdId.value)
   }
   // Refresh expenses so the outstanding/settled labels update
   await expensesStore.fetchExpenses({})
@@ -329,11 +329,11 @@ async function fetchCurrentProperty() {
     const { data } = await apiClient.get('/properties')
     if (data && data.length > 0) {
       const currentProp = data.find(p => p.is_current) || data[0]
-      currentPropertyId.value = currentProp.id
+      currentHouseholdId.value = currentProp.household_id
       // Debts too: the row actions need to know whether any exist to pay down.
       await Promise.all([
-        balanceStore.fetchBalanceDetails(currentProp.id),
-        balanceStore.fetchDebts(currentProp.id)
+        balanceStore.fetchBalanceDetails(currentProp.household_id),
+        balanceStore.fetchDebts(currentProp.household_id)
       ])
     }
   } catch (err) {
@@ -348,12 +348,12 @@ onMounted(() => {
 // ExpensesView is cached by <keep-alive>, so coming back to it restores this
 // component instead of re-mounting it and onMounted never runs again — an
 // expense added elsewhere (the dashboard's quick add, say) would leave a stale
-// balance until a hard reload. On the very first render currentPropertyId is
+// balance until a hard reload. On the very first render currentHouseholdId is
 // still null here, so this doesn't double-fetch. Same idiom as DashboardView.
 onActivated(() => {
-  if (currentPropertyId.value) {
-    balanceStore.fetchBalanceDetails(currentPropertyId.value)
-    balanceStore.fetchDebts(currentPropertyId.value)
+  if (currentHouseholdId.value) {
+    balanceStore.fetchBalanceDetails(currentHouseholdId.value)
+    balanceStore.fetchDebts(currentHouseholdId.value)
   }
 })
 </script>

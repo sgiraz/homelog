@@ -25,11 +25,11 @@ export const useBalanceStore = defineStore('balance', () => {
   const openDebts = computed(() => debts.value.filter(d => !d.is_fully_repaid))
   const myOpenDebts = computed(() => openDebts.value.filter(d => d.i_owe))
 
-  async function fetchBalance(propertyId = 1) {
+  async function fetchBalance(householdId) {
     loading.value = true
     error.value = null
     try {
-      const { data } = await balanceAPI.get(propertyId)
+      const { data } = await balanceAPI.get(householdId)
       balance.value = data.balance || 0
       currentMemberName.value = data.current_member_name || ''
       currentMemberId.value = data.current_member_id || null
@@ -43,11 +43,11 @@ export const useBalanceStore = defineStore('balance', () => {
     }
   }
 
-  async function fetchBalanceDetails(propertyId = 1) {
+  async function fetchBalanceDetails(householdId) {
     loading.value = true
     error.value = null
     try {
-      const { data } = await balanceAPI.details(propertyId)
+      const { data } = await balanceAPI.details(householdId)
       balance.value = data.balance || 0
       currentMemberName.value = data.current_member_name || ''
       currentMemberId.value = data.current_member_id || null
@@ -72,9 +72,9 @@ export const useBalanceStore = defineStore('balance', () => {
       const { data } = await settlementsAPI.create(settlementData)
       // Refresh balance after settlement — plus the debt ledger when the
       // payment was aimed at one of them.
-      const propertyId = settlementData.property_id || 1
-      await fetchBalanceDetails(propertyId)
-      if (settlementData.target_expense_id) await fetchDebts(propertyId)
+      const householdId = settlementData.household_id
+      await fetchBalanceDetails(householdId)
+      if (settlementData.target_expense_id) await fetchDebts(householdId)
       return data
     } catch (err) {
       error.value = apiErrorMessage(err)
@@ -84,9 +84,9 @@ export const useBalanceStore = defineStore('balance', () => {
     }
   }
 
-  async function fetchSettlements(propertyId = 1) {
+  async function fetchSettlements(householdId) {
     try {
-      const { data } = await settlementsAPI.list(propertyId)
+      const { data } = await settlementsAPI.list(householdId)
       settlements.value = data.settlements || []
     } catch (err) {
       settlements.value = []
@@ -94,11 +94,11 @@ export const useBalanceStore = defineStore('balance', () => {
     }
   }
 
-  async function fetchDebts(propertyId = 1, otherId = null) {
+  async function fetchDebts(householdId, otherId = null) {
     debtsLoading.value = true
     error.value = null
     try {
-      const { data } = await balanceAPI.debts(propertyId, otherId ?? otherMemberId.value)
+      const { data } = await balanceAPI.debts(householdId, otherId ?? otherMemberId.value)
       debts.value = data.debts || []
       totalIOwe.value = data.total_i_owe || 0
       totalTheyOwe.value = data.total_they_owe || 0
@@ -118,12 +118,12 @@ export const useBalanceStore = defineStore('balance', () => {
 
   // Moves an expense in or out of the long-term debt ledger. Both ledgers are
   // refreshed: the share leaves one list and appears in the other.
-  async function setLongTermDebt(expenseId, isLongTermDebt, propertyId = 1) {
+  async function setLongTermDebt(expenseId, isLongTermDebt, householdId) {
     saving.value = true
     error.value = null
     try {
       const { data } = await expensesAPI.setLongTermDebt(expenseId, isLongTermDebt)
-      await Promise.all([fetchBalanceDetails(propertyId), fetchDebts(propertyId)])
+      await Promise.all([fetchBalanceDetails(householdId), fetchDebts(householdId)])
       return data
     } catch (err) {
       error.value = apiErrorMessage(err)
@@ -138,8 +138,8 @@ export const useBalanceStore = defineStore('balance', () => {
     error.value = null
     try {
       const { data } = await settlementsAPI.compensate(payload)
-      const propertyId = payload.property_id || 1
-      await Promise.all([fetchBalanceDetails(propertyId), fetchDebts(propertyId)])
+      const householdId = payload.household_id
+      await Promise.all([fetchBalanceDetails(householdId), fetchDebts(householdId)])
       return data
     } catch (err) {
       error.value = apiErrorMessage(err)

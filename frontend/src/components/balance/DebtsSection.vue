@@ -181,7 +181,7 @@
       :other-member-name="payingDebt.counterpart_name"
       :other-member-id="balanceStore.otherMemberId"
       :current-member-id="balanceStore.currentMemberId"
-      :property-id="propertyId"
+      :household-id="householdId"
       @close="payingDebt = null"
       @created="onPaymentCreated"
     />
@@ -206,7 +206,7 @@ const balanceStore = useBalanceStore()
 const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 
-const propertyId = ref(null)
+const householdId = ref(null)
 const payingDebt = ref(null)
 const repaidOpen = ref(false)
 
@@ -252,7 +252,7 @@ async function moveBackToBalance(debt) {
   if (!ok) return
 
   try {
-    await balanceStore.setLongTermDebt(debt.expense_id, false, propertyId.value)
+    await balanceStore.setLongTermDebt(debt.expense_id, false, householdId.value)
     window.$toast?.success(t('balance.debts.moveBackToast'))
   } catch (err) {
     window.$toast?.error(apiErrorMessage(err, t('balance.debts.genericError')))
@@ -261,7 +261,7 @@ async function moveBackToBalance(debt) {
 
 async function onPaymentCreated() {
   payingDebt.value = null
-  if (propertyId.value) await balanceStore.fetchDebts(propertyId.value)
+  if (householdId.value) await balanceStore.fetchDebts(householdId.value)
 }
 
 async function fetchCurrentProperty() {
@@ -269,8 +269,8 @@ async function fetchCurrentProperty() {
     const { data } = await apiClient.get('/properties')
     if (data && data.length > 0) {
       const currentProp = data.find(p => p.is_current) || data[0]
-      propertyId.value = currentProp.id
-      await balanceStore.fetchDebts(currentProp.id)
+      householdId.value = currentProp.household_id
+      await balanceStore.fetchDebts(currentProp.household_id)
     }
   } catch (err) {
     console.error('Error fetching properties:', err)
@@ -284,6 +284,6 @@ onMounted(() => {
 // See BalanceSection: the parent view is kept alive, so a repayment recorded
 // elsewhere would otherwise show a stale remainder until a hard reload.
 onActivated(() => {
-  if (propertyId.value) balanceStore.fetchDebts(propertyId.value)
+  if (householdId.value) balanceStore.fetchDebts(householdId.value)
 })
 </script>

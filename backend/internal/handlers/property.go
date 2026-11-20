@@ -50,20 +50,14 @@ func (h *PropertyHandler) List(c *gin.Context) {
 		return
 	}
 
-	// Find property IDs where user is a household member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
-
-	// Get properties where user is owner OR is a member
-	var properties []models.Property
-	query := h.db.Where("user_id = ?", userID)
-	if len(memberPropertyIDs) > 0 {
-		query = h.db.Where("user_id = ? OR id IN ?", userID, memberPropertyIDs)
+	visible, err := accessiblePropertyIDs(h.db, userID)
+	if err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch properties")
+		return
 	}
-
-	if err := query.Order("is_current DESC, created_at DESC").
+	var properties []models.Property
+	if err := h.db.Preload("Household").Where("id IN ?", visible).
+		Order("is_current DESC, created_at DESC").
 		Find(&properties).Error; err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch properties")
 		return
@@ -111,6 +105,12 @@ func (h *PropertyHandler) Create(c *gin.Context) {
 		residents = 1
 	}
 
+	var user models.User
+	if err := h.db.First(&user, userID).Error; err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch user")
+		return
+	}
+
 	property := models.Property{
 		UserID:    userID,
 		Name:      req.Name,
@@ -121,31 +121,18 @@ func (h *PropertyHandler) Create(c *gin.Context) {
 		Residents: residents,
 	}
 
-	if err := h.db.Create(&property).Error; err != nil {
+	// Until a home can join an existing household, every new home starts its own.
+	err := h.db.Transaction(func(tx *gorm.DB) error {
+		household, _, err := createHousehold(tx, req.Name, user)
+		if err != nil {
+			return err
+		}
+		property.HouseholdID = household.ID
+		return tx.Create(&property).Error
+	})
+	if err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create property")
 		return
-	}
-
-	// Create default household settings for the property
-	householdSettings := models.HouseholdSettings{
-		PropertyID:       property.ID,
-		SplitMode:        false,
-		DefaultSplitType: "equal",
-	}
-	h.db.Create(&householdSettings)
-
-	// Create HouseholdMember for the creator (admin of the property)
-	var user models.User
-	if err := h.db.First(&user, userID).Error; err == nil {
-		member := models.HouseholdMember{
-			PropertyID: property.ID,
-			UserID:     &userID,
-			Name:       user.Name,
-			Role:       "admin",
-			IsVirtual:  false,
-		}
-		h.db.Create(&member)
-		log.Printf("✅ Household member created: ID=%d, Name=%s, PropertyID=%d", member.ID, member.Name, property.ID)
 	}
 
 	log.Printf("✅ Property created: ID=%d, Name=%s, UserID=%d", property.ID, property.Name, userID)
@@ -296,10 +283,8 @@ func (h *PropertyHandler) Delete(c *gin.Context) {
 	}
 
 	// The app has no screen without a home: the last one cannot go.
-	var memberPropertyIDs []uint
-	if err := h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ? AND property_id != ?", userID, property.ID).
-		Pluck("property_id", &memberPropertyIDs).Error; err != nil {
+	visible, err := accessiblePropertyIDs(h.db, userID)
+	if err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to count properties")
 		return
 	}
@@ -310,7 +295,7 @@ func (h *PropertyHandler) Delete(c *gin.Context) {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to count properties")
 		return
 	}
-	if ownedOthers == 0 && len(memberPropertyIDs) == 0 {
+	if len(visible) <= 1 {
 		apierr.Fail(c, http.StatusConflict, "last_property", "The only property cannot be deleted")
 		return
 	}
@@ -371,10 +356,10 @@ func sharedPropertyIDs(db *gorm.DB, propertyIDs []uint) (map[uint]bool, error) {
 	}
 	var ids []uint
 	err := db.Model(&models.HouseholdMember{}).
-		Joins("JOIN properties ON properties.id = household_members.property_id").
-		Where("household_members.property_id IN ? AND household_members.is_virtual = ?", propertyIDs, false).
+		Joins("JOIN properties ON properties.household_id = household_members.household_id").
+		Where("properties.id IN ? AND household_members.is_virtual = ?", propertyIDs, false).
 		Where("household_members.user_id IS NOT NULL AND household_members.user_id <> properties.user_id").
-		Distinct().Pluck("household_members.property_id", &ids).Error
+		Distinct().Pluck("properties.id", &ids).Error
 	if err != nil {
 		return nil, err
 	}

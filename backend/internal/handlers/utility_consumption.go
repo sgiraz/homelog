@@ -149,10 +149,7 @@ func (h *UtilityHandler) CompareReadings(c *gin.Context) {
 	}
 
 	// Verify access to utility
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).

@@ -419,6 +419,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 import { apiErrorMessage } from '@/utils/apiError'
+import { householdIdOfProperty } from '@/utils/household'
 
 const props = defineProps({
   defaultPropertyId: {
@@ -636,7 +637,8 @@ async function fetchCurrentProperty() {
 
   if (form.value.property_id) {
     try {
-      const { data } = await membersAPI.list(form.value.property_id)
+      const householdId = await householdIdOfProperty(form.value.property_id)
+      const { data } = householdId ? await membersAPI.list(householdId) : { data: [] }
       members.value = data || []
     } catch (err) {
       console.error('Error fetching members:', err)

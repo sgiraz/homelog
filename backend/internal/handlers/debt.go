@@ -71,20 +71,20 @@ type DebtsResponse struct {
 }
 
 // errInvalidOtherMember marks an other_member_id the caller got wrong — either
-// unparseable or naming a member of some other property. That is a client
+// unparseable or naming a member of some other household. That is a client
 // mistake (400) and must not be flattened into the empty-payload answer that
 // "this household has no counterpart yet" legitimately produces.
 var errInvalidOtherMember = errors.New("invalid other_member_id")
 
-// resolveMemberPair finds the current user's member for a property and the
+// resolveMemberPair finds the current user's member for a household and the
 // counterpart member, either explicitly requested via other_member_id or
-// auto-detected as any other member of the same property.
+// auto-detected as any other member of the same household.
 //
 // A missing pair comes back as gorm.ErrRecordNotFound (caller may answer with
 // an empty ledger); a bad other_member_id as errInvalidOtherMember; anything
 // else is a real database failure and must surface as one.
-func resolveMemberPair(db *gorm.DB, userID, propertyID uint, otherMemberIDStr string) (current, other models.HouseholdMember, err error) {
-	if err = db.Where("property_id = ? AND user_id = ?", propertyID, userID).First(&current).Error; err != nil {
+func resolveMemberPair(db *gorm.DB, userID, householdID uint, otherMemberIDStr string) (current, other models.HouseholdMember, err error) {
+	if err = db.Where("household_id = ? AND user_id = ?", householdID, userID).First(&current).Error; err != nil {
 		return current, other, err
 	}
 	if otherMemberIDStr != "" {
@@ -92,18 +92,18 @@ func resolveMemberPair(db *gorm.DB, userID, propertyID uint, otherMemberIDStr st
 		if parseErr != nil {
 			return current, other, errInvalidOtherMember
 		}
-		err = db.Where("id = ? AND property_id = ?", uint(parsed), propertyID).First(&other).Error
+		err = db.Where("id = ? AND household_id = ?", uint(parsed), householdID).First(&other).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return current, other, errInvalidOtherMember
 		}
 		return current, other, err
 	}
-	err = db.Where("property_id = ? AND id != ?", propertyID, current.ID).First(&other).Error
+	err = db.Where("household_id = ? AND id != ?", householdID, current.ID).First(&other).Error
 	return current, other, err
 }
 
 // List returns the long-term debts between the current member and another member
-// GET /api/v1/properties/:id/debts?other_member_id=2
+// GET /api/v1/households/:id/debts?other_member_id=2
 func (h *DebtHandler) List(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -111,20 +111,20 @@ func (h *DebtHandler) List(c *gin.Context) {
 		return
 	}
 
-	propertyIDParsed, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	householdIDParsed, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
+		apierr.Fail(c, http.StatusBadRequest, "invalid_household_id", "Invalid household id")
 		return
 	}
-	propertyID := uint(propertyIDParsed)
+	householdID := uint(householdIDParsed)
 
-	if !requirePropertyMember(c, h.db, userID, propertyID) {
+	if !requireHouseholdMember(c, h.db, userID, householdID) {
 		return
 	}
 
 	empty := DebtsResponse{Debts: []DebtDetail{}}
 
-	current, other, err := resolveMemberPair(h.db, userID, propertyID, c.Query("other_member_id"))
+	current, other, err := resolveMemberPair(h.db, userID, householdID, c.Query("other_member_id"))
 	switch {
 	case err == nil:
 		// Pair resolved — fall through to the ledger below.
@@ -136,7 +136,7 @@ func (h *DebtHandler) List(c *gin.Context) {
 		c.JSON(http.StatusOK, empty)
 		return
 	default:
-		log.Printf("ERROR resolving member pair for property %d: %v", propertyID, err)
+		log.Printf("ERROR resolving member pair for household %d: %v", householdID, err)
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch debts")
 		return
 	}
@@ -152,7 +152,7 @@ func (h *DebtHandler) List(c *gin.Context) {
 		Preload("Expense").
 		Preload("Expense.Project").
 		Joins("JOIN expenses ON expenses.id = expense_splits.expense_id").
-		Where("expenses.property_id = ?", propertyID).
+		Where("expenses.household_id = ?", householdID).
 		Where("expenses.deleted_at IS NULL").
 		Where("expenses.is_long_term_debt = ?", true).
 		Where("(expenses.paid_by_member_id = ? AND expense_splits.member_id = ?) OR (expenses.paid_by_member_id = ? AND expense_splits.member_id = ?)",
@@ -175,7 +175,7 @@ func (h *DebtHandler) List(c *gin.Context) {
 		expenseIDs = append(expenseIDs, s.ExpenseID)
 	}
 
-	paymentsByExpense := h.paymentsFor(propertyID, current.ID, other.ID, expenseIDs)
+	paymentsByExpense := h.paymentsFor(householdID, current.ID, other.ID, expenseIDs)
 
 	resp := empty
 	resp.Debts = make([]DebtDetail, 0, len(splits))
@@ -216,12 +216,12 @@ func (h *DebtHandler) List(c *gin.Context) {
 
 // paymentsFor loads the repayments recorded against the given debts, keyed by
 // expense ID, resolving the funding expense label for compensations.
-func (h *DebtHandler) paymentsFor(propertyID, currentMemberID, otherMemberID uint, expenseIDs []uint) map[uint][]DebtPaymentDetail {
+func (h *DebtHandler) paymentsFor(householdID, currentMemberID, otherMemberID uint, expenseIDs []uint) map[uint][]DebtPaymentDetail {
 	byExpense := make(map[uint][]DebtPaymentDetail)
 
 	var settlements []models.Settlement
 	if err := h.db.
-		Where("property_id = ?", propertyID).
+		Where("household_id = ?", householdID).
 		Where("target_expense_id IN ?", expenseIDs).
 		Where("(from_member_id = ? AND to_member_id = ?) OR (from_member_id = ? AND to_member_id = ?)",
 			currentMemberID, otherMemberID, otherMemberID, currentMemberID).
@@ -309,11 +309,7 @@ func (h *DebtHandler) SetLongTermDebt(c *gin.Context) {
 		return
 	}
 
-	if expense.PropertyID == nil {
-		apierr.Fail(c, http.StatusBadRequest, "long_term_debt_property_only", "Only household expenses can become long-term debts")
-		return
-	}
-	if !requirePropertyMember(c, h.db, userID, *expense.PropertyID) {
+	if !requireHouseholdMember(c, h.db, userID, expense.HouseholdID) {
 		return
 	}
 	if !expense.IsSplit {

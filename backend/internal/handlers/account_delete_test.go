@@ -24,17 +24,17 @@ import (
 func TestDeleteAccount_CoversSchema(t *testing.T) {
 	db := testutil.NewDB(t)
 	handled := map[string]string{
-		"bill_templates.user_id":         "kept, without an author",
-		"categories.user_id":             "deleted, or kept without an owner while the ledger uses it",
-		"contract_templates.user_id":     "deleted",
-		"expense_templates.user_id":      "deleted",
-		"projects.user_id":               "handed to another project member, or deleted",
-		"properties.user_id":             "handed to the successor, or deleted with the home",
-		"user_settings.user_id":          "deleted",
-		"household_members.user_id":      "turned virtual while the ledger refers to it, else deleted",
-		"notifications.user_id":          "deleted",
-		"project_members.user_id":        "deleted, after ownership moved on",
-		"property_join_requests.user_id": "deleted",
+		"bill_templates.user_id":          "kept, without an author",
+		"categories.user_id":              "deleted, or kept without an owner while the ledger uses it",
+		"contract_templates.user_id":      "deleted",
+		"expense_templates.user_id":       "deleted",
+		"projects.user_id":                "handed to another project member, or deleted",
+		"properties.user_id":              "handed to the successor, or deleted with the home",
+		"user_settings.user_id":           "deleted",
+		"household_members.user_id":       "turned virtual while the ledger refers to it, else deleted",
+		"notifications.user_id":           "deleted",
+		"project_members.user_id":         "deleted, after ownership moved on",
+		"household_join_requests.user_id": "deleted",
 	}
 
 	var edges []string
@@ -88,7 +88,7 @@ func (f *moneyFixture) accountRoutes(t *testing.T) {
 func (f *moneyFixture) settle(t *testing.T, token string, from, to uint, amount float64) {
 	t.Helper()
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", token, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": from, "to_member_id": to, "amount": amount, "date": "2026-05-03",
+		"household_id": f.prop.HouseholdID, "from_member_id": from, "to_member_id": to, "amount": amount, "date": "2026-05-03",
 	})
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("settlement: status %d, body %s", rec.Code, rec.Body.String())
@@ -181,8 +181,8 @@ func TestDeleteAccount_SharedHomeKeepsTheLedger(t *testing.T) {
 	f.settle(t, f.aliceTok, f.mBob.ID, f.mAlice.ID, 20)
 
 	// What only bob could see, or only concerned him.
-	personal := models.Expense{UserID: f.bob.ID, PropertyID: &f.prop.ID, CategoryID: f.homeCatID, Amount: 9, Date: now, PaidByMemberID: f.mBob.ID}
-	trashed := models.Expense{UserID: f.bob.ID, CategoryID: unusedCat.ID, Amount: 3, Date: now, PaidByMemberID: f.mBob.ID}
+	personal := models.Expense{UserID: f.bob.ID, HouseholdID: f.prop.HouseholdID, PropertyID: &f.prop.ID, CategoryID: f.homeCatID, Amount: 9, Date: now, PaidByMemberID: f.mBob.ID}
+	trashed := models.Expense{UserID: f.bob.ID, HouseholdID: f.prop.HouseholdID, CategoryID: unusedCat.ID, Amount: 3, Date: now, PaidByMemberID: f.mBob.ID}
 	mustCreate(t, db, &personal, &trashed)
 	db.Delete(&trashed)
 	mustCreate(t, db,
@@ -194,10 +194,10 @@ func TestDeleteAccount_SharedHomeKeepsTheLedger(t *testing.T) {
 	)
 
 	// A home bob left earlier: his removed member row is still there.
-	oldHome := models.Property{UserID: f.alice.ID, Name: "Old home", Type: "rented", StartDate: now, Residents: 1}
+	oldHome := models.Property{Household: &models.Household{Name: "Old home"}, UserID: f.alice.ID, Name: "Old home", Type: "rented", StartDate: now, Residents: 1}
 	mustCreate(t, db, &oldHome)
-	oldMember := models.HouseholdMember{PropertyID: oldHome.ID, UserID: &f.bob.ID, Name: "Bob", Role: "member"}
-	mustCreate(t, db, &oldMember, &models.HouseholdMember{PropertyID: oldHome.ID, UserID: &f.alice.ID, Name: "Alice", Role: "admin"})
+	oldMember := models.HouseholdMember{HouseholdID: oldHome.HouseholdID, UserID: &f.bob.ID, Name: "Bob", Role: "member"}
+	mustCreate(t, db, &oldMember, &models.HouseholdMember{HouseholdID: oldHome.HouseholdID, UserID: &f.alice.ID, Name: "Alice", Role: "admin"})
 	db.Delete(&oldMember)
 
 	// A service bob pays, split with him by default.
@@ -314,7 +314,7 @@ func TestDeleteAccount_OpenBalanceIsRefused(t *testing.T) {
 	rec := doJSON(t, f.router, http.MethodGet, "/settings/account/delete-check", f.bobTok, nil)
 	var check DeleteAccountCheckResponse
 	json.Unmarshal(rec.Body.Bytes(), &check)
-	if check.CanDelete || len(check.OpenBalanceProperties) != 1 || check.OpenBalanceProperties[0] != f.prop.Name {
+	if check.CanDelete || len(check.OpenBalanceHouseholds) != 1 || check.OpenBalanceHouseholds[0] != f.prop.Name {
 		t.Errorf("delete check: %+v; want blocked on %q", check, f.prop.Name)
 	}
 
@@ -349,7 +349,7 @@ func TestDeleteAccount_OwnerHandsTheHomeToTheSuccessor(t *testing.T) {
 		t.Fatalf("without a successor: status %d, want 409", code)
 	}
 	rec := doJSON(t, f.router, http.MethodPost, "/settings/account/promote-admin", f.aliceTok,
-		map[string]any{"property_id": f.prop.ID, "member_id": f.mBob.ID})
+		map[string]any{"household_id": f.prop.HouseholdID, "member_id": f.mBob.ID})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("promote: status %d, body %s", rec.Code, rec.Body.String())
 	}
@@ -405,7 +405,7 @@ func TestAdminDeleteUser_SameRulesAsOwnDeletion(t *testing.T) {
 func TestDeleteAccount_PersonalExpensesKeepNoMember(t *testing.T) {
 	f := setupMoneyFixture(t)
 	f.accountRoutes(t)
-	mustCreate(t, f.db, &models.Expense{UserID: f.bob.ID, PropertyID: &f.prop.ID, CategoryID: f.homeCatID,
+	mustCreate(t, f.db, &models.Expense{UserID: f.bob.ID, HouseholdID: f.prop.HouseholdID, PropertyID: &f.prop.ID, CategoryID: f.homeCatID,
 		Amount: 9, Date: time.Now(), PaidByMemberID: f.mBob.ID})
 
 	if code := f.deleteOwnAccount(t, f.bobTok); code != http.StatusOK {
@@ -424,13 +424,13 @@ func TestDeleteAccount_RemovedHomeGoesToo(t *testing.T) {
 	f := setupMoneyFixture(t)
 	f.accountRoutes(t)
 	now := time.Now()
-	old := models.Property{UserID: f.bob.ID, Name: "Old flat", Type: "rented", StartDate: now, Residents: 1}
+	old := models.Property{Household: &models.Household{Name: "Old flat"}, UserID: f.bob.ID, Name: "Old flat", Type: "rented", StartDate: now, Residents: 1}
 	mustCreate(t, f.db, &old)
-	member := models.HouseholdMember{PropertyID: old.ID, UserID: &f.bob.ID, Name: "Bob", Role: "admin"}
+	member := models.HouseholdMember{HouseholdID: old.HouseholdID, UserID: &f.bob.ID, Name: "Bob", Role: "admin"}
 	mustCreate(t, f.db, &member)
 	utility := models.Utility{UserID: f.bob.ID, PropertyID: old.ID, Type: "gas", Provider: "Gas Co", IsActive: true}
 	mustCreate(t, f.db, &utility)
-	mustCreate(t, f.db, &models.Expense{UserID: f.bob.ID, PropertyID: &old.ID, CategoryID: f.homeCatID,
+	mustCreate(t, f.db, &models.Expense{UserID: f.bob.ID, HouseholdID: old.HouseholdID, PropertyID: &old.ID, CategoryID: f.homeCatID,
 		Amount: 20, Date: now, PaidByMemberID: member.ID, IsSplit: true})
 	f.db.Delete(&old)
 
@@ -456,7 +456,7 @@ func TestDeleteAccount_RemovedHomeGoesToo(t *testing.T) {
 func TestDeleteAccount_FailureChangesNothing(t *testing.T) {
 	f := setupMoneyFixture(t)
 	f.accountRoutes(t)
-	personal := models.Expense{UserID: f.bob.ID, PropertyID: &f.prop.ID, CategoryID: f.homeCatID,
+	personal := models.Expense{UserID: f.bob.ID, HouseholdID: f.prop.HouseholdID, PropertyID: &f.prop.ID, CategoryID: f.homeCatID,
 		Amount: 9, Date: time.Now(), PaidByMemberID: f.mBob.ID}
 	mustCreate(t, f.db, &personal)
 	if err := f.db.Exec("CREATE TRIGGER keep_users BEFORE DELETE ON users BEGIN SELECT RAISE(ABORT, 'no'); END").Error; err != nil {

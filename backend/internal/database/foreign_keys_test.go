@@ -81,16 +81,16 @@ func TestAutoMigrate_AlignsTheForeignKeysOfExistingTables(t *testing.T) {
 	now := time.Now()
 	user := models.User{Email: "a@example.com", PasswordHash: "x", Name: "A", Role: "admin", IsActive: true}
 	create(t, db, &user)
-	home := models.Property{UserID: user.ID, Name: "Home", StartDate: now}
+	home := models.Property{Household: &models.Household{Name: "Home"}, UserID: user.ID, Name: "Home", StartDate: now}
 	create(t, db, &home)
-	member := models.HouseholdMember{PropertyID: home.ID, UserID: &user.ID, Name: "A"}
+	member := models.HouseholdMember{HouseholdID: home.HouseholdID, UserID: &user.ID, Name: "A"}
 	category := models.Category{Name: "Home"}
 	create(t, db, &member, &category)
 	utility := models.Utility{UserID: user.ID, PropertyID: home.ID, Type: "gas", Provider: "Gas Co", IsMetered: true}
 	create(t, db, &utility)
 	bill := models.Bill{UtilityID: utility.ID, BillNumber: "B-1", IssueDate: now, PeriodStart: now, PeriodEnd: now, DueDate: now, AmountTotal: 50}
 	create(t, db, &bill)
-	expense := models.Expense{UserID: user.ID, PropertyID: &home.ID, CategoryID: category.ID, BillID: &bill.ID, Amount: 50, Date: now, PaidByMemberID: member.ID}
+	expense := models.Expense{UserID: user.ID, HouseholdID: home.HouseholdID, PropertyID: &home.ID, CategoryID: category.ID, BillID: &bill.ID, Amount: 50, Date: now, PaidByMemberID: member.ID}
 	create(t, db, &expense)
 	installment := models.BillInstallment{BillID: bill.ID, Number: 1, DueDate: now, Amount: 50, ExpenseID: &expense.ID}
 	create(t, db, &installment)

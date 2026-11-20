@@ -36,10 +36,10 @@ func TestEveryGETRouteAnswersWithoutServerError(t *testing.T) {
 	if err := database.SeedDefaultData(db, user.ID); err != nil {
 		t.Fatal(err)
 	}
-	prop := models.Property{UserID: user.ID, Name: "Casa", IsCurrent: true}
+	prop := models.Property{Household: &models.Household{Name: "Casa"}, UserID: user.ID, Name: "Casa", IsCurrent: true}
 	mustCreate(t, db, &prop)
-	member := models.HouseholdMember{PropertyID: prop.ID, UserID: &user.ID, Name: user.Name, Role: "admin"}
-	partner := models.HouseholdMember{PropertyID: prop.ID, Name: "Partner", Role: "member"}
+	member := models.HouseholdMember{HouseholdID: prop.HouseholdID, UserID: &user.ID, Name: user.Name, Role: "admin"}
+	partner := models.HouseholdMember{HouseholdID: prop.HouseholdID, Name: "Partner", Role: "member"}
 	mustCreate(t, db, &member, &partner)
 	utility := models.Utility{UserID: user.ID, PropertyID: prop.ID, Type: "gas", Provider: "Volta", IsMetered: true}
 	mustCreate(t, db, &utility)
@@ -53,11 +53,11 @@ func TestEveryGETRouteAnswersWithoutServerError(t *testing.T) {
 	mustCreate(t, db, &models.ServiceCommunication{UtilityID: utility.ID, Type: "info", Title: "Info"})
 	project := models.Project{UserID: user.ID, PropertyID: &prop.ID, Name: "Kitchen", StartDate: now, EndDate: now}
 	mustCreate(t, db, &project)
-	expense := models.Expense{UserID: user.ID, PropertyID: &prop.ID, CategoryID: 1, Amount: 10, Date: now,
+	expense := models.Expense{UserID: user.ID, HouseholdID: prop.HouseholdID, PropertyID: &prop.ID, CategoryID: 1, Amount: 10, Date: now,
 		Description: "Coffee", PaidByMemberID: member.ID, ProjectID: &project.ID}
 	mustCreate(t, db, &expense)
 	mustCreate(t, db, &models.ExpenseSplit{ExpenseID: expense.ID, MemberID: partner.ID, Amount: 5})
-	mustCreate(t, db, &models.Settlement{PropertyID: prop.ID, FromMemberID: partner.ID, ToMemberID: member.ID, Amount: 5, Date: now})
+	mustCreate(t, db, &models.Settlement{HouseholdID: prop.HouseholdID, FromMemberID: partner.ID, ToMemberID: member.ID, Amount: 5, Date: now})
 	mustCreate(t, db, &models.Notification{UserID: user.ID, Type: "expense_shared", Title: "Shared"})
 
 	router := newRouter(db)

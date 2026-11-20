@@ -71,7 +71,7 @@ func comparisonWindow(mode string, start, end time.Time) (time.Time, time.Time) 
 }
 
 // GetStats returns statistics for charts
-// GET /api/v1/expenses/stats?period=6m&property_id=1&year=2024
+// GET /api/v1/expenses/stats?period=6m&year=2024
 // compare=month|year aligns the "previous" window to the calendar.
 func (h *ExpenseHandler) GetStats(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
@@ -80,11 +80,11 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		return
 	}
 
-	// Find property IDs where user is a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	householdIDs, err := userHouseholdIDs(h.db, userID)
+	if err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch households")
+		return
+	}
 
 	// Determine date range
 	now := time.Now()
@@ -131,20 +131,15 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 
 	// Shared WHERE conditions. Dates compare by substr, not date()/strftime(), to
 	// avoid the UTC shift described in dateOnly.
-	baseWhere := "property_id IN ? AND substr(date, 1, 10) >= ? AND substr(date, 1, 10) <= ?"
-	joinWhere := "expenses.property_id IN ? AND substr(expenses.date, 1, 10) >= ? AND substr(expenses.date, 1, 10) <= ?"
-	baseArgs := []any{memberPropertyIDs, startDate.Format("2006-01-02"), endDate.Format("2006-01-02")}
+	baseWhere := "household_id IN ? AND substr(date, 1, 10) >= ? AND substr(date, 1, 10) <= ?"
+	joinWhere := "expenses.household_id IN ? AND substr(expenses.date, 1, 10) >= ? AND substr(expenses.date, 1, 10) <= ?"
+	baseArgs := []any{householdIDs, startDate.Format("2006-01-02"), endDate.Format("2006-01-02")}
 
 	categoryID := c.Query("category_id")
 	if categoryID != "" {
 		baseWhere += " AND category_id = ?"
 		joinWhere += " AND expenses.category_id = ?"
 		baseArgs = append(baseArgs, categoryID)
-	}
-	if propertyID := c.Query("property_id"); propertyID != "" {
-		baseWhere += " AND property_id = ?"
-		joinWhere += " AND expenses.property_id = ?"
-		baseArgs = append(baseArgs, propertyID)
 	}
 
 	// Determine trend granularity from date range
@@ -312,8 +307,8 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 	// Current month total (respects category filter)
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	monthEnd := monthStart.AddDate(0, 1, 0).Add(-time.Second)
-	monthWhere := "property_id IN ? AND substr(date, 1, 10) >= ? AND substr(date, 1, 10) <= ?"
-	monthArgs := []any{memberPropertyIDs, monthStart.Format("2006-01-02"), monthEnd.Format("2006-01-02")}
+	monthWhere := "household_id IN ? AND substr(date, 1, 10) >= ? AND substr(date, 1, 10) <= ?"
+	monthArgs := []any{householdIDs, monthStart.Format("2006-01-02"), monthEnd.Format("2006-01-02")}
 	if categoryID != "" {
 		monthWhere += " AND category_id = ?"
 		monthArgs = append(monthArgs, categoryID)
@@ -327,8 +322,8 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 	// Year total (respects category filter)
 	yearStart := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.UTC)
 	yearEnd := time.Date(now.Year(), 12, 31, 23, 59, 59, 0, time.UTC)
-	yearWhere := "property_id IN ? AND substr(date, 1, 10) >= ? AND substr(date, 1, 10) <= ?"
-	yearArgs := []any{memberPropertyIDs, yearStart.Format("2006-01-02"), yearEnd.Format("2006-01-02")}
+	yearWhere := "household_id IN ? AND substr(date, 1, 10) >= ? AND substr(date, 1, 10) <= ?"
+	yearArgs := []any{householdIDs, yearStart.Format("2006-01-02"), yearEnd.Format("2006-01-02")}
 	if categoryID != "" {
 		yearWhere += " AND category_id = ?"
 		yearArgs = append(yearArgs, categoryID)
@@ -357,7 +352,7 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 	// "-12% vs the previous period". A total on its own is not actionable: it
 	// takes a reference to become a signal.
 	previousStart, previousEnd := comparisonWindow(c.Query("compare"), startDate, endDate)
-	previousArgs := append([]any{memberPropertyIDs, previousStart.Format("2006-01-02"), previousEnd.Format("2006-01-02")}, baseArgs[3:]...)
+	previousArgs := append([]any{householdIDs, previousStart.Format("2006-01-02"), previousEnd.Format("2006-01-02")}, baseArgs[3:]...)
 	var totalPrevious float64
 	h.db.Model(&models.Expense{}).
 		Where(baseWhere, previousArgs...).

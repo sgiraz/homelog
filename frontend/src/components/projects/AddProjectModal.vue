@@ -165,7 +165,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
-import apiClient from '@/api/client'
+import apiClient, { membersAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -234,7 +234,7 @@ async function fetchCurrentPropertyAndMembers() {
       currentPropertyId.value = prop.id
       form.value.property_id = prop.id
 
-      const membersRes = await apiClient.get(`/properties/${prop.id}/members`)
+      const membersRes = await membersAPI.list(prop.household_id)
       householdMembers.value = membersRes.data || []
     }
   } catch (err) {

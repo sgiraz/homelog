@@ -83,7 +83,7 @@ func alignForeignKeys(conn *gorm.DB) error {
 			continue
 		}
 		log.Printf("🔄 Rebuilding %s: its foreign keys changed", table)
-		if err := conn.Transaction(func(tx *gorm.DB) error { return rebuildTable(tx, ref, table, want) }); err != nil {
+		if err := conn.Transaction(func(tx *gorm.DB) error { return rebuildTable(tx, ref, table, want, nil) }); err != nil {
 			return fmt.Errorf("rebuild %s: %w", table, err)
 		}
 	}
@@ -99,9 +99,10 @@ type column struct {
 // rebuildTable recreates table with the reference definition, the way SQLite
 // documents for any change ALTER TABLE cannot make: create, copy, drop,
 // rename, then the indexes again. Columns the models no longer declare are
-// kept, nullable. A link declared ON DELETE SET NULL that points nowhere is
-// cleared on the way, as the database would have done had it been declared.
-func rebuildTable(tx, ref *gorm.DB, table string, keys []foreignKey) error {
+// kept, nullable, unless named in drop: those go, with their indexes. A link
+// declared ON DELETE SET NULL that points nowhere is cleared on the way, as
+// the database would have done had it been declared.
+func rebuildTable(tx, ref *gorm.DB, table string, keys []foreignKey, drop map[string]bool) error {
 	var create string
 	if err := ref.Raw(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&create).Error; err != nil {
 		return err
@@ -114,7 +115,8 @@ func rebuildTable(tx, ref *gorm.DB, table string, keys []foreignKey) error {
 	create = "CREATE TABLE `" + staged + "`" + strings.TrimPrefix(create, prefix)
 
 	var indexes []string
-	if err := tx.Raw(`SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND sql IS NOT NULL`, table).
+	if err := tx.Raw(`SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND sql IS NOT NULL
+		AND NOT EXISTS (SELECT 1 FROM pragma_index_info(sqlite_master.name) WHERE name IN ?)`, table, dropList(drop)).
 		Scan(&indexes).Error; err != nil {
 		return err
 	}
@@ -142,6 +144,9 @@ func rebuildTable(tx, ref *gorm.DB, table string, keys []foreignKey) error {
 	names := make([]string, 0, len(have))
 	values := make([]string, 0, len(have))
 	for _, c := range have {
+		if drop[c.Name] {
+			continue
+		}
 		quoted := quote(c.Name)
 		if !declared[c.Name] {
 			add := "ALTER TABLE " + quote(staged) + " ADD COLUMN " + quoted + " " + c.Type
@@ -182,6 +187,37 @@ func rebuildTable(tx, ref *gorm.DB, table string, keys []foreignKey) error {
 		}
 	}
 	return nil
+}
+
+// dropList lists the names in drop; never empty, so it can feed an IN clause.
+func dropList(drop map[string]bool) []string {
+	names := []string{""}
+	for name := range drop {
+		names = append(names, name)
+	}
+	return names
+}
+
+// DropColumns rebuilds table to the models' definition without the given
+// columns, which the models no longer declare, and without their indexes.
+// SQLite cannot drop a column that an index or a foreign key uses. It needs
+// foreign keys off (WithoutForeignKeys) and a table holding every column the
+// models require.
+func DropColumns(conn *gorm.DB, table string, columns ...string) error {
+	ref, closeRef, err := referenceSchema()
+	if err != nil {
+		return fmt.Errorf("build reference schema: %w", err)
+	}
+	defer closeRef()
+	keys, err := foreignKeys(ref, table)
+	if err != nil {
+		return err
+	}
+	drop := make(map[string]bool, len(columns))
+	for _, c := range columns {
+		drop[c] = true
+	}
+	return conn.Transaction(func(tx *gorm.DB) error { return rebuildTable(tx, ref, table, keys, drop) })
 }
 
 func quote(name string) string { return "`" + strings.ReplaceAll(name, "`", "``") + "`" }

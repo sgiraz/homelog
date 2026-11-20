@@ -27,10 +27,7 @@ func (h *UtilityHandler) AddReading(c *gin.Context) {
 	}
 
 	// Verify access to utility
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
@@ -95,10 +92,7 @@ func (h *UtilityHandler) GetReadings(c *gin.Context) {
 	}
 
 	// Verify access to utility
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
@@ -165,10 +159,7 @@ func (h *UtilityHandler) UpdateReading(c *gin.Context) {
 	}
 
 	// Get property IDs where user is a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	// Find the reading
 	var reading models.MeterReading
@@ -249,10 +240,7 @@ func (h *UtilityHandler) DeleteReading(c *gin.Context) {
 	}
 
 	// Get property IDs where user is a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	// Find the reading
 	var reading models.MeterReading

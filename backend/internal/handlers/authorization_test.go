@@ -47,8 +47,8 @@ func setupAuthzFixture(t *testing.T) *authzFixture {
 		t.Fatalf("create bob: %v", err)
 	}
 
-	propA := models.Property{UserID: alice.ID, Name: "Casa Alice", Type: "owned", StartDate: now, IsCurrent: true, Residents: 1}
-	propB := models.Property{UserID: bob.ID, Name: "Casa Bob", Type: "owned", StartDate: now, IsCurrent: true, Residents: 1}
+	propA := models.Property{Household: &models.Household{Name: "Casa Alice"}, UserID: alice.ID, Name: "Casa Alice", Type: "owned", StartDate: now, IsCurrent: true, Residents: 1}
+	propB := models.Property{Household: &models.Household{Name: "Casa Bob"}, UserID: bob.ID, Name: "Casa Bob", Type: "owned", StartDate: now, IsCurrent: true, Residents: 1}
 	if err := db.Create(&propA).Error; err != nil {
 		t.Fatalf("create propA: %v", err)
 	}
@@ -56,8 +56,8 @@ func setupAuthzFixture(t *testing.T) *authzFixture {
 		t.Fatalf("create propB: %v", err)
 	}
 
-	memberA := models.HouseholdMember{PropertyID: propA.ID, UserID: &alice.ID, Name: alice.Name, Role: "admin", IsVirtual: false}
-	memberB := models.HouseholdMember{PropertyID: propB.ID, UserID: &bob.ID, Name: bob.Name, Role: "admin", IsVirtual: false}
+	memberA := models.HouseholdMember{HouseholdID: propA.HouseholdID, UserID: &alice.ID, Name: alice.Name, Role: "admin", IsVirtual: false}
+	memberB := models.HouseholdMember{HouseholdID: propB.HouseholdID, UserID: &bob.ID, Name: bob.Name, Role: "admin", IsVirtual: false}
 	if err := db.Create(&memberA).Error; err != nil {
 		t.Fatalf("create memberA: %v", err)
 	}
@@ -66,7 +66,7 @@ func setupAuthzFixture(t *testing.T) *authzFixture {
 	}
 
 	// Household settings row for propB so we cover the lookup-hit path too.
-	if err := db.Create(&models.HouseholdSettings{PropertyID: propB.ID}).Error; err != nil {
+	if err := db.Create(&models.HouseholdSettings{HouseholdID: propB.HouseholdID}).Error; err != nil {
 		t.Fatalf("create household settings: %v", err)
 	}
 
@@ -79,11 +79,11 @@ func setupAuthzFixture(t *testing.T) *authzFixture {
 	r := gin.New()
 	protected := r.Group("")
 	protected.Use(middleware.AuthRequired())
-	protected.GET("/properties/:id/members", memberHandler.List)
+	protected.GET("/households/:id/members", memberHandler.List)
 	protected.GET("/members/:id", memberHandler.Get)
-	protected.GET("/properties/:id/settings", settingsHandler.GetHouseholdSettings)
-	protected.GET("/properties/:id/balance", balanceHandler.GetBalance)
-	protected.GET("/properties/:id/balance/details", balanceHandler.GetBalanceDetails)
+	protected.GET("/households/:id/settings", settingsHandler.GetHouseholdSettings)
+	protected.GET("/households/:id/balance", balanceHandler.GetBalance)
+	protected.GET("/households/:id/balance/details", balanceHandler.GetBalanceDetails)
 
 	return &authzFixture{
 		router:   r,
@@ -111,7 +111,7 @@ func doGET(t *testing.T, r http.Handler, path, token string) *httptest.ResponseR
 func TestMembersList_NonMember_403(t *testing.T) {
 	f := setupAuthzFixture(t)
 
-	rec := doGET(t, f.router, "/properties/"+itoa(f.propB.ID)+"/members", f.aliceTok)
+	rec := doGET(t, f.router, "/households/"+itoa(f.propB.HouseholdID)+"/members", f.aliceTok)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403 (alice reading Bob's members)", rec.Code)
 	}
@@ -120,7 +120,7 @@ func TestMembersList_NonMember_403(t *testing.T) {
 func TestMembersList_Member_200(t *testing.T) {
 	f := setupAuthzFixture(t)
 
-	rec := doGET(t, f.router, "/properties/"+itoa(f.propA.ID)+"/members", f.aliceTok)
+	rec := doGET(t, f.router, "/households/"+itoa(f.propA.HouseholdID)+"/members", f.aliceTok)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
@@ -145,7 +145,7 @@ func TestMemberGet_NonMember_403(t *testing.T) {
 func TestHouseholdSettings_NonMember_403(t *testing.T) {
 	f := setupAuthzFixture(t)
 
-	rec := doGET(t, f.router, "/properties/"+itoa(f.propB.ID)+"/settings", f.aliceTok)
+	rec := doGET(t, f.router, "/households/"+itoa(f.propB.HouseholdID)+"/settings", f.aliceTok)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403 (alice reading Bob's household settings)", rec.Code)
 	}
@@ -154,7 +154,7 @@ func TestHouseholdSettings_NonMember_403(t *testing.T) {
 func TestHouseholdSettings_Member_200(t *testing.T) {
 	f := setupAuthzFixture(t)
 
-	rec := doGET(t, f.router, "/properties/"+itoa(f.propB.ID)+"/settings", f.bobTok)
+	rec := doGET(t, f.router, "/households/"+itoa(f.propB.HouseholdID)+"/settings", f.bobTok)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
@@ -183,7 +183,7 @@ func TestBalance_NonMember_403(t *testing.T) {
 	f := setupAuthzFixture(t)
 
 	for _, path := range []string{"/balance", "/balance/details"} {
-		rec := doGET(t, f.router, "/properties/"+itoa(f.propB.ID)+path, f.aliceTok)
+		rec := doGET(t, f.router, "/households/"+itoa(f.propB.HouseholdID)+path, f.aliceTok)
 		if rec.Code != http.StatusForbidden {
 			t.Errorf("%s: status = %d, want 403 (Alice reading Bob's balance)", path, rec.Code)
 		}
@@ -194,12 +194,12 @@ func TestBalance_NonMember_403(t *testing.T) {
 func TestBalance_OtherMemberFromAnotherProperty_404(t *testing.T) {
 	f := setupAuthzFixture(t)
 	// Split mode on, so /balance gets as far as resolving other_member_id.
-	if err := f.db.Create(&models.HouseholdSettings{PropertyID: f.propA.ID, SplitMode: true}).Error; err != nil {
+	if err := f.db.Create(&models.HouseholdSettings{HouseholdID: f.propA.HouseholdID, SplitMode: true}).Error; err != nil {
 		t.Fatalf("household settings: %v", err)
 	}
 
 	for _, path := range []string{"/balance", "/balance/details"} {
-		rec := doGET(t, f.router, "/properties/"+itoa(f.propA.ID)+path+"?other_member_id="+itoa(f.memberB.ID), f.aliceTok)
+		rec := doGET(t, f.router, "/households/"+itoa(f.propA.HouseholdID)+path+"?other_member_id="+itoa(f.memberB.ID), f.aliceTok)
 		if rec.Code != http.StatusNotFound {
 			t.Errorf("%s: status = %d, want 404 (Bob's member in Alice's property)", path, rec.Code)
 		}
@@ -209,7 +209,7 @@ func TestBalance_OtherMemberFromAnotherProperty_404(t *testing.T) {
 func TestBalance_Member_200(t *testing.T) {
 	f := setupAuthzFixture(t)
 
-	rec := doGET(t, f.router, "/properties/"+itoa(f.propA.ID)+"/balance", f.aliceTok)
+	rec := doGET(t, f.router, "/households/"+itoa(f.propA.HouseholdID)+"/balance", f.aliceTok)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}

@@ -22,19 +22,19 @@ import (
 // DeleteAccountCheckResponse is the pre-flight check for account deletion
 type DeleteAccountCheckResponse struct {
 	CanDelete bool `json:"can_delete"`
-	// BlockingProperties are shared homes that need another admin first.
-	BlockingProperties []BlockingPropertyInfo `json:"blocking_properties,omitempty"`
-	// OpenBalanceProperties are shared homes where the user still owes or is owed.
-	OpenBalanceProperties []string `json:"open_balance_properties,omitempty"`
+	// BlockingHouseholds are shared households that need another admin first.
+	BlockingHouseholds []BlockingHouseholdInfo `json:"blocking_households,omitempty"`
+	// OpenBalanceHouseholds are shared households where the user still owes or is owed.
+	OpenBalanceHouseholds []string `json:"open_balance_households,omitempty"`
 	// DataLossProperties are homes nobody else lives in: they go with the account.
 	DataLossProperties []string `json:"data_loss_properties,omitempty"`
 }
 
-// BlockingPropertyInfo describes a property where the user must nominate a new admin before deleting
-type BlockingPropertyInfo struct {
-	PropertyID   uint           `json:"property_id"`
-	PropertyName string         `json:"property_name"`
-	Members      []MemberOption `json:"members"`
+// BlockingHouseholdInfo describes a household where the user must nominate a new admin before deleting
+type BlockingHouseholdInfo struct {
+	HouseholdID   uint           `json:"household_id"`
+	HouseholdName string         `json:"household_name"`
+	Members       []MemberOption `json:"members"`
 }
 
 // MemberOption is a member eligible for admin promotion
@@ -63,8 +63,8 @@ func (h *SettingsHandler) DeleteAccountCheck(c *gin.Context) {
 
 // PromoteAdminRequest is the request body to promote a member to admin
 type PromoteAdminRequest struct {
-	PropertyID uint `json:"property_id" binding:"required"`
-	MemberID   uint `json:"member_id" binding:"required"`
+	HouseholdID uint `json:"household_id" binding:"required"`
+	MemberID    uint `json:"member_id" binding:"required"`
 }
 
 // PromoteAdmin - POST /api/v1/settings/account/promote-admin
@@ -81,19 +81,13 @@ func (h *SettingsHandler) PromoteAdmin(c *gin.Context) {
 		return
 	}
 
-	// Verify current user is admin of the property
-	var adminCount int64
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ? AND property_id = ? AND role = 'admin'", userID, req.PropertyID).
-		Count(&adminCount)
-	if adminCount == 0 {
-		apierr.Fail(c, http.StatusForbidden, "not_property_admin", "You are not an admin of this property")
+	if !requireHouseholdAdmin(c, h.db, userID, req.HouseholdID) {
 		return
 	}
 
-	// Verify target member exists in the property and is not virtual
+	// The new admin must be a registered member of the same household
 	var target models.HouseholdMember
-	if err := h.db.Where("id = ? AND property_id = ? AND is_virtual = false", req.MemberID, req.PropertyID).
+	if err := h.db.Where("id = ? AND household_id = ? AND is_virtual = false", req.MemberID, req.HouseholdID).
 		First(&target).Error; err != nil {
 		apierr.Fail(c, http.StatusNotFound, "member_not_found", "Member not found")
 		return
@@ -104,7 +98,7 @@ func (h *SettingsHandler) PromoteAdmin(c *gin.Context) {
 		return
 	}
 
-	log.Printf("✅ Member ID=%d promoted to admin for property ID=%d by user ID=%d", req.MemberID, req.PropertyID, userID)
+	log.Printf("✅ Member ID=%d promoted to admin for household ID=%d by user ID=%d", req.MemberID, req.HouseholdID, userID)
 	c.JSON(http.StatusOK, gin.H{"message": "Admin appointed"})
 }
 

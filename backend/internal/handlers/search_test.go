@@ -78,15 +78,15 @@ func setupSearchFixture(t *testing.T) *searchFixture {
 
 	// Two separate households so propertyIDs is never empty for either user,
 	// avoiding the IN () edge case when scoping the FTS query.
-	propA := models.Property{UserID: alice.ID, Name: "Casa Alice", Type: "owned", StartDate: now, IsCurrent: true, Residents: 1}
-	propB := models.Property{UserID: bob.ID, Name: "Casa Bob", Type: "owned", StartDate: now, IsCurrent: true, Residents: 1}
+	propA := models.Property{Household: &models.Household{Name: "Casa Alice"}, UserID: alice.ID, Name: "Casa Alice", Type: "owned", StartDate: now, IsCurrent: true, Residents: 1}
+	propB := models.Property{Household: &models.Household{Name: "Casa Bob"}, UserID: bob.ID, Name: "Casa Bob", Type: "owned", StartDate: now, IsCurrent: true, Residents: 1}
 	for _, p := range []*models.Property{&propA, &propB} {
 		if err := db.Create(p).Error; err != nil {
 			t.Fatalf("create property: %v", err)
 		}
 	}
-	memberA := models.HouseholdMember{PropertyID: propA.ID, UserID: &alice.ID, Name: "Alice", Role: "admin"}
-	memberB := models.HouseholdMember{PropertyID: propB.ID, UserID: &bob.ID, Name: "Bob", Role: "admin"}
+	memberA := models.HouseholdMember{HouseholdID: propA.HouseholdID, UserID: &alice.ID, Name: "Alice", Role: "admin"}
+	memberB := models.HouseholdMember{HouseholdID: propB.HouseholdID, UserID: &bob.ID, Name: "Bob", Role: "admin"}
 	for _, m := range []*models.HouseholdMember{&memberA, &memberB} {
 		if err := db.Create(m).Error; err != nil {
 			t.Fatalf("create member: %v", err)
@@ -94,24 +94,26 @@ func setupSearchFixture(t *testing.T) *searchFixture {
 	}
 
 	// Seed the FTS5 index directly:
-	//   entity 1 — expense in Alice's property
-	//   entity 2 — legacy unscoped expense (property_id=0) belonging to Alice
-	//   entity 3 — legacy unscoped expense (property_id=0) belonging to Bob
-	//   entity 10 — utility in Alice's property
+	//   entity 1 — expense in Alice's home
+	//   entity 2 — expense without a home in Alice's household
+	//   entity 3 — expense without a home in Bob's household
+	//   entity 4 — project without a home, created by Alice
+	//   entity 10 — utility in Alice's home
 	seeds := []struct {
-		kind, title string
-		id, propID  uint
-		userID      uint
+		kind, title         string
+		id, propID, hholdID uint
+		userID              uint
 	}{
-		{"expense", "bolletta luce alice", 1, propA.ID, alice.ID},
-		{"expense", "spesa vecchia alice", 2, 0, alice.ID},
-		{"expense", "spesa vecchia bob", 3, 0, bob.ID},
-		{"utility", "enel servizio alice", 10, propA.ID, alice.ID},
+		{"expense", "bolletta luce alice", 1, propA.ID, propA.HouseholdID, alice.ID},
+		{"expense", "spesa vecchia alice", 2, 0, propA.HouseholdID, alice.ID},
+		{"expense", "spesa vecchia bob", 3, 0, propB.HouseholdID, bob.ID},
+		{"project", "progetto vecchia alice", 4, 0, 0, alice.ID},
+		{"utility", "enel servizio alice", 10, propA.ID, 0, 0},
 	}
 	for _, s := range seeds {
 		if err := db.Exec(
-			`INSERT INTO search_index(entity_type,entity_id,property_id,user_id,title,body) VALUES (?,?,?,?,?,?)`,
-			s.kind, s.id, s.propID, s.userID, s.title, "",
+			`INSERT INTO search_index(entity_type,entity_id,property_id,household_id,user_id,title,body) VALUES (?,?,?,?,?,?,?)`,
+			s.kind, s.id, s.propID, s.hholdID, s.userID, s.title, "",
 		).Error; err != nil {
 			t.Fatalf("seed search_index %s/%d: %v", s.kind, s.id, err)
 		}
@@ -183,21 +185,20 @@ func TestSearch_ScopedToAccessibleProperties(t *testing.T) {
 	}
 }
 
-// TestSearch_PropertyZero_ScopedByUserID verifies that property_id=0 rows are
-// visible to their owning user and not to others.
-func TestSearch_PropertyZero_ScopedByUserID(t *testing.T) {
+// TestSearch_WithoutHome_ScopedByHouseholdOrCreator verifies that an expense
+// without a home is visible to its household, and a project without a home to
+// its creator only.
+func TestSearch_WithoutHome_ScopedByHouseholdOrCreator(t *testing.T) {
 	f := setupSearchFixture(t)
 
-	// Alice's own legacy expense (property_id=0, user_id=alice) must appear.
 	aliceHits := doSearch(t, f, "vecchia", f.aliceTok)
-	if !containsID(aliceHits, 2) {
-		t.Errorf("alice: expected to find her own unscoped expense (id=2); got %v", entityIDs(aliceHits))
+	if !containsID(aliceHits, 2) || !containsID(aliceHits, 4) || containsID(aliceHits, 3) {
+		t.Errorf("alice: want her household's expense (2) and her project (4), not Bob's (3); got %v", entityIDs(aliceHits))
 	}
 
-	// Bob's own legacy expense (property_id=0, user_id=bob) must appear for him.
 	bobHits := doSearch(t, f, "vecchia", f.bobTok)
-	if !containsID(bobHits, 3) {
-		t.Errorf("bob: expected to find his own unscoped expense (id=3); got %v", entityIDs(bobHits))
+	if !containsID(bobHits, 3) || containsID(bobHits, 2) || containsID(bobHits, 4) {
+		t.Errorf("bob: want only his household's expense (3); got %v", entityIDs(bobHits))
 	}
 }
 

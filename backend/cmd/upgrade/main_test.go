@@ -1,7 +1,10 @@
 package main
 
 import (
+	"math"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -9,21 +12,41 @@ import (
 	"gorm.io/gorm/logger"
 
 	"github.com/sgiraz/homelog/internal/database"
+	"github.com/sgiraz/homelog/internal/handlers"
 	"github.com/sgiraz/homelog/internal/models"
 )
 
-// legacyDB returns a database shaped like 2026.09.11 left it: templates owned
-// by their author, estimates kept apart, a default template per service.
-func legacyDB(t *testing.T) *gorm.DB {
+// beforeHouseholdsDB returns an empty database with the schema of the last
+// release before households (testdata/schema-before-households.sql, dumped
+// from it): members, settlements and split settings still hang off a home.
+func beforeHouseholdsDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := database.Open(filepath.Join(t.TempDir(), "homelog.db"), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	closeOnCleanup(t, db)
-	if err := database.AutoMigrate(db); err != nil {
+	schema, err := os.ReadFile("testdata/schema-before-households.sql")
+	if err != nil {
 		t.Fatal(err)
 	}
+	for _, stmt := range strings.Split(strings.ReplaceAll(string(schema), "\r\n", "\n"), ";\n") {
+		if stmt = strings.TrimSpace(stmt); stmt != "" {
+			mustExec(t, db, stmt)
+		}
+	}
+	// The models' search hooks write here while the tests seed rows; the
+	// server rebuilds the index on its next start anyway.
+	mustExec(t, db, `CREATE VIRTUAL TABLE search_index USING fts5(entity_type UNINDEXED, entity_id UNINDEXED,
+		property_id UNINDEXED, household_id UNINDEXED, user_id UNINDEXED, title, body)`)
+	return db
+}
+
+// legacyDB returns a database shaped like 2026.09.11 left it: templates owned
+// by their author, estimates kept apart, a default template per service.
+func legacyDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db := beforeHouseholdsDB(t)
 	for _, stmt := range []string{
 		`DROP TABLE bill_templates`,
 		"CREATE TABLE `bill_templates` (`id` integer PRIMARY KEY AUTOINCREMENT,`created_at` datetime,`updated_at` datetime," +
@@ -57,6 +80,28 @@ func mustExec(t *testing.T, db *gorm.DB, sql string, args ...any) {
 	}
 }
 
+// insertHome adds a home the way the schema before households stores it.
+func insertHome(t *testing.T, db *gorm.DB, owner uint, name string, current bool) uint {
+	t.Helper()
+	now := time.Now()
+	mustExec(t, db, `INSERT INTO properties (created_at, updated_at, user_id, name, start_date, is_current, residents)
+		VALUES (?, ?, ?, ?, ?, ?, 1)`, now, now, owner, name, now, current)
+	var id uint
+	db.Raw(`SELECT MAX(id) FROM properties`).Scan(&id)
+	return id
+}
+
+// insertMember adds a member of a home, the way the schema before households stores it.
+func insertMember(t *testing.T, db *gorm.DB, propertyID uint, userID *uint, name, role string) uint {
+	t.Helper()
+	now := time.Now()
+	mustExec(t, db, `INSERT INTO household_members (created_at, updated_at, property_id, user_id, name, role, is_virtual)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`, now, now, propertyID, userID, name, role, userID == nil)
+	var id uint
+	db.Raw(`SELECT MAX(id) FROM household_members`).Scan(&id)
+	return id
+}
+
 func mustCreate(t *testing.T, db *gorm.DB, rows ...any) {
 	t.Helper()
 	for _, row := range rows {
@@ -74,16 +119,13 @@ func TestUpgradeFromTheLastReleaseBeforeTemplatesPerProperty(t *testing.T) {
 	lodger := &models.User{Email: "lodger@example.com", PasswordHash: "x", Name: "Lodger", IsActive: true}
 	loner := &models.User{Email: "loner@example.com", PasswordHash: "x", Name: "Loner", IsActive: true}
 	mustCreate(t, db, author, partner, lodger, loner)
-	home := models.Property{UserID: author.ID, Name: "Home", StartDate: now, IsCurrent: true}
-	cabin := models.Property{UserID: author.ID, Name: "Cabin", StartDate: now}
-	flat := models.Property{UserID: lodger.ID, Name: "Flat", StartDate: now}
-	mustCreate(t, db, &cabin, &home, &flat)
-	mustCreate(t, db,
-		&models.HouseholdMember{PropertyID: cabin.ID, UserID: &author.ID, Name: "Author"},
-		&models.HouseholdMember{PropertyID: home.ID, UserID: &author.ID, Name: "Author"},
-		&models.HouseholdMember{PropertyID: home.ID, UserID: &partner.ID, Name: "Partner"},
-		&models.HouseholdMember{PropertyID: flat.ID, UserID: &lodger.ID, Name: "Lodger"},
-	)
+	cabin := models.Property{ID: insertHome(t, db, author.ID, "Cabin", false)}
+	home := models.Property{ID: insertHome(t, db, author.ID, "Home", true)}
+	flat := models.Property{ID: insertHome(t, db, lodger.ID, "Flat", false)}
+	insertMember(t, db, cabin.ID, &author.ID, "Author", "admin")
+	insertMember(t, db, home.ID, &author.ID, "Author", "admin")
+	insertMember(t, db, home.ID, &partner.ID, "Partner", "member")
+	insertMember(t, db, flat.ID, &lodger.ID, "Lodger", "admin")
 
 	insert := func(userID uint, provider, utilityType string, isDefault bool, rules string) uint {
 		t.Helper()
@@ -205,5 +247,125 @@ func TestUpgradeLeavesACurrentDatabaseAlone(t *testing.T) {
 	}
 	if err := upgrade(db); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Every home becomes a household of its own: members, settlements, split
+// settings and join requests follow it, balances stay as they were, and only
+// Home expenses keep their home.
+func TestUpgradeGroupsHomesIntoHouseholds(t *testing.T) {
+	db := beforeHouseholdsDB(t)
+	now := time.Now()
+	alice := &models.User{Email: "alice@example.com", PasswordHash: "x", Name: "Alice", IsActive: true}
+	bob := &models.User{Email: "bob@example.com", PasswordHash: "x", Name: "Bob", IsActive: true}
+	mustCreate(t, db, alice, bob)
+	mustExec(t, db, `INSERT INTO categories (id, created_at, updated_at, slug, name, is_default) VALUES (1, ?, ?, 'home', 'Home', true), (2, ?, ?, 'food_dining', 'Food', true)`, now, now, now, now)
+
+	flat := insertHome(t, db, alice.ID, "Flat", true)
+	lake := insertHome(t, db, alice.ID, "Lake house", false)
+	aliceFlat := insertMember(t, db, flat, &alice.ID, "Alice", "admin")
+	bobFlat := insertMember(t, db, flat, &bob.ID, "Bob", "member")
+	aliceLake := insertMember(t, db, lake, &alice.ID, "Alice", "admin")
+	mustExec(t, db, `INSERT INTO household_settings (created_at, updated_at, property_id, split_mode, default_split_type) VALUES (?, ?, ?, true, 'equal'), (?, ?, ?, false, 'equal')`, now, now, flat, now, now, lake)
+
+	expense := func(userID uint, propertyID *uint, categoryID, payer uint, amount float64, split bool) uint {
+		t.Helper()
+		mustExec(t, db, `INSERT INTO expenses (created_at, updated_at, user_id, property_id, category_id, amount, date, description, paid_by_member_id, is_split)
+			VALUES (?, ?, ?, ?, ?, ?, ?, 'x', ?, ?)`, now, now, userID, propertyID, categoryID, amount, now, payer, split)
+		var id uint
+		db.Raw(`SELECT MAX(id) FROM expenses`).Scan(&id)
+		return id
+	}
+	plumber := expense(alice.ID, &flat, 1, aliceFlat, 100, true)
+	groceries := expense(bob.ID, &flat, 2, bobFlat, 40, true)
+	homeless := expense(bob.ID, nil, 2, bobFlat, 12, false)
+	boat := expense(alice.ID, &lake, 2, aliceLake, 30, false)
+	for _, s := range []struct {
+		expense, member uint
+		amount          float64
+		settled         bool
+	}{{plumber, aliceFlat, 50, true}, {plumber, bobFlat, 50, false}, {groceries, bobFlat, 20, true}, {groceries, aliceFlat, 20, false}} {
+		mustExec(t, db, `INSERT INTO expense_splits (created_at, updated_at, expense_id, member_id, amount, settled_amount, is_settled) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			now, now, s.expense, s.member, s.amount, map[bool]float64{true: s.amount}[s.settled], s.settled)
+	}
+	mustExec(t, db, `INSERT INTO settlements (created_at, updated_at, property_id, from_member_id, to_member_id, amount, date) VALUES (?, ?, ?, ?, ?, 5, ?)`, now, now, flat, bobFlat, aliceFlat, now)
+	mustExec(t, db, `INSERT INTO property_join_requests (created_at, updated_at, user_id, property_id, status) VALUES (?, ?, ?, ?, 'pending')`, now, now, bob.ID, lake)
+
+	if err := upgrade(db); err != nil {
+		t.Fatalf("upgrade: %v", err)
+	}
+	if steps := database.PendingUpgrades(db); len(steps) != 0 {
+		t.Fatalf("still pending after the upgrade: %v", steps)
+	}
+	if err := database.AutoMigrate(db); err != nil {
+		t.Fatalf("server migration after the upgrade: %v", err)
+	}
+
+	var households []models.Household
+	db.Order("id").Find(&households)
+	if len(households) != 2 || households[0].ID != flat || households[0].Name != "Flat" || households[1].ID != lake || households[1].Name != "Lake house" {
+		t.Fatalf("households = %+v, want one per home, with its id and name", households)
+	}
+	var homes []models.Property
+	db.Order("id").Find(&homes)
+	for _, h := range homes {
+		if h.HouseholdID != h.ID {
+			t.Errorf("home %d is in household %d", h.ID, h.HouseholdID)
+		}
+	}
+	var members []models.HouseholdMember
+	db.Order("id").Find(&members)
+	if want := []uint{flat, flat, lake}; len(members) != 3 || members[0].HouseholdID != want[0] || members[1].HouseholdID != want[1] || members[2].HouseholdID != want[2] {
+		t.Errorf("members = %+v, want households %v", members, want)
+	}
+
+	check := func(id, household uint, property *uint) {
+		t.Helper()
+		var e models.Expense
+		if err := db.First(&e, id).Error; err != nil {
+			t.Fatal(err)
+		}
+		if e.HouseholdID != household || (e.PropertyID == nil) != (property == nil) || (property != nil && *e.PropertyID != *property) {
+			t.Errorf("expense %d: household %d, home %v; want %d, %v", id, e.HouseholdID, e.PropertyID, household, property)
+		}
+	}
+	check(plumber, flat, &flat)
+	check(groceries, flat, nil)
+	check(homeless, flat, nil)
+	check(boat, lake, nil)
+
+	var settlement models.Settlement
+	db.First(&settlement)
+	if settlement.HouseholdID != flat {
+		t.Errorf("settlement in household %d, want %d", settlement.HouseholdID, flat)
+	}
+	var settings []models.HouseholdSettings
+	db.Order("household_id").Find(&settings)
+	if len(settings) != 2 || settings[0].HouseholdID != flat || !settings[0].SplitMode || settings[1].HouseholdID != lake {
+		t.Errorf("household settings = %+v", settings)
+	}
+	var request models.HouseholdJoinRequest
+	if err := db.First(&request).Error; err != nil || request.HouseholdID != lake || request.Status != "pending" {
+		t.Errorf("join request = %+v (%v), want the pending one for the lake house", request, err)
+	}
+	if db.Migrator().HasTable("property_join_requests") {
+		t.Error("property_join_requests survived")
+	}
+	for _, table := range []string{"household_members", "settlements", "household_settings"} {
+		if db.Migrator().HasColumn(table, "property_id") {
+			t.Errorf("%s.property_id survived", table)
+		}
+	}
+
+	balance, err := handlers.CalculateBalance(aliceFlat, bobFlat, flat, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.Abs(balance-30) > 1e-9 {
+		t.Errorf("balance Alice-Bob = %.2f, want 30 (Bob owes 50, Alice owes 20)", balance)
+	}
+
+	if err := upgrade(db); err != nil {
+		t.Fatalf("second run: %v", err)
 	}
 }

@@ -19,29 +19,29 @@
 
     <!-- Step 1: Blocking — nominate admins, settle balances -->
     <div v-else-if="deleteStep === 'blocking'" class="space-y-4">
-      <div v-if="deleteCheckResult.open_balance_properties?.length > 0"
+      <div v-if="deleteCheckResult.open_balance_households?.length > 0"
            class="p-3 bg-warning/10 border border-warning/30 rounded-lg">
         <p class="text-sm font-medium text-warning-soft mb-1">
           {{ t('settings.deleteAccount.openBalancesHeader') }}
         </p>
         <ul class="text-sm text-warning-soft list-disc list-inside">
-          <li v-for="name in deleteCheckResult.open_balance_properties" :key="name">{{ name }}</li>
+          <li v-for="name in deleteCheckResult.open_balance_households" :key="name">{{ name }}</li>
         </ul>
       </div>
 
-      <div v-if="deleteCheckResult.blocking_properties?.length > 0"
+      <div v-if="deleteCheckResult.blocking_households?.length > 0"
            class="p-3 bg-warning/10 border border-warning/30 rounded-lg">
         <p class="text-sm font-medium text-warning-soft mb-2">
           {{ t('settings.deleteAccount.blockingHeader') }}
         </p>
       </div>
 
-      <div v-for="bp in deleteCheckResult.blocking_properties ?? []" :key="bp.property_id"
+      <div v-for="bp in deleteCheckResult.blocking_households ?? []" :key="bp.household_id"
            class="p-3 border border-line rounded-lg space-y-2">
-        <div class="font-medium text-ink">{{ bp.property_name }}</div>
+        <div class="font-medium text-ink">{{ bp.household_name }}</div>
         <div class="flex items-center gap-2">
           <select
-            v-model="adminNominations[bp.property_id]"
+            v-model="adminNominations[bp.household_id]"
             class="flex-1 px-3 py-2 border border-line rounded-lg
                    bg-surface text-ink text-sm
                    focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -53,10 +53,10 @@
           </select>
           <Button
             size="sm"
-            :disabled="!adminNominations[bp.property_id] || promotingProperty === bp.property_id"
-            @click="handlePromoteAdmin(bp.property_id)"
+            :disabled="!adminNominations[bp.household_id] || promotingHousehold === bp.household_id"
+            @click="handlePromoteAdmin(bp.household_id)"
           >
-            {{ promotingProperty === bp.property_id ? t('settings.deleteAccount.nominateSaving') : t('settings.deleteAccount.nominateButton') }}
+            {{ promotingHousehold === bp.household_id ? t('settings.deleteAccount.nominateSaving') : t('settings.deleteAccount.nominateButton') }}
           </Button>
         </div>
       </div>
@@ -133,7 +133,7 @@ const authStore = useAuthStore()
 const deleteStep = ref(0) // 0, 'loading', 'blocking', 'confirm'
 const deleteCheckResult = ref(null)
 const adminNominations = ref({})
-const promotingProperty = ref(null)
+const promotingHousehold = ref(null)
 const deletePassword = ref('')
 const deleteConfirmed = ref(false)
 const deleteError = ref(null)
@@ -147,8 +147,8 @@ async function startDeleteAccount() {
     deleteCheckResult.value = data
     if (!data.can_delete) {
       adminNominations.value = {}
-      for (const bp of data.blocking_properties ?? []) {
-        adminNominations.value[bp.property_id] = null
+      for (const bp of data.blocking_households ?? []) {
+        adminNominations.value[bp.household_id] = null
       }
       deleteStep.value = 'blocking'
     } else {
@@ -160,18 +160,18 @@ async function startDeleteAccount() {
   }
 }
 
-async function handlePromoteAdmin(propertyId) {
-  const memberId = adminNominations.value[propertyId]
+async function handlePromoteAdmin(householdId) {
+  const memberId = adminNominations.value[householdId]
   if (!memberId) return
-  promotingProperty.value = propertyId
+  promotingHousehold.value = householdId
   try {
-    await accountAPI.promoteAdmin(propertyId, memberId)
+    await accountAPI.promoteAdmin(householdId, memberId)
     window.$toast?.success(t('settings.deleteAccount.promoteSuccess'))
     await startDeleteAccount()
   } catch (err) {
     window.$toast?.error(apiErrorMessage(err, t('settings.deleteAccount.promoteError')))
   } finally {
-    promotingProperty.value = null
+    promotingHousehold.value = null
   }
 }
 

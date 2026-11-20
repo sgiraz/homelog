@@ -113,7 +113,7 @@ export const authAPI = {
 
 export const accountAPI = {
   deleteCheck: () => apiClient.get('/settings/account/delete-check'),
-  promoteAdmin: (propertyId, memberId) => apiClient.post('/settings/account/promote-admin', { property_id: propertyId, member_id: memberId }),
+  promoteAdmin: (householdId, memberId) => apiClient.post('/settings/account/promote-admin', { household_id: householdId, member_id: memberId }),
   deleteAccount: (password) => apiClient.delete('/settings/account', { data: { password } }),
 }
 
@@ -154,10 +154,10 @@ export const settingsAPI = {
 }
 
 export const balanceAPI = {
-  get: (propertyId) => apiClient.get(`/properties/${propertyId}/balance`),
-  details: (propertyId) => apiClient.get(`/properties/${propertyId}/balance/details`),
-  debts: (propertyId, otherMemberId) =>
-    apiClient.get(`/properties/${propertyId}/debts`, {
+  get: (householdId) => apiClient.get(`/households/${householdId}/balance`),
+  details: (householdId) => apiClient.get(`/households/${householdId}/balance/details`),
+  debts: (householdId, otherMemberId) =>
+    apiClient.get(`/households/${householdId}/debts`, {
       params: otherMemberId ? { other_member_id: otherMemberId } : {},
     }),
 }
@@ -165,12 +165,12 @@ export const balanceAPI = {
 export const settlementsAPI = {
   create: (data) => apiClient.post('/settlements', data),
   compensate: (data) => apiClient.post('/settlements/compensate', data),
-  list: (propertyId) => apiClient.get('/settlements', { params: { property_id: propertyId } }),
+  list: (householdId) => apiClient.get('/settlements', { params: { household_id: householdId } }),
 }
 
 export const membersAPI = {
-  list: (propertyId) => apiClient.get(`/properties/${propertyId}/members`),
-  create: (propertyId, data) => apiClient.post(`/properties/${propertyId}/members`, data),
+  list: (householdId) => apiClient.get(`/households/${householdId}/members`),
+  create: (householdId, data) => apiClient.post(`/households/${householdId}/members`, data),
   get: (memberId) => apiClient.get(`/members/${memberId}`),
   update: (memberId, data) => apiClient.put(`/members/${memberId}`, data),
   delete: (memberId) => apiClient.delete(`/members/${memberId}`),
@@ -353,9 +353,9 @@ export const demoAPI = {
 
 export const joinRequestAPI = {
   list: () => apiClient.get('/join-requests'),
-  create: (propertyId) => apiClient.post('/join-requests', { property_id: propertyId }),
+  create: (householdId) => apiClient.post('/join-requests', { household_id: householdId }),
   resolve: (id, status) => apiClient.patch(`/join-requests/${id}`, { status }),
-  joinableProperties: () => apiClient.get('/properties/joinable'),
+  joinableHouseholds: () => apiClient.get('/households/joinable'),
 }
 
 export const searchAPI = {

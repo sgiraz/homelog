@@ -57,8 +57,8 @@ type UserSettingsResponse struct {
 
 // PendingJoinRequestInfo contains summary info about a user's pending join request
 type PendingJoinRequestInfo struct {
-	PropertyName string    `json:"property_name"`
-	RequestedAt  time.Time `json:"requested_at"`
+	HouseholdName string    `json:"household_name"`
+	RequestedAt   time.Time `json:"requested_at"`
 }
 
 // UpdateUserSettingsRequest represents the request for updating user settings
@@ -87,13 +87,13 @@ func (h *SettingsHandler) getPropertyStatus(userID uint) (hasProperty bool, isPr
 	h.db.Model(&models.HouseholdMember{}).Where("user_id = ? AND role = 'admin'", userID).Count(&adminCount)
 	isPropertyAdmin = adminCount > 0
 
-	var joinReqs []models.PropertyJoinRequest
+	var joinReqs []models.HouseholdJoinRequest
 	h.db.Where("user_id = ? AND status = 'pending'", userID).
-		Preload("Property").Limit(1).Find(&joinReqs)
-	if len(joinReqs) > 0 {
+		Preload("Household").Limit(1).Find(&joinReqs)
+	if len(joinReqs) > 0 && joinReqs[0].Household != nil {
 		pendingReq = &PendingJoinRequestInfo{
-			PropertyName: joinReqs[0].Property.Name,
-			RequestedAt:  joinReqs[0].CreatedAt,
+			HouseholdName: joinReqs[0].Household.Name,
+			RequestedAt:   joinReqs[0].CreatedAt,
 		}
 	}
 	return

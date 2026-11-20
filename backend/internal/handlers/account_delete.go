@@ -11,30 +11,42 @@ import (
 )
 
 // Deleting an account removes what belongs to that person and leaves the
-// homes they share as the others know them. A home nobody else lives in goes
-// with the account. In a shared home the account's member turns virtual and
-// keeps its expenses, shares and settlements, so nobody else's balance or
-// history moves. That is only possible once the home has another admin and
-// the member owes and is owed nothing there: accountDeleteCheck reports both.
+// households they share as the others know them. A household nobody else is
+// in goes with the account, homes included. In a shared household the
+// account's member turns virtual and keeps its expenses, shares and
+// settlements, so nobody else's balance or history moves. That is only
+// possible once the household has another admin and the member owes and is
+// owed nothing there: accountDeleteCheck reports both.
 
 // accountBlockedError is deleteAccount refusing: the check did not pass.
 type accountBlockedError struct{ check DeleteAccountCheckResponse }
 
 func (e *accountBlockedError) Error() string { return "account deletion is blocked" }
 
-// accountHome is a home the account lives in or owns.
-type accountHome struct {
-	property models.Property
-	// member is the account's member row there, nil when it only owns the home.
+// accountHousehold is a household the account is a member of or owns a home in.
+type accountHousehold struct {
+	household models.Household
+	homes     []models.Property
+	// member is the account's member row there, nil when it only owns a home.
 	member *models.HouseholdMember
 	// others are the other registered, current members.
 	others []models.HouseholdMember
 }
 
-func (h accountHome) shared() bool { return len(h.others) > 0 }
+func (h accountHousehold) shared() bool { return len(h.others) > 0 }
 
-// successor is the admin who takes over the home, or nil if there is none.
-func (h accountHome) successor() *models.HouseholdMember {
+// owns reports whether the account owns one of the household's homes.
+func (h accountHousehold) owns(userID uint) bool {
+	for _, p := range h.homes {
+		if p.UserID == userID {
+			return true
+		}
+	}
+	return false
+}
+
+// successor is the admin who takes over the household, or nil if there is none.
+func (h accountHousehold) successor() *models.HouseholdMember {
 	for i := range h.others {
 		if h.others[i].Role == "admin" {
 			return &h.others[i]
@@ -43,42 +55,46 @@ func (h accountHome) successor() *models.HouseholdMember {
 	return nil
 }
 
-func accountHomes(db *gorm.DB, userID uint) ([]accountHome, error) {
+func accountHouseholds(db *gorm.DB, userID uint) ([]accountHousehold, error) {
 	var members []models.HouseholdMember
 	if err := db.Where("user_id = ?", userID).Order("id").Find(&members).Error; err != nil {
 		return nil, err
 	}
 	memberOf := make(map[uint]*models.HouseholdMember, len(members))
 	for i := range members {
-		memberOf[members[i].PropertyID] = &members[i]
+		memberOf[members[i].HouseholdID] = &members[i]
 	}
 
-	var properties []models.Property
-	if err := db.Where("user_id = ? OR id IN (?)", userID,
-		db.Model(&models.HouseholdMember{}).Select("property_id").Where("user_id = ?", userID)).
-		Order("id").Find(&properties).Error; err != nil {
+	var households []models.Household
+	if err := db.Where("id IN (?) OR id IN (?)",
+		db.Model(&models.HouseholdMember{}).Select("household_id").Where("user_id = ?", userID),
+		db.Model(&models.Property{}).Select("household_id").Where("user_id = ?", userID)).
+		Order("id").Find(&households).Error; err != nil {
 		return nil, err
 	}
 
-	homes := make([]accountHome, 0, len(properties))
-	for _, p := range properties {
-		home := accountHome{property: p, member: memberOf[p.ID]}
-		if err := db.Where("property_id = ? AND is_virtual = false AND user_id IS NOT NULL AND user_id <> ?", p.ID, userID).
-			Order("id").Find(&home.others).Error; err != nil {
+	result := make([]accountHousehold, 0, len(households))
+	for _, hh := range households {
+		entry := accountHousehold{household: hh, member: memberOf[hh.ID]}
+		if err := db.Where("household_id = ?", hh.ID).Order("id").Find(&entry.homes).Error; err != nil {
 			return nil, err
 		}
-		homes = append(homes, home)
+		if err := db.Where("household_id = ? AND is_virtual = false AND user_id IS NOT NULL AND user_id <> ?", hh.ID, userID).
+			Order("id").Find(&entry.others).Error; err != nil {
+			return nil, err
+		}
+		result = append(result, entry)
 	}
-	return homes, nil
+	return result, nil
 }
 
 // hasOpenBalance reports whether the member still owes, or is owed, any share
-// in the property, long-term debts included.
-func hasOpenBalance(db *gorm.DB, propertyID, memberID uint) (bool, error) {
+// in the household, long-term debts included.
+func hasOpenBalance(db *gorm.DB, householdID, memberID uint) (bool, error) {
 	var n int64
 	err := db.Model(&models.ExpenseSplit{}).
 		Joins("JOIN expenses ON expenses.id = expense_splits.expense_id").
-		Where("expenses.property_id = ? AND expenses.deleted_at IS NULL", propertyID).
+		Where("expenses.household_id = ? AND expenses.deleted_at IS NULL", householdID).
 		Where("expense_splits.is_settled = ?", false).
 		Where("(expense_splits.member_id = ? AND expenses.paid_by_member_id <> ?) OR (expenses.paid_by_member_id = ? AND expense_splits.member_id <> ?)",
 			memberID, memberID, memberID, memberID).
@@ -90,36 +106,38 @@ func hasOpenBalance(db *gorm.DB, propertyID, memberID uint) (bool, error) {
 // to happen first.
 func accountDeleteCheck(db *gorm.DB, userID uint) (DeleteAccountCheckResponse, error) {
 	resp := DeleteAccountCheckResponse{CanDelete: true}
-	homes, err := accountHomes(db, userID)
+	households, err := accountHouseholds(db, userID)
 	if err != nil {
 		return resp, err
 	}
-	for _, home := range homes {
-		if !home.shared() {
-			resp.DataLossProperties = append(resp.DataLossProperties, home.property.Name)
+	for _, hh := range households {
+		if !hh.shared() {
+			for _, home := range hh.homes {
+				resp.DataLossProperties = append(resp.DataLossProperties, home.Name)
+			}
 			continue
 		}
-		leadsHome := home.property.UserID == userID || (home.member != nil && home.member.Role == "admin")
-		if leadsHome && home.successor() == nil {
+		leads := hh.owns(userID) || (hh.member != nil && hh.member.Role == "admin")
+		if leads && hh.successor() == nil {
 			resp.CanDelete = false
-			members := make([]MemberOption, len(home.others))
-			for i, m := range home.others {
+			members := make([]MemberOption, len(hh.others))
+			for i, m := range hh.others {
 				members[i] = MemberOption{MemberID: m.ID, UserID: *m.UserID, Name: m.Name}
 			}
-			resp.BlockingProperties = append(resp.BlockingProperties, BlockingPropertyInfo{
-				PropertyID:   home.property.ID,
-				PropertyName: home.property.Name,
-				Members:      members,
+			resp.BlockingHouseholds = append(resp.BlockingHouseholds, BlockingHouseholdInfo{
+				HouseholdID:   hh.household.ID,
+				HouseholdName: hh.household.Name,
+				Members:       members,
 			})
 		}
-		if home.member != nil {
-			open, err := hasOpenBalance(db, home.property.ID, home.member.ID)
+		if hh.member != nil {
+			open, err := hasOpenBalance(db, hh.household.ID, hh.member.ID)
 			if err != nil {
 				return resp, err
 			}
 			if open {
 				resp.CanDelete = false
-				resp.OpenBalanceProperties = append(resp.OpenBalanceProperties, home.property.Name)
+				resp.OpenBalanceHouseholds = append(resp.OpenBalanceHouseholds, hh.household.Name)
 			}
 		}
 	}
@@ -127,21 +145,21 @@ func accountDeleteCheck(db *gorm.DB, userID uint) (DeleteAccountCheckResponse, e
 }
 
 // refuseAccountDelete answers 409 for a check that does not pass. The body
-// carries the homes involved, so the UI can name them. The codes read the same
+// carries the households involved, so the UI can name them. The codes read the same
 // whether the account is the caller's or one an admin is deleting.
 func refuseAccountDelete(c *gin.Context, check DeleteAccountCheckResponse) {
-	if len(check.BlockingProperties) > 0 {
+	if len(check.BlockingHouseholds) > 0 {
 		c.JSON(http.StatusConflict, gin.H{
-			"error":               "Every shared home needs another admin first",
+			"error":               "Every shared household needs another admin first",
 			"error_code":          "admin_successor_required",
-			"blocking_properties": check.BlockingProperties,
+			"blocking_households": check.BlockingHouseholds,
 		})
 		return
 	}
 	c.JSON(http.StatusConflict, gin.H{
-		"error":                   "Balances in shared homes must be settled first",
+		"error":                   "Balances in shared households must be settled first",
 		"error_code":              "open_balances_remaining",
-		"open_balance_properties": check.OpenBalanceProperties,
+		"open_balance_households": check.OpenBalanceHouseholds,
 	})
 }
 
@@ -162,19 +180,22 @@ func deleteAccount(tx *gorm.DB, userID uint) error {
 	}
 
 	all := tx.Unscoped().Session(&gorm.Session{})
-	homes, err := accountHomes(tx, userID)
+	households, err := accountHouseholds(tx, userID)
 	if err != nil {
 		return err
 	}
-	for _, home := range homes {
-		if !home.shared() {
-			if err := cascadeDeleteProperty(tx, home.property.ID); err != nil {
-				return fmt.Errorf("delete home %d: %w", home.property.ID, err)
+	for _, hh := range households {
+		if !hh.shared() {
+			// The last home takes the household with it.
+			for _, home := range hh.homes {
+				if err := cascadeDeleteProperty(tx, home.ID); err != nil {
+					return fmt.Errorf("delete home %d: %w", home.ID, err)
+				}
 			}
 			continue
 		}
-		if err := leaveHome(all, userID, home); err != nil {
-			return fmt.Errorf("leave home %d: %w", home.property.ID, err)
+		if err := leaveHousehold(all, userID, hh); err != nil {
+			return fmt.Errorf("leave household %d: %w", hh.household.ID, err)
 		}
 	}
 	// A home the account owns that was deleted before (soft) is nobody's to
@@ -203,7 +224,7 @@ func deleteAccount(tx *gorm.DB, userID uint) error {
 		},
 		func() error { return all.Where("user_id = ?", userID).Delete(&models.ContractTemplate{}).Error },
 		func() error { return all.Where("user_id = ?", userID).Delete(&models.Notification{}).Error },
-		func() error { return all.Where("user_id = ?", userID).Delete(&models.PropertyJoinRequest{}).Error },
+		func() error { return all.Where("user_id = ?", userID).Delete(&models.HouseholdJoinRequest{}).Error },
 		func() error { return all.Where("user_id = ?", userID).Delete(&models.UserSettings{}).Error },
 		func() error { return all.Delete(&models.User{}, userID).Error },
 	}
@@ -215,21 +236,21 @@ func deleteAccount(tx *gorm.DB, userID uint) error {
 	return nil
 }
 
-// leaveHome hands a shared home the account owns to its successor, whom the
-// check guarantees, and frees the place the account took in it. The member
-// row itself is detachMembers'.
-func leaveHome(all *gorm.DB, userID uint, home accountHome) error {
-	if next := home.successor(); home.property.UserID == userID && next != nil {
+// leaveHousehold hands the homes the account owns in a shared household to
+// its successor, whom the check guarantees, and frees the place the account
+// took in them. The member row itself is detachMembers'.
+func leaveHousehold(all *gorm.DB, userID uint, hh accountHousehold) error {
+	if next := hh.successor(); next != nil {
 		// is_current marks the owner's home of choice, not the successor's.
-		if err := all.Model(&models.Property{}).Where("id = ?", home.property.ID).
+		if err := all.Model(&models.Property{}).Where("household_id = ? AND user_id = ?", hh.household.ID, userID).
 			Updates(map[string]any{"user_id": *next.UserID, "is_current": false}).Error; err != nil {
 			return err
 		}
 	}
-	if home.member == nil {
+	if hh.member == nil {
 		return nil
 	}
-	return all.Model(&models.Property{}).Where("id = ?", home.property.ID).
+	return all.Model(&models.Property{}).Where("household_id = ?", hh.household.ID).
 		UpdateColumn("residents", gorm.Expr("CASE WHEN residents > 1 THEN residents - 1 ELSE 1 END")).Error
 }
 

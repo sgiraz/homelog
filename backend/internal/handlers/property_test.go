@@ -38,16 +38,16 @@ func setupPropertyFixture(t *testing.T) *propertyFixture {
 	member := &models.User{Email: "member@example.com", PasswordHash: "x", Name: "Member", Role: "user", IsActive: true}
 	mustCreate(t, db, owner, member)
 
-	other := models.Property{UserID: owner.ID, Name: "Seaside flat", Type: "rented", StartDate: now, Residents: 1}
+	other := models.Property{Household: &models.Household{Name: "Seaside flat"}, UserID: owner.ID, Name: "Seaside flat", Type: "rented", StartDate: now, Residents: 1}
 	mustCreate(t, db, &other)
-	mOther := models.HouseholdMember{PropertyID: other.ID, UserID: &owner.ID, Name: "Owner", Role: "admin"}
+	mOther := models.HouseholdMember{HouseholdID: other.HouseholdID, UserID: &owner.ID, Name: "Owner", Role: "admin"}
 	mustCreate(t, db, &mOther)
 
-	home := models.Property{UserID: owner.ID, Name: "Main house", Type: "owned", StartDate: now, IsCurrent: true, Residents: 2}
+	home := models.Property{Household: &models.Household{Name: "Main house"}, UserID: owner.ID, Name: "Main house", Type: "owned", StartDate: now, IsCurrent: true, Residents: 2}
 	mustCreate(t, db, &home)
-	mOwner := models.HouseholdMember{PropertyID: home.ID, UserID: &owner.ID, Name: "Owner", Role: "admin"}
-	mMember := models.HouseholdMember{PropertyID: home.ID, UserID: &member.ID, Name: "Member", Role: "member"}
-	mustCreate(t, db, &mOwner, &mMember, &models.HouseholdSettings{PropertyID: home.ID})
+	mOwner := models.HouseholdMember{HouseholdID: home.HouseholdID, UserID: &owner.ID, Name: "Owner", Role: "admin"}
+	mMember := models.HouseholdMember{HouseholdID: home.HouseholdID, UserID: &member.ID, Name: "Member", Role: "member"}
+	mustCreate(t, db, &mOwner, &mMember, &models.HouseholdSettings{HouseholdID: home.HouseholdID})
 
 	cat := models.Category{Name: "Groceries"}
 	mustCreate(t, db, &cat)
@@ -61,10 +61,10 @@ func setupPropertyFixture(t *testing.T) *propertyFixture {
 	project := models.Project{UserID: owner.ID, PropertyID: &home.ID, Name: "Kitchen", Budget: 1000, StartDate: now, EndDate: now}
 	mustCreate(t, db, &project)
 	mustCreate(t, db, &models.ProjectMember{ProjectID: project.ID, UserID: member.ID, Role: "member"})
-	exp := models.Expense{UserID: owner.ID, PropertyID: &home.ID, ProjectID: &project.ID, CategoryID: cat.ID, Amount: 40, Date: now, Description: "Tiles", PaidByMemberID: mOwner.ID}
+	exp := models.Expense{UserID: owner.ID, HouseholdID: home.HouseholdID, PropertyID: &home.ID, ProjectID: &project.ID, CategoryID: cat.ID, Amount: 40, Date: now, Description: "Tiles", PaidByMemberID: mOwner.ID}
 	mustCreate(t, db, &exp)
 	memberSplit := models.ExpenseSplit{ExpenseID: exp.ID, MemberID: mMember.ID, Amount: 20}
-	settlement := models.Settlement{PropertyID: home.ID, FromMemberID: mMember.ID, ToMemberID: mOwner.ID, Amount: 5, Date: now, TargetExpenseID: &exp.ID}
+	settlement := models.Settlement{HouseholdID: home.HouseholdID, FromMemberID: mMember.ID, ToMemberID: mOwner.ID, Amount: 5, Date: now, TargetExpenseID: &exp.ID}
 	mustCreate(t, db,
 		&models.ExpenseSplit{ExpenseID: exp.ID, MemberID: mOwner.ID, Amount: 20, IsSettled: true, SettledAt: &now},
 		&memberSplit,
@@ -74,7 +74,7 @@ func setupPropertyFixture(t *testing.T) *propertyFixture {
 	mustCreate(t, db, &models.SettlementAllocation{SettlementID: settlement.ID, ExpenseSplitID: memberSplit.ID, Amount: 5})
 
 	// A record on the other home that must survive.
-	mustCreate(t, db, &models.Expense{UserID: owner.ID, PropertyID: &other.ID, CategoryID: cat.ID, Amount: 10, Date: now, Description: "Rent", PaidByMemberID: mOther.ID})
+	mustCreate(t, db, &models.Expense{UserID: owner.ID, HouseholdID: other.HouseholdID, PropertyID: &other.ID, CategoryID: cat.ID, Amount: 10, Date: now, Description: "Rent", PaidByMemberID: mOther.ID})
 
 	gin.SetMode(gin.TestMode)
 	h := NewPropertyHandler(db)
@@ -134,16 +134,29 @@ func TestDeleteProperty_CascadesAndPromotesChosenPrincipal(t *testing.T) {
 		query string
 	}{
 		{"properties", &models.Property{}, "id = ?"},
-		{"household_members", &models.HouseholdMember{}, "property_id = ?"},
-		{"household_settings", &models.HouseholdSettings{}, "property_id = ?"},
 		{"utilities", &models.Utility{}, "property_id = ?"},
 		{"expenses", &models.Expense{}, "property_id = ?"},
 		{"projects", &models.Project{}, "property_id = ?"},
-		{"settlements", &models.Settlement{}, "property_id = ?"},
 		{"notifications", &models.Notification{}, "property_id = ?"},
 	} {
 		if n := f.count(t, c.model, c.query, id); n != 0 {
 			t.Errorf("%s: %d rows left for the deleted property, want 0", c.name, n)
+		}
+	}
+	// Its household had no other home: it goes too, with everything it held.
+	for _, c := range []struct {
+		name  string
+		model any
+		query string
+	}{
+		{"households", &models.Household{}, "id = ?"},
+		{"household_members", &models.HouseholdMember{}, "household_id = ?"},
+		{"household_settings", &models.HouseholdSettings{}, "household_id = ?"},
+		{"settlements", &models.Settlement{}, "household_id = ?"},
+		{"expenses", &models.Expense{}, "household_id = ?"},
+	} {
+		if n := f.count(t, c.model, c.query, f.home.HouseholdID); n != 0 {
+			t.Errorf("%s: %d rows left for the deleted household, want 0", c.name, n)
 		}
 	}
 	for _, c := range []struct {
@@ -285,7 +298,7 @@ func TestUpdateProperty(t *testing.T) {
 func TestDeleteProperty_PrincipalNeedsAValidSuccessor(t *testing.T) {
 	f := setupPropertyFixture(t)
 	f.memberLeaves(t)
-	foreign := models.Property{UserID: f.member.ID, Name: "Member's flat", Type: "rented", StartDate: time.Now(), Residents: 1}
+	foreign := models.Property{Household: &models.Household{Name: "Member's flat"}, UserID: f.member.ID, Name: "Member's flat", Type: "rented", StartDate: time.Now(), Residents: 1}
 	mustCreate(t, f.db, &foreign)
 	base := "/properties/" + itoa(f.home.ID)
 

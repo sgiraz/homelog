@@ -143,7 +143,7 @@ const props = defineProps({
     type: Number,
     default: null
   },
-  propertyId: {
+  householdId: {
     type: Number,
     default: 1
   }
@@ -213,7 +213,7 @@ async function handleSubmit() {
     }
 
     const settlementData = {
-      property_id: props.propertyId,
+      household_id: props.householdId,
       from_member_id: iAmPaying.value ? currentMemberId : otherMemberId,
       to_member_id: iAmPaying.value ? otherMemberId : currentMemberId,
       amount,

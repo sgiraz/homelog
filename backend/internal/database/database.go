@@ -60,8 +60,8 @@ func InitDatabase() (*gorm.DB, error) {
 	return db, nil
 }
 
-// PendingUpgrades names the conversions a database from HomeLog 2026.09.11 or
-// earlier still needs before this version can start on it. cmd/upgrade
+// PendingUpgrades names the conversions an older database still needs before
+// this version can start on it. cmd/upgrade
 // applies them; the server only refuses to start.
 func PendingUpgrades(db *gorm.DB) []string {
 	m := db.Migrator()
@@ -74,6 +74,9 @@ func PendingUpgrades(db *gorm.DB) []string {
 	}
 	if m.HasColumn("utilities", "default_bill_template_id") {
 		steps = append(steps, "services still have a default template")
+	}
+	if m.HasTable("household_members") && !m.HasColumn("household_members", "household_id") {
+		steps = append(steps, "homes are not grouped into households yet")
 	}
 	return steps
 }
@@ -118,6 +121,7 @@ func migrateModels(db *gorm.DB) error {
 
 	err := db.AutoMigrate(
 		&models.User{},
+		&models.Household{},
 		&models.Property{},
 		&models.HouseholdMember{},
 		&models.Category{},
@@ -139,7 +143,7 @@ func migrateModels(db *gorm.DB) error {
 		&models.BillTemplate{},
 		&models.ContractTemplate{},
 		&models.ExpenseTemplate{},
-		&models.PropertyJoinRequest{},
+		&models.HouseholdJoinRequest{},
 		&models.Notification{},
 	)
 

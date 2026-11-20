@@ -32,7 +32,7 @@
   },
   "step2Join": {
     "title": "Unisciti a una casa",
-    "subtitle": "Seleziona la proprietà a cui vuoi accedere.",
+    "subtitle": "Seleziona il nucleo familiare a cui vuoi unirti.",
     "loading": "Caricamento...",
     "noProperties": "Nessuna casa trovata. Puoi crearne una tu!",
     "createMine": "Crea la tua!",

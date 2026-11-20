@@ -32,6 +32,7 @@ export const useSettingsStore = defineStore('settings', () => {
   // Household settings (shared across all members of the property)
   const splitMode = ref(false)
   const householdPropertyId = ref(null)
+  const householdId = ref(null)
 
   // Getters - provides { date_format, language } object for formatDate/formatPeriod
   const dateSettings = computed(() => ({
@@ -102,22 +103,25 @@ export const useSettingsStore = defineStore('settings', () => {
 
       const currentProp = properties.find(p => p.is_current) || properties[0]
       householdPropertyId.value = currentProp.id
+      householdId.value = currentProp.household_id
 
-      const { data } = await apiClient.get(`/properties/${currentProp.id}/settings`)
+      const { data } = await apiClient.get(`/households/${currentProp.household_id}/settings`)
       splitMode.value = data.split_mode || false
     } catch (err) {
       console.error('Error loading household settings:', err)
       splitMode.value = false
       householdPropertyId.value = null
+    householdId.value = null
+      householdId.value = null
     }
   }
 
   async function updateHouseholdSettings(updates) {
-    if (!householdPropertyId.value) return
+    if (!householdId.value) return
 
     try {
       if (updates.split_mode !== undefined) splitMode.value = updates.split_mode
-      await apiClient.put(`/properties/${householdPropertyId.value}/settings`, updates)
+      await apiClient.put(`/households/${householdId.value}/settings`, updates)
     } catch (err) {
       console.error('Error updating household settings:', err)
       throw err
@@ -184,6 +188,7 @@ export const useSettingsStore = defineStore('settings', () => {
     pendingJoinRequest.value = null
     splitMode.value = false
     householdPropertyId.value = null
+    householdId.value = null
   }
 
   return {
@@ -206,6 +211,7 @@ export const useSettingsStore = defineStore('settings', () => {
     pendingJoinRequest,
     splitMode,
     householdPropertyId,
+    householdId,
     // Getters
     dateSettings,
     formatSettings,

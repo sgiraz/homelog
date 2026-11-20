@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -27,19 +28,23 @@ func NewExpenseHandler(db *gorm.DB) *ExpenseHandler {
 
 // CreateExpenseRequest represents the request body for creating an expense
 type CreateExpenseRequest struct {
-	Amount             float64  `json:"amount" binding:"required,gt=0"`
-	OriginalAmount     *float64 `json:"original_amount"`
-	OriginalCurrency   string   `json:"original_currency"`
-	Description        string   `json:"description"`
-	CategoryID         uint     `json:"category_id" binding:"required"`
-	PropertyID         *uint    `json:"property_id"`
-	SubcategoryID      *uint    `json:"subcategory_id"`
-	ProjectID          *uint    `json:"project_id"`
-	Date               string   `json:"date" binding:"required"` // Format: YYYY-MM-DD
-	AttachmentURL      string   `json:"attachment_url"`
-	PaidByMemberID     uint     `json:"paid_by_member_id"`
-	IsSplit            bool     `json:"is_split"`
-	SplitWithMemberIDs []uint   `json:"split_with_member_ids"`
+	Amount           float64  `json:"amount" binding:"required,gt=0"`
+	OriginalAmount   *float64 `json:"original_amount"`
+	OriginalCurrency string   `json:"original_currency"`
+	Description      string   `json:"description"`
+	CategoryID       uint     `json:"category_id" binding:"required"`
+	// HouseholdID is the household the expense belongs to; when absent it is
+	// the household of PropertyID. PropertyID is kept only for the Home
+	// category, where it defaults to the household's primary home.
+	HouseholdID        *uint  `json:"household_id"`
+	PropertyID         *uint  `json:"property_id"`
+	SubcategoryID      *uint  `json:"subcategory_id"`
+	ProjectID          *uint  `json:"project_id"`
+	Date               string `json:"date" binding:"required"` // Format: YYYY-MM-DD
+	AttachmentURL      string `json:"attachment_url"`
+	PaidByMemberID     uint   `json:"paid_by_member_id"`
+	IsSplit            bool   `json:"is_split"`
+	SplitWithMemberIDs []uint `json:"split_with_member_ids"`
 }
 
 // noSubcategory is the subcategory_id value that selects expenses with none.
@@ -63,7 +68,7 @@ func subcategoryArgs(value string) []any {
 }
 
 // UpdateExpenseRequest represents the request body for updating an expense.
-// The property is fixed at creation: payer and splits are members of it.
+// The household is fixed at creation: payer and splits are members of it.
 type UpdateExpenseRequest struct {
 	Amount           *float64 `json:"amount"`
 	OriginalAmount   *float64 `json:"original_amount"`
@@ -84,8 +89,8 @@ type MonthlyStats struct {
 	Count  int     `json:"count"`
 }
 
-// List returns all expenses for properties where the user is a member
-// GET /api/v1/expenses?category_id=1&subcategory_id=2&property_id=1&from=2024-01-01&to=2024-12-31&limit=50&offset=0
+// List returns the expenses the user can see
+// GET /api/v1/expenses?category_id=1&subcategory_id=2&from=2024-01-01&to=2024-12-31&limit=50&offset=0
 func (h *ExpenseHandler) List(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -132,10 +137,6 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 
 	if subcategoryID := c.Query("subcategory_id"); subcategoryID != "" {
 		query = query.Where(subcategoryClause(subcategoryID), subcategoryArgs(subcategoryID)...)
-	}
-
-	if propertyID := c.Query("property_id"); propertyID != "" {
-		query = query.Where("property_id = ?", propertyID)
 	}
 
 	if projectID := c.Query("project_id"); projectID != "" {
@@ -199,9 +200,6 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	}
 	if subcategoryID := c.Query("subcategory_id"); subcategoryID != "" {
 		countQuery = countQuery.Where(subcategoryClause(subcategoryID), subcategoryArgs(subcategoryID)...)
-	}
-	if propertyID := c.Query("property_id"); propertyID != "" {
-		countQuery = countQuery.Where("property_id = ?", propertyID)
 	}
 	if projectID := c.Query("project_id"); projectID != "" {
 		countQuery = countQuery.Where("project_id = ?", projectID)
@@ -267,7 +265,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 	log.Printf("   Amount: %.2f", req.Amount)
 	log.Printf("   Description: %s", req.Description)
 	log.Printf("   CategoryID: %d", req.CategoryID)
-	log.Printf("   PropertyID: %v", req.PropertyID)
+	log.Printf("   HouseholdID: %v, PropertyID: %v", req.HouseholdID, req.PropertyID)
 	log.Printf("   PaidByMemberID: %d", req.PaidByMemberID)
 	log.Printf("   IsSplit: %t", req.IsSplit)
 	log.Printf("   SplitWithMemberIDs: %v", req.SplitWithMemberIDs)
@@ -278,25 +276,33 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// PaidByMemberID must be provided (frontend should resolve current user's member ID)
-	paidByMemberID := req.PaidByMemberID
-	if paidByMemberID == 0 {
-		// Try to find the current user's member ID for this property
-		if req.PropertyID != nil {
-			var member models.HouseholdMember
-			if err := h.db.Where("property_id = ? AND user_id = ?", *req.PropertyID, userID).First(&member).Error; err == nil {
-				paidByMemberID = member.ID
-				log.Printf("   ℹ️ Auto-resolved PaidByMemberID: %d", paidByMemberID)
-			} else {
-				log.Printf("❌ EXPENSE CREATE: Could not find member for user %d in property %d", userID, *req.PropertyID)
-				apierr.Fail(c, http.StatusBadRequest, "member_profile_missing", "You have no member profile for this property")
-				return
-			}
-		} else {
-			log.Printf("❌ EXPENSE CREATE: PaidByMemberID required when PropertyID is provided")
-			apierr.Fail(c, http.StatusBadRequest, "payer_required", "A payer is required")
+	// The household: given, or the one of the given home.
+	var householdID uint
+	switch {
+	case req.HouseholdID != nil:
+		householdID = *req.HouseholdID
+	case req.PropertyID != nil:
+		id, err := householdOfProperty(h.db, *req.PropertyID)
+		if err != nil {
+			apierr.Fail(c, http.StatusBadRequest, "not_property_member", "You are not a member of this property")
 			return
 		}
+		householdID = id
+	default:
+		apierr.Fail(c, http.StatusBadRequest, "household_id_required", "A household is required")
+		return
+	}
+	var member models.HouseholdMember
+	if err := h.db.Where("household_id = ? AND user_id = ?", householdID, userID).First(&member).Error; err != nil {
+		log.Printf("❌ EXPENSE CREATE: User %d is not a member of household %d", userID, householdID)
+		apierr.Fail(c, http.StatusBadRequest, "not_household_member", "You are not a member of this household")
+		return
+	}
+
+	// PaidByMemberID defaults to the current user's member
+	paidByMemberID := req.PaidByMemberID
+	if paidByMemberID == 0 {
+		paidByMemberID = member.ID
 	}
 
 	// Verify category belongs to user
@@ -307,31 +313,23 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Verify user is a member of the property (if provided)
-	if req.PropertyID != nil {
-		var member models.HouseholdMember
-		if err := h.db.Where("property_id = ? AND user_id = ?", *req.PropertyID, userID).First(&member).Error; err != nil {
-			log.Printf("❌ EXPENSE CREATE: User %d is not a member of property %d", userID, *req.PropertyID)
-			apierr.Fail(c, http.StatusBadRequest, "not_property_member", "You are not a member of this property")
-			return
-		}
-	}
-
-	// Payer and split members must belong to the expense's property: a member
-	// of another home would get a share of this expense (and a notification).
-	if req.PropertyID == nil {
-		apierr.Fail(c, http.StatusBadRequest, "payer_not_in_property", "The payer is not a member of this property")
+	propertyID, err := expenseHome(h.db, category, householdID, req.PropertyID)
+	if err != nil {
+		failExpenseHome(c, err)
 		return
 	}
+
+	// Payer and split members must belong to the expense's household: a member
+	// of another household would get a share of this expense (and a notification).
 	var payerCount int64
 	if err := h.db.Model(&models.HouseholdMember{}).
-		Where("id = ? AND property_id = ?", paidByMemberID, *req.PropertyID).
+		Where("id = ? AND household_id = ?", paidByMemberID, householdID).
 		Count(&payerCount).Error; err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to check payer")
 		return
 	}
 	if payerCount == 0 {
-		apierr.Fail(c, http.StatusBadRequest, "payer_not_in_property", "The payer is not a member of this property")
+		apierr.Fail(c, http.StatusBadRequest, "payer_not_in_household", "The payer is not a member of this household")
 		return
 	}
 	if req.IsSplit && len(req.SplitWithMemberIDs) > 0 {
@@ -345,13 +343,13 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		}
 		var validCount int64
 		if err := h.db.Model(&models.HouseholdMember{}).
-			Where("id IN ? AND property_id = ?", req.SplitWithMemberIDs, *req.PropertyID).
+			Where("id IN ? AND household_id = ?", req.SplitWithMemberIDs, householdID).
 			Count(&validCount).Error; err != nil {
 			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to check split members")
 			return
 		}
 		if validCount != int64(len(req.SplitWithMemberIDs)) {
-			apierr.Fail(c, http.StatusBadRequest, "split_members_not_in_property", "Some of the selected members do not belong to this property")
+			apierr.Fail(c, http.StatusBadRequest, "split_members_not_in_household", "Some of the selected members do not belong to this household")
 			return
 		}
 	}
@@ -377,7 +375,8 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		OriginalCurrency: req.OriginalCurrency,
 		Description:      req.Description,
 		CategoryID:       req.CategoryID,
-		PropertyID:       req.PropertyID,
+		HouseholdID:      householdID,
+		PropertyID:       propertyID,
 		SubcategoryID:    req.SubcategoryID,
 		ProjectID:        req.ProjectID,
 		Date:             date,
@@ -393,7 +392,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		return
 	}
 
-	log.Printf("✅ EXPENSE CREATED: ID=%d, Amount=%.2f, PropertyID=%v", expense.ID, expense.Amount, expense.PropertyID)
+	log.Printf("✅ EXPENSE CREATED: ID=%d, Amount=%.2f, HouseholdID=%d, PropertyID=%v", expense.ID, expense.Amount, expense.HouseholdID, expense.PropertyID)
 
 	// If split is enabled and we have members to split with, create ExpenseSplits
 	if req.IsSplit && len(req.SplitWithMemberIDs) > 0 {
@@ -506,14 +505,14 @@ func (h *ExpenseHandler) Get(c *gin.Context) {
 		return
 	}
 
-	// Find property IDs where user is a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	householdIDs, err := userHouseholdIDs(h.db, userID)
+	if err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch expense")
+		return
+	}
 
 	var expense models.Expense
-	if err := h.db.Where("id = ? AND property_id IN ?", id, memberPropertyIDs).
+	if err := h.db.Where("id = ? AND household_id IN ?", id, householdIDs).
 		Preload("Category").
 		Preload("Property").
 		Preload("Subcategory").
@@ -652,6 +651,13 @@ func (h *ExpenseHandler) Update(c *gin.Context) {
 			return
 		}
 		updates["category_id"] = *req.CategoryID
+		// The home follows the category: kept for Home, dropped for any other.
+		propertyID, err := expenseHome(h.db, category, expense.HouseholdID, expense.PropertyID)
+		if err != nil {
+			failExpenseHome(c, err)
+			return
+		}
+		updates["property_id"] = propertyID
 	}
 
 	if req.SubcategoryID != nil {
@@ -753,4 +759,16 @@ func (h *ExpenseHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Expense deleted successfully"})
+}
+
+// failExpenseHome answers an expenseHome error.
+func failExpenseHome(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, errHomeNotInHousehold):
+		apierr.Fail(c, http.StatusBadRequest, "home_not_in_household", "The home does not belong to this household")
+	case errors.Is(err, errHouseholdHasNoHome):
+		apierr.Fail(c, http.StatusBadRequest, "household_has_no_home", "A Home expense needs a home, and this household has none")
+	default:
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to resolve the home of the expense")
+	}
 }

@@ -62,11 +62,11 @@ func TestBillTemplateRulesMustBeInTheCatalogue(t *testing.T) {
 	if err := db.Create(&user).Error; err != nil {
 		t.Fatal(err)
 	}
-	home := models.Property{UserID: user.ID, Name: "Home", IsCurrent: true}
+	home := models.Property{Household: &models.Household{Name: "Home"}, UserID: user.ID, Name: "Home", IsCurrent: true}
 	if err := db.Create(&home).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&models.HouseholdMember{PropertyID: home.ID, UserID: &user.ID, Name: "Owner", Role: "admin"}).Error; err != nil {
+	if err := db.Create(&models.HouseholdMember{HouseholdID: home.HouseholdID, UserID: &user.ID, Name: "Owner", Role: "admin"}).Error; err != nil {
 		t.Fatal(err)
 	}
 	gin.SetMode(gin.TestMode)

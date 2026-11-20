@@ -30,10 +30,7 @@ func (h *UtilityHandler) List(c *gin.Context) {
 	}
 
 	// Get property IDs where user is a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utilities []models.Utility
 	query := h.db.Where("property_id IN ?", memberPropertyIDs)
@@ -145,8 +142,8 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 	// Validate paid_by_member_id belongs to this property
 	if input.PaidByMemberID != nil {
 		var payerCount int64
-		h.db.Model(&models.HouseholdMember{}).
-			Where("id = ? AND property_id = ?", *input.PaidByMemberID, input.PropertyID).
+		propertyMembers(h.db, input.PropertyID).
+			Where("id = ?", *input.PaidByMemberID).
 			Count(&payerCount)
 		if payerCount == 0 {
 			apierr.Fail(c, http.StatusBadRequest, "payer_not_in_property", "The payer is not a member of this property")
@@ -166,8 +163,8 @@ func (h *UtilityHandler) Create(c *gin.Context) {
 			return
 		}
 		var validCount int64
-		h.db.Model(&models.HouseholdMember{}).
-			Where("id IN ? AND property_id = ?", memberIDs, input.PropertyID).
+		propertyMembers(h.db, input.PropertyID).
+			Where("id IN ?", memberIDs).
 			Count(&validCount)
 		if validCount != int64(len(memberIDs)) {
 			apierr.Fail(c, http.StatusBadRequest, "split_members_not_in_property", "Some of the selected members do not belong to this property")
@@ -281,10 +278,7 @@ func (h *UtilityHandler) Get(c *gin.Context) {
 	}
 
 	// Get property IDs where user is a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", id, memberPropertyIDs).
@@ -390,8 +384,8 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 	// Validate paid_by_member_id belongs to this property
 	if input.PaidByMemberID != nil {
 		var payerCount int64
-		h.db.Model(&models.HouseholdMember{}).
-			Where("id = ? AND property_id = ?", *input.PaidByMemberID, utility.PropertyID).
+		propertyMembers(h.db, utility.PropertyID).
+			Where("id = ?", *input.PaidByMemberID).
 			Count(&payerCount)
 		if payerCount == 0 {
 			apierr.Fail(c, http.StatusBadRequest, "payer_not_in_property", "The payer is not a member of this property")
@@ -415,8 +409,8 @@ func (h *UtilityHandler) Update(c *gin.Context) {
 			return
 		}
 		var validCount int64
-		h.db.Model(&models.HouseholdMember{}).
-			Where("id IN ? AND property_id = ?", memberIDs, utility.PropertyID).
+		propertyMembers(h.db, utility.PropertyID).
+			Where("id IN ?", memberIDs).
 			Count(&validCount)
 		if validCount != int64(len(memberIDs)) {
 			apierr.Fail(c, http.StatusBadRequest, "split_members_not_in_property", "Some of the selected members do not belong to this property")

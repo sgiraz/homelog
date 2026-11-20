@@ -84,25 +84,29 @@ func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *mod
 	if err := h.db.First(&utility, bill.UtilityID).Error; err != nil {
 		return fmt.Errorf("could not load utility: %w", err)
 	}
+	householdID, err := householdOfProperty(h.db, utility.PropertyID)
+	if err != nil {
+		return fmt.Errorf("could not load the household of property %d: %w", utility.PropertyID, err)
+	}
 
 	// Determine the payer: use utility's configured PaidByMemberID if set, otherwise the logged-in user
 	var payerMember models.HouseholdMember
 	payerUserID := userID // default: logged-in user owns the expense
 	if utility.PaidByMemberID != nil {
-		// Use the configured default payer for this service (constrained to same property)
+		// Use the configured default payer for this service (constrained to the same household)
 		if err := h.db.Preload("User").
-			Where("id = ? AND property_id = ?", *utility.PaidByMemberID, utility.PropertyID).
+			Where("id = ? AND household_id = ?", *utility.PaidByMemberID, householdID).
 			First(&payerMember).Error; err != nil {
-			return fmt.Errorf("configured payer member %d not found in property %d: %w", *utility.PaidByMemberID, utility.PropertyID, err)
+			return fmt.Errorf("configured payer member %d not found in household %d: %w", *utility.PaidByMemberID, householdID, err)
 		}
 		if payerMember.UserID != nil {
 			payerUserID = *payerMember.UserID
 		}
 	} else {
-		// Fallback: find the logged-in user's member for this property
-		if err := h.db.Where("property_id = ? AND user_id = ?", utility.PropertyID, userID).
+		// Fallback: find the logged-in user's member in the household
+		if err := h.db.Where("household_id = ? AND user_id = ?", householdID, userID).
 			First(&payerMember).Error; err != nil {
-			return fmt.Errorf("user has no member profile for property %d: %w", utility.PropertyID, err)
+			return fmt.Errorf("user has no member profile in household %d: %w", householdID, err)
 		}
 	}
 
@@ -178,7 +182,7 @@ func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *mod
 		// "" = use global household split mode + payer's default split members
 		var householdSettings models.HouseholdSettings
 		splitMode := false
-		if err := h.db.Where("property_id = ?", utility.PropertyID).First(&householdSettings).Error; err == nil {
+		if err := h.db.Where("household_id = ?", householdID).First(&householdSettings).Error; err == nil {
 			splitMode = householdSettings.SplitMode
 		}
 		if splitMode {
@@ -212,6 +216,7 @@ func (h *UtilityHandler) autoCreateExpenseFromInstallment(userID uint, inst *mod
 	instID := inst.ID
 	expense := models.Expense{
 		UserID:            userID, // logged-in user for visibility; PaidByMemberID tracks the actual payer
+		HouseholdID:       householdID,
 		PropertyID:        &propID,
 		CategoryID:        homeCategory.ID,
 		SubcategoryID:     subcatID,
@@ -310,9 +315,9 @@ func (h *UtilityHandler) RunDomiciliationSweep() {
 			}
 		}
 		if userID == 0 {
-			// Fallback: any member of the property
+			// Fallback: any registered member of the household owning the home
 			var member models.HouseholdMember
-			if err := h.db.Where("property_id = ? AND user_id IS NOT NULL", utility.PropertyID).
+			if err := propertyMembers(h.db, utility.PropertyID).Where("user_id IS NOT NULL").
 				First(&member).Error; err == nil && member.UserID != nil {
 				userID = *member.UserID
 			}

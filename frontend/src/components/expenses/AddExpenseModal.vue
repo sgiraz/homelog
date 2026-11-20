@@ -298,7 +298,7 @@ import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { formatCurrency as _formatCurrency, todayDateOnly } from '@/utils/dateFormatter'
-import apiClient, { categoriesAPI, projectsAPI, expenseTemplatesAPI, exchangeAPI } from '@/api/client'
+import apiClient, { categoriesAPI, projectsAPI, expenseTemplatesAPI, exchangeAPI, membersAPI } from '@/api/client'
 import { currencies as allCurrencies } from '@/utils/currencies'
 import { categoryLabel } from '@/utils/categoryLabel'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -329,7 +329,7 @@ const expenseTemplates = ref([])
 const selectedTemplateId = ref(null)
 
 const householdUsers = ref([])
-const currentPropertyId = ref(null)
+const currentHouseholdId = ref(null)
 
 // Currency conversion
 const selectedCurrency = ref(settingsStore.currency || 'EUR')
@@ -462,7 +462,7 @@ async function fetchCurrentProperty() {
     const { data } = await apiClient.get('/properties')
     if (data && data.length > 0) {
       const currentProp = data.find(p => p.is_current) || data[0]
-      currentPropertyId.value = currentProp.id
+      currentHouseholdId.value = currentProp.household_id
       form.value.property_id = currentProp.id
     }
   } catch (err) {
@@ -510,10 +510,10 @@ async function fetchActiveProjects() {
 }
 
 async function fetchHouseholdUsers() {
-  if (!currentPropertyId.value) return
+  if (!currentHouseholdId.value) return
 
   try {
-    const { data } = await apiClient.get(`/properties/${currentPropertyId.value}/members`)
+    const { data } = await membersAPI.list(currentHouseholdId.value)
     householdUsers.value = data
 
     const currentUserId = authStore.user?.id

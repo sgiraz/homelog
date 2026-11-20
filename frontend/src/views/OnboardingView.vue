@@ -186,7 +186,7 @@
                   <p class="font-semibold text-ink">{{ prop.name }}</p>
                   <p v-if="prop.address" class="text-sm text-ink-muted mt-0.5">{{ prop.address }}</p>
                   <p class="text-xs text-ink-faint mt-1">
-                    {{ t(`onboarding.step2Join.${(prop.residents ?? 1) === 1 ? 'memberCount_one' : 'memberCount_other'}`, { n: prop.residents ?? 1 }) }}
+                    {{ t(`onboarding.step2Join.${(prop.member_count ?? 1) === 1 ? 'memberCount_one' : 'memberCount_other'}`, { n: prop.member_count ?? 1 }) }}
                   </p>
                 </div>
                 <div
@@ -469,7 +469,7 @@ async function fetchJoinableProperties() {
   loadingJoinable.value = true
   stepError.value = null
   try {
-    const { data } = await joinRequestAPI.joinableProperties()
+    const { data } = await joinRequestAPI.joinableHouseholds()
     joinableProperties.value = data || []
   } catch (err) {
     console.error('Error fetching joinable properties:', err)

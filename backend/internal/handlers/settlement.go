@@ -79,7 +79,7 @@ func applyAllocation(tx *gorm.DB, settlementID uint, split models.ExpenseSplit, 
 
 // CreateSettlementRequest represents the request body for creating a settlement
 type CreateSettlementRequest struct {
-	PropertyID    uint    `json:"property_id" binding:"required"`
+	HouseholdID   uint    `json:"household_id" binding:"required"`
 	FromMemberID  uint    `json:"from_member_id" binding:"required"`
 	ToMemberID    uint    `json:"to_member_id" binding:"required"`
 	Amount        float64 `json:"amount" binding:"required,gt=0"`
@@ -113,10 +113,9 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Find the current user's member for this property
 	var currentMember models.HouseholdMember
-	if err := h.db.Where("property_id = ? AND user_id = ?", req.PropertyID, userID).First(&currentMember).Error; err != nil {
-		apierr.Fail(c, http.StatusForbidden, "not_property_member", "You are not a member of this property")
+	if err := h.db.Where("household_id = ? AND user_id = ?", req.HouseholdID, userID).First(&currentMember).Error; err != nil {
+		apierr.Fail(c, http.StatusForbidden, "not_household_member", "You are not a member of this household")
 		return
 	}
 
@@ -132,24 +131,13 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Verify property exists
-	var property models.Property
-	if err := h.db.First(&property, req.PropertyID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			apierr.Fail(c, http.StatusNotFound, "property_not_found", "Property not found")
-		} else {
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to verify property")
-		}
-		return
-	}
-
 	// Outstanding shares between the pair, oldest expense first — the payment
 	// is applied as a ledger, oldest debt paid down before newer ones.
 	outstanding := func() *gorm.DB {
 		return h.db.
 			Joins("JOIN expenses ON expenses.id = expense_splits.expense_id").
 			Where("expense_splits.is_settled = ?", false).
-			Where("expenses.property_id = ?", req.PropertyID).
+			Where("expenses.household_id = ?", req.HouseholdID).
 			Where("expenses.deleted_at IS NULL")
 	}
 
@@ -218,7 +206,7 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 	tx := h.db.Begin()
 
 	settlement := models.Settlement{
-		PropertyID:      req.PropertyID,
+		HouseholdID:     req.HouseholdID,
 		FromMemberID:    req.FromMemberID,
 		ToMemberID:      req.ToMemberID,
 		Amount:          req.Amount,
@@ -303,8 +291,8 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, settlement)
 }
 
-// List returns settlements for a property
-// GET /api/v1/settlements?property_id=1
+// List returns settlements for a household
+// GET /api/v1/settlements?household_id=1
 func (h *SettlementHandler) List(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -312,21 +300,20 @@ func (h *SettlementHandler) List(c *gin.Context) {
 		return
 	}
 
-	propertyIDStr := c.Query("property_id")
-	if propertyIDStr == "" {
-		apierr.Fail(c, http.StatusBadRequest, "property_id_required", "A property is required")
+	householdIDStr := c.Query("household_id")
+	if householdIDStr == "" {
+		apierr.Fail(c, http.StatusBadRequest, "household_id_required", "A household is required")
 		return
 	}
 
-	propertyID, err := strconv.ParseUint(propertyIDStr, 10, 32)
+	householdID, err := strconv.ParseUint(householdIDStr, 10, 32)
 	if err != nil {
-		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
+		apierr.Fail(c, http.StatusBadRequest, "invalid_household_id", "Invalid household id")
 		return
 	}
 
-	// Find the current user's member for this property
 	var currentMember models.HouseholdMember
-	if err := h.db.Where("property_id = ? AND user_id = ?", propertyID, userID).First(&currentMember).Error; err != nil {
+	if err := h.db.Where("household_id = ? AND user_id = ?", householdID, userID).First(&currentMember).Error; err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"settlements": []models.Settlement{},
 			"total":       0,
@@ -338,7 +325,7 @@ func (h *SettlementHandler) List(c *gin.Context) {
 	query := h.db.
 		Preload("FromMember").
 		Preload("ToMember").
-		Where("property_id = ?", propertyID).
+		Where("household_id = ?", householdID).
 		Where("from_member_id = ? OR to_member_id = ?", currentMember.ID, currentMember.ID).
 		Order("date DESC")
 
@@ -391,10 +378,9 @@ func (h *SettlementHandler) Get(c *gin.Context) {
 		return
 	}
 
-	// Find the current user's member for this property
 	var currentMember models.HouseholdMember
-	if err := h.db.Where("property_id = ? AND user_id = ?", settlement.PropertyID, userID).First(&currentMember).Error; err != nil {
-		apierr.Fail(c, http.StatusForbidden, "not_property_member", "You are not a member of this property")
+	if err := h.db.Where("household_id = ? AND user_id = ?", settlement.HouseholdID, userID).First(&currentMember).Error; err != nil {
+		apierr.Fail(c, http.StatusForbidden, "not_household_member", "You are not a member of this household")
 		return
 	}
 
@@ -433,10 +419,9 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Find the current user's member for this property
 	var currentMember models.HouseholdMember
-	if err := h.db.Where("property_id = ? AND user_id = ?", settlement.PropertyID, userID).First(&currentMember).Error; err != nil {
-		apierr.Fail(c, http.StatusForbidden, "not_property_member", "You are not a member of this property")
+	if err := h.db.Where("household_id = ? AND user_id = ?", settlement.HouseholdID, userID).First(&currentMember).Error; err != nil {
+		apierr.Fail(c, http.StatusForbidden, "not_household_member", "You are not a member of this household")
 		return
 	}
 
@@ -533,7 +518,7 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 // CompensateRequest applies a credit the debtor is owed against one of their
 // long-term debts, instead of being reimbursed for it in cash.
 type CompensateRequest struct {
-	PropertyID      uint   `json:"property_id" binding:"required"`
+	HouseholdID     uint   `json:"household_id" binding:"required"`
 	SourceSplitID   uint   `json:"source_split_id" binding:"required"`
 	TargetExpenseID uint   `json:"target_expense_id" binding:"required"`
 	Date            string `json:"date"`
@@ -558,7 +543,7 @@ func (h *SettlementHandler) Compensate(c *gin.Context) {
 		return
 	}
 
-	if !requirePropertyMember(c, h.db, userID, req.PropertyID) {
+	if !requireHouseholdMember(c, h.db, userID, req.HouseholdID) {
 		return
 	}
 
@@ -569,8 +554,8 @@ func (h *SettlementHandler) Compensate(c *gin.Context) {
 		apierr.Fail(c, http.StatusNotFound, "credit_expense_not_found", "Credit expense not found")
 		return
 	}
-	if source.Expense.PropertyID == nil || *source.Expense.PropertyID != req.PropertyID {
-		apierr.Fail(c, http.StatusBadRequest, "expense_not_in_property", "This expense does not belong to this household")
+	if source.Expense.HouseholdID != req.HouseholdID {
+		apierr.Fail(c, http.StatusBadRequest, "expense_not_in_household", "This expense does not belong to this household")
 		return
 	}
 	if source.Expense.IsLongTermDebt {
@@ -588,8 +573,8 @@ func (h *SettlementHandler) Compensate(c *gin.Context) {
 	holderID := source.MemberID
 
 	var currentMember models.HouseholdMember
-	if err := h.db.Where("property_id = ? AND user_id = ?", req.PropertyID, userID).First(&currentMember).Error; err != nil {
-		apierr.Fail(c, http.StatusForbidden, "not_property_member", "You are not a member of this property")
+	if err := h.db.Where("household_id = ? AND user_id = ?", req.HouseholdID, userID).First(&currentMember).Error; err != nil {
+		apierr.Fail(c, http.StatusForbidden, "not_household_member", "You are not a member of this household")
 		return
 	}
 	if currentMember.ID != debtorID && currentMember.ID != holderID {
@@ -631,7 +616,7 @@ func (h *SettlementHandler) Compensate(c *gin.Context) {
 
 	targetExpenseID := req.TargetExpenseID
 	settlement := models.Settlement{
-		PropertyID:      req.PropertyID,
+		HouseholdID:     req.HouseholdID,
 		FromMemberID:    debtorID,
 		ToMemberID:      holderID,
 		Amount:          amount,

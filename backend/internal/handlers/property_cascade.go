@@ -6,13 +6,13 @@ import (
 	"github.com/sgiraz/homelog/internal/models"
 )
 
-// cascadeDeleteProperty hard-deletes a property and everything hanging off it:
+// cascadeDeleteProperty hard-deletes a home and everything hanging off it:
 // utilities (with bills, installments, readings, rates, price changes,
-// communications), expenses and splits, projects, settlements and their
-// allocations, bill templates, household settings, members, join requests and
-// notifications, and the members' IDs in everyone's default split. Run it
-// inside a transaction: it stops at the first failing statement so the caller
-// can roll back. Bill attachments left on disk are reclaimed by SweepUploads.
+// communications), its Home expenses and their splits, projects, bill
+// templates and notifications. A household left without homes goes with it
+// (cascadeDeleteHousehold). Run it inside a transaction: it stops at the first
+// failing statement so the caller can roll back. Bill attachments left on disk
+// are reclaimed by SweepUploads.
 //
 // The schema does part of the work: detail rows go with their parent (ON
 // DELETE CASCADE) and links from rows that outlive it are cleared (ON DELETE
@@ -27,6 +27,10 @@ import (
 func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 	// A Session makes the handle safe to reuse: each chain starts clean.
 	all := tx.Unscoped().Session(&gorm.Session{})
+	var property models.Property
+	if err := all.Select("id", "household_id").First(&property, propertyID).Error; err != nil {
+		return err
+	}
 	var utilityIDs, billIDs, expenseIDs, projectIDs []uint
 	lookups := []func() error{
 		func() error {
@@ -49,17 +53,26 @@ func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 		}
 	}
 
+	var otherHomes int64
+	if err := all.Model(&models.Property{}).
+		Where("household_id = ? AND id <> ?", property.HouseholdID, propertyID).
+		Count(&otherHomes).Error; err != nil {
+		return err
+	}
+
 	del := func(model any, query string, args ...any) func() error {
 		return func() error { return all.Where(query, args...).Delete(model).Error }
 	}
 	unindex := func(entityType string, ids []uint) func() error {
 		return func() error { return deleteFromSearchIndex(tx, entityType, ids) }
 	}
-	var members []uint
-	steps := []func() error{
-		// Settlements take their allocations with them.
-		del(&models.Settlement{}, "property_id = ?", propertyID),
-		// Expenses go before the bills they pay.
+	steps := []func() error{}
+	if otherHomes == 0 {
+		// The household goes too: its settlements and expenses first, since
+		// expenses go before the bills they pay.
+		steps = append(steps, func() error { return clearHouseholdLedger(tx, property.HouseholdID) })
+	}
+	steps = append(steps,
 		func() error { return deleteExpenses(tx, expenseIDs) },
 		// Bills go before the readings they point at, which go with the utility.
 		del(&models.Bill{}, "id IN ?", billIDs),
@@ -68,17 +81,11 @@ func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 		unindex("utility", utilityIDs),
 		func() error { return deleteProjects(tx, projectIDs) },
 		del(&models.BillTemplate{}, "property_id = ?", propertyID),
-		del(&models.HouseholdSettings{}, "property_id = ?", propertyID),
-		del(&models.PropertyJoinRequest{}, "property_id = ?", propertyID),
 		del(&models.Notification{}, "property_id = ?", propertyID),
-		func() error {
-			if err := all.Model(&models.HouseholdMember{}).Where("property_id = ?", propertyID).Pluck("id", &members).Error; err != nil {
-				return err
-			}
-			return cleanupSplitDefaults(tx, members...)
-		},
-		del(&models.HouseholdMember{}, "property_id = ?", propertyID),
 		del(&models.Property{}, "id = ?", propertyID),
+	)
+	if otherHomes == 0 {
+		steps = append(steps, func() error { return deleteHousehold(tx, property.HouseholdID) })
 	}
 	for _, step := range steps {
 		if err := step(); err != nil {
@@ -86,6 +93,40 @@ func cascadeDeleteProperty(tx *gorm.DB, propertyID uint) error {
 		}
 	}
 	return nil
+}
+
+// clearHouseholdLedger hard-deletes a household's settlements (with their
+// allocations) and expenses (with their splits).
+func clearHouseholdLedger(tx *gorm.DB, householdID uint) error {
+	all := tx.Unscoped().Session(&gorm.Session{})
+	if err := all.Where("household_id = ?", householdID).Delete(&models.Settlement{}).Error; err != nil {
+		return err
+	}
+	var expenseIDs []uint
+	if err := all.Model(&models.Expense{}).Where("household_id = ?", householdID).Pluck("id", &expenseIDs).Error; err != nil {
+		return err
+	}
+	return deleteExpenses(tx, expenseIDs)
+}
+
+// deleteHousehold hard-deletes a household that has no homes and no ledger
+// left: its settings, join requests and members, and the members' IDs in
+// everyone's default split.
+func deleteHousehold(tx *gorm.DB, householdID uint) error {
+	all := tx.Unscoped().Session(&gorm.Session{})
+	var members []uint
+	if err := all.Model(&models.HouseholdMember{}).Where("household_id = ?", householdID).Pluck("id", &members).Error; err != nil {
+		return err
+	}
+	if err := cleanupSplitDefaults(tx, members...); err != nil {
+		return err
+	}
+	for _, model := range []any{&models.HouseholdSettings{}, &models.HouseholdJoinRequest{}, &models.HouseholdMember{}} {
+		if err := all.Where("household_id = ?", householdID).Delete(model).Error; err != nil {
+			return err
+		}
+	}
+	return all.Where("id = ?", householdID).Delete(&models.Household{}).Error
 }
 
 // deleteExpenses hard-deletes expenses. Their splits go with them; the

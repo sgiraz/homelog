@@ -104,19 +104,19 @@ func TestJoinRequest_NotifiesTheAdminInTheirOwnLanguage(t *testing.T) {
 		t.Fatalf("joiner settings: %v", err)
 	}
 
-	prop := models.Property{UserID: admin.ID, Name: "Hauptwohnsitz", Type: "owned", StartDate: time.Now(), IsCurrent: true, Residents: 1}
+	prop := models.Property{Household: &models.Household{Name: "Hauptwohnsitz"}, UserID: admin.ID, Name: "Hauptwohnsitz", Type: "owned", StartDate: time.Now(), IsCurrent: true, Residents: 1}
 	if err := db.Create(&prop).Error; err != nil {
 		t.Fatalf("property: %v", err)
 	}
 	if err := db.Create(&models.HouseholdMember{
-		PropertyID: prop.ID, UserID: &admin.ID, Name: "Admin", Role: "admin",
+		HouseholdID: prop.HouseholdID, UserID: &admin.ID, Name: "Admin", Role: "admin",
 	}).Error; err != nil {
 		t.Fatalf("member: %v", err)
 	}
 
 	r := gin.New()
 	r.POST("/join-requests", func(c *gin.Context) { c.Set("user_id", joiner.ID) }, h.Create)
-	rec := postJSON(t, r, "/join-requests", map[string]any{"property_id": prop.ID})
+	rec := postJSON(t, r, "/join-requests", map[string]any{"household_id": prop.HouseholdID})
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status = %d, body %s", rec.Code, rec.Body.String())
 	}
@@ -126,8 +126,8 @@ func TestJoinRequest_NotifiesTheAdminInTheirOwnLanguage(t *testing.T) {
 		t.Fatalf("no notification for the admin: %v", err)
 	}
 
-	wantTitle := i18n.T(adminLang, "notification.join_request.title", "name", "Bob", "property", prop.Name)
-	wantBody := i18n.T(adminLang, "notification.join_request.body", "name", "Bob", "property", prop.Name)
+	wantTitle := i18n.T(adminLang, "notification.join_request.title", "name", "Bob", "household", prop.Name)
+	wantBody := i18n.T(adminLang, "notification.join_request.body", "name", "Bob", "household", prop.Name)
 	if n.Title != wantTitle {
 		t.Errorf("title = %q, want %q", n.Title, wantTitle)
 	}

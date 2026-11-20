@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -22,7 +21,7 @@ type UpdateHouseholdSettingsRequest struct {
 	SplitMode bool `json:"split_mode"`
 }
 
-// GetHouseholdSettings - GET /api/v1/properties/:id/settings
+// GetHouseholdSettings - GET /api/v1/households/:id/settings
 func (h *SettingsHandler) GetHouseholdSettings(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -30,26 +29,23 @@ func (h *SettingsHandler) GetHouseholdSettings(c *gin.Context) {
 		return
 	}
 
-	// Parse property ID
-	propertyIDStr := c.Param("id")
-	propertyID, err := strconv.ParseUint(propertyIDStr, 10, 32)
-	if err != nil {
-		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
+	householdID, ok := householdParam(c)
+	if !ok {
 		return
 	}
 
-	if !requirePropertyMember(c, h.db, userID, uint(propertyID)) {
+	if !requireHouseholdMember(c, h.db, userID, householdID) {
 		return
 	}
 
 	var settings models.HouseholdSettings
-	err = h.db.Where("property_id = ?", propertyID).First(&settings).Error
+	err := h.db.Where("household_id = ?", householdID).First(&settings).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			// Create default settings for this property
+			// Create default settings for this household
 			settings = models.HouseholdSettings{
-				PropertyID: uint(propertyID),
-				SplitMode:  false,
+				HouseholdID: householdID,
+				SplitMode:   false,
 			}
 			if createErr := h.db.Create(&settings).Error; createErr != nil {
 				// If creation fails, just return defaults without persisting
@@ -69,7 +65,7 @@ func (h *SettingsHandler) GetHouseholdSettings(c *gin.Context) {
 	})
 }
 
-// UpdateHouseholdSettings - PUT /api/v1/properties/:id/settings
+// UpdateHouseholdSettings - PUT /api/v1/households/:id/settings
 func (h *SettingsHandler) UpdateHouseholdSettings(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -77,15 +73,12 @@ func (h *SettingsHandler) UpdateHouseholdSettings(c *gin.Context) {
 		return
 	}
 
-	// Parse property ID
-	propertyIDStr := c.Param("id")
-	propertyID, err := strconv.ParseUint(propertyIDStr, 10, 32)
-	if err != nil {
-		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
+	householdID, ok := householdParam(c)
+	if !ok {
 		return
 	}
 
-	if !requirePropertyAdmin(c, h.db, userID, uint(propertyID)) {
+	if !requireHouseholdAdmin(c, h.db, userID, householdID) {
 		return
 	}
 
@@ -98,13 +91,13 @@ func (h *SettingsHandler) UpdateHouseholdSettings(c *gin.Context) {
 
 	// Find or create household settings
 	var settings models.HouseholdSettings
-	err = h.db.Where("property_id = ?", propertyID).First(&settings).Error
+	err := h.db.Where("household_id = ?", householdID).First(&settings).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			// Create new settings
 			settings = models.HouseholdSettings{
-				PropertyID: uint(propertyID),
-				SplitMode:  req.SplitMode,
+				HouseholdID: householdID,
+				SplitMode:   req.SplitMode,
 			}
 			if err := h.db.Create(&settings).Error; err != nil {
 				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create settings")

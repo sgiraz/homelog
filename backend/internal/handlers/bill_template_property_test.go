@@ -38,13 +38,13 @@ func setupTemplateFixture(t *testing.T) *templateFixture {
 		return u
 	}
 	f.owner, f.partner, f.neighbour = mkUser("owner@example.com"), mkUser("partner@example.com"), mkUser("neighbour@example.com")
-	f.home = models.Property{UserID: f.owner.ID, Name: "Home", IsCurrent: true}
-	f.away = models.Property{UserID: f.neighbour.ID, Name: "Away", IsCurrent: true}
+	f.home = models.Property{Household: &models.Household{Name: "Home"}, UserID: f.owner.ID, Name: "Home", IsCurrent: true}
+	f.away = models.Property{Household: &models.Household{Name: "Away"}, UserID: f.neighbour.ID, Name: "Away", IsCurrent: true}
 	mustCreate(t, db, &f.home, &f.away)
 	mustCreate(t, db,
-		&models.HouseholdMember{PropertyID: f.home.ID, UserID: &f.owner.ID, Name: "Owner", Role: "admin"},
-		&models.HouseholdMember{PropertyID: f.home.ID, UserID: &f.partner.ID, Name: "Partner", Role: "member"},
-		&models.HouseholdMember{PropertyID: f.away.ID, UserID: &f.neighbour.ID, Name: "Neighbour", Role: "admin"},
+		&models.HouseholdMember{HouseholdID: f.home.HouseholdID, UserID: &f.owner.ID, Name: "Owner", Role: "admin"},
+		&models.HouseholdMember{HouseholdID: f.home.HouseholdID, UserID: &f.partner.ID, Name: "Partner", Role: "member"},
+		&models.HouseholdMember{HouseholdID: f.away.HouseholdID, UserID: &f.neighbour.ID, Name: "Neighbour", Role: "admin"},
 	)
 
 	gin.SetMode(gin.TestMode)

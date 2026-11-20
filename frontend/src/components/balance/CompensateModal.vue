@@ -86,7 +86,7 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
-  propertyId: {
+  householdId: {
     type: Number,
     default: 1
   }
@@ -121,7 +121,7 @@ async function handleSubmit() {
 
   try {
     await balanceStore.createCompensation({
-      property_id: props.propertyId,
+      household_id: props.householdId,
       source_split_id: props.split.split_id,
       target_expense_id: selectedDebt.value.expense_id
     })

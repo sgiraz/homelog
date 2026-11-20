@@ -32,7 +32,7 @@
   },
   "step2Join": {
     "title": "Join a home",
-    "subtitle": "Select the property you want to access.",
+    "subtitle": "Select the household you want to join.",
     "loading": "Loading...",
     "noProperties": "No homes found. You can create one yourself!",
     "createMine": "Create yours!",
