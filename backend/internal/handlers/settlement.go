@@ -113,6 +113,7 @@ func (h *SettlementHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// Find the current user's member for this household
 	var currentMember models.HouseholdMember
 	if err := h.db.Where("household_id = ? AND user_id = ?", req.HouseholdID, userID).First(&currentMember).Error; err != nil {
 		apierr.Fail(c, http.StatusForbidden, "not_household_member", "You are not a member of this household")
@@ -312,6 +313,7 @@ func (h *SettlementHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Find the current user's member for this household
 	var currentMember models.HouseholdMember
 	if err := h.db.Where("household_id = ? AND user_id = ?", householdID, userID).First(&currentMember).Error; err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -378,6 +380,7 @@ func (h *SettlementHandler) Get(c *gin.Context) {
 		return
 	}
 
+	// Find the current user's member for this household
 	var currentMember models.HouseholdMember
 	if err := h.db.Where("household_id = ? AND user_id = ?", settlement.HouseholdID, userID).First(&currentMember).Error; err != nil {
 		apierr.Fail(c, http.StatusForbidden, "not_household_member", "You are not a member of this household")
@@ -419,6 +422,7 @@ func (h *SettlementHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// Find the current user's member for this household
 	var currentMember models.HouseholdMember
 	if err := h.db.Where("household_id = ? AND user_id = ?", settlement.HouseholdID, userID).First(&currentMember).Error; err != nil {
 		apierr.Fail(c, http.StatusForbidden, "not_household_member", "You are not a member of this household")

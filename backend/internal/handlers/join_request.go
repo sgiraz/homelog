@@ -55,6 +55,7 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// Validate: household exists
 	var household models.Household
 	if err := h.db.First(&household, req.HouseholdID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -65,11 +66,13 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// Validate: user is not already a member of this household
 	if isHouseholdMember(h.db, userID, req.HouseholdID) {
 		apierr.Fail(c, http.StatusConflict, "already_household_member", "You are already a member of this household")
 		return
 	}
 
+	// Validate: no pending request already exists for this user+household
 	var existingCount int64
 	h.db.Model(&models.HouseholdJoinRequest{}).
 		Where("user_id = ? AND household_id = ? AND status = 'pending'", userID, req.HouseholdID).
@@ -91,10 +94,12 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// Preload relations for the response
 	h.db.Preload("User").Preload("Household").First(&joinReq, joinReq.ID)
 
 	log.Printf("✅ Join request created: ID=%d, UserID=%d, HouseholdID=%d", joinReq.ID, userID, req.HouseholdID)
 
+	// Notify household admins
 	var adminUserIDs []uint
 	h.db.Model(&models.HouseholdMember{}).
 		Where("household_id = ? AND role = 'admin' AND user_id IS NOT NULL", req.HouseholdID).
@@ -126,6 +131,7 @@ func (h *JoinRequestHandler) List(c *gin.Context) {
 		return
 	}
 
+	// Find household IDs where user is admin
 	var adminHouseholdIDs []uint
 	h.db.Model(&models.HouseholdMember{}).
 		Where("user_id = ? AND role = 'admin'", userID).
@@ -133,7 +139,7 @@ func (h *JoinRequestHandler) List(c *gin.Context) {
 
 	results := []models.HouseholdJoinRequest{}
 
-	// Pending requests to the households the user administers
+	// If admin of any household: fetch pending requests for those households
 	if len(adminHouseholdIDs) > 0 {
 		h.db.Where("household_id IN ? AND status = 'pending'", adminHouseholdIDs).
 			Preload("User").
@@ -188,6 +194,7 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 		return
 	}
 
+	// Find the join request
 	var joinReq models.HouseholdJoinRequest
 	if err := h.db.First(&joinReq, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -198,11 +205,13 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 		return
 	}
 
+	// Validate: request is still pending
 	if joinReq.Status != "pending" {
 		apierr.Fail(c, http.StatusConflict, "join_request_resolved", "This join request has already been resolved")
 		return
 	}
 
+	// Validate: current user is admin of the request's household
 	if !requireHouseholdAdmin(c, h.db, userID, joinReq.HouseholdID) {
 		return
 	}
@@ -216,8 +225,9 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 	}
 
 	if req.Status == "approved" {
-		// The user may have been added manually while the request was pending
+		// Check if user is already a member (e.g., added manually while request was pending)
 		if !isHouseholdMember(tx, joinReq.UserID, joinReq.HouseholdID) {
+			// Fetch the requesting user's name for the household member record
 			var requestingUser models.User
 			if err := tx.First(&requestingUser, joinReq.UserID).Error; err != nil {
 				tx.Rollback()
@@ -225,6 +235,7 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 				return
 			}
 
+			// Create HouseholdMember for the requesting user
 			member := models.HouseholdMember{
 				HouseholdID: joinReq.HouseholdID,
 				UserID:      &joinReq.UserID,
@@ -239,7 +250,7 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 				return
 			}
 
-			// One more person lives in the household's homes
+			// Increment residents count of the household's homes
 			if err := tx.Model(&models.Property{}).Where("household_id = ?", joinReq.HouseholdID).
 				UpdateColumn("residents", gorm.Expr("residents + ?", 1)).Error; err != nil {
 				tx.Rollback()
@@ -255,9 +266,11 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 		}
 	}
 
+	// Update request status
+	resolvedByID := userID
 	if err := tx.Model(&joinReq).Updates(map[string]any{
 		"status":      req.Status,
-		"resolved_by": userID,
+		"resolved_by": resolvedByID,
 		"resolved_at": now,
 	}).Error; err != nil {
 		tx.Rollback()
@@ -296,7 +309,7 @@ func (h *JoinRequestHandler) ListJoinable(c *gin.Context) {
 		return
 	}
 
-	// Limited fields only: anyone signed in can list these.
+	// Map to limited response struct (no sensitive data)
 	response := make([]JoinableHouseholdResponse, len(households))
 	for i, hh := range households {
 		var home models.Property

@@ -29,6 +29,7 @@ func (h *SettingsHandler) GetHouseholdSettings(c *gin.Context) {
 		return
 	}
 
+	// Parse household ID
 	householdID, ok := householdParam(c)
 	if !ok {
 		return
@@ -73,6 +74,7 @@ func (h *SettingsHandler) UpdateHouseholdSettings(c *gin.Context) {
 		return
 	}
 
+	// Parse household ID
 	householdID, ok := householdParam(c)
 	if !ok {
 		return

@@ -81,11 +81,12 @@ func (h *SettingsHandler) PromoteAdmin(c *gin.Context) {
 		return
 	}
 
+	// Verify current user is admin of the household
 	if !requireHouseholdAdmin(c, h.db, userID, req.HouseholdID) {
 		return
 	}
 
-	// The new admin must be a registered member of the same household
+	// Verify target member exists in the household and is not virtual
 	var target models.HouseholdMember
 	if err := h.db.Where("id = ? AND household_id = ? AND is_virtual = false", req.MemberID, req.HouseholdID).
 		First(&target).Error; err != nil {

@@ -98,6 +98,7 @@ func (h *MemberHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// Parse household ID from URL
 	householdID, ok := householdParam(c)
 	if !ok {
 		return

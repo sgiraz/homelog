@@ -104,6 +104,7 @@ func (h *BalanceHandler) resolvePair(c *gin.Context, splitModeOnly bool) (curren
 		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
+	// Parse household ID from URL
 	householdIDParsed, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		apierr.Fail(c, http.StatusBadRequest, "invalid_household_id", "Invalid household id")
