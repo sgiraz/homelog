@@ -171,20 +171,6 @@ func SeedDefaultData(db *gorm.DB, userID uint) error {
 		return nil // User settings already exist
 	}
 
-	// Create default user settings
-	settings := models.UserSettings{
-		UserID:                    userID,
-		Language:                  models.DefaultLanguage,
-		Currency:                  models.DefaultCurrency,
-		Theme:                     "auto",
-		DateFormat:                "DD/MM/YYYY",
-		DefaultSplitWithMemberIDs: "",
-		EmailNotifications:        true,
-		InAppNotifications:        true,
-		BillDueAlertDays:          3,
-		ReadingReminderDays:       7,
-		AnomalyThreshold:          5.0,
-	}
-
+	settings := models.NewUserSettings(userID, models.DefaultLanguage)
 	return db.Create(&settings).Error
 }

@@ -226,16 +226,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		log.Printf("✅ Default property created: ID=%d, Name=%s", property.ID, property.Name)
 
 		// Create user settings
-		userSettings := models.UserSettings{
-			UserID:                    user.ID,
-			Language:                  language,
-			Currency:                  models.DefaultCurrency,
-			Theme:                     "auto",
-			DateFormat:                "DD/MM/YYYY",
-			DefaultSplitWithMemberIDs: "",
-			EmailNotifications:        true,
-			BillDueAlertDays:          3,
-		}
+		userSettings := models.NewUserSettings(user.ID, language)
 
 		if err := tx.Create(&userSettings).Error; err != nil {
 			tx.Rollback()
@@ -260,16 +251,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		// Non-first user: create only user settings.
 		// NO auto-join to any property — the onboarding wizard will guide the user
 		// to either create a new property or request to join an existing one.
-		userSettings := models.UserSettings{
-			UserID:                    user.ID,
-			Language:                  language,
-			Currency:                  models.DefaultCurrency,
-			Theme:                     "auto",
-			DateFormat:                "DD/MM/YYYY",
-			DefaultSplitWithMemberIDs: "",
-			EmailNotifications:        true,
-			BillDueAlertDays:          3,
-		}
+		userSettings := models.NewUserSettings(user.ID, language)
 
 		if err := tx.Create(&userSettings).Error; err != nil {
 			tx.Rollback()

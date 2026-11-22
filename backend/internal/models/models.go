@@ -619,6 +619,31 @@ type ProjectMember struct {
 	User      User   `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }
 
+// DefaultColorTheme is the palette a new account starts with.
+const DefaultColorTheme = "slate"
+
+// NewUserSettings returns the settings a new account starts with. Every row is
+// created through it: hand-written literals drifted apart and left new
+// accounts with notifications the defaults promised were on.
+func NewUserSettings(userID uint, language string) UserSettings {
+	return UserSettings{
+		UserID:                    userID,
+		Language:                  NormalizeLanguage(language),
+		Currency:                  DefaultCurrency,
+		Theme:                     "auto",
+		ColorTheme:                DefaultColorTheme,
+		DateFormat:                "DD/MM/YYYY",
+		EmailNotifications:        true,
+		InAppNotifications:        true,
+		BillDueAlertDays:          3,
+		ReadingReminderDays:       7,
+		NotificationRetentionDays: 90,
+		NotifyJoinRequests:        true,
+		NotifySharedExpenses:      true,
+		AnomalyThreshold:          5.0,
+	}
+}
+
 // UserSettings represents user preferences
 type UserSettings struct {
 	ID        uint      `gorm:"primarykey" json:"id"`

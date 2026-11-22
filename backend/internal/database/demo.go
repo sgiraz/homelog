@@ -156,19 +156,8 @@ func seedDemoData(db *gorm.DB) error {
 		return err
 	}
 
-	settings := models.UserSettings{
-		UserID:              user.ID,
-		Language:            models.DefaultLanguage,
-		Currency:            models.DefaultCurrency,
-		Theme:               "auto",
-		DateFormat:          "DD/MM/YYYY",
-		EmailNotifications:  true,
-		InAppNotifications:  true,
-		BillDueAlertDays:    3,
-		ReadingReminderDays: 7,
-		AnomalyThreshold:    5.0,
-		OnboardingCompleted: true,
-	}
+	settings := models.NewUserSettings(user.ID, models.DefaultLanguage)
+	settings.OnboardingCompleted = true
 	if err := db.Create(&settings).Error; err != nil {
 		return err
 	}
