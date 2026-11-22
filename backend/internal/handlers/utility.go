@@ -45,6 +45,16 @@ func (h *UtilityHandler) List(c *gin.Context) {
 		query = query.Where("property_id = ?", propertyID)
 	}
 
+	// Filter by household: the services of all its homes.
+	if c.Query("household_id") != "" {
+		householdIDs, ok := householdScope(c, h.db, userID)
+		if !ok {
+			return
+		}
+		query = query.Where("property_id IN (?)",
+			h.db.Model(&models.Property{}).Select("id").Where("household_id IN ?", householdIDs))
+	}
+
 	// Only active utilities by default
 	if c.Query("include_inactive") != "true" {
 		query = query.Where("is_active = ?", true)

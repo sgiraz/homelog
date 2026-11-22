@@ -37,6 +37,33 @@ func createHousehold(tx *gorm.DB, name string, creator models.User) (models.Hous
 	return household, admin, nil
 }
 
+// makePrimaryHome makes home the primary home of its household, the default
+// home for its Home expenses. There is one per household.
+func makePrimaryHome(tx *gorm.DB, home models.Property) error {
+	if err := tx.Model(&models.Property{}).
+		Where("household_id = ? AND id != ?", home.HouseholdID, home.ID).
+		Update("is_current", false).Error; err != nil {
+		return err
+	}
+	return tx.Model(&models.Property{}).Where("id = ?", home.ID).Update("is_current", true).Error
+}
+
+// ensurePrimaryHome promotes the household's oldest home when none is primary.
+func ensurePrimaryHome(tx *gorm.DB, householdID uint) error {
+	var primaries int64
+	if err := tx.Model(&models.Property{}).
+		Where("household_id = ? AND is_current = ?", householdID, true).
+		Count(&primaries).Error; err != nil || primaries > 0 {
+		return err
+	}
+	var oldest models.Property
+	if err := tx.Where("household_id = ?", householdID).Order("created_at ASC, id ASC").
+		Limit(1).Find(&oldest).Error; err != nil || oldest.ID == 0 {
+		return err
+	}
+	return makePrimaryHome(tx, oldest)
+}
+
 // errHomeNotInHousehold is expenseHome refusing a home of another household.
 var errHomeNotInHousehold = errors.New("home not in household")
 

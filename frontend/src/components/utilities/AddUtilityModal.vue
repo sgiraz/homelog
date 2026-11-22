@@ -627,7 +627,7 @@ async function fetchCurrentProperty() {
     try {
       const { data } = await apiClient.get('/properties')
       if (data && data.length > 0) {
-        const currentProp = data.find(p => p.is_current) || data[0]
+        const currentProp = data.find(p => p.id === settingsStore.householdPropertyId) || data[0]
         form.value.property_id = currentProp.id
       }
     } catch (err) {

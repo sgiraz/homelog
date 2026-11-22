@@ -98,6 +98,11 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 		return
 	}
 
+	householdIDs, ok := householdScope(c, h.db, userID)
+	if !ok {
+		return
+	}
+
 	// Find member IDs for the current user across all their properties
 	var currentMemberIDs []uint
 	h.db.Model(&models.HouseholdMember{}).
@@ -129,6 +134,8 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 		Preload("PaidBy").
 		Preload("Splits").
 		Preload("Splits.Member")
+
+	query = query.Where("household_id IN ?", householdIDs)
 
 	// Apply optional filters
 	if categoryID := c.Query("category_id"); categoryID != "" {
@@ -194,7 +201,7 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 	countQuery := h.db.Model(&models.Expense{}).Where(
 		"(user_id = ? AND is_split = false) OR (is_split = true AND (user_id = ? OR (paid_by_member_id IN ? AND is_split = true) OR id IN ?))",
 		userID, userID, currentMemberIDs, splitExpenseIDs,
-	)
+	).Where("household_id IN ?", householdIDs)
 	if categoryID := c.Query("category_id"); categoryID != "" {
 		countQuery = countQuery.Where("category_id = ?", categoryID)
 	}

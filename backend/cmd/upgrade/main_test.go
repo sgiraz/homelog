@@ -312,6 +312,11 @@ func TestUpgradeGroupsHomesIntoHouseholds(t *testing.T) {
 		if h.HouseholdID != h.ID {
 			t.Errorf("home %d is in household %d", h.ID, h.HouseholdID)
 		}
+		// The lake house was not Alice's primary home, but it is the only
+		// home of its household now.
+		if !h.IsCurrent {
+			t.Errorf("home %d is not the primary home of its household", h.ID)
+		}
 	}
 	var members []models.HouseholdMember
 	db.Order("id").Find(&members)

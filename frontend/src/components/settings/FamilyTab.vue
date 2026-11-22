@@ -16,6 +16,8 @@
             <div class="min-w-0">
               <div class="font-medium text-ink truncate">{{ req.user?.name }}</div>
               <div class="text-xs text-ink-muted">{{ req.user?.email }}</div>
+              <!-- With several households, say which one they want to join. -->
+              <div v-if="settingsStore.households.length > 1" class="text-xs text-ink-muted truncate">{{ req.household?.name }}</div>
             </div>
           </div>
           <div class="flex gap-2 flex-shrink-0">
@@ -189,7 +191,7 @@
 <script setup>
 defineOptions({ name: 'FamilyTab' })
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Badge from '@/components/common/Badge.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -409,5 +411,11 @@ onMounted(() => {
   fetchCurrentProperty()
   loadUserSettings()
   fetchPendingRequests()
+})
+
+// Settings is a cached view: changing the primary home moves the household
+// under this tab without remounting it, and the old member list stayed put.
+watch(currentHouseholdId, (id, previous) => {
+  if (id && previous && id !== previous) fetchHouseholdMembers()
 })
 </script>

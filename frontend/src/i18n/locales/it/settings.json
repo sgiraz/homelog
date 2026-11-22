@@ -185,6 +185,8 @@
     "typeOwned": "Di proprietà",
     "typeRented": "In affitto",
     "setAsPrincipal": "Imposta come principale",
+    "householdLabel": "Nucleo familiare",
+    "newHousehold": "Nuovo nucleo (altre persone)",
     "createButton": "Crea Abitazione",
     "creatingButton": "Creazione...",
     "createError": "Errore durante la creazione",
@@ -197,6 +199,7 @@
     "deleteAria": "Elimina {name}",
     "deleteConfirmTitle": "Eliminare \"{name}\"?",
     "deleteConfirmMessage": "Vengono eliminati anche servizi, bollette, letture, spese, saldi, progetti, modelli di bolletta e membri, per tutti quelli che la condividono. L'operazione non si può annullare.",
+    "deleteKeepsHouseholdMessage": "Vengono eliminati anche i suoi servizi, bollette, letture, modelli di bolletta, progetti e spese Casa. Il nucleo familiare, i suoi membri, il saldo e le altre spese restano. Non si può annullare.",
     "newPrincipalLabel": "Quale abitazione diventa la principale?",
     "deleteSuccess": "\"{name}\" eliminata",
     "deleteError": "Errore durante l'eliminazione"

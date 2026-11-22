@@ -185,6 +185,8 @@
     "typeOwned": "Owned",
     "typeRented": "Rented",
     "setAsPrincipal": "Set as primary",
+    "householdLabel": "Household",
+    "newHousehold": "New household (other people)",
     "createButton": "Create Property",
     "creatingButton": "Creating...",
     "createError": "Error during creation",
@@ -197,6 +199,7 @@
     "deleteAria": "Delete {name}",
     "deleteConfirmTitle": "Delete \"{name}\"?",
     "deleteConfirmMessage": "Its services, bills, meter readings, expenses, settlements, projects, bill templates and members are deleted too, for everyone who shares it. This cannot be undone.",
+    "deleteKeepsHouseholdMessage": "Its services, bills, meter readings, bill templates, projects and Home expenses are deleted too. The household, its members, its balance and its other expenses stay. This cannot be undone.",
     "newPrincipalLabel": "Which home becomes the primary one?",
     "deleteSuccess": "\"{name}\" deleted",
     "deleteError": "Error while deleting"

@@ -80,9 +80,8 @@ func (h *ExpenseHandler) GetStats(c *gin.Context) {
 		return
 	}
 
-	householdIDs, err := userHouseholdIDs(h.db, userID)
-	if err != nil {
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch households")
+	householdIDs, ok := householdScope(c, h.db, userID)
+	if !ok {
 		return
 	}
 

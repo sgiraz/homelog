@@ -15,6 +15,7 @@
     "categoryPlaceholder": "Select category",
     "subcategoryLabel": "Subcategory (optional)",
     "subcategoryNone": "No subcategory",
+    "homeLabel": "Home",
     "dateLabel": "Date *",
     "projectLabel": "Project (optional)",
     "projectNone": "No project",

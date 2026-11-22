@@ -402,7 +402,9 @@ func newRouter(db *gorm.DB) *gin.Engine {
 			debtHandler := handlers.NewDebtHandler(db)
 			memberHandler := handlers.NewMemberHandler(db)
 			joinRequestHandler := handlers.NewJoinRequestHandler(db)
+			householdHandler := handlers.NewHouseholdHandler(db)
 			{
+				households.GET("", householdHandler.List)
 				households.GET("/joinable", joinRequestHandler.ListJoinable)
 				households.GET("/:id/balance", balanceHandler.GetBalance)
 				households.GET("/:id/balance/details", balanceHandler.GetBalanceDetails)

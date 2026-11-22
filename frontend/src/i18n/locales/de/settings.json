@@ -184,6 +184,8 @@
     "typeOwned": "Eigentum",
     "typeRented": "Mietobjekt",
     "setAsPrincipal": "Als primär festlegen",
+    "householdLabel": "Haushalt",
+    "newHousehold": "Neuer Haushalt (andere Personen)",
     "createButton": "Immobilie erstellen",
     "creatingButton": "Wird erstellt...",
     "createError": "Fehler beim Erstellen",
@@ -196,6 +198,7 @@
     "deleteAria": "{name} löschen",
     "deleteConfirmTitle": "„{name}“ löschen?",
     "deleteConfirmMessage": "Dienste, Rechnungen, Zählerstände, Ausgaben, Ausgleichszahlungen, Projekte, Rechnungsvorlagen und Mitglieder werden ebenfalls gelöscht, für alle, die sie teilen. Dies kann nicht rückgängig gemacht werden.",
+    "deleteKeepsHouseholdMessage": "Auch seine Dienste, Rechnungen, Zählerstände, Rechnungsvorlagen, Projekte und Ausgaben der Kategorie Zuhause werden gelöscht. Der Haushalt, seine Mitglieder, sein Saldo und seine übrigen Ausgaben bleiben erhalten. Das kann nicht rückgängig gemacht werden.",
     "newPrincipalLabel": "Welche Immobilie wird zur primären?",
     "deleteSuccess": "„{name}“ gelöscht",
     "deleteError": "Fehler beim Löschen"

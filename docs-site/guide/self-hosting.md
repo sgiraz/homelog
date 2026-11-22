@@ -77,8 +77,32 @@ docker compose up -d
 
 `./upgrade` converts the database and exits. It moves each bill template to the
 property it serves, turns a bill's estimate into its closing reading, and drops
-the old per-service default template. Then the new version starts and migrates
-the rest. Running it twice is harmless: the second run finds nothing to do.
+the old per-service default template. It also separates households from
+homes: every home becomes a household of its own, with its members, balance and
+settlements, so nothing changes in what you see. Then the new version starts and
+migrates the rest. Running it twice is harmless: the second run finds nothing to
+do.
+
+### Merging households
+
+If you had two homes lived in by the same people, the upgrade leaves you two
+households, each with its own balance. `./upgrade` says so when it finishes.
+To merge them into the older one:
+
+```bash
+docker compose stop homelog
+cp -a data data-backup-$(date +%Y%m%d)
+docker compose run --rm homelog ./upgrade --merge-households          # shows what it would do
+docker compose run --rm homelog ./upgrade --merge-households --apply  # merges
+docker compose up -d
+```
+
+Only households with exactly the same people with an account are merged. Their
+members are matched by account, and members without an account by name; a
+member with no match joins as is. Homes, expenses and settlements move over,
+and the balance between two people becomes the sum of their two balances. If a
+name matches more than one member, that household is left alone and the output
+says why: rename the member and run it again.
 
 On an instance older than 2026.09.11, update to 2026.09.11 first
 (`HOMELOG_TAG=2026.09.11`), start it once, then follow the steps above.

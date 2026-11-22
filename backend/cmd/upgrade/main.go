@@ -4,10 +4,14 @@
 // Running it again changes nothing.
 //
 // In Docker: docker compose run --rm homelog ./upgrade
+//
+// --merge-households shows which households have the same people and would be
+// merged into one (see merge.go); add --apply to merge them.
 package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -20,6 +24,10 @@ import (
 )
 
 func main() {
+	merge := flag.Bool("merge-households", false, "show the households that have the same people, to merge them")
+	apply := flag.Bool("apply", false, "with --merge-households: merge them")
+	flag.Parse()
+
 	path := os.Getenv("DB_PATH")
 	if path == "" {
 		path = "./data/homelog.db"
@@ -31,9 +39,41 @@ func main() {
 	if err != nil {
 		log.Fatalf("❌ Cannot open %s: %v", path, err)
 	}
-	if err := upgrade(db); err != nil {
-		log.Fatalf("❌ Upgrade failed, the database is as it was before this step: %v", err)
+	if !*merge {
+		if err := upgrade(db); err != nil {
+			log.Fatalf("❌ Upgrade failed, the database is as it was before this step: %v", err)
+		}
+		hintHouseholdMerges(db)
+		return
 	}
+	if len(database.PendingUpgrades(db)) > 0 {
+		log.Fatal("❌ Run ./upgrade without options first.")
+	}
+	plans, err := planHouseholdMerges(db)
+	if err != nil {
+		log.Fatalf("❌ Cannot plan the merge: %v", err)
+	}
+	printMergePlans(os.Stdout, plans)
+	if !*apply {
+		if len(plans) > 0 {
+			fmt.Println("Nothing changed. Back up the data folder, then run again with --apply to merge.")
+		}
+		return
+	}
+	if err := applyMergePlans(db, plans); err != nil {
+		log.Fatalf("❌ %v", err)
+	}
+	log.Println("✅ Households merged.")
+}
+
+// hintHouseholdMerges tells, after an upgrade, whether some households could
+// be merged. It never merges by itself: keeping them apart may be the point.
+func hintHouseholdMerges(db *gorm.DB) {
+	plans, err := planHouseholdMerges(db)
+	if err != nil || len(plans) == 0 {
+		return
+	}
+	log.Printf("ℹ️  %d households have the same people as another one. To see how they would be merged: ./upgrade --merge-households", len(plans))
 }
 
 func upgrade(db *gorm.DB) error {
@@ -253,6 +293,9 @@ func groupHomesIntoHouseholds(db *gorm.DB) error {
 				SELECT id, created_at, updated_at, deleted_at, name FROM properties`,
 			`ALTER TABLE properties ADD COLUMN household_id integer`,
 			`UPDATE properties SET household_id = id`,
+			// Primary was one home per owner; it is one per household now, and
+			// every household starts with a single home.
+			`UPDATE properties SET is_current = 1`,
 			`ALTER TABLE household_members ADD COLUMN household_id integer`,
 			`UPDATE household_members SET household_id = property_id`,
 			`ALTER TABLE settlements ADD COLUMN household_id integer`,

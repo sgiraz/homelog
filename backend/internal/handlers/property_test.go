@@ -20,7 +20,7 @@ type propertyFixture struct {
 	owner    *models.User
 	member   *models.User
 	home     models.Property // principal, shared with member, full of data
-	other    models.Property // second home of owner, older
+	other    models.Property // second home of owner, older, primary of its own household
 	mOwner   models.HouseholdMember
 	mMember  models.HouseholdMember
 	mOther   models.HouseholdMember
@@ -38,7 +38,7 @@ func setupPropertyFixture(t *testing.T) *propertyFixture {
 	member := &models.User{Email: "member@example.com", PasswordHash: "x", Name: "Member", Role: "user", IsActive: true}
 	mustCreate(t, db, owner, member)
 
-	other := models.Property{Household: &models.Household{Name: "Seaside flat"}, UserID: owner.ID, Name: "Seaside flat", Type: "rented", StartDate: now, Residents: 1}
+	other := models.Property{Household: &models.Household{Name: "Seaside flat"}, UserID: owner.ID, Name: "Seaside flat", Type: "rented", StartDate: now, IsCurrent: true, Residents: 1}
 	mustCreate(t, db, &other)
 	mOther := models.HouseholdMember{HouseholdID: other.HouseholdID, UserID: &owner.ID, Name: "Owner", Role: "admin"}
 	mustCreate(t, db, &mOther)
@@ -82,6 +82,7 @@ func setupPropertyFixture(t *testing.T) *propertyFixture {
 	p := r.Group("")
 	p.Use(middleware.AuthRequired())
 	p.GET("/properties", h.List)
+	p.POST("/properties", h.Create)
 	p.PUT("/properties/:id", h.Update)
 	p.DELETE("/properties/:id", h.Delete)
 
@@ -111,7 +112,7 @@ func (f *propertyFixture) count(t *testing.T, model any, query string, args ...a
 	return n
 }
 
-func TestDeleteProperty_CascadesAndPromotesChosenPrincipal(t *testing.T) {
+func TestDeleteProperty_CascadesItsHousehold(t *testing.T) {
 	f := setupPropertyFixture(t)
 	f.memberLeaves(t)
 	id := f.home.ID
@@ -123,7 +124,8 @@ func TestDeleteProperty_CascadesAndPromotesChosenPrincipal(t *testing.T) {
 		t.Fatalf("precondition: search_index should hold the home's rows (n=%d, err=%v)", before, err)
 	}
 
-	rec := doJSON(t, f.router, http.MethodDelete, "/properties/"+itoa(id)+"?new_principal_id="+itoa(f.other.ID), f.ownerTok, nil)
+	// The only home of its household needs no successor.
+	rec := doJSON(t, f.router, http.MethodDelete, "/properties/"+itoa(id), f.ownerTok, nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("delete: status %d, body %s", rec.Code, rec.Body.String())
 	}
@@ -186,7 +188,7 @@ func TestDeleteProperty_CascadesAndPromotesChosenPrincipal(t *testing.T) {
 	var other models.Property
 	f.db.First(&other, f.other.ID)
 	if !other.IsCurrent {
-		t.Error("the chosen home should have been promoted to principal")
+		t.Error("another household's primary home must stay primary")
 	}
 
 	var settings models.UserSettings
@@ -284,10 +286,11 @@ func TestUpdateProperty(t *testing.T) {
 	if got.Name != "Lake house" || got.Address != "1 Shore Rd" || got.Type != "owned" || got.Residents != 3 || !got.IsCurrent {
 		t.Errorf("updated property = %+v", got)
 	}
+	// Primary is per household: the other household keeps its own.
 	var home models.Property
 	f.db.First(&home, f.home.ID)
-	if home.IsCurrent {
-		t.Error("the previous principal should have been unset")
+	if !home.IsCurrent {
+		t.Error("another household's primary home must stay primary")
 	}
 
 	if rec := doJSON(t, f.router, http.MethodPut, path, f.memTok, map[string]any{"name": "Mine"}); rec.Code != http.StatusNotFound {
@@ -298,17 +301,17 @@ func TestUpdateProperty(t *testing.T) {
 func TestDeleteProperty_PrincipalNeedsAValidSuccessor(t *testing.T) {
 	f := setupPropertyFixture(t)
 	f.memberLeaves(t)
-	foreign := models.Property{Household: &models.Household{Name: "Member's flat"}, UserID: f.member.ID, Name: "Member's flat", Type: "rented", StartDate: time.Now(), Residents: 1}
-	mustCreate(t, f.db, &foreign)
+	sibling := models.Property{HouseholdID: f.home.HouseholdID, UserID: f.owner.ID, Name: "New house", Type: "owned", StartDate: time.Now(), Residents: 2}
+	mustCreate(t, f.db, &sibling)
 	base := "/properties/" + itoa(f.home.ID)
 
 	for name, c := range map[string]struct {
 		query, code string
 	}{
-		"missing":      {"", "new_principal_required"},
-		"itself":       {"?new_principal_id=" + itoa(f.home.ID), "new_principal_invalid"},
-		"not owned":    {"?new_principal_id=" + itoa(foreign.ID), "new_principal_invalid"},
-		"not a number": {"?new_principal_id=abc", "new_principal_invalid"},
+		"missing":         {"", "new_principal_required"},
+		"itself":          {"?new_principal_id=" + itoa(f.home.ID), "new_principal_invalid"},
+		"other household": {"?new_principal_id=" + itoa(f.other.ID), "new_principal_invalid"},
+		"not a number":    {"?new_principal_id=abc", "new_principal_invalid"},
 	} {
 		rec := doJSON(t, f.router, http.MethodDelete, base+c.query, f.ownerTok, nil)
 		if rec.Code != http.StatusBadRequest || errorCode(t, rec) != c.code {
@@ -316,6 +319,78 @@ func TestDeleteProperty_PrincipalNeedsAValidSuccessor(t *testing.T) {
 		}
 	}
 	if n := f.count(t, &models.Property{}, "id = ?", f.home.ID); n != 1 {
-		t.Error("a refused delete must leave the primary home in place")
+		t.Fatal("a refused delete must leave the primary home in place")
+	}
+
+	rec := doJSON(t, f.router, http.MethodDelete, base+"?new_principal_id="+itoa(sibling.ID), f.ownerTok, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("delete with sibling successor: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	f.db.First(&sibling, sibling.ID)
+	if !sibling.IsCurrent {
+		t.Error("the chosen home should have been promoted to primary")
+	}
+	// The household keeps its ledger: it still has a home.
+	if n := f.count(t, &models.HouseholdMember{}, "household_id = ?", f.home.HouseholdID); n == 0 {
+		t.Error("deleting one of two homes must keep the household's members")
+	}
+}
+
+// A household always has exactly one primary home, and promoting one only
+// demotes the homes of that same household.
+func TestCreateProperty_InAnExistingHousehold(t *testing.T) {
+	f := setupPropertyFixture(t)
+
+	rec := doJSON(t, f.router, http.MethodPost, "/properties", f.ownerTok, map[string]any{
+		"name": "New house", "type": "owned", "household_id": f.home.HouseholdID,
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create in household: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var created models.Property
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if created.HouseholdID != f.home.HouseholdID || created.IsCurrent {
+		t.Errorf("created = household %d primary %v, want household %d, not primary", created.HouseholdID, created.IsCurrent, f.home.HouseholdID)
+	}
+
+	// Promote it: the old primary of the same household steps down, the
+	// other household's primary does not.
+	if rec := doJSON(t, f.router, http.MethodPut, "/properties/"+itoa(created.ID), f.ownerTok, map[string]any{"is_current": true}); rec.Code != http.StatusOK {
+		t.Fatalf("promote: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var home, other models.Property
+	f.db.First(&home, f.home.ID)
+	f.db.First(&other, f.other.ID)
+	if home.IsCurrent || !other.IsCurrent {
+		t.Errorf("after promotion: home primary %v (want false), other primary %v (want true)", home.IsCurrent, other.IsCurrent)
+	}
+
+	// Only the household's admins may add a home to it.
+	if rec := doJSON(t, f.router, http.MethodPost, "/properties", f.memTok, map[string]any{
+		"name": "Sneaky", "type": "owned", "household_id": f.home.HouseholdID,
+	}); rec.Code != http.StatusForbidden {
+		t.Errorf("member adds a home: status %d, want 403", rec.Code)
+	}
+}
+
+func TestCreateProperty_NewHouseholdStartsWithItsPrimaryHome(t *testing.T) {
+	f := setupPropertyFixture(t)
+	rec := doJSON(t, f.router, http.MethodPost, "/properties", f.ownerTok, map[string]any{"name": "Cabin", "type": "owned"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var created models.Property
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if created.HouseholdID == f.home.HouseholdID || created.HouseholdID == f.other.HouseholdID || !created.IsCurrent {
+		t.Errorf("created = household %d primary %v, want a new household with this as its primary", created.HouseholdID, created.IsCurrent)
+	}
+	var home models.Property
+	f.db.First(&home, f.home.ID)
+	if !home.IsCurrent {
+		t.Error("a new household must not demote another household's primary home")
 	}
 }

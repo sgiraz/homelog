@@ -1,7 +1,8 @@
 <template>
   <BaseModal :title="t('settings.properties.deleteConfirmTitle', { name: property.name })" @close="emit('close')">
     <form class="space-y-4" @submit.prevent="submit">
-      <p class="text-ink-soft">{{ t('settings.properties.deleteConfirmMessage') }}</p>
+      <!-- A primary home with a successor never takes its household with it. -->
+      <p class="text-ink-soft">{{ t('settings.properties.deleteKeepsHouseholdMessage') }}</p>
 
       <fieldset class="space-y-2">
         <legend class="text-sm font-medium text-ink mb-2">{{ t('settings.properties.newPrincipalLabel') }}</legend>

@@ -229,6 +229,27 @@
                 </svg>
                 {{ t('nav.settings') }}
               </router-link>
+              <template v-if="settingsStore.households.length > 1">
+                <div class="border-t border-line my-1" />
+                <div class="px-4 pt-1.5 pb-1 text-xs font-medium text-ink-muted">{{ t('nav.household') }}</div>
+                <button
+                  v-for="household in settingsStore.households"
+                  :key="household.id"
+                  type="button"
+                  :aria-pressed="household.id === settingsStore.householdId"
+                  @click="switchHousehold(household.id)"
+                  class="flex items-center gap-3 px-4 py-2 text-sm text-ink-soft hover:bg-surface-2 transition-colors w-full text-left"
+                >
+                  <svg
+                    class="w-4 h-4 flex-shrink-0"
+                    :class="household.id === settingsStore.householdId ? 'text-accent' : 'invisible'"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span class="truncate">{{ household.name }}</span>
+                </button>
+              </template>
               <div class="border-t border-line my-1" />
               <button
                 @click="handleLogout"
@@ -314,6 +335,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { useViewCache } from '@/composables/useViewCache'
 import { communicationsAPI, notificationsAPI, utilitiesAPI } from '@/api/client'
 import { formatDate } from '@/utils/dateFormatter'
 
@@ -323,6 +345,13 @@ const { t } = useI18n()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const { isDark, themeMode, toggleDarkMode } = useDarkMode()
+
+const { remountViews } = useViewCache()
+
+async function switchHousehold(id) {
+  showUserMenu.value = false
+  if (await settingsStore.setActiveHousehold(id)) remountViews()
+}
 
 // When Navbar toggle is clicked, also persist to settings backend
 function handleToggleDarkMode() {

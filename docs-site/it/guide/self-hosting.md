@@ -78,9 +78,32 @@ docker compose up -d
 
 `./upgrade` converte il database ed esce. Assegna ogni template alla casa che
 serve, trasforma la stima di una bolletta nella sua lettura di chiusura e toglie
-il vecchio template predefinito per servizio. Poi la nuova versione si avvia e
-migra il resto. Lanciarlo due volte non fa danni: la seconda volta non trova
-niente da fare.
+il vecchio template predefinito per servizio. Separa anche i nuclei familiari
+dalle case: ogni casa diventa un nucleo a sé, con i suoi membri, il suo saldo e
+i suoi rimborsi, quindi quello che vedi non cambia. Poi la nuova versione si
+avvia e migra il resto. Lanciarlo due volte non fa danni: la seconda volta non
+trova niente da fare.
+
+### Unire i nuclei familiari
+
+Se avevi due case abitate dalle stesse persone, dopo l'aggiornamento hai due
+nuclei, ognuno con il suo saldo. `./upgrade` te lo segnala quando finisce. Per
+unirli nel più vecchio:
+
+```bash
+docker compose stop homelog
+cp -a data data-backup-$(date +%Y%m%d)
+docker compose run --rm homelog ./upgrade --merge-households          # mostra cosa farebbe
+docker compose run --rm homelog ./upgrade --merge-households --apply  # unisce
+docker compose up -d
+```
+
+Si uniscono solo i nuclei con esattamente le stesse persone con un account. I
+membri si abbinano per account, quelli senza account per nome; un membro senza
+corrispondenza entra così com'è. Case, spese e rimborsi passano al nucleo
+unito, e il saldo tra due persone diventa la somma dei loro due saldi. Se un
+nome corrisponde a più di un membro, quel nucleo resta com'è e l'output spiega
+il motivo: rinomina il membro e rilancia.
 
 Se la tua istanza è più vecchia della 2026.09.11, aggiorna prima alla 2026.09.11
 (`HOMELOG_TAG=2026.09.11`), avviala una volta, poi segui i passi qui sopra.

@@ -45,8 +45,9 @@
             <div class="flex-1 min-w-0">
               <div class="font-medium text-ink truncate">{{ prop.name }}</div>
               <!-- Badge on the second line: beside the name it starves it on a phone. -->
-              <div v-if="prop.is_current || prop.address" class="flex items-center gap-2 min-w-0 mt-0.5">
+              <div v-if="prop.is_current || prop.address || manyHouseholds" class="flex items-center gap-2 min-w-0 mt-0.5">
                 <Badge v-if="prop.is_current" variant="positive" class="shrink-0">{{ t('settings.properties.principalBadge') }}</Badge>
+                <span v-if="manyHouseholds" class="text-xs text-ink-muted truncate shrink-0">{{ prop.household?.name }}</span>
                 <span v-if="prop.address" class="text-xs text-ink-muted truncate">{{ prop.address }}</span>
               </div>
             </div>
@@ -89,6 +90,8 @@
         :loading-label="t('settings.properties.creatingButton')"
         :loading="propertyLoading"
         :error="propertyError"
+        creating
+        :households="adminHouseholds"
         @submit="addProperty"
       />
     </Card>
@@ -127,7 +130,19 @@ const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 const { evictCachedViews } = useViewCache()
 
-const blankProperty = () => ({ name: '', address: '', type: 'owned', residents: 1, is_current: false })
+const blankProperty = () => ({ name: '', address: '', type: 'owned', residents: 1, is_current: false, household_id: null })
+
+// The households a new home can join: the ones the user administers, the
+// active one first, since moving home within the same family is the usual case.
+const adminHouseholds = computed(() => {
+  const admin = settingsStore.households.filter((h) => h.is_admin)
+  return [...admin].sort((a, b) => (b.id === settingsStore.householdId) - (a.id === settingsStore.householdId))
+})
+const manyHouseholds = computed(() => settingsStore.households.length > 1)
+
+function newPropertyDraft() {
+  return { ...blankProperty(), household_id: adminHouseholds.value[0]?.id ?? null }
+}
 
 const allProperties = ref([])
 const showAddPropertyForm = ref(false)
@@ -142,8 +157,12 @@ const editError = ref(null)
 const deletingId = ref(null)
 const principalToDelete = ref(null)
 
+// The primary home's successor comes from the same household.
+function householdSiblings(prop) {
+  return allProperties.value.filter((p) => p.household_id === prop.household_id && p.id !== prop.id)
+}
 const successorCandidates = computed(() =>
-  allProperties.value.filter((p) => isOwner(p) && p.id !== principalToDelete.value?.id)
+  principalToDelete.value ? householdSiblings(principalToDelete.value) : []
 )
 
 // Only the creator may edit or delete a home (the API filters on user_id);
@@ -161,8 +180,8 @@ async function fetchAllProperties() {
   }
 }
 
-// The current home changed or vanished: re-resolve it in the store and drop
-// cached views that captured the old one at mount.
+// A primary home or a household changed or vanished: re-resolve them in the
+// store and drop cached views that captured the old ones at mount.
 async function refreshCurrentProperty() {
   await settingsStore.loadHouseholdSettings()
   evictCachedViews(['SettingsView'])
@@ -170,26 +189,30 @@ async function refreshCurrentProperty() {
 
 function toggleAddForm() {
   showAddPropertyForm.value = !showAddPropertyForm.value
-  if (showAddPropertyForm.value) cancelEdit()
+  if (showAddPropertyForm.value) {
+    cancelEdit()
+    newProperty.value = newPropertyDraft()
+  }
 }
 
 async function addProperty() {
   if (!newProperty.value.name.trim()) return
   propertyLoading.value = true
   propertyError.value = null
-  const becomesPrincipal = newProperty.value.is_current
   try {
     await propertiesAPI.create({
       name: newProperty.value.name.trim(),
       address: newProperty.value.address.trim(),
       type: newProperty.value.type,
       residents: newProperty.value.residents,
-      is_current: becomesPrincipal
+      is_current: newProperty.value.is_current,
+      household_id: newProperty.value.household_id ?? undefined
     })
     newProperty.value = blankProperty()
     showAddPropertyForm.value = false
     await fetchAllProperties()
-    if (becomesPrincipal) await refreshCurrentProperty()
+    // A new household, or a new primary home: the store has to know.
+    await refreshCurrentProperty()
   } catch (err) {
     propertyError.value = apiErrorMessage(err, t('settings.properties.createError'))
   } finally {
@@ -239,20 +262,23 @@ async function saveEdit(prop) {
 
 // A shared home cannot be deleted (the API answers property_has_members): say
 // so before asking for a confirmation that would lead nowhere.
-// Deleting the primary home asks which of the owner's other homes takes its
-// place; with none (only homes they joined) there is nothing to choose.
+// Deleting the primary home asks which of the household's other homes takes
+// its place; the only home of a household takes the household with it.
 async function deleteProperty(prop) {
   if (prop.is_shared) {
     window.$toast?.info(t('errors.property_has_members'))
     return
   }
-  if (prop.is_current && allProperties.value.some((p) => isOwner(p) && p.id !== prop.id)) {
+  const siblings = householdSiblings(prop)
+  if (prop.is_current && siblings.length > 0) {
     principalToDelete.value = prop
     return
   }
   const ok = await confirm({
     title: t('settings.properties.deleteConfirmTitle', { name: prop.name }),
-    message: t('settings.properties.deleteConfirmMessage'),
+    message: siblings.length > 0
+      ? t('settings.properties.deleteKeepsHouseholdMessage')
+      : t('settings.properties.deleteConfirmMessage'),
     confirmText: t('common.actions.delete'),
     variant: 'danger'
   })

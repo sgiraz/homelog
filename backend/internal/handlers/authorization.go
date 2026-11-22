@@ -60,6 +60,30 @@ func householdParam(c *gin.Context) (uint, bool) {
 	return uint(id), true
 }
 
+// householdScope reads the optional ?household_id= filter of a list: the
+// households to read, either that one (the user must be a member) or every
+// household of the user. Returns false if the response was already sent.
+func householdScope(c *gin.Context, db *gorm.DB, userID uint) ([]uint, bool) {
+	raw := c.Query("household_id")
+	if raw == "" {
+		ids, err := userHouseholdIDs(db, userID)
+		if err != nil {
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch households")
+			return nil, false
+		}
+		return ids, true
+	}
+	id, err := strconv.ParseUint(raw, 10, 32)
+	if err != nil {
+		apierr.Fail(c, http.StatusBadRequest, "invalid_household_id", "Invalid household id")
+		return nil, false
+	}
+	if !requireHouseholdMember(c, db, userID, uint(id)) {
+		return nil, false
+	}
+	return []uint{uint(id)}, true
+}
+
 // userHouseholdIDs lists the households the user is a member of.
 func userHouseholdIDs(db *gorm.DB, userID uint) ([]uint, error) {
 	ids := []uint{}
