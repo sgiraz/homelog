@@ -155,7 +155,10 @@ export const settingsAPI = {
 
 export const balanceAPI = {
   get: (householdId) => apiClient.get(`/households/${householdId}/balance`),
-  details: (householdId) => apiClient.get(`/households/${householdId}/balance/details`),
+  details: (householdId, otherMemberId) =>
+    apiClient.get(`/households/${householdId}/balance/details`, {
+      params: otherMemberId ? { other_member_id: otherMemberId } : {},
+    }),
   debts: (householdId, otherMemberId) =>
     apiClient.get(`/households/${householdId}/debts`, {
       params: otherMemberId ? { other_member_id: otherMemberId } : {},
@@ -165,7 +168,6 @@ export const balanceAPI = {
 export const settlementsAPI = {
   create: (data) => apiClient.post('/settlements', data),
   compensate: (data) => apiClient.post('/settlements/compensate', data),
-  list: (householdId) => apiClient.get('/settlements', { params: { household_id: householdId } }),
 }
 
 export const membersAPI = {

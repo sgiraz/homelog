@@ -371,3 +371,32 @@ func TestBalance_OtherMemberMustBelongToTheProperty(t *testing.T) {
 		}
 	}
 }
+
+// In a household of three the balance used to be shown against whichever other
+// member had the lowest id: Alice saw "even with Bob" while Carol owed her.
+// The counterpart is now the member with the largest balance, the same one on
+// every ledger, and every counterpart comes back with its own balance.
+func TestBalance_ThreeMembersPicksTheCounterpartThatOwes(t *testing.T) {
+	f := setupMoneyFixture(t)
+	f.createSplitExpense(t, 40, []uint{f.mCarol.ID}) // Carol owes Alice 20
+
+	got := f.getBalance(t, f.aliceTok, "")
+	if got.OtherMemberID != f.mCarol.ID || !approx(got.Balance, 20) {
+		t.Fatalf("counterpart %d balance %.2f, want Carol (%d) at 20", got.OtherMemberID, got.Balance, f.mCarol.ID)
+	}
+	if len(got.Counterparts) != 2 ||
+		got.Counterparts[0].MemberID != f.mCarol.ID || !approx(got.Counterparts[0].Balance, 20) ||
+		got.Counterparts[1].MemberID != f.mBob.ID || !approx(got.Counterparts[1].Balance, 0) {
+		t.Errorf("counterparts = %+v, want Carol at 20 then Bob at 0", got.Counterparts)
+	}
+
+	if d := f.getBalanceDetails(t, f.aliceTok, ""); d.OtherMemberID != f.mCarol.ID || len(d.UnsettledSplits) != 1 {
+		t.Errorf("details: counterpart %d with %d unsettled splits, want Carol with 1", d.OtherMemberID, len(d.UnsettledSplits))
+	}
+
+	// Asking for Bob explicitly still works, and the list stays the same.
+	bob := f.getBalance(t, f.aliceTok, "other_member_id="+itoa(f.mBob.ID))
+	if bob.OtherMemberID != f.mBob.ID || !approx(bob.Balance, 0) || len(bob.Counterparts) != 2 {
+		t.Errorf("explicit Bob: %+v", bob)
+	}
+}

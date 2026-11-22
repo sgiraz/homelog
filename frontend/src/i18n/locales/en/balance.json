@@ -2,6 +2,7 @@
   "loading": "Loading balance...",
   "balanceWith": "Balance with {name}",
   "partnerFallback": "Partner",
+  "counterpartsLabel": "Show balance with",
   "owesYou": "{name} owes you",
   "youOwe": "You owe {name}",
   "even": "You're all even!",

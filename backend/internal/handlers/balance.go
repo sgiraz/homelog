@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -30,6 +31,9 @@ type BalanceResponse struct {
 	CurrentMemberName string  `json:"current_member_name"`
 	OtherMemberID     uint    `json:"other_member_id"`
 	OtherMemberName   string  `json:"other_member_name"`
+	// Counterparts is every other member with their own balance, the one
+	// above first; the client lets the user switch between them.
+	Counterparts []Counterpart `json:"counterparts"`
 }
 
 // UnsettledSplitDetail represents a single unsettled (or partially settled) expense split
@@ -66,21 +70,41 @@ type BalanceDetailsResponse struct {
 	CurrentMemberName string                 `json:"current_member_name"`
 	OtherMemberID     uint                   `json:"other_member_id"`
 	OtherMemberName   string                 `json:"other_member_name"`
+	Counterparts      []Counterpart          `json:"counterparts"`
 	UnsettledSplits   []UnsettledSplitDetail `json:"unsettled_splits"`
 	Settlements       []SettlementDetail     `json:"settlements"`
 }
 
-// GetBalance calculates and returns the balance between current user's member and another member
+// GetBalance returns the running balance between the current user's member and
+// one counterpart (other_member_id, or the one with the largest balance), plus
+// every counterpart with its own balance.
 // GET /api/v1/households/:id/balance?other_member_id=2
 func (h *BalanceHandler) GetBalance(c *gin.Context) {
-	currentUserID, exists := middleware.GetUserID(c)
+	current, other, counterparts, ok := h.resolvePair(c, true)
+	if !ok {
+		return
+	}
+	c.JSON(http.StatusOK, BalanceResponse{
+		Balance:           other.Balance,
+		CurrentMemberID:   current.ID,
+		CurrentMemberName: current.Name,
+		OtherMemberID:     other.MemberID,
+		OtherMemberName:   other.Name,
+		Counterparts:      counterparts,
+	})
+}
+
+// resolvePair authorizes the request and resolves the member pair. ok is false
+// when the response has already been written: an error, or an empty answer
+// because the user has no member profile or no counterpart yet, or because
+// splitModeOnly is set and the household does not split expenses.
+func (h *BalanceHandler) resolvePair(c *gin.Context, splitModeOnly bool) (current models.HouseholdMember, other Counterpart, counterparts []Counterpart, ok bool) {
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
 		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
 		return
 	}
-
-	householdIDStr := c.Param("id")
-	householdIDParsed, err := strconv.ParseUint(householdIDStr, 10, 32)
+	householdIDParsed, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		apierr.Fail(c, http.StatusBadRequest, "invalid_household_id", "Invalid household id")
 		return
@@ -89,177 +113,61 @@ func (h *BalanceHandler) GetBalance(c *gin.Context) {
 
 	// Only members may read a household's balance: without this, any signed-in
 	// user gets a 200 for any household id.
-	if !requireHouseholdMember(c, h.db, currentUserID, householdID) {
+	if !requireHouseholdMember(c, h.db, userID, householdID) {
 		return
 	}
 
-	log.Printf("🔍 BALANCE REQUEST: HouseholdID=%d, CurrentUserID=%d", householdID, currentUserID)
-
-	// Check split mode first
-	var settings models.HouseholdSettings
-	if err := h.db.Where("household_id = ?", householdID).First(&settings).Error; err != nil {
-		log.Printf("   ⚠️ No household settings found for household %d", householdID)
-		c.JSON(http.StatusOK, BalanceResponse{
-			Balance:         0,
-			CurrentMemberID: 0,
-			OtherMemberID:   0,
-		})
-		return
-	}
-
-	log.Printf("   Split Mode: %t", settings.SplitMode)
-
-	if !settings.SplitMode {
-		log.Printf("   ℹ️ Split mode disabled, returning 0")
-		c.JSON(http.StatusOK, BalanceResponse{
-			Balance:         0,
-			CurrentMemberID: 0,
-			OtherMemberID:   0,
-		})
-		return
-	}
-
-	// Find the current user's member ID for this household
-	var currentMember models.HouseholdMember
-	if err := h.db.Where("household_id = ? AND user_id = ?", householdID, currentUserID).First(&currentMember).Error; err != nil {
-		log.Printf("   ⚠️ Current user has no member profile for household %d", householdID)
-		c.JSON(http.StatusOK, BalanceResponse{
-			Balance:         0,
-			CurrentMemberID: 0,
-			OtherMemberID:   0,
-		})
-		return
-	}
-
-	log.Printf("   Current member: ID=%d, Name=%s", currentMember.ID, currentMember.Name)
-
-	// Parse other member ID from query (optional - can auto-detect)
-	var otherMemberID uint
-	var otherMember models.HouseholdMember
-	if otherMemberIDStr := c.Query("other_member_id"); otherMemberIDStr != "" {
-		otherMemberIDParsed, err := strconv.ParseUint(otherMemberIDStr, 10, 32)
-		if err != nil {
-			apierr.Fail(c, http.StatusBadRequest, "invalid_other_member_id", "Invalid other member id")
+	if splitModeOnly {
+		var settings models.HouseholdSettings
+		err := h.db.Where("household_id = ?", householdID).First(&settings).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to calculate balance")
 			return
 		}
-		otherMemberID = uint(otherMemberIDParsed)
-		if err := h.db.Where("id = ? AND household_id = ?", otherMemberID, householdID).First(&otherMember).Error; err != nil {
-			apierr.Fail(c, http.StatusNotFound, "other_member_not_found", "The other member was not found")
+		if err != nil || !settings.SplitMode {
+			c.JSON(http.StatusOK, BalanceResponse{Counterparts: []Counterpart{}})
 			return
 		}
-		log.Printf("   Other member specified: ID=%d, Name=%s", otherMember.ID, otherMember.Name)
-	} else {
-		// Auto-detect other member - find any member that is NOT the current user's member
-		log.Printf("   Auto-detecting other member...")
-
-		// Find any other member in the same household
-		if err := h.db.Where("household_id = ? AND id != ?", householdID, currentMember.ID).First(&otherMember).Error; err != nil {
-			log.Printf("   ⚠️ No other member found for household %d", householdID)
-			c.JSON(http.StatusOK, BalanceResponse{
-				Balance:           0,
-				CurrentMemberID:   currentMember.ID,
-				CurrentMemberName: currentMember.Name,
-				OtherMemberID:     0,
-			})
-			return
-		}
-		otherMemberID = otherMember.ID
-		log.Printf("   Found other member: ID=%d, Name=%s", otherMember.ID, otherMember.Name)
 	}
 
-	// Calculate balance
-	balance, err := CalculateBalance(currentMember.ID, otherMemberID, householdID, h.db)
-	if err != nil {
-		log.Printf("   ❌ Error calculating balance: %v", err)
+	current, other, counterparts, err = resolveMemberPair(h.db, userID, householdID, c.Query("other_member_id"))
+	switch {
+	case err == nil:
+		return current, other, counterparts, true
+	case errors.Is(err, errInvalidOtherMember):
+		apierr.Fail(c, http.StatusBadRequest, "invalid_other_member_id", "Invalid other member id")
+	case errors.Is(err, errOtherMemberNotFound):
+		apierr.Fail(c, http.StatusNotFound, "other_member_not_found", "The other member was not found")
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		if counterparts == nil {
+			counterparts = []Counterpart{}
+		}
+		c.JSON(http.StatusOK, BalanceDetailsResponse{
+			CurrentMemberID:   current.ID,
+			CurrentMemberName: current.Name,
+			Counterparts:      counterparts,
+			UnsettledSplits:   []UnsettledSplitDetail{},
+			Settlements:       []SettlementDetail{},
+		})
+	default:
+		log.Printf("ERROR resolving member pair for household %d: %v", householdID, err)
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to calculate balance")
-		return
 	}
-
-	c.JSON(http.StatusOK, BalanceResponse{
-		Balance:           balance,
-		CurrentMemberID:   currentMember.ID,
-		CurrentMemberName: currentMember.Name,
-		OtherMemberID:     otherMemberID,
-		OtherMemberName:   otherMember.Name,
-	})
+	return current, other, counterparts, false
 }
 
 // GetBalanceDetails returns detailed balance with unsettled expenses and settlements history
 // GET /api/v1/households/:id/balance/details?other_member_id=2
 func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
-	currentUserID, exists := middleware.GetUserID(c)
-	if !exists {
-		apierr.Fail(c, http.StatusUnauthorized, "not_authenticated", "You are not signed in")
+	current, other, counterparts, ok := h.resolvePair(c, false)
+	if !ok {
 		return
 	}
+	householdID := current.HouseholdID
+	otherMemberID := other.MemberID
+	currentMember := current
 
-	householdIDStr := c.Param("id")
-	householdIDParsed, err := strconv.ParseUint(householdIDStr, 10, 32)
-	if err != nil {
-		apierr.Fail(c, http.StatusBadRequest, "invalid_household_id", "Invalid household id")
-		return
-	}
-	householdID := uint(householdIDParsed)
-
-	// Only members may read a household's balance: without this, any signed-in
-	// user gets a 200 for any household id.
-	if !requireHouseholdMember(c, h.db, currentUserID, householdID) {
-		return
-	}
-
-	log.Printf("GetBalanceDetails - HouseholdID: %d, CurrentUserID: %d", householdID, currentUserID)
-
-	// Find the current user's member ID for this household
-	var currentMember models.HouseholdMember
-	if err := h.db.Where("household_id = ? AND user_id = ?", householdID, currentUserID).First(&currentMember).Error; err != nil {
-		log.Printf("GetBalanceDetails - No member profile for user %d in household %d", currentUserID, householdID)
-		c.JSON(http.StatusOK, BalanceDetailsResponse{
-			Balance:         0,
-			CurrentMemberID: 0,
-			UnsettledSplits: []UnsettledSplitDetail{},
-			Settlements:     []SettlementDetail{},
-		})
-		return
-	}
-
-	// Parse other member ID from query (optional)
-	var otherMemberID uint
-	var otherMember models.HouseholdMember
-	if otherMemberIDStr := c.Query("other_member_id"); otherMemberIDStr != "" {
-		otherMemberIDParsed, err := strconv.ParseUint(otherMemberIDStr, 10, 32)
-		if err != nil {
-			apierr.Fail(c, http.StatusBadRequest, "invalid_other_member_id", "Invalid other member id")
-			return
-		}
-		otherMemberID = uint(otherMemberIDParsed)
-		if err := h.db.Where("id = ? AND household_id = ?", otherMemberID, householdID).First(&otherMember).Error; err != nil {
-			apierr.Fail(c, http.StatusNotFound, "other_member_not_found", "The other member was not found")
-			return
-		}
-	} else {
-		// Auto-detect other member
-		if err := h.db.Where("household_id = ? AND id != ?", householdID, currentMember.ID).First(&otherMember).Error; err != nil {
-			log.Printf("GetBalanceDetails - No other member found for household %d", householdID)
-			c.JSON(http.StatusOK, BalanceDetailsResponse{
-				Balance:           0,
-				CurrentMemberID:   currentMember.ID,
-				CurrentMemberName: currentMember.Name,
-				OtherMemberID:     0,
-				UnsettledSplits:   []UnsettledSplitDetail{},
-				Settlements:       []SettlementDetail{},
-			})
-			return
-		}
-		otherMemberID = otherMember.ID
-	}
-
-	// Calculate balance
-	balance, err := CalculateBalance(currentMember.ID, otherMemberID, householdID, h.db)
-	if err != nil {
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to calculate balance")
-		return
-	}
-
+	var err error
 	// Get unsettled splits between these members (long-term debts live in their
 	// own ledger — see DebtHandler.List)
 	var splits []models.ExpenseSplit
@@ -334,87 +242,13 @@ func (h *BalanceHandler) GetBalanceDetails(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, BalanceDetailsResponse{
-		Balance:           balance,
+		Balance:           other.Balance,
 		CurrentMemberID:   currentMember.ID,
 		CurrentMemberName: currentMember.Name,
 		OtherMemberID:     otherMemberID,
-		OtherMemberName:   otherMember.Name,
+		OtherMemberName:   other.Name,
+		Counterparts:      counterparts,
 		UnsettledSplits:   unsettledSplits,
 		Settlements:       settlementDetails,
 	})
-}
-
-// CalculateBalance calculates the balance between two members for a household
-// Positive balance means other member owes current member
-// Negative balance means current member owes other member
-func CalculateBalance(currentMemberID, otherMemberID, householdID uint, db *gorm.DB) (float64, error) {
-	balance := 0.0
-
-	log.Printf("CalculateBalance - CurrentMember: %d, OtherMember: %d, HouseholdID: %d", currentMemberID, otherMemberID, householdID)
-
-	// 1. Check if split mode is enabled for this household
-	var settings models.HouseholdSettings
-	err := db.Where("household_id = ?", householdID).First(&settings).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			log.Printf("CalculateBalance - No settings found for household %d, split mode disabled by default", householdID)
-			return 0.0, nil
-		}
-		log.Printf("CalculateBalance - Error fetching settings: %v", err)
-		return 0, err
-	}
-
-	log.Printf("CalculateBalance - SplitMode: %v", settings.SplitMode)
-
-	if !settings.SplitMode {
-		log.Printf("CalculateBalance - Split mode disabled, returning 0")
-		return 0.0, nil
-	}
-
-	// 2. Get unsettled ExpenseSplits for this household. Long-term debts are
-	// excluded by design: they are repaid on their own schedule from the Debiti
-	// tab, and netting them here would swallow every ordinary expense until the
-	// big debt is gone (see Expense.IsLongTermDebt).
-	var splits []models.ExpenseSplit
-	err = db.
-		Preload("Expense").
-		Joins("JOIN expenses ON expenses.id = expense_splits.expense_id").
-		Where("expense_splits.is_settled = ?", false).
-		Where("expenses.household_id = ?", householdID).
-		Where("expenses.deleted_at IS NULL").
-		Where("expenses.is_long_term_debt = ?", false).
-		Find(&splits).Error
-	if err != nil {
-		log.Printf("CalculateBalance - Error fetching splits: %v", err)
-		return 0, err
-	}
-
-	log.Printf("CalculateBalance - Found %d unsettled splits for household %d", len(splits), householdID)
-
-	// 3. Calculate from splits (remaining balance, not the original split amount —
-	// a split may have been partially paid down via the settlement ledger)
-	for _, split := range splits {
-		remaining := remainingOwed(split)
-		log.Printf("CalculateBalance - Split: ExpenseID=%d, PaidByMemberID=%d, MemberID=%d, Amount=%.2f, Remaining=%.2f",
-			split.ExpenseID, split.Expense.PaidByMemberID, split.MemberID, split.Amount, remaining)
-
-		if split.Expense.PaidByMemberID == currentMemberID && split.MemberID == otherMemberID {
-			// Other member owes me this amount
-			balance += remaining
-			log.Printf("CalculateBalance - OtherMember owes me %.2f", remaining)
-		} else if split.Expense.PaidByMemberID == otherMemberID && split.MemberID == currentMemberID {
-			// I owe other member this amount
-			balance -= remaining
-			log.Printf("CalculateBalance - I owe OtherMember %.2f", remaining)
-		}
-	}
-
-	log.Printf("CalculateBalance - Final balance: %.2f", balance)
-
-	// NOTE: Settlements are NOT counted separately in the balance calculation because a settlement's
-	// amount is applied directly against ExpenseSplit.SettledAmount when it's created (see
-	// SettlementHandler.Create). The loop above already reads the post-allocation remaining balance,
-	// so summing settlement amounts too would be double-counting.
-
-	return balance, nil
 }

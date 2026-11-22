@@ -2,6 +2,7 @@
   "loading": "Caricamento bilancio...",
   "balanceWith": "Bilancio con {name}",
   "partnerFallback": "Partner",
+  "counterpartsLabel": "Mostra il saldo con",
   "owesYou": "{name} ti deve",
   "youOwe": "Devi a {name}",
   "even": "Siete in pari!",

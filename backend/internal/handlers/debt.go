@@ -61,45 +61,14 @@ type DebtDetail struct {
 
 // DebtsResponse is the payload behind the Debiti tab.
 type DebtsResponse struct {
-	CurrentMemberID   uint         `json:"current_member_id"`
-	CurrentMemberName string       `json:"current_member_name"`
-	OtherMemberID     uint         `json:"other_member_id"`
-	OtherMemberName   string       `json:"other_member_name"`
-	Debts             []DebtDetail `json:"debts"`
-	TotalIOwe         float64      `json:"total_i_owe"`
-	TotalTheyOwe      float64      `json:"total_they_owe"`
-}
-
-// errInvalidOtherMember marks an other_member_id the caller got wrong — either
-// unparseable or naming a member of some other household. That is a client
-// mistake (400) and must not be flattened into the empty-payload answer that
-// "this household has no counterpart yet" legitimately produces.
-var errInvalidOtherMember = errors.New("invalid other_member_id")
-
-// resolveMemberPair finds the current user's member for a household and the
-// counterpart member, either explicitly requested via other_member_id or
-// auto-detected as any other member of the same household.
-//
-// A missing pair comes back as gorm.ErrRecordNotFound (caller may answer with
-// an empty ledger); a bad other_member_id as errInvalidOtherMember; anything
-// else is a real database failure and must surface as one.
-func resolveMemberPair(db *gorm.DB, userID, householdID uint, otherMemberIDStr string) (current, other models.HouseholdMember, err error) {
-	if err = db.Where("household_id = ? AND user_id = ?", householdID, userID).First(&current).Error; err != nil {
-		return current, other, err
-	}
-	if otherMemberIDStr != "" {
-		parsed, parseErr := strconv.ParseUint(otherMemberIDStr, 10, 32)
-		if parseErr != nil {
-			return current, other, errInvalidOtherMember
-		}
-		err = db.Where("id = ? AND household_id = ?", uint(parsed), householdID).First(&other).Error
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return current, other, errInvalidOtherMember
-		}
-		return current, other, err
-	}
-	err = db.Where("household_id = ? AND id != ?", householdID, current.ID).First(&other).Error
-	return current, other, err
+	CurrentMemberID   uint          `json:"current_member_id"`
+	CurrentMemberName string        `json:"current_member_name"`
+	OtherMemberID     uint          `json:"other_member_id"`
+	OtherMemberName   string        `json:"other_member_name"`
+	Counterparts      []Counterpart `json:"counterparts"`
+	Debts             []DebtDetail  `json:"debts"`
+	TotalIOwe         float64       `json:"total_i_owe"`
+	TotalTheyOwe      float64       `json:"total_they_owe"`
 }
 
 // List returns the long-term debts between the current member and another member
@@ -122,13 +91,13 @@ func (h *DebtHandler) List(c *gin.Context) {
 		return
 	}
 
-	empty := DebtsResponse{Debts: []DebtDetail{}}
+	empty := DebtsResponse{Debts: []DebtDetail{}, Counterparts: []Counterpart{}}
 
-	current, other, err := resolveMemberPair(h.db, userID, householdID, c.Query("other_member_id"))
+	current, other, counterparts, err := resolveMemberPair(h.db, userID, householdID, c.Query("other_member_id"))
 	switch {
 	case err == nil:
 		// Pair resolved — fall through to the ledger below.
-	case errors.Is(err, errInvalidOtherMember):
+	case errors.Is(err, errInvalidOtherMember), errors.Is(err, errOtherMemberNotFound):
 		apierr.Fail(c, http.StatusBadRequest, "invalid_other_member_id", "Invalid other member id")
 		return
 	case errors.Is(err, gorm.ErrRecordNotFound):
@@ -143,8 +112,9 @@ func (h *DebtHandler) List(c *gin.Context) {
 
 	empty.CurrentMemberID = current.ID
 	empty.CurrentMemberName = current.Name
-	empty.OtherMemberID = other.ID
+	empty.OtherMemberID = other.MemberID
 	empty.OtherMemberName = other.Name
+	empty.Counterparts = counterparts
 
 	// Every non-payer share of a flagged expense, in either direction.
 	var splits []models.ExpenseSplit
@@ -156,7 +126,7 @@ func (h *DebtHandler) List(c *gin.Context) {
 		Where("expenses.deleted_at IS NULL").
 		Where("expenses.is_long_term_debt = ?", true).
 		Where("(expenses.paid_by_member_id = ? AND expense_splits.member_id = ?) OR (expenses.paid_by_member_id = ? AND expense_splits.member_id = ?)",
-			current.ID, other.ID, other.ID, current.ID).
+			current.ID, other.MemberID, other.MemberID, current.ID).
 		Order("expenses.date DESC").
 		Find(&splits).Error
 	if err != nil {
@@ -175,7 +145,7 @@ func (h *DebtHandler) List(c *gin.Context) {
 		expenseIDs = append(expenseIDs, s.ExpenseID)
 	}
 
-	paymentsByExpense := h.paymentsFor(householdID, current.ID, other.ID, expenseIDs)
+	paymentsByExpense := h.paymentsFor(householdID, current.ID, other.MemberID, expenseIDs)
 
 	resp := empty
 	resp.Debts = make([]DebtDetail, 0, len(splits))
