@@ -82,6 +82,9 @@ type Property struct {
 	// Computed: another account besides the owner is a member, so the home
 	// cannot be deleted.
 	IsShared bool `gorm:"-" json:"is_shared"`
+	// Computed: it holds Home expenses, part of the household's ledger, so
+	// while the household has other homes it can be archived, not deleted.
+	HasExpenses bool `gorm:"-" json:"has_expenses"`
 
 	Owner *User `gorm:"foreignKey:UserID" json:"-"`
 }

@@ -124,6 +124,7 @@
 "property_admin_only": "Nur Administratoren dieser Immobilie können dies tun",
 "property_not_found": "Immobilie nicht gefunden",
 "last_property": "Dies ist Ihre einzige Immobilie: Fügen Sie zuerst eine weitere hinzu, bevor Sie sie löschen",
+"home_has_expenses": "Dieses Zuhause hat Ausgaben, die zum Saldo des Haushalts gehören: Archivieren Sie es, statt es zu löschen",
 "property_has_members": "Diese Immobilie wird mit anderen Mitgliedern geteilt: Sie können sie erst löschen, wenn Sie das einzige Mitglied sind",
 "new_principal_required": "Wählen Sie, welche Immobilie zur primären wird",
 "new_principal_invalid": "Die neue primäre Immobilie muss eine andere Ihrer Immobilien sein",

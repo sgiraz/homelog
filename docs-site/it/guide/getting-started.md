@@ -45,11 +45,14 @@ un'abitazione principale, quella proposta per le sue spese Casa.
 Quando traslochi, **archivia** l'abitazione invece di eliminarla: lo storico
 resta, le sue utenze ricevono ancora le ultime bollette e non compare più
 quando aggiungi una spesa. La principale non si può archiviare: prima rendi
-principale un'altra abitazione.
+principale un'altra abitazione. Un'abitazione archiviata si può ripristinare in
+qualsiasi momento.
 
-Eliminare un'abitazione elimina anche le sue utenze, bollette, letture,
-progetti e spese Casa; eliminare l'ultima abitazione di un nucleo elimina anche
-il nucleo, con le sue spese e i suoi membri. Un'abitazione condivisa con altri
+Un'abitazione con spese Casa si può solo archiviare finché il nucleo ha altre
+abitazioni: quelle spese fanno parte del bilancio del nucleo. Eliminare
+un'abitazione senza spese elimina anche le sue utenze, bollette, letture e
+progetti; eliminare l'ultima abitazione di un nucleo elimina anche il nucleo,
+con le sue spese e i suoi membri. Un'abitazione condivisa con altri
 account non si può eliminare, perché contiene anche la loro storia. L'unica
 abitazione non si può eliminare.
 

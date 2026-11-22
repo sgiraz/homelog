@@ -124,6 +124,7 @@
   "property_admin_only": "Only property admins can do this",
   "property_not_found": "Property not found",
   "last_property": "This is your only home: add another one before deleting it",
+  "home_has_expenses": "This home has expenses, which are part of the household’s balance: archive it instead of deleting it",
   "property_has_members": "This home is shared with other members: it can be deleted only when you are its only member",
   "new_principal_required": "Choose which home becomes the primary one",
   "new_principal_invalid": "The new primary home must be another home of yours",

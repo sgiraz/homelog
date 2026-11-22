@@ -124,6 +124,7 @@
   "property_admin_only": "Solo gli amministratori della proprietà possono eseguire questa operazione",
   "property_not_found": "Proprietà non trovata",
   "last_property": "È la tua unica abitazione: aggiungine un'altra prima di eliminarla",
+  "home_has_expenses": "Questa casa ha delle spese, che fanno parte del bilancio del nucleo: archiviala invece di eliminarla",
   "property_has_members": "Questa abitazione è condivisa con altri membri: puoi eliminarla solo quando ne sei l'unico membro",
   "new_principal_required": "Scegli quale abitazione diventa la principale",
   "new_principal_invalid": "La nuova abitazione principale deve essere un'altra tua abitazione",

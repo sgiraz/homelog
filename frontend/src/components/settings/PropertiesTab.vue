@@ -308,6 +308,13 @@ async function deleteProperty(prop) {
     return
   }
   const siblings = householdSiblings(prop)
+  // Home expenses are part of the household's balance: while the household
+  // keeps other homes, such a home is archived, never deleted (the API answers
+  // home_has_expenses).
+  if (prop.has_expenses && siblings.length > 0) {
+    await offerArchive(prop)
+    return
+  }
   if (prop.is_current && siblings.length > 0) {
     // Its place goes to a home in use: with only archived ones left, one has
     // to be restored first.
@@ -327,6 +334,23 @@ async function deleteProperty(prop) {
     variant: 'danger'
   })
   if (ok) await performDelete(prop)
+}
+
+async function offerArchive(prop) {
+  if (prop.end_date) {
+    window.$toast?.info(t('settings.properties.hasExpensesArchived', { name: prop.name }))
+    return
+  }
+  if (prop.is_current) {
+    window.$toast?.info(t('settings.properties.hasExpensesPrimary', { name: prop.name }))
+    return
+  }
+  const ok = await confirm({
+    title: t('settings.properties.hasExpensesTitle', { name: prop.name }),
+    message: t('settings.properties.hasExpensesMessage'),
+    confirmText: t('settings.properties.archive')
+  })
+  if (ok) await toggleArchived(prop)
 }
 
 async function performDelete(prop, newPrincipalId = null) {

@@ -44,11 +44,13 @@ expenses.
 When you move out, **archive** the home instead of deleting it: its history
 stays, its services still take the last bills, and it no longer shows up when
 you add an expense. The primary home can't be archived: make another home
-primary first.
+primary first. An archived home can be restored at any time.
 
-Deleting a home also deletes its utilities, bills, readings, projects and Home
-expenses; deleting the last home of a household deletes the household too, with
-its expenses and members. A home shared with other accounts can't be deleted,
+A home with Home expenses can only be archived while its household has other
+homes: those expenses are part of the household's balance. Deleting a home
+without expenses also deletes its utilities, bills, readings and projects;
+deleting the last home of a household deletes the household too, with its
+expenses and members. A home shared with other accounts can't be deleted,
 since it holds their history too. Your only home can't be deleted.
 
 If you belong to more than one household, switch between them from the menu

@@ -104,6 +104,19 @@ func (f *propertyFixture) memberLeaves(t *testing.T) {
 	}
 }
 
+// dropHomeExpenses empties the primary home of its Home expenses, which would
+// otherwise keep it from being deleted while its household has other homes.
+func (f *propertyFixture) dropHomeExpenses(t *testing.T) {
+	t.Helper()
+	var ids []uint
+	if err := f.db.Model(&models.Expense{}).Where("property_id = ?", f.home.ID).Pluck("id", &ids).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := deleteExpenses(f.db, ids); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func (f *propertyFixture) count(t *testing.T, model any, query string, args ...any) int64 {
 	t.Helper()
 	var n int64
@@ -302,6 +315,7 @@ func TestUpdateProperty(t *testing.T) {
 func TestDeleteProperty_PrincipalNeedsAValidSuccessor(t *testing.T) {
 	f := setupPropertyFixture(t)
 	f.memberLeaves(t)
+	f.dropHomeExpenses(t)
 	sibling := models.Property{HouseholdID: f.home.HouseholdID, UserID: f.owner.ID, Name: "New house", Type: "owned", StartDate: time.Now(), Residents: 2}
 	mustCreate(t, f.db, &sibling)
 	base := "/properties/" + itoa(f.home.ID)
@@ -401,6 +415,7 @@ func TestCreateProperty_NewHouseholdStartsWithItsPrimaryHome(t *testing.T) {
 func TestUpdateProperty_Archive(t *testing.T) {
 	f := setupPropertyFixture(t)
 	f.memberLeaves(t)
+	f.dropHomeExpenses(t)
 	sibling := models.Property{HouseholdID: f.home.HouseholdID, UserID: f.owner.ID, Name: "Old flat", Type: "rented", StartDate: time.Now(), Residents: 1}
 	mustCreate(t, f.db, &sibling)
 	put := func(id uint, body map[string]any) *httptest.ResponseRecorder {
@@ -445,5 +460,83 @@ func TestUpdateProperty_Archive(t *testing.T) {
 	f.db.First(&restored, sibling.ID)
 	if restored.EndDate != nil || !restored.IsCurrent {
 		t.Errorf("restored home: end date %v, primary %v; want none and true", restored.EndDate, restored.IsCurrent)
+	}
+}
+
+// Home expenses are part of the household's ledger: while the household has
+// other homes, a home holding any can be archived, not deleted, and the
+// balance never moves. Soft-deleted expenses no longer count.
+func TestDeleteProperty_HomeWithExpensesIsArchivedInstead(t *testing.T) {
+	f := setupPropertyFixture(t)
+	f.memberLeaves(t)
+	now := time.Now()
+	var cat models.Category
+	f.db.First(&cat)
+	newHome := func(name string) models.Property {
+		p := models.Property{HouseholdID: f.home.HouseholdID, UserID: f.owner.ID, Name: name, Type: "owned", StartDate: now, Residents: 1}
+		mustCreate(t, f.db, &p)
+		return p
+	}
+	withExpenses, empty, onlyDeleted := newHome("Old flat"), newHome("Garage"), newHome("Cabin")
+
+	exp := models.Expense{UserID: f.owner.ID, HouseholdID: f.home.HouseholdID, PropertyID: &withExpenses.ID, CategoryID: cat.ID, Amount: 30, Date: now, Description: "Boiler", PaidByMemberID: f.mOwner.ID}
+	mustCreate(t, f.db, &exp)
+	mustCreate(t, f.db,
+		&models.ExpenseSplit{ExpenseID: exp.ID, MemberID: f.mOwner.ID, Amount: 15, IsSettled: true, SettledAt: &now},
+		&models.ExpenseSplit{ExpenseID: exp.ID, MemberID: f.mMember.ID, Amount: 15},
+	)
+	gone := models.Expense{UserID: f.owner.ID, HouseholdID: f.home.HouseholdID, PropertyID: &onlyDeleted.ID, CategoryID: cat.ID, Amount: 5, Date: now, Description: "Old", PaidByMemberID: f.mOwner.ID}
+	mustCreate(t, f.db, &gone)
+	if err := f.db.Delete(&gone).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	rec := doJSON(t, f.router, http.MethodGet, "/properties", f.ownerTok, nil)
+	var props []models.Property
+	if err := json.Unmarshal(rec.Body.Bytes(), &props); err != nil {
+		t.Fatal(err)
+	}
+	flags := map[uint]bool{}
+	for _, p := range props {
+		flags[p.ID] = p.HasExpenses
+	}
+	for id, want := range map[uint]bool{f.home.ID: true, withExpenses.ID: true, empty.ID: false, onlyDeleted.ID: false} {
+		if flags[id] != want {
+			t.Errorf("home %d has_expenses = %v, want %v", id, flags[id], want)
+		}
+	}
+
+	del := func(id uint, query string) *httptest.ResponseRecorder {
+		t.Helper()
+		return doJSON(t, f.router, http.MethodDelete, "/properties/"+itoa(id)+query, f.ownerTok, nil)
+	}
+	if rec := del(withExpenses.ID, ""); rec.Code != http.StatusConflict || errorCode(t, rec) != "home_has_expenses" {
+		t.Errorf("delete a home with expenses: status %d, body %s; want 409 home_has_expenses", rec.Code, rec.Body.String())
+	}
+	// Archiving does not make it deletable: archived is where it stays.
+	if rec := doJSON(t, f.router, http.MethodPut, "/properties/"+itoa(withExpenses.ID), f.ownerTok, map[string]any{"archived": true}); rec.Code != http.StatusOK {
+		t.Fatalf("archive: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	if rec := del(withExpenses.ID, ""); rec.Code != http.StatusConflict || errorCode(t, rec) != "home_has_expenses" {
+		t.Errorf("delete an archived home with expenses: status %d; want 409 home_has_expenses", rec.Code)
+	}
+	// The primary home is refused for the same reason, successor or not.
+	if rec := del(f.home.ID, "?new_principal_id="+itoa(empty.ID)); rec.Code != http.StatusConflict || errorCode(t, rec) != "home_has_expenses" {
+		t.Errorf("delete the primary home with expenses: status %d; want 409 home_has_expenses", rec.Code)
+	}
+	if n := f.count(t, &models.Expense{}, "household_id = ?", f.home.HouseholdID); n != 3 {
+		t.Errorf("household expenses: %d, want 3 (none touched)", n)
+	}
+	if n := f.count(t, &models.ExpenseSplit{}, "expense_id = ?", exp.ID); n != 2 {
+		t.Errorf("splits of the refused home's expense: %d, want 2", n)
+	}
+
+	for _, p := range []models.Property{empty, onlyDeleted} {
+		if rec := del(p.ID, ""); rec.Code != http.StatusOK {
+			t.Errorf("delete %s: status %d, body %s; want 200", p.Name, rec.Code, rec.Body.String())
+		}
+	}
+	if n := f.count(t, &models.Expense{}, "id = ?", gone.ID); n != 0 {
+		t.Error("a soft-deleted expense goes with its home")
 	}
 }

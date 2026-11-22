@@ -78,8 +78,19 @@ func (h *PropertyHandler) List(c *gin.Context) {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to count members")
 		return
 	}
+	var withExpenses []uint
+	if err := h.db.Model(&models.Expense{}).Where("property_id IN ?", ids).
+		Distinct().Pluck("property_id", &withExpenses).Error; err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to count expenses")
+		return
+	}
+	hasExpenses := make(map[uint]bool, len(withExpenses))
+	for _, id := range withExpenses {
+		hasExpenses[id] = true
+	}
 	for i := range properties {
 		properties[i].IsShared = shared[properties[i].ID]
+		properties[i].HasExpenses = hasExpenses[properties[i].ID]
 	}
 
 	log.Printf("User %d has access to %d properties (owner or member)", userID, len(properties))
@@ -339,6 +350,22 @@ func (h *PropertyHandler) Delete(c *gin.Context) {
 	if len(visible) <= 1 {
 		apierr.Fail(c, http.StatusConflict, "last_property", "The only property cannot be deleted")
 		return
+	}
+
+	// Home expenses are part of the household's ledger: deleting them would
+	// shift everyone's balance. While the household keeps other homes, such a
+	// home is archived instead. A household's last home takes the whole
+	// household with it, which the owner confirms knowing that.
+	if householdOthers > 0 {
+		var expenses int64
+		if err := h.db.Model(&models.Expense{}).Where("property_id = ?", property.ID).Count(&expenses).Error; err != nil {
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to count expenses")
+			return
+		}
+		if expenses > 0 {
+			apierr.Fail(c, http.StatusConflict, "home_has_expenses", "A home with expenses can be archived, not deleted, while its household has other homes")
+			return
+		}
 	}
 
 	// Deleting the primary home: the owner names its successor among the
