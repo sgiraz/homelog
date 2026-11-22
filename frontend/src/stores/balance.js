@@ -34,7 +34,7 @@ export const useBalanceStore = defineStore('balance', () => {
     loading.value = true
     error.value = null
     try {
-      const { data } = await balanceAPI.details(householdId, selectedFor(householdId))
+      const { data } = await withCounterpart(householdId, (memberId) => balanceAPI.details(householdId, memberId))
       balance.value = data.balance || 0
       currentMemberName.value = data.current_member_name || ''
       currentMemberId.value = data.current_member_id || null
@@ -73,11 +73,11 @@ export const useBalanceStore = defineStore('balance', () => {
     }
   }
 
-  async function fetchDebts(householdId, otherId = null) {
+  async function fetchDebts(householdId) {
     debtsLoading.value = true
     error.value = null
     try {
-      const { data } = await balanceAPI.debts(householdId, otherId ?? selectedFor(householdId) ?? otherMemberId.value)
+      const { data } = await withCounterpart(householdId, (memberId) => balanceAPI.debts(householdId, memberId))
       debts.value = data.debts || []
       totalIOwe.value = data.total_i_owe || 0
       totalTheyOwe.value = data.total_they_owe || 0
@@ -98,6 +98,22 @@ export const useBalanceStore = defineStore('balance', () => {
 
   function selectedFor(householdId) {
     return selected.value.householdId === householdId ? selected.value.memberId : null
+  }
+
+  // Runs a request against the picked counterpart, or the server's choice
+  // without one. A pick can vanish (an admin deletes that virtual member):
+  // then it is forgotten and the server chooses again, instead of the section
+  // failing until a reload.
+  async function withCounterpart(householdId, request) {
+    const memberId = selectedFor(householdId)
+    try {
+      return await request(memberId)
+    } catch (err) {
+      const code = err?.response?.data?.error_code
+      if (memberId == null || (code !== 'other_member_not_found' && code !== 'invalid_other_member_id')) throw err
+      if (selectedFor(householdId) === memberId) selected.value = { householdId: null, memberId: null }
+      return request(null)
+    }
   }
 
   async function selectCounterpart(householdId, memberId) {
