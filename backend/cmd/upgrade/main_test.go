@@ -122,7 +122,9 @@ func TestUpgradeFromTheLastReleaseBeforeTemplatesPerProperty(t *testing.T) {
 	cabin := models.Property{ID: insertHome(t, db, author.ID, "Cabin", false)}
 	home := models.Property{ID: insertHome(t, db, author.ID, "Home", true)}
 	flat := models.Property{ID: insertHome(t, db, lodger.ID, "Flat", false)}
+	// An account belongs to one household: the couple share both homes.
 	insertMember(t, db, cabin.ID, &author.ID, "Author", "admin")
+	insertMember(t, db, cabin.ID, &partner.ID, "Partner", "member")
 	insertMember(t, db, home.ID, &author.ID, "Author", "admin")
 	insertMember(t, db, home.ID, &partner.ID, "Partner", "member")
 	insertMember(t, db, flat.ID, &lodger.ID, "Lodger", "admin")
@@ -171,6 +173,14 @@ func TestUpgradeFromTheLastReleaseBeforeTemplatesPerProperty(t *testing.T) {
 	}
 	if err := database.AutoMigrate(db); err != nil {
 		t.Fatalf("server migration after the upgrade: %v", err)
+	}
+
+	// The same two people in both homes: one household, one primary home.
+	var homes []models.Property
+	db.Order("id").Find(&homes, []uint{cabin.ID, home.ID, flat.ID})
+	if len(homes) != 3 || homes[0].HouseholdID != homes[1].HouseholdID || homes[2].HouseholdID == homes[0].HouseholdID ||
+		homes[0].IsCurrent == homes[1].IsCurrent {
+		t.Errorf("homes = %+v, want the cabin and the home in one household with one primary, the flat apart", homes)
 	}
 
 	propertyOf := func(id uint) uint {
@@ -258,14 +268,16 @@ func TestUpgradeGroupsHomesIntoHouseholds(t *testing.T) {
 	now := time.Now()
 	alice := &models.User{Email: "alice@example.com", PasswordHash: "x", Name: "Alice", IsActive: true}
 	bob := &models.User{Email: "bob@example.com", PasswordHash: "x", Name: "Bob", IsActive: true}
-	mustCreate(t, db, alice, bob)
+	carol := &models.User{Email: "carol@example.com", PasswordHash: "x", Name: "Carol", IsActive: true}
+	newcomer := &models.User{Email: "dan@example.com", PasswordHash: "x", Name: "Dan", IsActive: true}
+	mustCreate(t, db, alice, bob, carol, newcomer)
 	mustExec(t, db, `INSERT INTO categories (id, created_at, updated_at, slug, name, is_default) VALUES (1, ?, ?, 'home', 'Home', true), (2, ?, ?, 'food_dining', 'Food', true)`, now, now, now, now)
 
 	flat := insertHome(t, db, alice.ID, "Flat", true)
-	lake := insertHome(t, db, alice.ID, "Lake house", false)
+	lake := insertHome(t, db, carol.ID, "Lake house", false)
 	aliceFlat := insertMember(t, db, flat, &alice.ID, "Alice", "admin")
 	bobFlat := insertMember(t, db, flat, &bob.ID, "Bob", "member")
-	aliceLake := insertMember(t, db, lake, &alice.ID, "Alice", "admin")
+	carolLake := insertMember(t, db, lake, &carol.ID, "Carol", "admin")
 	mustExec(t, db, `INSERT INTO household_settings (created_at, updated_at, property_id, split_mode, default_split_type) VALUES (?, ?, ?, true, 'equal'), (?, ?, ?, false, 'equal')`, now, now, flat, now, now, lake)
 
 	expense := func(userID uint, propertyID *uint, categoryID, payer uint, amount float64, split bool) uint {
@@ -279,7 +291,7 @@ func TestUpgradeGroupsHomesIntoHouseholds(t *testing.T) {
 	plumber := expense(alice.ID, &flat, 1, aliceFlat, 100, true)
 	groceries := expense(bob.ID, &flat, 2, bobFlat, 40, true)
 	homeless := expense(bob.ID, nil, 2, bobFlat, 12, false)
-	boat := expense(alice.ID, &lake, 2, aliceLake, 30, false)
+	boat := expense(carol.ID, &lake, 2, carolLake, 30, false)
 	for _, s := range []struct {
 		expense, member uint
 		amount          float64
@@ -289,7 +301,9 @@ func TestUpgradeGroupsHomesIntoHouseholds(t *testing.T) {
 			now, now, s.expense, s.member, s.amount, map[bool]float64{true: s.amount}[s.settled], s.settled)
 	}
 	mustExec(t, db, `INSERT INTO settlements (created_at, updated_at, property_id, from_member_id, to_member_id, amount, date) VALUES (?, ?, ?, ?, ?, 5, ?)`, now, now, flat, bobFlat, aliceFlat, now)
-	mustExec(t, db, `INSERT INTO property_join_requests (created_at, updated_at, user_id, property_id, status) VALUES (?, ?, ?, ?, 'pending')`, now, now, bob.ID, lake)
+	// Bob is in a household already: only the newcomer still has something to ask.
+	mustExec(t, db, `INSERT INTO property_join_requests (created_at, updated_at, user_id, property_id, status) VALUES (?, ?, ?, ?, 'pending'), (?, ?, ?, ?, 'pending')`,
+		now, now, bob.ID, lake, now, now, newcomer.ID, lake)
 
 	if err := upgrade(db); err != nil {
 		t.Fatalf("upgrade: %v", err)
@@ -312,7 +326,7 @@ func TestUpgradeGroupsHomesIntoHouseholds(t *testing.T) {
 		if h.HouseholdID != h.ID {
 			t.Errorf("home %d is in household %d", h.ID, h.HouseholdID)
 		}
-		// The lake house was not Alice's primary home, but it is the only
+		// The lake house was not Carol's primary home, but it is the only
 		// home of its household now.
 		if !h.IsCurrent {
 			t.Errorf("home %d is not the primary home of its household", h.ID)
@@ -349,9 +363,10 @@ func TestUpgradeGroupsHomesIntoHouseholds(t *testing.T) {
 	if len(settings) != 2 || settings[0].HouseholdID != flat || !settings[0].SplitMode || settings[1].HouseholdID != lake {
 		t.Errorf("household settings = %+v", settings)
 	}
-	var request models.HouseholdJoinRequest
-	if err := db.First(&request).Error; err != nil || request.HouseholdID != lake || request.Status != "pending" {
-		t.Errorf("join request = %+v (%v), want the pending one for the lake house", request, err)
+	var requests []models.HouseholdJoinRequest
+	db.Find(&requests)
+	if len(requests) != 1 || requests[0].UserID != newcomer.ID || requests[0].HouseholdID != lake || requests[0].Status != "pending" {
+		t.Errorf("join requests = %+v, want only the newcomer's, pending for the lake house", requests)
 	}
 	if db.Migrator().HasTable("property_join_requests") {
 		t.Error("property_join_requests survived")

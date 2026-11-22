@@ -35,14 +35,7 @@
           :class="[fieldClass, 'w-24']"
         />
       </label>
-      <label v-if="creating && households.length > 0" class="flex flex-col gap-1 text-sm text-ink-soft sm:col-span-2">
-        <span>{{ t('settings.properties.householdLabel') }}</span>
-        <select v-model="model.household_id" :class="fieldClass">
-          <option v-for="h in households" :key="h.id" :value="h.id">{{ h.name }}</option>
-          <option :value="null">{{ t('settings.properties.newHousehold') }}</option>
-        </select>
-      </label>
-      <div v-if="!startsNewHousehold" class="flex items-center gap-2 sm:col-span-2">
+      <div class="flex items-center gap-2 sm:col-span-2">
         <input
           :id="`${idPrefix}-is-current`"
           v-model="model.is_current"
@@ -72,7 +65,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from '@/components/common/Button.vue'
 
-const props = defineProps({
+defineProps({
   title: { type: String, required: true },
   idPrefix: { type: String, required: true },
   submitLabel: { type: String, required: true },
@@ -82,12 +75,7 @@ const props = defineProps({
   cancellable: { type: Boolean, default: false },
   // A home that is already the primary one can't be un-ticked: another home
   // becomes primary by ticking it there.
-  principalLocked: { type: Boolean, default: false },
-  // A new home, as opposed to editing one.
-  creating: { type: Boolean, default: false },
-  // Creating only: the households a new home may join (the ones the user
-  // administers). Empty hides the choice.
-  households: { type: Array, default: () => [] }
+  principalLocked: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['submit', 'cancel'])
@@ -96,9 +84,6 @@ const { t } = useI18n()
 
 const fieldClass = `px-3 py-3 border border-line rounded-lg bg-surface text-ink text-base
   focus:outline-none focus:ring-2 focus:ring-blue-500`
-
-// A home that starts its own household is that household's primary home.
-const startsNewHousehold = computed(() => props.creating && model.value.household_id == null)
 
 const isValid = computed(() =>
   model.value.name.trim() !== '' && Number.isInteger(model.value.residents) && model.value.residents >= 1

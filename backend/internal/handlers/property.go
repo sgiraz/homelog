@@ -30,9 +30,6 @@ type CreatePropertyRequest struct {
 	Type      string `json:"type"` // owned, rented
 	IsCurrent bool   `json:"is_current"`
 	Residents int    `json:"residents"`
-	// HouseholdID adds the home to an existing household the user administers;
-	// without it the home starts a household of its own.
-	HouseholdID *uint `json:"household_id"`
 }
 
 // UpdatePropertyRequest represents the request body for updating a property
@@ -112,7 +109,14 @@ func (h *PropertyHandler) Create(c *gin.Context) {
 		return
 	}
 
-	if req.HouseholdID != nil && !requireHouseholdAdmin(c, h.db, userID, *req.HouseholdID) {
+	// An account belongs to one household: a new home joins the user's, which
+	// only its admins add homes to. Without one, the home starts it.
+	householdID, err := userHouseholdID(h.db, userID)
+	if err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch household")
+		return
+	}
+	if householdID != 0 && !requireHouseholdAdmin(c, h.db, userID, householdID) {
 		return
 	}
 
@@ -137,16 +141,19 @@ func (h *PropertyHandler) Create(c *gin.Context) {
 		Residents: residents,
 	}
 
-	err := h.db.Transaction(func(tx *gorm.DB) error {
-		if req.HouseholdID == nil {
+	err = h.db.Transaction(func(tx *gorm.DB) error {
+		if householdID == 0 {
 			household, _, err := createHousehold(tx, req.Name, user)
 			if err != nil {
 				return err
 			}
-			property.HouseholdID = household.ID
-		} else {
-			property.HouseholdID = *req.HouseholdID
+			householdID = household.ID
+			// In a household now: a request to join another one is moot.
+			if err := tx.Unscoped().Where("user_id = ? AND status = 'pending'", userID).Delete(&models.HouseholdJoinRequest{}).Error; err != nil {
+				return err
+			}
 		}
+		property.HouseholdID = householdID
 		if err := tx.Create(&property).Error; err != nil {
 			return err
 		}

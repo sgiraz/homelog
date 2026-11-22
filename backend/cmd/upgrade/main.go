@@ -4,14 +4,10 @@
 // Running it again changes nothing.
 //
 // In Docker: docker compose run --rm homelog ./upgrade
-//
-// --merge-households shows which households have the same people and would be
-// merged into one (see merge.go); add --apply to merge them.
 package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -24,10 +20,6 @@ import (
 )
 
 func main() {
-	merge := flag.Bool("merge-households", false, "show the households that have the same people, to merge them")
-	apply := flag.Bool("apply", false, "with --merge-households: merge them")
-	flag.Parse()
-
 	path := os.Getenv("DB_PATH")
 	if path == "" {
 		path = "./data/homelog.db"
@@ -39,41 +31,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("❌ Cannot open %s: %v", path, err)
 	}
-	if !*merge {
-		if err := upgrade(db); err != nil {
-			log.Fatalf("❌ Upgrade failed, the database is as it was before this step: %v", err)
-		}
-		hintHouseholdMerges(db)
-		return
+	if err := upgrade(db); err != nil {
+		log.Fatalf("❌ Upgrade failed, the database is as it was before this step: %v", err)
 	}
-	if len(database.PendingUpgrades(db)) > 0 {
-		log.Fatal("❌ Run ./upgrade without options first.")
-	}
-	plans, err := planHouseholdMerges(db)
-	if err != nil {
-		log.Fatalf("❌ Cannot plan the merge: %v", err)
-	}
-	printMergePlans(os.Stdout, plans)
-	if !*apply {
-		if len(plans) > 0 {
-			fmt.Println("Nothing changed. Back up the data folder, then run again with --apply to merge.")
-		}
-		return
-	}
-	if err := applyMergePlans(db, plans); err != nil {
-		log.Fatalf("❌ %v", err)
-	}
-	log.Println("✅ Households merged.")
-}
-
-// hintHouseholdMerges tells, after an upgrade, whether some households could
-// be merged. It never merges by itself: keeping them apart may be the point.
-func hintHouseholdMerges(db *gorm.DB) {
-	plans, err := planHouseholdMerges(db)
-	if err != nil || len(plans) == 0 {
-		return
-	}
-	log.Printf("ℹ️  %d households have the same people as another one. To see how they would be merged: ./upgrade --merge-households", len(plans))
 }
 
 func upgrade(db *gorm.DB) error {
@@ -275,7 +235,8 @@ func dropServiceDefaultTemplate(db *gorm.DB) error {
 // and with the same id, so existing data behaves exactly as before. Members,
 // settlements, split settings and join requests move from the home to the
 // household; every expense gets a household, and keeps its home only in the
-// Home category, the one where a home means something.
+// Home category, the one where a home means something. Households with the
+// same people are then merged, since an account belongs to one household.
 func groupHomesIntoHouseholds(db *gorm.DB) error {
 	m := db.Migrator()
 	if !m.HasTable("household_members") || m.HasColumn("household_members", "household_id") {
@@ -337,6 +298,10 @@ func groupHomesIntoHouseholds(db *gorm.DB) error {
 				return fmt.Errorf("drop %s.property_id: %w", table, err)
 			}
 		}
-		return nil
+		// Replaced by a unique one, which the server creates on startup.
+		if err := tx.Exec(`DROP INDEX IF EXISTS idx_household_members_user_id`).Error; err != nil {
+			return err
+		}
+		return mergeHouseholds(tx)
 	})
 }

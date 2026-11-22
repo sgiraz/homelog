@@ -37,10 +37,10 @@ Quando sei pronto a usarlo sul serio, segui la guida al
 | **Progetto** | Un budget per un'attività una tantum — una ristrutturazione, un viaggio, un evento. |
 
 Le abitazioni si gestiscono in **Impostazioni → Proprietà**, dove chi le ha
-create può aggiungerle, modificarle, archiviarle o eliminarle. Una nuova
-abitazione entra in uno dei tuoi nuclei (se cambi casa con le stesse persone)
-o ne crea uno nuovo (una casa condivisa con altre persone). Ogni nucleo ha
-un'abitazione principale, quella proposta per le sue spese Casa.
+create può aggiungerle, modificarle, archiviarle o eliminarle. Un account fa
+parte di un solo nucleo, e una nuova abitazione entra in quello: solo gli
+admin del nucleo aggiungono abitazioni. Ogni nucleo ha un'abitazione
+principale, quella proposta per le sue spese Casa.
 
 Quando traslochi, **archivia** l'abitazione invece di eliminarla: lo storico
 resta, le sue utenze ricevono ancora le ultime bollette e non compare più
@@ -51,13 +51,8 @@ qualsiasi momento.
 Un'abitazione con spese Casa si può solo archiviare finché il nucleo ha altre
 abitazioni: quelle spese fanno parte del bilancio del nucleo. Eliminare
 un'abitazione senza spese elimina anche le sue utenze, bollette, letture e
-progetti; eliminare l'ultima abitazione di un nucleo elimina anche il nucleo,
-con le sue spese e i suoi membri. Un'abitazione condivisa con altri
-account non si può eliminare, perché contiene anche la loro storia. L'unica
-abitazione non si può eliminare.
-
-Se fai parte di più nuclei, passi dall'uno all'altro dal menu sotto il tuo
-avatar.
+progetti. Un'abitazione condivisa con altri account non si può eliminare,
+perché contiene anche la loro storia. L'unica abitazione non si può eliminare.
 
 ## Dove andare ora
 

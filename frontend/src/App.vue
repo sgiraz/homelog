@@ -20,7 +20,7 @@
     >
       <router-view v-slot="{ Component, route }">
         <keep-alive :include="cachedViews">
-          <component :is="Component" :key="`${route.path}#${viewEpoch}`" />
+          <component :is="Component" :key="route.path" />
         </keep-alive>
       </router-view>
     </main>
@@ -60,7 +60,7 @@ useDemoMode().initDemoMode()
 initAnalytics(router, analyticsSite)
 
 // Cache main views to avoid re-mount flicker on navigation
-const { cachedViews, viewEpoch } = useViewCache()
+const { cachedViews } = useViewCache()
 
 if (authStore.isAuthenticated) {
   settingsStore.loadSettings()

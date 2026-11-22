@@ -29,10 +29,8 @@ func TestHouseholdList_OnlyTheUsersOwnWithRoleAndPrimaryHome(t *testing.T) {
 	}
 
 	owner := list(f.ownerTok)
-	if len(owner) != 2 ||
-		owner[0].ID != f.other.HouseholdID || !owner[0].IsAdmin || owner[0].PrimaryHomeID != f.other.ID ||
-		owner[1].ID != f.home.HouseholdID || !owner[1].IsAdmin || owner[1].PrimaryHomeID != f.home.ID {
-		t.Errorf("owner households = %+v", owner)
+	if len(owner) != 1 || owner[0].ID != f.home.HouseholdID || !owner[0].IsAdmin || owner[0].PrimaryHomeID != f.home.ID {
+		t.Errorf("owner households = %+v, want the shared one, as admin, with its primary home", owner)
 	}
 
 	member := list(f.memTok)
@@ -56,8 +54,8 @@ func TestUtilityList_ScopedToTheRequestedHousehold(t *testing.T) {
 	if code, n := count(f.ownerTok, "?household_id="+itoa(f.home.HouseholdID)); code != http.StatusOK || n != 1 {
 		t.Errorf("home household: status %d, %d services; want 200 and its one service", code, n)
 	}
-	if code, n := count(f.ownerTok, "?household_id="+itoa(f.other.HouseholdID)); code != http.StatusOK || n != 0 {
-		t.Errorf("other household: status %d, %d services; want 200 and none", code, n)
+	if code, n := count(f.neighTok, "?household_id="+itoa(f.other.HouseholdID)); code != http.StatusOK || n != 0 {
+		t.Errorf("neighbour's household: status %d, %d services; want 200 and none", code, n)
 	}
 	if code, _ := count(f.memTok, "?household_id="+itoa(f.other.HouseholdID)); code != http.StatusForbidden {
 		t.Errorf("foreign household: status %d, want 403", code)

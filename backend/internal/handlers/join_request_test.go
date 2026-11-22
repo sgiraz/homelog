@@ -151,8 +151,39 @@ func TestJoinRequest_OnlyAnAdminLetsSomeoneIn(t *testing.T) {
 		t.Errorf("members = %d, want 3 (one approval, one member)", n)
 	}
 	rec = doJSON(t, f.router, http.MethodPost, "/join-requests", f.strTok, map[string]any{"household_id": f.home.HouseholdID})
-	if rec.Code != http.StatusConflict || errorCode(t, rec) != "already_household_member" {
-		t.Errorf("request once a member: status %d, body %s; want 409 already_household_member", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusConflict || errorCode(t, rec) != "already_in_household" {
+		t.Errorf("request once a member: status %d, body %s; want 409 already_in_household", rec.Code, rec.Body.String())
+	}
+}
+
+// An account belongs to one household: someone in one can't ask to join
+// another, and an approval can't add someone who found another meanwhile.
+func TestJoinRequest_OneHouseholdPerAccount(t *testing.T) {
+	f := setupJoinFixture(t)
+	neighbour := &models.User{Email: "neighbour@example.com", PasswordHash: "x", Name: "Neighbour", Role: "user", IsActive: true}
+	mustCreate(t, f.db, neighbour)
+	flat := models.Property{Household: &models.Household{Name: "Flat"}, UserID: neighbour.ID, Name: "Flat", Type: "rented", StartDate: time.Now(), IsCurrent: true, Residents: 1}
+	mustCreate(t, f.db, &flat)
+	mustCreate(t, f.db, &models.HouseholdMember{HouseholdID: flat.HouseholdID, UserID: &neighbour.ID, Name: "Neighbour", Role: "admin"})
+
+	rec := doJSON(t, f.router, http.MethodPost, "/join-requests", f.memberTok, map[string]any{"household_id": flat.HouseholdID})
+	if rec.Code != http.StatusConflict || errorCode(t, rec) != "already_in_household" {
+		t.Errorf("a member asks to join another household: status %d, body %s; want 409 already_in_household", rec.Code, rec.Body.String())
+	}
+
+	jr := f.request(t)
+	mustCreate(t, f.db, &models.HouseholdMember{HouseholdID: flat.HouseholdID, UserID: &f.stranger.ID, Name: "Stranger", Role: "member"})
+	rec = doJSON(t, f.router, http.MethodPatch, "/join-requests/"+itoa(jr.ID), f.ownerTok, map[string]any{"status": "approved"})
+	if rec.Code != http.StatusConflict || errorCode(t, rec) != "requester_in_household" {
+		t.Errorf("approval after the requester joined another household: status %d, body %s; want 409 requester_in_household", rec.Code, rec.Body.String())
+	}
+	if n := f.memberCount(t); n != 2 {
+		t.Errorf("members = %d, want 2: nobody added", n)
+	}
+	var stored models.HouseholdJoinRequest
+	f.db.First(&stored, jr.ID)
+	if stored.Status != "pending" {
+		t.Errorf("request status = %q, want still pending after a refused approval", stored.Status)
 	}
 }
 

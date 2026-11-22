@@ -266,10 +266,9 @@ func TestStats_HouseholdIsolation(t *testing.T) {
 	f := setupMoneyFixture(t)
 	f.addExpense(t, 100, utc(2026, 1, 10), f.homeCatID, nil)
 
-	// A second household of Alice's, and a stranger's.
-	second := models.Property{Household: &models.Household{Name: "Garage"}, UserID: f.alice.ID, Name: "Garage", Type: "owned", StartDate: time.Now()}
+	// A second home of Alice's household, and a stranger's household.
+	second := models.Property{HouseholdID: f.prop.HouseholdID, UserID: f.alice.ID, Name: "Garage", Type: "owned", StartDate: time.Now()}
 	mustCreate(t, f.db, &second)
-	mustCreate(t, f.db, &models.HouseholdMember{HouseholdID: second.HouseholdID, UserID: &f.alice.ID, Name: "Alice", Role: "admin"})
 	f.addExpenseIn(t, second.HouseholdID, 30, utc(2026, 1, 11), f.homeCatID, nil)
 
 	eve := &models.User{Email: "eve@example.com", PasswordHash: "x", Name: "Eve", Role: "user", IsActive: true}
@@ -281,7 +280,7 @@ func TestStats_HouseholdIsolation(t *testing.T) {
 
 	all := f.getStats(t, f.aliceTok, "from=2026-01-01&to=2026-01-31")
 	if !approx(all.TotalPeriod, 130) {
-		t.Errorf("all of Alice's households = %.2f, want 130 and never Eve's 7777", all.TotalPeriod)
+		t.Errorf("Alice's household = %.2f, want 130 and never Eve's 7777", all.TotalPeriod)
 	}
 
 	// Eve sees her own household only.

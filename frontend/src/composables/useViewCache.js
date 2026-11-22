@@ -17,15 +17,6 @@ function evictCachedViews(keep = []) {
   })
 }
 
-// Bumped to remount the view on screen too (App.vue keys it on this): after
-// switching household every view, visible or cached, has to load again.
-const viewEpoch = ref(0)
-
-function remountViews() {
-  evictCachedViews([])
-  viewEpoch.value++
-}
-
 export function useViewCache() {
-  return { cachedViews, evictCachedViews, viewEpoch, remountViews }
+  return { cachedViews, evictCachedViews }
 }

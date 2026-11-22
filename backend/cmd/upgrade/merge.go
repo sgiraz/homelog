@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"sort"
 	"strings"
 
@@ -12,14 +11,13 @@ import (
 
 // Merging households.
 //
-// The upgrade to households made one household per home, so the same people
-// living in two homes ended up with two households and two balances. This step
-// merges households whose account members are exactly the same people into the
-// oldest of them: homes, expenses, settlements and members move over, and the
-// balance between two people becomes the sum of their two balances.
-//
-// It changes nothing unless asked: without --apply it only prints what it
-// would do.
+// The upgrade to households makes one household per home, so the same people
+// living in two homes end up with two households and two balances, while an
+// account belongs to one household at most. This step merges households whose
+// account members are exactly the same people into the oldest of them: homes,
+// expenses, settlements and members move over, and the balance between two
+// people becomes the sum of their two balances. Whatever it cannot merge
+// stops the upgrade.
 
 // householdRow is one household as the merge sees it.
 type householdRow struct {
@@ -48,8 +46,6 @@ type mergePlan struct {
 	Moved []memberRow
 	// Skip explains why this pair cannot be merged automatically.
 	Skip string
-	// Counts of what moves, for the report.
-	Homes, Expenses, Settlements int64
 }
 
 // planHouseholdMerges finds every household that has the same account members
@@ -94,11 +90,7 @@ func planHouseholdMerges(db *gorm.DB) ([]mergePlan, error) {
 	for _, key := range keys {
 		group := groups[key]
 		for _, source := range group[1:] {
-			plan := planPair(group[0], source, byHousehold[group[0].ID], byHousehold[source.ID])
-			if err := countMoves(db, &plan); err != nil {
-				return nil, err
-			}
-			plans = append(plans, plan)
+			plans = append(plans, planPair(group[0], source, byHousehold[group[0].ID], byHousehold[source.ID]))
 		}
 	}
 	return plans, nil
@@ -144,61 +136,51 @@ func sameName(a, b string) bool {
 	return strings.EqualFold(strings.TrimSpace(a), strings.TrimSpace(b))
 }
 
-func countMoves(db *gorm.DB, plan *mergePlan) error {
-	for _, c := range []struct {
-		table string
-		dest  *int64
-	}{
-		{"properties", &plan.Homes},
-		{"expenses", &plan.Expenses},
-		{"settlements", &plan.Settlements},
-	} {
-		if err := db.Table(c.table).Where("household_id = ?", plan.Source.ID).Count(c.dest).Error; err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// printMergePlans reports the plans in plain words.
-func printMergePlans(w io.Writer, plans []mergePlan) {
-	if len(plans) == 0 {
-		fmt.Fprintln(w, "No households to merge: no two households have the same people.")
-		return
+// mergeHouseholds merges every household into the oldest one with the same
+// account members, then checks that each account is left in one household.
+// A pair it cannot merge, or an account in households with different people,
+// stops it: the admin has to decide, the upgrade does not guess.
+func mergeHouseholds(tx *gorm.DB) error {
+	plans, err := planHouseholdMerges(tx)
+	if err != nil {
+		return err
 	}
 	for _, p := range plans {
-		fmt.Fprintf(w, "%q (%d) into %q (%d)", p.Source.Name, p.Source.ID, p.Target.Name, p.Target.ID)
 		if p.Skip != "" {
-			fmt.Fprintf(w, ": skipped, %s. Rename the member, then run this again.\n", p.Skip)
-			continue
-		}
-		fmt.Fprintf(w, ": %d homes, %d expenses, %d settlements move over.\n", p.Homes, p.Expenses, p.Settlements)
-		ids := make([]uint, 0, len(p.Mapped))
-		for id := range p.Mapped {
-			ids = append(ids, id)
-		}
-		sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
-		for _, id := range ids {
-			fmt.Fprintf(w, "    member %d becomes %q (%d)\n", id, p.Mapped[id].Name, p.Mapped[id].ID)
-		}
-		for _, m := range p.Moved {
-			fmt.Fprintf(w, "    member %q (%d) joins as is\n", m.Name, m.ID)
+			return fmt.Errorf("cannot merge %q (%d) into %q (%d): %s. Rename the member, then run ./upgrade again",
+				p.Source.Name, p.Source.ID, p.Target.Name, p.Target.ID, p.Skip)
 		}
 	}
-}
-
-// applyMergePlans carries out every plan that is not skipped, each in its own
-// transaction.
-func applyMergePlans(db *gorm.DB, plans []mergePlan) error {
 	for _, p := range plans {
-		if p.Skip != "" {
-			continue
-		}
-		if err := db.Transaction(func(tx *gorm.DB) error { return mergeHousehold(tx, p) }); err != nil {
+		if err := mergeHousehold(tx, p); err != nil {
 			return fmt.Errorf("merge %q into %q: %w", p.Source.Name, p.Target.Name, err)
 		}
 	}
-	return nil
+
+	var split []struct {
+		Email      string
+		Households string
+	}
+	if err := tx.Raw(`SELECT users.email, group_concat('"' || households.name || '"', ', ') AS households
+		FROM household_members
+		JOIN users ON users.id = household_members.user_id
+		JOIN households ON households.id = household_members.household_id
+		WHERE household_members.user_id IS NOT NULL AND household_members.deleted_at IS NULL
+		GROUP BY household_members.user_id HAVING count(*) > 1`).Scan(&split).Error; err != nil {
+		return err
+	}
+	if len(split) > 0 {
+		var lines []string
+		for _, s := range split {
+			lines = append(lines, s.Email+" is in "+s.Households)
+		}
+		return fmt.Errorf("an account belongs to one household, but these accounts share homes with different people: %s. "+
+			"On the version you run now, leave each account in one of those homes only, then run ./upgrade again",
+			strings.Join(lines, "; "))
+	}
+	// Someone already in a household has nothing left to ask to join.
+	return tx.Exec(`DELETE FROM household_join_requests WHERE status = 'pending' AND user_id IN
+		(SELECT user_id FROM household_members WHERE user_id IS NOT NULL AND deleted_at IS NULL)`).Error
 }
 
 // mergeHousehold moves everything of plan.Source into plan.Target and deletes

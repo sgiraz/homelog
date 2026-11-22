@@ -63,9 +63,8 @@ func TestUpdateExpense_IgnoresPropertyChange(t *testing.T) {
 	f := setupMoneyFixture(t)
 	id := f.createSplitExpense(t, 40, []uint{f.mBob.ID})
 
-	elsewhere := models.Property{Household: &models.Household{Name: "Other home"}, UserID: f.alice.ID, Name: "Other home", Type: "rented", StartDate: time.Now(), Residents: 1}
+	elsewhere := models.Property{HouseholdID: f.prop.HouseholdID, UserID: f.alice.ID, Name: "Other home", Type: "rented", StartDate: time.Now(), Residents: 1}
 	mustCreate(t, f.db, &elsewhere)
-	mustCreate(t, f.db, &models.HouseholdMember{HouseholdID: elsewhere.HouseholdID, UserID: &f.alice.ID, Name: "Alice", Role: "admin"})
 
 	rec := doJSON(t, f.router, http.MethodPut, "/expenses/"+itoa(id), f.aliceTok, map[string]any{
 		"description": "Renamed",

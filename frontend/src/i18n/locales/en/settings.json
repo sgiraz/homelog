@@ -186,8 +186,6 @@
     "typeOwned": "Owned",
     "typeRented": "Rented",
     "setAsPrincipal": "Set as primary",
-    "householdLabel": "Household",
-    "newHousehold": "New household (other people)",
     "createButton": "Create Property",
     "creatingButton": "Creating...",
     "createError": "Error during creation",

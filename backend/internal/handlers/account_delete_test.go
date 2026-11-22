@@ -196,9 +196,9 @@ func TestDeleteAccount_SharedHomeKeepsTheLedger(t *testing.T) {
 	// A home bob left earlier: his removed member row is still there.
 	oldHome := models.Property{Household: &models.Household{Name: "Old home"}, UserID: f.alice.ID, Name: "Old home", Type: "rented", StartDate: now, Residents: 1}
 	mustCreate(t, db, &oldHome)
-	oldMember := models.HouseholdMember{HouseholdID: oldHome.HouseholdID, UserID: &f.bob.ID, Name: "Bob", Role: "member"}
-	mustCreate(t, db, &oldMember, &models.HouseholdMember{HouseholdID: oldHome.HouseholdID, UserID: &f.alice.ID, Name: "Alice", Role: "admin"})
-	db.Delete(&oldMember)
+	oldMember := models.HouseholdMember{HouseholdID: oldHome.HouseholdID, UserID: &f.bob.ID, Name: "Bob", Role: "member",
+		DeletedAt: gorm.DeletedAt{Time: now, Valid: true}}
+	mustCreate(t, db, &oldMember, &models.HouseholdMember{HouseholdID: oldHome.HouseholdID, Name: "Alice", Role: "admin", IsVirtual: true})
 
 	// A service bob pays, split with him by default.
 	utility := models.Utility{UserID: f.alice.ID, PropertyID: f.prop.ID, Type: "electricity", Provider: "Enel", IsActive: true,
@@ -429,7 +429,9 @@ func TestDeleteAccount_RemovedHomeGoesToo(t *testing.T) {
 	now := time.Now()
 	old := models.Property{Household: &models.Household{Name: "Old flat"}, UserID: f.bob.ID, Name: "Old flat", Type: "rented", StartDate: now, Residents: 1}
 	mustCreate(t, f.db, &old)
-	member := models.HouseholdMember{HouseholdID: old.HouseholdID, UserID: &f.bob.ID, Name: "Bob", Role: "admin"}
+	// Removed with it: an account is in one household, the current one.
+	member := models.HouseholdMember{HouseholdID: old.HouseholdID, UserID: &f.bob.ID, Name: "Bob", Role: "admin",
+		DeletedAt: gorm.DeletedAt{Time: now, Valid: true}}
 	mustCreate(t, f.db, &member)
 	utility := models.Utility{UserID: f.bob.ID, PropertyID: old.ID, Type: "gas", Provider: "Gas Co", IsActive: true}
 	mustCreate(t, f.db, &utility)

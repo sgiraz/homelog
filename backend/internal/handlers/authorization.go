@@ -93,6 +93,17 @@ func userHouseholdIDs(db *gorm.DB, userID uint) ([]uint, error) {
 	return ids, err
 }
 
+// userHouseholdID returns the household the user belongs to, 0 if none: an
+// account belongs to one household at most.
+func userHouseholdID(db *gorm.DB, userID uint) (uint, error) {
+	var ids []uint
+	if err := db.Model(&models.HouseholdMember{}).Where("user_id = ?", userID).
+		Limit(1).Pluck("household_id", &ids).Error; err != nil || len(ids) == 0 {
+		return 0, err
+	}
+	return ids[0], nil
+}
+
 // householdOfProperty returns the household a home belongs to.
 func householdOfProperty(db *gorm.DB, propertyID uint) (uint, error) {
 	var property models.Property

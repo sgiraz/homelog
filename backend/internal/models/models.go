@@ -50,7 +50,7 @@ type HouseholdMember struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
 	HouseholdID uint   `gorm:"not null;index" json:"household_id"`
-	UserID      *uint  `gorm:"index" json:"user_id,omitempty"` // NULL if virtual member
+	UserID      *uint  `gorm:"index:idx_household_members_account,unique,where:user_id IS NOT NULL AND deleted_at IS NULL" json:"user_id,omitempty"` // NULL if virtual member; an account is in one household at most
 	Name        string `gorm:"not null" json:"name"`
 	Role        string `json:"role,omitempty"` // admin, partner, child, roommate…
 	IsVirtual   bool   `gorm:"not null;default:false" json:"is_virtual"`

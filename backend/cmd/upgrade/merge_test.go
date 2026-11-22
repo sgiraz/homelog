@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"math"
 	"sort"
 	"strconv"
@@ -16,9 +15,9 @@ import (
 	"github.com/sgiraz/homelog/internal/testutil"
 )
 
-// twoHouseholdsFixture is what the upgrade leaves for a couple who had two
-// homes: two households with the same two accounts and a virtual member
-// each, their own expenses, settlements and balances.
+// twoHouseholdsFixture is what the upgrade has made, before merging, for a
+// couple who had two homes: two households with the same two accounts and a
+// virtual member each, their own expenses, settlements and balances.
 type twoHouseholdsFixture struct {
 	db                     *gorm.DB
 	alice, bob             *models.User
@@ -36,6 +35,10 @@ type twoHouseholdsFixture struct {
 func setupTwoHouseholds(t *testing.T) *twoHouseholdsFixture {
 	t.Helper()
 	db := testutil.NewDB(t)
+	// Before merging, the schema allows an account in two households.
+	if err := db.Exec(`DROP INDEX idx_household_members_account`).Error; err != nil {
+		t.Fatal(err)
+	}
 	now := time.Now()
 	f := &twoHouseholdsFixture{db: db}
 
@@ -123,23 +126,11 @@ func TestMergeHouseholds_SamePeopleBecomeOneHousehold(t *testing.T) {
 	if len(plans) != 1 || plans[0].Target.ID != f.flat.HouseholdID || plans[0].Source.ID != f.lake.HouseholdID || plans[0].Skip != "" {
 		t.Fatalf("plans = %+v, want the lake house into the flat", plans)
 	}
-	var report bytes.Buffer
-	printMergePlans(&report, plans)
-	if !strings.Contains(report.String(), `member "Dan"`) || !strings.Contains(report.String(), "3 expenses") {
-		t.Errorf("report does not say what moves:\n%s", report.String())
-	}
-
-	// Planning alone changes nothing.
-	var households int64
-	db.Model(&models.Household{}).Count(&households)
-	if households != 2 {
-		t.Fatalf("a dry run changed the households: %d left", households)
-	}
-
-	if err := applyMergePlans(db, plans); err != nil {
+	if err := mergeHouseholds(db); err != nil {
 		t.Fatal(err)
 	}
 
+	var households int64
 	db.Model(&models.Household{}).Count(&households)
 	if households != 1 {
 		t.Errorf("%d households after the merge, want 1", households)
@@ -208,20 +199,14 @@ func TestMergeHouseholds_SamePeopleBecomeOneHousehold(t *testing.T) {
 }
 
 // Two virtual members of the target with the same name: the merge cannot know
-// which one is meant, so it leaves this pair alone and says why.
-func TestMergeHouseholds_AmbiguousVirtualMemberIsSkipped(t *testing.T) {
+// which one is meant, so it stops and says why.
+func TestMergeHouseholds_AmbiguousVirtualMemberStops(t *testing.T) {
 	f := setupTwoHouseholds(t)
 	mustCreate(t, f.db, &models.HouseholdMember{HouseholdID: f.flat.HouseholdID, Name: "Carol", IsVirtual: true})
 
-	plans, err := planHouseholdMerges(f.db)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(plans) != 1 || plans[0].Skip == "" {
-		t.Fatalf("plans = %+v, want the pair skipped", plans)
-	}
-	if err := applyMergePlans(f.db, plans); err != nil {
-		t.Fatal(err)
+	err := mergeHouseholds(f.db)
+	if err == nil || !strings.Contains(err.Error(), "Rename the member") {
+		t.Fatalf("merge: %v, want it to stop on the ambiguous member", err)
 	}
 	var households int64
 	f.db.Model(&models.Household{}).Count(&households)
@@ -230,18 +215,19 @@ func TestMergeHouseholds_AmbiguousVirtualMemberIsSkipped(t *testing.T) {
 	}
 }
 
-// Different people are different households, even with one person in common.
-func TestMergeHouseholds_DifferentPeopleStayApart(t *testing.T) {
+// One person sharing two homes with different people can't be in both
+// households, and which one they keep is not the upgrade's to guess.
+func TestMergeHouseholds_AccountWithDifferentPeopleStops(t *testing.T) {
 	f := setupTwoHouseholds(t)
 	f.db.Model(&models.HouseholdMember{}).Where("id = ?", f.bobLake.ID).
 		Updates(map[string]any{"user_id": nil, "is_virtual": true})
 
-	plans, err := planHouseholdMerges(f.db)
-	if err != nil {
-		t.Fatal(err)
+	err := mergeHouseholds(f.db)
+	if err == nil || !strings.Contains(err.Error(), `alice@example.com is in "Flat", "Lake house"`) {
+		t.Fatalf("merge: %v, want it to name Alice and both homes", err)
 	}
-	if len(plans) != 0 {
-		t.Errorf("plans = %+v, want none", plans)
+	if strings.Contains(err.Error(), "bob@example.com") {
+		t.Errorf("merge: %v; Bob is in one household only", err)
 	}
 }
 

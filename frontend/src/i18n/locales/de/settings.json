@@ -185,8 +185,6 @@
     "typeOwned": "Eigentum",
     "typeRented": "Mietobjekt",
     "setAsPrincipal": "Als primär festlegen",
-    "householdLabel": "Haushalt",
-    "newHousehold": "Neuer Haushalt (andere Personen)",
     "createButton": "Immobilie erstellen",
     "creatingButton": "Wird erstellt...",
     "createError": "Fehler beim Erstellen",

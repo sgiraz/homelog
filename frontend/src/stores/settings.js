@@ -7,16 +7,6 @@ import { DEFAULT_LOCALE, persistLocale, resolveInitialLocale } from '@/i18n'
 import { useTheme } from '@/composables/useTheme'
 import { DEFAULT_THEME, isValidTheme } from '@/config/themes'
 
-const ACTIVE_HOUSEHOLD_KEY = 'activeHouseholdId'
-
-function readActiveHousehold() {
-  try {
-    return localStorage.getItem(ACTIVE_HOUSEHOLD_KEY)
-  } catch {
-    return null
-  }
-}
-
 export const useSettingsStore = defineStore('settings', () => {
   // State
   const theme = ref('auto')
@@ -39,16 +29,13 @@ export const useSettingsStore = defineStore('settings', () => {
   const isPropertyAdmin = ref(false)
   const pendingJoinRequest = ref(null)
 
-  // The households the user belongs to, and the active one: what Dashboard,
-  // Expenses, Balance and Settings show. The choice is per device.
-  const households = ref([])
-  const householdId = ref(null)
-  // The active household's primary home: the default home for new Home expenses.
-  const householdPropertyId = computed(() =>
-    households.value.find(h => h.id === householdId.value)?.primary_home_id || null
-  )
-  const activeHousehold = computed(() => households.value.find(h => h.id === householdId.value) || null)
-  // Household settings (shared across all members of the active household)
+  // The user's household (an account belongs to one at most): what Dashboard,
+  // Expenses, Balance and Settings show.
+  const household = ref(null)
+  const householdId = computed(() => household.value?.id ?? null)
+  // The household's primary home: the default home for new Home expenses.
+  const householdPropertyId = computed(() => household.value?.primary_home_id || null)
+  // Household settings (shared across all members of the household)
   const splitMode = ref(false)
 
   // Getters - provides { date_format, language } object for formatDate/formatPeriod
@@ -115,10 +102,7 @@ export const useSettingsStore = defineStore('settings', () => {
   async function loadHouseholdSettings() {
     try {
       const { data } = await apiClient.get('/households')
-      households.value = data || []
-      const stored = Number(readActiveHousehold())
-      const active = households.value.find(h => h.id === stored) || households.value[0]
-      householdId.value = active?.id ?? null
+      household.value = data?.[0] ?? null
       if (!householdId.value) {
         splitMode.value = false
         return
@@ -128,29 +112,8 @@ export const useSettingsStore = defineStore('settings', () => {
     } catch (err) {
       console.error('Error loading household settings:', err)
       splitMode.value = false
-      households.value = []
-      householdId.value = null
+      household.value = null
     }
-  }
-
-  // Switches the active household on this device. The caller remounts the
-  // views: each of them captured the old household when it loaded.
-  async function setActiveHousehold(id) {
-    if (id === householdId.value || !households.value.some(h => h.id === id)) return false
-    try {
-      localStorage.setItem(ACTIVE_HOUSEHOLD_KEY, String(id))
-    } catch {
-      // Storage unavailable: the switch lasts until the next reload.
-    }
-    householdId.value = id
-    try {
-      const { data } = await apiClient.get(`/households/${id}/settings`)
-      splitMode.value = data.split_mode || false
-    } catch (err) {
-      console.error('Error loading household settings:', err)
-      splitMode.value = false
-    }
-    return true
   }
 
   async function updateHouseholdSettings(updates) {
@@ -224,8 +187,7 @@ export const useSettingsStore = defineStore('settings', () => {
     isPropertyAdmin.value = false
     pendingJoinRequest.value = null
     splitMode.value = false
-    households.value = []
-    householdId.value = null
+    household.value = null
   }
 
   return {
@@ -247,17 +209,14 @@ export const useSettingsStore = defineStore('settings', () => {
     isPropertyAdmin,
     pendingJoinRequest,
     splitMode,
-    households,
     householdId,
     householdPropertyId,
-    activeHousehold,
     // Getters
     dateSettings,
     formatSettings,
     // Actions
     loadSettings,
     loadHouseholdSettings,
-    setActiveHousehold,
     updateHouseholdSettings,
     updateSettings,
     $reset

@@ -45,10 +45,9 @@
             <div class="flex-1 min-w-0">
               <div class="font-medium text-ink truncate">{{ prop.name }}</div>
               <!-- Badge on the second line: beside the name it starves it on a phone. -->
-              <div v-if="prop.is_current || prop.end_date || prop.address || manyHouseholds" class="flex items-center gap-2 min-w-0 mt-0.5">
+              <div v-if="prop.is_current || prop.end_date || prop.address" class="flex items-center gap-2 min-w-0 mt-0.5">
                 <Badge v-if="prop.is_current" variant="positive" class="shrink-0">{{ t('settings.properties.principalBadge') }}</Badge>
                 <Badge v-if="prop.end_date" variant="neutral" class="shrink-0">{{ t('settings.properties.archivedBadge') }}</Badge>
-                <span v-if="manyHouseholds" class="text-xs text-ink-muted truncate shrink-0">{{ prop.household?.name }}</span>
                 <span v-if="prop.address" class="text-xs text-ink-muted truncate">{{ prop.address }}</span>
               </div>
             </div>
@@ -109,8 +108,6 @@
         :loading-label="t('settings.properties.creatingButton')"
         :loading="propertyLoading"
         :error="propertyError"
-        creating
-        :households="adminHouseholds"
         @submit="addProperty"
       />
     </Card>
@@ -149,19 +146,7 @@ const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 const { evictCachedViews } = useViewCache()
 
-const blankProperty = () => ({ name: '', address: '', type: 'owned', residents: 1, is_current: false, household_id: null })
-
-// The households a new home can join: the ones the user administers, the
-// active one first, since moving home within the same family is the usual case.
-const adminHouseholds = computed(() => {
-  const admin = settingsStore.households.filter((h) => h.is_admin)
-  return [...admin].sort((a, b) => (b.id === settingsStore.householdId) - (a.id === settingsStore.householdId))
-})
-const manyHouseholds = computed(() => settingsStore.households.length > 1)
-
-function newPropertyDraft() {
-  return { ...blankProperty(), household_id: adminHouseholds.value[0]?.id ?? null }
-}
+const blankProperty = () => ({ name: '', address: '', type: 'owned', residents: 1, is_current: false })
 
 const allProperties = ref([])
 const showAddPropertyForm = ref(false)
@@ -227,10 +212,7 @@ async function refreshCurrentProperty() {
 
 function toggleAddForm() {
   showAddPropertyForm.value = !showAddPropertyForm.value
-  if (showAddPropertyForm.value) {
-    cancelEdit()
-    newProperty.value = newPropertyDraft()
-  }
+  if (showAddPropertyForm.value) cancelEdit()
 }
 
 async function addProperty() {
@@ -243,8 +225,7 @@ async function addProperty() {
       address: newProperty.value.address.trim(),
       type: newProperty.value.type,
       residents: newProperty.value.residents,
-      is_current: newProperty.value.is_current,
-      household_id: newProperty.value.household_id ?? undefined
+      is_current: newProperty.value.is_current
     })
     newProperty.value = blankProperty()
     showAddPropertyForm.value = false

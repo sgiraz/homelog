@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"net/http"
 	"sort"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
 
 	"github.com/sgiraz/homelog/internal/models"
 	"github.com/sgiraz/homelog/internal/testutil"
@@ -134,9 +135,8 @@ func TestDeleteProperty_SoftDeletedAndSettledRows(t *testing.T) {
 		}
 	}
 
-	rec := doJSON(t, f.router, http.MethodDelete, "/properties/"+itoa(id)+"?new_principal_id="+itoa(f.other.ID), f.ownerTok, nil)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("delete: status %d, body %s", rec.Code, rec.Body.String())
+	if err := db.Transaction(func(tx *gorm.DB) error { return cascadeDeleteProperty(tx, id) }); err != nil {
+		t.Fatalf("delete: %v", err)
 	}
 
 	for _, c := range []struct {

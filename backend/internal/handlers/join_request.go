@@ -66,9 +66,14 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Validate: user is not already a member of this household
-	if isHouseholdMember(h.db, userID, req.HouseholdID) {
-		apierr.Fail(c, http.StatusConflict, "already_household_member", "You are already a member of this household")
+	// Validate: user is not in a household already (an account belongs to one)
+	current, err := userHouseholdID(h.db, userID)
+	if err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch household")
+		return
+	}
+	if current != 0 {
+		apierr.Fail(c, http.StatusConflict, "already_in_household", "You already belong to a household")
 		return
 	}
 
@@ -225,8 +230,20 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 	}
 
 	if req.Status == "approved" {
-		// Check if user is already a member (e.g., added manually while request was pending)
-		if !isHouseholdMember(tx, joinReq.UserID, joinReq.HouseholdID) {
+		// Check if user is already in a household (e.g., added manually while
+		// request was pending): this one is fine, another one is not
+		current, err := userHouseholdID(tx, joinReq.UserID)
+		if err != nil {
+			tx.Rollback()
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch household")
+			return
+		}
+		if current != 0 && current != joinReq.HouseholdID {
+			tx.Rollback()
+			apierr.Fail(c, http.StatusConflict, "requester_in_household", "The requester already belongs to another household")
+			return
+		}
+		if current == 0 {
 			// Fetch the requesting user's name for the household member record
 			var requestingUser models.User
 			if err := tx.First(&requestingUser, joinReq.UserID).Error; err != nil {
@@ -298,12 +315,22 @@ func (h *JoinRequestHandler) ListJoinable(c *gin.Context) {
 		return
 	}
 
-	member := h.db.Model(&models.HouseholdMember{}).Select("household_id").Where("user_id = ?", userID)
+	// Someone in a household has none to join: an account belongs to one.
+	current, err := userHouseholdID(h.db, userID)
+	if err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch households")
+		return
+	}
+	if current != 0 {
+		c.JSON(http.StatusOK, []JoinableHouseholdResponse{})
+		return
+	}
+
 	pending := h.db.Model(&models.HouseholdJoinRequest{}).Select("household_id").
 		Where("user_id = ? AND status = 'pending'", userID)
 
 	var households []models.Household
-	if err := h.db.Where("id NOT IN (?) AND id NOT IN (?)", member, pending).
+	if err := h.db.Where("id NOT IN (?)", pending).
 		Order("name ASC").Find(&households).Error; err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch households")
 		return
