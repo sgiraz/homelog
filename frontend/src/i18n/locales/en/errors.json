@@ -161,5 +161,7 @@
   "invalid_household_id": "Invalid household id",
   "not_household_member": "You are not a member of this household",
   "payer_not_in_household": "The payer is not a member of this household",
-  "split_members_not_in_household": "Some of the selected members do not belong to this household"
+  "split_members_not_in_household": "Some of the selected members do not belong to this household",
+  "primary_home_archived": "The primary home cannot be archived: make another home primary first",
+  "archived_home_not_primary": "An archived home cannot be the primary one: restore it first"
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -392,5 +393,57 @@ func TestCreateProperty_NewHouseholdStartsWithItsPrimaryHome(t *testing.T) {
 	f.db.First(&home, f.home.ID)
 	if !home.IsCurrent {
 		t.Error("a new household must not demote another household's primary home")
+	}
+}
+
+// Archiving keeps a home's history out of everyday use. The primary home is
+// always one in use, so it can neither be archived nor be an archived home.
+func TestUpdateProperty_Archive(t *testing.T) {
+	f := setupPropertyFixture(t)
+	f.memberLeaves(t)
+	sibling := models.Property{HouseholdID: f.home.HouseholdID, UserID: f.owner.ID, Name: "Old flat", Type: "rented", StartDate: time.Now(), Residents: 1}
+	mustCreate(t, f.db, &sibling)
+	put := func(id uint, body map[string]any) *httptest.ResponseRecorder {
+		t.Helper()
+		return doJSON(t, f.router, http.MethodPut, "/properties/"+itoa(id), f.ownerTok, body)
+	}
+
+	if rec := put(f.home.ID, map[string]any{"archived": true}); rec.Code != http.StatusConflict || errorCode(t, rec) != "primary_home_archived" {
+		t.Errorf("archive the primary home: status %d, body %s; want 409 primary_home_archived", rec.Code, rec.Body.String())
+	}
+
+	if rec := put(sibling.ID, map[string]any{"archived": true}); rec.Code != http.StatusOK {
+		t.Fatalf("archive: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	f.db.First(&sibling, sibling.ID)
+	if sibling.EndDate == nil {
+		t.Fatal("an archived home has an end date")
+	}
+
+	// Listed last, after the homes in use.
+	rec := doJSON(t, f.router, http.MethodGet, "/properties", f.ownerTok, nil)
+	var props []models.Property
+	if err := json.Unmarshal(rec.Body.Bytes(), &props); err != nil {
+		t.Fatal(err)
+	}
+	if len(props) != 3 || props[2].ID != sibling.ID {
+		t.Errorf("order = %v, want the archived home last", props)
+	}
+
+	if rec := put(sibling.ID, map[string]any{"is_current": true}); rec.Code != http.StatusConflict || errorCode(t, rec) != "archived_home_not_primary" {
+		t.Errorf("promote an archived home: status %d, body %s; want 409 archived_home_not_primary", rec.Code, rec.Body.String())
+	}
+	if rec := doJSON(t, f.router, http.MethodDelete, "/properties/"+itoa(f.home.ID)+"?new_principal_id="+itoa(sibling.ID), f.ownerTok, nil); rec.Code != http.StatusBadRequest {
+		t.Errorf("archived home as successor: status %d, want 400", rec.Code)
+	}
+
+	// Restored and promoted in one go: allowed.
+	if rec := put(sibling.ID, map[string]any{"archived": false, "is_current": true}); rec.Code != http.StatusOK {
+		t.Fatalf("restore and promote: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var restored models.Property // fresh: GORM does not reset a set pointer on NULL
+	f.db.First(&restored, sibling.ID)
+	if restored.EndDate != nil || !restored.IsCurrent {
+		t.Errorf("restored home: end date %v, primary %v; want none and true", restored.EndDate, restored.IsCurrent)
 	}
 }

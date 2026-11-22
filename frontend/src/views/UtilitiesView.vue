@@ -18,8 +18,9 @@
                  bg-surface text-ink text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
+          <!-- Archived homes come last (API order): their final bills still arrive. -->
           <option v-for="p in properties" :key="p.id" :value="p.id">
-            {{ p.name }}
+            {{ p.end_date ? t('utilities.archivedHome', { name: p.name }) : p.name }}
           </option>
         </select>
 

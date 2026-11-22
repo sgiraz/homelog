@@ -48,7 +48,8 @@ func makePrimaryHome(tx *gorm.DB, home models.Property) error {
 	return tx.Model(&models.Property{}).Where("id = ?", home.ID).Update("is_current", true).Error
 }
 
-// ensurePrimaryHome promotes the household's oldest home when none is primary.
+// ensurePrimaryHome promotes the household's oldest home in use when none is
+// primary.
 func ensurePrimaryHome(tx *gorm.DB, householdID uint) error {
 	var primaries int64
 	if err := tx.Model(&models.Property{}).
@@ -57,7 +58,7 @@ func ensurePrimaryHome(tx *gorm.DB, householdID uint) error {
 		return err
 	}
 	var oldest models.Property
-	if err := tx.Where("household_id = ?", householdID).Order("created_at ASC, id ASC").
+	if err := tx.Where("household_id = ?", householdID).Order("end_date IS NOT NULL, created_at ASC, id ASC").
 		Limit(1).Find(&oldest).Error; err != nil || oldest.ID == 0 {
 		return err
 	}
@@ -82,7 +83,7 @@ func expenseHome(db *gorm.DB, category models.Category, householdID uint, reques
 	if requested != nil {
 		query = query.Where("id = ?", *requested)
 	} else {
-		query = query.Order("is_current DESC, created_at ASC")
+		query = query.Order("is_current DESC, end_date IS NOT NULL, created_at ASC")
 	}
 	if err := query.Limit(1).Find(&home).Error; err != nil {
 		return nil, err

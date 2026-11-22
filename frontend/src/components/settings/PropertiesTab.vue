@@ -32,7 +32,7 @@
             :loading-label="t('settings.properties.savingButton')"
             :loading="editLoading"
             :error="editError"
-            :principal-locked="prop.is_current"
+            :principal-locked="prop.is_current || !!prop.end_date"
             cancellable
             @submit="saveEdit(prop)"
             @cancel="cancelEdit"
@@ -45,13 +45,32 @@
             <div class="flex-1 min-w-0">
               <div class="font-medium text-ink truncate">{{ prop.name }}</div>
               <!-- Badge on the second line: beside the name it starves it on a phone. -->
-              <div v-if="prop.is_current || prop.address || manyHouseholds" class="flex items-center gap-2 min-w-0 mt-0.5">
+              <div v-if="prop.is_current || prop.end_date || prop.address || manyHouseholds" class="flex items-center gap-2 min-w-0 mt-0.5">
                 <Badge v-if="prop.is_current" variant="positive" class="shrink-0">{{ t('settings.properties.principalBadge') }}</Badge>
+                <Badge v-if="prop.end_date" variant="neutral" class="shrink-0">{{ t('settings.properties.archivedBadge') }}</Badge>
                 <span v-if="manyHouseholds" class="text-xs text-ink-muted truncate shrink-0">{{ prop.household?.name }}</span>
                 <span v-if="prop.address" class="text-xs text-ink-muted truncate">{{ prop.address }}</span>
               </div>
             </div>
             <div v-if="isOwner(prop)" class="flex items-center">
+              <!-- Archive: the family moved out, the history stays. The primary
+                   home is always one in use, so it has no archive action. -->
+              <button
+                v-if="!prop.is_current"
+                type="button"
+                class="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors disabled:opacity-50"
+                :aria-label="t(prop.end_date ? 'settings.properties.restoreAria' : 'settings.properties.archiveAria', { name: prop.name })"
+                :title="t(prop.end_date ? 'settings.properties.restore' : 'settings.properties.archive')"
+                :disabled="archivingId === prop.id"
+                @click="toggleArchived(prop)"
+              >
+                <svg v-if="!prop.end_date" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
               <button
                 type="button"
                 class="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors"
@@ -157,13 +176,32 @@ const editError = ref(null)
 const deletingId = ref(null)
 const principalToDelete = ref(null)
 
-// The primary home's successor comes from the same household.
+// The primary home's successor comes from the same household, among the
+// homes still in use.
 function householdSiblings(prop) {
   return allProperties.value.filter((p) => p.household_id === prop.household_id && p.id !== prop.id)
 }
 const successorCandidates = computed(() =>
-  principalToDelete.value ? householdSiblings(principalToDelete.value) : []
+  principalToDelete.value ? householdSiblings(principalToDelete.value).filter((p) => !p.end_date) : []
 )
+
+const archivingId = ref(null)
+
+async function toggleArchived(prop) {
+  const archive = !prop.end_date
+  archivingId.value = prop.id
+  try {
+    await propertiesAPI.update(prop.id, { archived: archive })
+    window.$toast?.success(t(archive ? 'settings.properties.archiveSuccess' : 'settings.properties.restoreSuccess', { name: prop.name }))
+    await fetchAllProperties()
+    // Archived homes leave the expense form: views must load the list again.
+    evictCachedViews(['SettingsView'])
+  } catch (err) {
+    window.$toast?.error(apiErrorMessage(err, t('settings.properties.updateError')))
+  } finally {
+    archivingId.value = null
+  }
+}
 
 // Only the creator may edit or delete a home (the API filters on user_id);
 // members see it read-only.
@@ -271,6 +309,12 @@ async function deleteProperty(prop) {
   }
   const siblings = householdSiblings(prop)
   if (prop.is_current && siblings.length > 0) {
+    // Its place goes to a home in use: with only archived ones left, one has
+    // to be restored first.
+    if (!siblings.some((p) => !p.end_date)) {
+      window.$toast?.info(t('settings.properties.deleteNeedsActiveHome'))
+      return
+    }
     principalToDelete.value = prop
     return
   }

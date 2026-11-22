@@ -487,7 +487,8 @@ async function fetchHouseholdHomes() {
   form.value.property_id = settingsStore.householdPropertyId
   try {
     const { data } = await apiClient.get('/properties')
-    householdHomes.value = (data || []).filter(p => p.household_id === currentHouseholdId.value)
+    // An archived home is history: new expenses go to the homes in use.
+    householdHomes.value = (data || []).filter(p => p.household_id === currentHouseholdId.value && !p.end_date)
   } catch (err) {
     console.error('Error fetching properties:', err)
   }

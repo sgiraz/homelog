@@ -646,5 +646,6 @@
       "message": "Sei sicuro di voler eliminare questa lettura?",
       "action": "Elimina"
     }
-  }
+  },
+  "archivedHome": "{name} (archiviata)"
 }

@@ -161,5 +161,7 @@
   "invalid_household_id": "ID nucleo familiare non valido",
   "not_household_member": "Non fai parte di questo nucleo familiare",
   "payer_not_in_household": "Chi ha pagato non fa parte di questo nucleo familiare",
-  "split_members_not_in_household": "Alcuni dei membri selezionati non fanno parte di questo nucleo familiare"
+  "split_members_not_in_household": "Alcuni dei membri selezionati non fanno parte di questo nucleo familiare",
+  "primary_home_archived": "La casa principale non si può archiviare: prima rendi principale un'altra casa",
+  "archived_home_not_primary": "Una casa archiviata non può essere la principale: prima ripristinala"
 }

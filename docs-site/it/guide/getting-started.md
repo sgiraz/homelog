@@ -28,20 +28,33 @@ Quando sei pronto a usarlo sul serio, segui la guida al
 
 | Concetto | Cos'è |
 | --- | --- |
-| **Proprietà** | Una casa/nucleo familiare. Spese, utenze e membri appartengono a una proprietà. |
-| **Membro** | Una persona che condivide le spese. I saldi sono tracciati per membro. |
+| **Nucleo familiare** | Le persone che condividono le spese: membri, saldo e rimborsi appartengono al nucleo. Quasi tutti ne hanno uno. |
+| **Proprietà** | Una casa di un nucleo, con le sue utenze e bollette. Un nucleo può averne più d'una. |
+| **Membro** | Una persona del nucleo. I saldi sono tracciati tra i membri. |
 | **Spesa** | Un costo, eventualmente diviso tra i membri e saldato nel tempo. |
 | **Utenza** | Un servizio (luce, gas, acqua…) con letture e bollette. |
 | **Bolletta** | Una fattura del fornitore, eventualmente collegata a una lettura del contatore. |
 | **Progetto** | Un budget per un'attività una tantum — una ristrutturazione, un viaggio, un evento. |
 
 Le abitazioni si gestiscono in **Impostazioni → Proprietà**, dove chi le ha
-create può aggiungerle, modificarle o eliminarle. Eliminare un'abitazione
-elimina anche tutto ciò che le appartiene: utenze, bollette, letture, spese,
-progetti e membri. Un'abitazione condivisa con altri account non si può
-eliminare, perché contiene anche la loro storia. Se era la principale, scegli
-tu quale abitazione prende il suo posto; l'unica abitazione non si può
-eliminare.
+create può aggiungerle, modificarle, archiviarle o eliminarle. Una nuova
+abitazione entra in uno dei tuoi nuclei (se cambi casa con le stesse persone)
+o ne crea uno nuovo (una casa condivisa con altre persone). Ogni nucleo ha
+un'abitazione principale, quella proposta per le sue spese Casa.
+
+Quando traslochi, **archivia** l'abitazione invece di eliminarla: lo storico
+resta, le sue utenze ricevono ancora le ultime bollette e non compare più
+quando aggiungi una spesa. La principale non si può archiviare: prima rendi
+principale un'altra abitazione.
+
+Eliminare un'abitazione elimina anche le sue utenze, bollette, letture,
+progetti e spese Casa; eliminare l'ultima abitazione di un nucleo elimina anche
+il nucleo, con le sue spese e i suoi membri. Un'abitazione condivisa con altri
+account non si può eliminare, perché contiene anche la loro storia. L'unica
+abitazione non si può eliminare.
+
+Se fai parte di più nuclei, passi dall'uno all'altro dal menu sotto il tuo
+avatar.
 
 ## Dove andare ora
 

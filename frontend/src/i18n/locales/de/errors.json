@@ -161,5 +161,7 @@
 "invalid_household_id": "Ungültige Haushalts-ID",
 "not_household_member": "Sie sind kein Mitglied dieses Haushalts",
 "payer_not_in_household": "Der Zahler ist kein Mitglied dieses Haushalts",
-"split_members_not_in_household": "Einige der ausgewählten Mitglieder gehören nicht zu diesem Haushalt"
+"split_members_not_in_household": "Einige der ausgewählten Mitglieder gehören nicht zu diesem Haushalt",
+"primary_home_archived": "Das Hauptzuhause kann nicht archiviert werden: Mache zuerst ein anderes Zuhause zum Hauptzuhause",
+"archived_home_not_primary": "Ein archiviertes Zuhause kann nicht das Hauptzuhause sein: Stelle es zuerst wieder her"
 }

@@ -42,6 +42,9 @@ type UpdatePropertyRequest struct {
 	Type      *string `json:"type" binding:"omitempty,oneof=owned rented"`
 	IsCurrent *bool   `json:"is_current"`
 	Residents *int    `json:"residents" binding:"omitempty,min=1"`
+	// Archived moves a home out of everyday use (the family moved out) while
+	// keeping its history; false brings it back.
+	Archived *bool `json:"archived"`
 }
 
 // List - GET /api/v1/properties
@@ -60,7 +63,7 @@ func (h *PropertyHandler) List(c *gin.Context) {
 	}
 	var properties []models.Property
 	if err := h.db.Preload("Household").Where("id IN ?", visible).
-		Order("is_current DESC, created_at DESC").
+		Order("end_date IS NOT NULL, is_current DESC, created_at DESC").
 		Find(&properties).Error; err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch properties")
 		return
@@ -236,6 +239,28 @@ func (h *PropertyHandler) Update(c *gin.Context) {
 	// the title here, false is a no-op (promote another home instead).
 	promote := req.IsCurrent != nil && *req.IsCurrent && !property.IsCurrent
 
+	// A household's primary home is always one in use: archiving it would
+	// leave new Home expenses pointing at a home the family left.
+	archived := property.EndDate != nil
+	if req.Archived != nil {
+		archived = *req.Archived
+	}
+	if archived && promote {
+		apierr.Fail(c, http.StatusConflict, "archived_home_not_primary", "An archived home cannot become the primary home")
+		return
+	}
+	if archived && property.IsCurrent {
+		apierr.Fail(c, http.StatusConflict, "primary_home_archived", "The primary home cannot be archived")
+		return
+	}
+	if req.Archived != nil && *req.Archived != (property.EndDate != nil) {
+		if *req.Archived {
+			updates["end_date"] = time.Now()
+		} else {
+			updates["end_date"] = gorm.Expr("NULL")
+		}
+	}
+
 	if len(updates) > 0 || promote {
 		err := h.db.Transaction(func(tx *gorm.DB) error {
 			if len(updates) > 0 {
@@ -327,13 +352,13 @@ func (h *PropertyHandler) Delete(c *gin.Context) {
 		}
 		nextID, err := strconv.ParseUint(raw, 10, 32)
 		if err != nil || uint(nextID) == property.ID {
-			apierr.Fail(c, http.StatusBadRequest, "new_principal_invalid", "new_principal_id must be another home of the same household")
+			apierr.Fail(c, http.StatusBadRequest, "new_principal_invalid", "new_principal_id must be another home of the same household, not archived")
 			return
 		}
 		var next models.Property
-		if err := h.db.Where("id = ? AND household_id = ?", nextID, property.HouseholdID).First(&next).Error; err != nil {
+		if err := h.db.Where("id = ? AND household_id = ? AND end_date IS NULL", nextID, property.HouseholdID).First(&next).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
-				apierr.Fail(c, http.StatusBadRequest, "new_principal_invalid", "new_principal_id must be another home of the same household")
+				apierr.Fail(c, http.StatusBadRequest, "new_principal_invalid", "new_principal_id must be another home of the same household, not archived")
 			} else {
 				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch property")
 			}
