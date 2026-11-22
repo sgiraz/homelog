@@ -19,7 +19,8 @@ import (
 //	2 — add Italian synonyms for Utility.Type; fix Project backfill
 //	3 — add user_id column to scope property_id=0 rows to their creator
 //	4 — force DROP+recreate to fix installs where v3 ran before the migration fix
-const searchIndexVersion = 4
+//	5 — add household_id column: expenses belong to a household, not always a home
+const searchIndexVersion = 5
 
 // createSearchIndexTable issues the CREATE VIRTUAL TABLE statement. It is
 // called both on fresh installs (IF NOT EXISTS) and after a DROP during
@@ -34,6 +35,7 @@ func createSearchIndexTable(db *gorm.DB, ifNotExists bool) error {
 			entity_type UNINDEXED,
 			entity_id UNINDEXED,
 			property_id UNINDEXED,
+			household_id UNINDEXED,
 			user_id UNINDEXED,
 			title,
 			body,
@@ -44,8 +46,8 @@ func createSearchIndexTable(db *gorm.DB, ifNotExists bool) error {
 
 // initSearchIndex provisions the unified FTS5 table used by global search.
 // One virtual table, four indexable entity types (expense, bill, project,
-// utility). property_id and user_id let the handler scope results to the
-// current user without touching tokenised columns.
+// utility). property_id, household_id and user_id let the handler scope
+// results to the current user without touching tokenised columns.
 //
 // Schema changes (new UNINDEXED columns, changed tokenizer) require a DROP +
 // recreate because SQLite FTS5 virtual tables do not support ALTER TABLE ADD

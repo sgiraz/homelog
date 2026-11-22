@@ -77,8 +77,19 @@ docker compose up -d
 
 `./upgrade` converts the database and exits. It moves each bill template to the
 property it serves, turns a bill's estimate into its closing reading, and drops
-the old per-service default template. Then the new version starts and migrates
-the rest. Running it twice is harmless: the second run finds nothing to do.
+the old per-service default template. It also separates households from
+homes: an account belongs to one household, which owns one or more homes.
+Homes lived in by exactly the same people with an account become one
+household: members are matched by account, and members without an account by
+name, and the balance between two people becomes the sum of their balances.
+Then the new version starts and migrates the rest. Running it twice is
+harmless: the second run finds nothing to do.
+
+`./upgrade` stops, changing nothing of this step, when it can't decide by
+itself: an account sharing two homes with different people, or a member name
+that matches more than one member. The message names them: on the version you
+run now, leave each account in one of those homes only, or rename the member,
+then run it again.
 
 On an instance older than 2026.09.11, update to 2026.09.11 first
 (`HOMELOG_TAG=2026.09.11`), start it once, then follow the steps above.

@@ -30,11 +30,11 @@ func setupUtilityFixture(t *testing.T) *utilityFixture {
 	if err := db.Create(&user).Error; err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	prop := models.Property{UserID: user.ID, Name: "Casa", IsCurrent: true}
+	prop := models.Property{Household: &models.Household{Name: "Casa"}, UserID: user.ID, Name: "Casa", IsCurrent: true}
 	if err := db.Create(&prop).Error; err != nil {
 		t.Fatalf("create property: %v", err)
 	}
-	member := models.HouseholdMember{PropertyID: prop.ID, UserID: &user.ID, Name: user.Name, Role: "admin"}
+	member := models.HouseholdMember{HouseholdID: prop.HouseholdID, UserID: &user.ID, Name: user.Name, Role: "admin"}
 	if err := db.Create(&member).Error; err != nil {
 		t.Fatalf("create member: %v", err)
 	}

@@ -78,9 +78,19 @@ docker compose up -d
 
 `./upgrade` converte il database ed esce. Assegna ogni template alla casa che
 serve, trasforma la stima di una bolletta nella sua lettura di chiusura e toglie
-il vecchio template predefinito per servizio. Poi la nuova versione si avvia e
-migra il resto. Lanciarlo due volte non fa danni: la seconda volta non trova
-niente da fare.
+il vecchio template predefinito per servizio. Separa anche i nuclei familiari
+dalle case: un account fa parte di un solo nucleo, che possiede una o più case.
+Le case abitate esattamente dalle stesse persone con un account diventano un
+solo nucleo: i membri si abbinano per account, quelli senza account per nome,
+e il saldo tra due persone diventa la somma dei loro saldi. Poi la nuova
+versione si avvia e migra il resto. Lanciarlo due volte non fa danni: la
+seconda volta non trova niente da fare.
+
+`./upgrade` si ferma, senza cambiare nulla di questo passaggio, quando non può
+decidere da solo: un account che condivide due case con persone diverse, o un
+nome che corrisponde a più membri. Il messaggio li indica: sulla versione che
+usi ora lascia ogni account in una sola di quelle case, o rinomina il membro,
+poi lancialo di nuovo.
 
 Se la tua istanza è più vecchia della 2026.09.11, aggiorna prima alla 2026.09.11
 (`HOMELOG_TAG=2026.09.11`), avviala una volta, poi segui i passi qui sopra.

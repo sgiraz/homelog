@@ -214,7 +214,7 @@ const splitMode = computed({
   get: () => settingsStore.splitMode,
   set: (val) => { settingsStore.splitMode = val }
 })
-const currentPropertyId = computed(() => settingsStore.householdPropertyId)
+const currentHouseholdId = computed(() => settingsStore.householdId)
 const householdMembers = ref([])
 const defaultSplitMemberIds = ref([])
 const currentUserMemberId = ref(null)
@@ -241,10 +241,10 @@ async function fetchCurrentProperty() {
 }
 
 async function fetchHouseholdMembers() {
-  if (!currentPropertyId.value) return
+  if (!currentHouseholdId.value) return
 
   try {
-    const { data } = await apiClient.get(`/properties/${currentPropertyId.value}/members`)
+    const { data } = await apiClient.get(`/households/${currentHouseholdId.value}/members`)
     const userId = authStore.user?.id
     householdMembers.value = data.filter(m => m.user_id !== userId)
 
@@ -306,10 +306,10 @@ function emitUpdateUserSettings() {
 }
 
 async function addMember() {
-  if (!newMemberName.value.trim() || !currentPropertyId.value) return
+  if (!newMemberName.value.trim() || !currentHouseholdId.value) return
 
   try {
-    await apiClient.post(`/properties/${currentPropertyId.value}/members`, {
+    await apiClient.post(`/households/${currentHouseholdId.value}/members`, {
       name: newMemberName.value.trim(),
       role: ''
     })

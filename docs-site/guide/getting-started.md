@@ -27,19 +27,29 @@ guide to deploy your own private instance.
 
 | Concept | What it is |
 | --- | --- |
-| **Property** | A home/household. Expenses, utilities and members belong to a property. |
-| **Member** | A person who shares expenses. Balances are tracked per member. |
+| **Household** | The people who share expenses: members, balance and settlements belong to it. Most people have one. |
+| **Property** | A home of a household, with its utilities and bills. A household can have several. |
+| **Member** | A person of a household. Balances are tracked between members. |
 | **Expense** | A cost, optionally split between members and settled over time. |
 | **Utility** | A service (electricity, gas, water…) with readings and bills. |
 | **Bill** | A provider invoice, optionally linked to a meter reading. |
 | **Project** | A budget for a one-off effort — a renovation, a trip, an event. |
 
 Homes are managed in **Settings → Properties**, where their owner can add,
-edit or delete them. Deleting a home also deletes everything that belongs to it:
-utilities, bills, readings, expenses, projects and members. A home shared with
-other accounts can't be deleted, since it holds their history too. If it was
-your primary home, you choose which home takes its place; your only home can't
-be deleted.
+edit, archive or delete them. An account belongs to one household, and a new
+home joins it: only the household's admins add homes. Each household has one
+primary home, the default for its Home expenses.
+
+When you move out, **archive** the home instead of deleting it: its history
+stays, its services still take the last bills, and it no longer shows up when
+you add an expense. The primary home can't be archived: make another home
+primary first. An archived home can be restored at any time.
+
+A home with Home expenses can only be archived while its household has other
+homes: those expenses are part of the household's balance. Deleting a home
+without expenses also deletes its utilities, bills, readings and projects. A
+home shared with other accounts can't be deleted, since it holds their history
+too. Your only home can't be deleted.
 
 ## Where to next
 

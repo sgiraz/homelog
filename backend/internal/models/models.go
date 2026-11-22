@@ -30,6 +30,18 @@ type User struct {
 	TokenVersion int `gorm:"not null;default:0" json:"-"`
 }
 
+// Household is the group of people who share expenses: its members split
+// costs, keep one balance and settle debts with each other. It owns one or
+// more homes (Property), which hold the utilities, bills and readings.
+type Household struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	Name string `gorm:"not null" json:"name"`
+}
+
 // HouseholdMember represents a member of a household (can be a registered user or virtual)
 type HouseholdMember struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
@@ -37,23 +49,26 @@ type HouseholdMember struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	PropertyID uint   `gorm:"not null;index" json:"property_id"`
-	UserID     *uint  `gorm:"index" json:"user_id,omitempty"` // NULL if virtual member
-	Name       string `gorm:"not null" json:"name"`
-	Role       string `json:"role,omitempty"` // partner, figlio, coinquilino, etc.
-	IsVirtual  bool   `gorm:"not null;default:false" json:"is_virtual"`
+	HouseholdID uint   `gorm:"not null;index" json:"household_id"`
+	UserID      *uint  `gorm:"index:idx_household_members_account,unique,where:user_id IS NOT NULL AND deleted_at IS NULL" json:"user_id,omitempty"` // NULL if virtual member; an account is in one household at most
+	Name        string `gorm:"not null" json:"name"`
+	Role        string `json:"role,omitempty"` // admin, partner, child, roommate…
+	IsVirtual   bool   `gorm:"not null;default:false" json:"is_virtual"`
 
 	// Relations
-	Property Property `json:"property,omitempty"`
-	User     *User    `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Household *Household `json:"-"`
+	User      *User      `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }
 
-// Property represents a house/apartment
+// Property represents a home: a house or apartment of a household.
 type Property struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	HouseholdID uint       `gorm:"not null;index" json:"household_id"`
+	Household   *Household `json:"household,omitempty"`
 
 	UserID    uint       `gorm:"not null;index" json:"user_id"`
 	Name      string     `gorm:"not null" json:"name"`
@@ -67,6 +82,9 @@ type Property struct {
 	// Computed: another account besides the owner is a member, so the home
 	// cannot be deleted.
 	IsShared bool `gorm:"-" json:"is_shared"`
+	// Computed: it holds Home expenses, part of the household's ledger, so
+	// while the household has other homes it can be archived, not deleted.
+	HasExpenses bool `gorm:"-" json:"has_expenses"`
 
 	Owner *User `gorm:"foreignKey:UserID" json:"-"`
 }
@@ -112,7 +130,10 @@ type Expense struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID            uint  `gorm:"not null;index" json:"user_id"`
+	UserID      uint `gorm:"not null;index" json:"user_id"`
+	HouseholdID uint `gorm:"not null;index" json:"household_id"`
+	// PropertyID is the home an expense of the Home category belongs to; every
+	// other expense has none.
 	PropertyID        *uint `gorm:"index" json:"property_id,omitempty"`
 	CategoryID        uint  `gorm:"not null;index" json:"category_id"`
 	SubcategoryID     *uint `gorm:"index" json:"subcategory_id,omitempty"`
@@ -140,6 +161,7 @@ type Expense struct {
 	IsLongTermDebt bool `gorm:"not null;default:false;index" json:"is_long_term_debt"`
 
 	// Relations
+	Household       *Household       `json:"-"`
 	Property        *Property        `json:"property,omitempty"`
 	Category        Category         `json:"category"`
 	Subcategory     *Subcategory     `json:"subcategory,omitempty"`
@@ -600,6 +622,31 @@ type ProjectMember struct {
 	User      User   `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }
 
+// DefaultColorTheme is the palette a new account starts with.
+const DefaultColorTheme = "slate"
+
+// NewUserSettings returns the settings a new account starts with. Every row is
+// created through it: hand-written literals drifted apart and left new
+// accounts with notifications the defaults promised were on.
+func NewUserSettings(userID uint, language string) UserSettings {
+	return UserSettings{
+		UserID:                    userID,
+		Language:                  NormalizeLanguage(language),
+		Currency:                  DefaultCurrency,
+		Theme:                     "auto",
+		ColorTheme:                DefaultColorTheme,
+		DateFormat:                "DD/MM/YYYY",
+		EmailNotifications:        true,
+		InAppNotifications:        true,
+		BillDueAlertDays:          3,
+		ReadingReminderDays:       7,
+		NotificationRetentionDays: 90,
+		NotifyJoinRequests:        true,
+		NotifySharedExpenses:      true,
+		AnomalyThreshold:          5.0,
+	}
+}
+
 // UserSettings represents user preferences
 type UserSettings struct {
 	ID        uint      `gorm:"primarykey" json:"id"`
@@ -637,37 +684,37 @@ type UserSettings struct {
 	OnboardingCompleted bool `gorm:"not null;default:false" json:"onboarding_completed"`
 }
 
-// PropertyJoinRequest represents a user's request to join an existing property.
-// Status: pending → approved/rejected by a property admin.
-type PropertyJoinRequest struct {
+// HouseholdJoinRequest represents a user's request to join an existing household.
+// Status: pending → approved/rejected by a household admin.
+type HouseholdJoinRequest struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID     uint       `gorm:"not null;index" json:"user_id"`
-	PropertyID uint       `gorm:"not null;index" json:"property_id"`
-	Status     string     `gorm:"not null;default:'pending'" json:"status"` // pending, approved, rejected
-	ResolvedBy *uint      `json:"resolved_by,omitempty"`
-	ResolvedAt *time.Time `json:"resolved_at,omitempty"`
+	UserID      uint       `gorm:"not null;index" json:"user_id"`
+	HouseholdID uint       `gorm:"not null;index" json:"household_id"`
+	Status      string     `gorm:"not null;default:'pending'" json:"status"` // pending, approved, rejected
+	ResolvedBy  *uint      `json:"resolved_by,omitempty"`
+	ResolvedAt  *time.Time `json:"resolved_at,omitempty"`
 
 	// Relations
-	User     User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Property Property `gorm:"foreignKey:PropertyID" json:"property,omitempty"`
+	User      User       `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Household *Household `json:"household,omitempty"`
 }
 
-// HouseholdSettings represents split settings for a property
+// HouseholdSettings represents split settings for a household
 type HouseholdSettings struct {
 	ID        uint      `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	PropertyID       uint   `gorm:"uniqueIndex;not null" json:"property_id"`
+	HouseholdID      uint   `gorm:"uniqueIndex;not null" json:"household_id"`
 	SplitMode        bool   `gorm:"not null;default:false" json:"split_mode"`
 	DefaultSplitType string `gorm:"not null;default:'equal'" json:"default_split_type"` // equal, custom, income_based
 
 	// Relations
-	Property Property `json:"property"`
+	Household *Household `json:"-"`
 }
 
 // ExpenseSplit represents a member's share of an expense.
@@ -702,7 +749,7 @@ type Settlement struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	PropertyID    uint      `gorm:"not null;index" json:"property_id"`
+	HouseholdID   uint      `gorm:"not null;index" json:"household_id"`
 	FromMemberID  uint      `gorm:"not null;index" json:"from_member_id"` // HouseholdMember ID
 	ToMemberID    uint      `gorm:"not null;index" json:"to_member_id"`   // HouseholdMember ID
 	Amount        float64   `gorm:"not null" json:"amount"`
@@ -717,7 +764,7 @@ type Settlement struct {
 	TargetExpense   *Expense `gorm:"foreignKey:TargetExpenseID;constraint:OnDelete:SET NULL" json:"target_expense,omitempty"`
 
 	// Relations
-	Property    Property               `json:"property"`
+	Household   *Household             `json:"-"`
 	FromMember  HouseholdMember        `gorm:"foreignKey:FromMemberID" json:"from_member"`
 	ToMember    HouseholdMember        `gorm:"foreignKey:ToMemberID" json:"to_member"`
 	Allocations []SettlementAllocation `gorm:"foreignKey:SettlementID;constraint:OnDelete:CASCADE" json:"allocations,omitempty"`

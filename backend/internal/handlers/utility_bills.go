@@ -52,10 +52,7 @@ func (h *UtilityHandler) AddBill(c *gin.Context) {
 	}
 
 	// Verify access to utility
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
@@ -396,10 +393,7 @@ func (h *UtilityHandler) GetBills(c *gin.Context) {
 	}
 
 	// Verify access to utility
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
@@ -437,10 +431,7 @@ func (h *UtilityHandler) UpdateBill(c *gin.Context) {
 	}
 
 	// Get property IDs where user is a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	// Find the bill and verify access through utility
 	var bill models.Bill
@@ -538,10 +529,7 @@ func (h *UtilityHandler) DeleteBill(c *gin.Context) {
 	}
 
 	// Get property IDs where user is a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	// Find the bill and verify access through utility
 	var bill models.Bill
@@ -602,10 +590,7 @@ func (h *UtilityHandler) UpdateBillInstallment(c *gin.Context) {
 		return
 	}
 
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var bill models.Bill
 	if err := h.db.Preload("Utility").First(&bill, billID).Error; err != nil {
@@ -686,10 +671,7 @@ func (h *UtilityHandler) UpdateBillFull(c *gin.Context) {
 	}
 
 	// Get property IDs where user is a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	// Find the bill and verify access through utility
 	var bill models.Bill

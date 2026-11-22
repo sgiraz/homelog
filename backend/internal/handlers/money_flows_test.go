@@ -67,7 +67,7 @@ func wireMoneyRoutes(db *gorm.DB) *gin.Engine {
 	p.PUT("/expenses/:id", exp.Update)
 	p.DELETE("/expenses/:id", exp.Delete)
 	p.PATCH("/expenses/:id/long-term-debt", debt.SetLongTermDebt)
-	p.GET("/properties/:id/debts", debt.List)
+	p.GET("/households/:id/debts", debt.List)
 	p.POST("/settlements", settle.Create)
 	p.POST("/settlements/compensate", settle.Compensate)
 	p.DELETE("/settlements/:id", settle.Delete)
@@ -106,15 +106,15 @@ func setupMoneyFixture(t *testing.T) *moneyFixture {
 	bob := &models.User{Email: "bob@example.com", PasswordHash: "x", Name: "Bob", Role: "user", IsActive: true}
 	mustCreate(t, db, alice, bob)
 
-	prop := models.Property{UserID: alice.ID, Name: "Casa", Type: "owned", StartDate: now, IsCurrent: true, Residents: 2}
+	prop := models.Property{Household: &models.Household{Name: "Casa"}, UserID: alice.ID, Name: "Casa", Type: "owned", StartDate: now, IsCurrent: true, Residents: 2}
 	mustCreate(t, db, &prop)
 
-	mAlice := models.HouseholdMember{PropertyID: prop.ID, UserID: &alice.ID, Name: "Alice", Role: "admin"}
-	mBob := models.HouseholdMember{PropertyID: prop.ID, UserID: &bob.ID, Name: "Bob", Role: "member"}
-	mCarol := models.HouseholdMember{PropertyID: prop.ID, Name: "Carol", Role: "member", IsVirtual: true}
+	mAlice := models.HouseholdMember{HouseholdID: prop.HouseholdID, UserID: &alice.ID, Name: "Alice", Role: "admin"}
+	mBob := models.HouseholdMember{HouseholdID: prop.HouseholdID, UserID: &bob.ID, Name: "Bob", Role: "member"}
+	mCarol := models.HouseholdMember{HouseholdID: prop.HouseholdID, Name: "Carol", Role: "member", IsVirtual: true}
 	mustCreate(t, db, &mAlice, &mBob, &mCarol)
 
-	mustCreate(t, db, &models.HouseholdSettings{PropertyID: prop.ID, SplitMode: true})
+	mustCreate(t, db, &models.HouseholdSettings{HouseholdID: prop.HouseholdID, SplitMode: true})
 
 	homeCat := models.Category{Slug: database.SlugHome, Name: "Casa", IsDefault: true}
 	mustCreate(t, db, &homeCat)
@@ -257,7 +257,7 @@ func TestSplitEditAmount_BlockedWhenNonPayerSplitSettled(t *testing.T) {
 
 	// Settle bob's share only (carol stays pending → expense not fully settled).
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id":    f.prop.ID,
+		"household_id":   f.prop.HouseholdID,
 		"from_member_id": f.mBob.ID,
 		"to_member_id":   f.mAlice.ID,
 		"amount":         40.0,
@@ -292,7 +292,7 @@ func TestSettlement_SettlesOnlyOwedSharesAndNeverPayerSelfSplit(t *testing.T) {
 	idAC := f.createSplitExpense(t, 80, []uint{f.mCarol.ID})
 
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id":    f.prop.ID,
+		"household_id":   f.prop.HouseholdID,
 		"from_member_id": f.mBob.ID,
 		"to_member_id":   f.mAlice.ID,
 		"amount":         50.0,
@@ -334,7 +334,7 @@ func TestSettlement_PartialPayment_LeavesSplitUnsettledWithReducedBalance(t *tes
 	id := f.createSplitExpense(t, 100000, []uint{f.mBob.ID}) // bob owes 50000
 
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id":    f.prop.ID,
+		"household_id":   f.prop.HouseholdID,
 		"from_member_id": f.mBob.ID,
 		"to_member_id":   f.mAlice.ID,
 		"amount":         500.0,
@@ -373,7 +373,7 @@ func TestSettlement_MultiplePartialPayments_ApplyFIFOAcrossOldestSplitFirst(t *t
 
 	// First partial payment eats into the big (older) split.
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 500.0, "date": "2026-05-03",
 	})
 	if rec.Code != http.StatusCreated {
@@ -383,7 +383,7 @@ func TestSettlement_MultiplePartialPayments_ApplyFIFOAcrossOldestSplitFirst(t *t
 	smallID := f.createSplitExpense(t, 40, []uint{f.mBob.ID}) // newer, bob owes 20
 
 	rec = doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 200.0, "date": "2026-05-04",
 	})
 	if rec.Code != http.StatusCreated {
@@ -403,14 +403,14 @@ func TestSettlement_Delete_ReversesOnlyItsOwnAllocation(t *testing.T) {
 	id := f.createSplitExpense(t, 100000, []uint{f.mBob.ID}) // bob owes 50000
 
 	rec1 := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 500.0, "date": "2026-05-03",
 	})
 	if rec1.Code != http.StatusCreated {
 		t.Fatalf("first settlement: status %d, body %s", rec1.Code, rec1.Body.String())
 	}
 	rec2 := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 200.0, "date": "2026-05-04",
 	})
 	if rec2.Code != http.StatusCreated {
@@ -446,7 +446,7 @@ func TestSettlement_Delete_KeepsSplitLinkedToSurvivingSettlement(t *testing.T) {
 	id := f.createSplitExpense(t, 1000, []uint{f.mBob.ID}) // bob owes 500
 
 	first := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 300.0, "date": "2026-05-03",
 	})
 	if first.Code != http.StatusCreated {
@@ -458,7 +458,7 @@ func TestSettlement_Delete_KeepsSplitLinkedToSurvivingSettlement(t *testing.T) {
 	}
 
 	second := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 200.0, "date": "2026-05-04",
 	})
 	if second.Code != http.StatusCreated {
@@ -498,7 +498,7 @@ func TestDebts_InvalidOtherMemberID_Returns400(t *testing.T) {
 		"otherProperty": "?other_member_id=99999",
 	} {
 		t.Run(name, func(t *testing.T) {
-			got := doGET(t, f.router, "/properties/"+itoa(f.prop.ID)+"/debts"+query, f.bobTok)
+			got := doGET(t, f.router, "/households/"+itoa(f.prop.HouseholdID)+"/debts"+query, f.bobTok)
 			if got.Code != http.StatusBadRequest {
 				t.Errorf("status = %d, want 400 — a bad other_member_id must not pass as an empty ledger (body %s)", got.Code, got.Body.String())
 			}
@@ -511,7 +511,7 @@ func TestSettlement_AmountExceedingOutstanding_Returns400(t *testing.T) {
 	f.createSplitExpense(t, 100000, []uint{f.mBob.ID}) // bob owes 50000
 
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 60000.0, "date": "2026-05-03",
 	})
 	if rec.Code != http.StatusBadRequest {
@@ -539,7 +539,7 @@ func TestSettlement_NetPayment_ClearsBothDirections(t *testing.T) {
 
 	// Bob pays exactly the net balance — nothing may be left owed either way.
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 70.0, "date": "2026-05-03",
 	})
 	if rec.Code != http.StatusCreated {
@@ -564,7 +564,7 @@ func TestSettlement_PartialPayment_NetsCounterSharesInFull(t *testing.T) {
 	creditID := f.createSplitExpenseBy(t, f.bobTok, f.mBob.ID, 60, []uint{f.mAlice.ID}) // alice owes bob 30
 
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 20.0, "date": "2026-05-03",
 	})
 	if rec.Code != http.StatusCreated {
@@ -597,7 +597,7 @@ func TestSettlement_AmountAboveNetButBelowGross_Returns400(t *testing.T) {
 	f.createSplitExpenseBy(t, f.bobTok, f.mBob.ID, 60, []uint{f.mAlice.ID}) // alice owes bob 30
 
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 100.0, "date": "2026-05-03",
 	})
 	if rec.Code != http.StatusBadRequest {
@@ -613,7 +613,7 @@ func TestSettlement_Delete_ReversesNettedCounterShares(t *testing.T) {
 	creditID := f.createSplitExpenseBy(t, f.bobTok, f.mBob.ID, 60, []uint{f.mAlice.ID})
 
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 70.0, "date": "2026-05-03",
 	})
 	if rec.Code != http.StatusCreated {
@@ -678,7 +678,7 @@ func TestLongTermDebt_KeepsOrdinaryExpensesReimbursable(t *testing.T) {
 
 	// ...and she can reimburse him for real, without the 50.000 getting in the way.
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mAlice.ID, "to_member_id": f.mBob.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mAlice.ID, "to_member_id": f.mBob.ID,
 		"amount": 50.0, "date": "2026-05-05",
 	})
 	if rec.Code != http.StatusCreated {
@@ -699,7 +699,7 @@ func TestLongTermDebt_OrdinarySettlementCannotSweepIt(t *testing.T) {
 
 	// Nothing is outstanding in the running balance, so there is nothing to pay.
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 50000.0, "date": "2026-05-05",
 	})
 	if rec.Code != http.StatusBadRequest {
@@ -714,7 +714,7 @@ func TestLongTermDebt_TargetedPaymentReducesOnlyThatDebt(t *testing.T) {
 	groceries := f.createSplitExpenseBy(t, f.bobTok, f.mBob.ID, 100, []uint{f.mAlice.ID})
 
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 500.0, "date": "2026-05-05", "target_expense_id": big,
 	})
 	if rec.Code != http.StatusCreated {
@@ -738,7 +738,7 @@ func TestLongTermDebt_TargetedPaymentExceedingRemainder_Returns400(t *testing.T)
 	f.markLongTermDebt(t, big)
 
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 60000.0, "date": "2026-05-05", "target_expense_id": big,
 	})
 	if rec.Code != http.StatusBadRequest {
@@ -754,7 +754,7 @@ func TestCompensation_TurnsACreditIntoDebtRepayment(t *testing.T) {
 	source := f.splitFor(t, groceries, f.mAlice.ID)
 
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements/compensate", f.bobTok, map[string]any{
-		"property_id": f.prop.ID, "source_split_id": source.ID, "target_expense_id": big,
+		"household_id": f.prop.HouseholdID, "source_split_id": source.ID, "target_expense_id": big,
 		"date": "2026-05-06",
 	})
 	if rec.Code != http.StatusCreated {
@@ -796,7 +796,7 @@ func TestLongTermDebt_FlagBlockedOnceMoneyMoved(t *testing.T) {
 	id := f.createSplitExpense(t, 100000, []uint{f.mBob.ID})
 
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 500.0, "date": "2026-05-05",
 	})
 	if rec.Code != http.StatusCreated {
@@ -816,7 +816,7 @@ func TestDebts_ListReportsRemainderAndPayments(t *testing.T) {
 	f.markLongTermDebt(t, big)
 
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 500.0, "date": "2026-05-05", "target_expense_id": big,
 	})
 	if rec.Code != http.StatusCreated {
@@ -824,7 +824,7 @@ func TestDebts_ListReportsRemainderAndPayments(t *testing.T) {
 	}
 
 	// Bob's view: he is the debtor.
-	got := doGET(t, f.router, "/properties/"+itoa(f.prop.ID)+"/debts?other_member_id="+itoa(f.mAlice.ID), f.bobTok)
+	got := doGET(t, f.router, "/households/"+itoa(f.prop.HouseholdID)+"/debts?other_member_id="+itoa(f.mAlice.ID), f.bobTok)
 	if got.Code != http.StatusOK {
 		t.Fatalf("list debts: status %d, body %s", got.Code, got.Body.String())
 	}
@@ -854,7 +854,7 @@ func TestDebts_ListReportsRemainderAndPayments(t *testing.T) {
 
 	// Alice's view: she is the creditor, and the counterpart is still the
 	// other person (Bob), never herself.
-	got = doGET(t, f.router, "/properties/"+itoa(f.prop.ID)+"/debts?other_member_id="+itoa(f.mBob.ID), f.aliceTok)
+	got = doGET(t, f.router, "/households/"+itoa(f.prop.HouseholdID)+"/debts?other_member_id="+itoa(f.mBob.ID), f.aliceTok)
 	if got.Code != http.StatusOK {
 		t.Fatalf("list debts as creditor: status %d, body %s", got.Code, got.Body.String())
 	}
@@ -1001,7 +1001,7 @@ func TestBillUnpaid_BlockedWhenLinkedSplitSettled(t *testing.T) {
 	}
 	// Settle bob's share against alice → bill becomes locked.
 	if rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.aliceTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 60.0, "date": "2026-05-04",
 	}); rec.Code != http.StatusCreated {
 		t.Fatalf("settlement: status %d, body %s", rec.Code, rec.Body.String())
@@ -1107,9 +1107,9 @@ func setupAccountFixture(t *testing.T, withSecondMember bool) *accountFixture {
 	user := &models.User{Email: "owner@example.com", PasswordHash: string(hash), Name: "Owner", Role: "admin", IsActive: true}
 	mustCreate(t, db, user)
 
-	prop := models.Property{UserID: user.ID, Name: "Casa", Type: "owned", StartDate: now, IsCurrent: true, Residents: 1}
+	prop := models.Property{Household: &models.Household{Name: "Casa"}, UserID: user.ID, Name: "Casa", Type: "owned", StartDate: now, IsCurrent: true, Residents: 1}
 	mustCreate(t, db, &prop)
-	member := models.HouseholdMember{PropertyID: prop.ID, UserID: &user.ID, Name: "Owner", Role: "admin"}
+	member := models.HouseholdMember{HouseholdID: prop.HouseholdID, UserID: &user.ID, Name: "Owner", Role: "admin"}
 	mustCreate(t, db, &member)
 
 	homeCat := models.Category{Slug: database.SlugHome, Name: "Casa", IsDefault: true}
@@ -1122,12 +1122,12 @@ func setupAccountFixture(t *testing.T, withSecondMember bool) *accountFixture {
 	mustCreate(t, db, &bill)
 	mustCreate(t, db, &models.BillInstallment{BillID: bill.ID, Number: 1, DueDate: now, Amount: 50})
 	// A solo expense owned by the user.
-	mustCreate(t, db, &models.Expense{UserID: user.ID, PropertyID: &prop.ID, CategoryID: homeCat.ID, Amount: 30, Date: now, Description: "Spesa", PaidByMemberID: member.ID})
+	mustCreate(t, db, &models.Expense{UserID: user.ID, HouseholdID: prop.HouseholdID, PropertyID: &prop.ID, CategoryID: homeCat.ID, Amount: 30, Date: now, Description: "Spesa", PaidByMemberID: member.ID})
 
 	if withSecondMember {
 		other := &models.User{Email: "second@example.com", PasswordHash: "x", Name: "Second", Role: "user", IsActive: true}
 		mustCreate(t, db, other)
-		mustCreate(t, db, &models.HouseholdMember{PropertyID: prop.ID, UserID: &other.ID, Name: "Second", Role: "member"})
+		mustCreate(t, db, &models.HouseholdMember{HouseholdID: prop.HouseholdID, UserID: &other.ID, Name: "Second", Role: "member"})
 	}
 
 	return &accountFixture{router: wireMoneyRoutes(db), db: db, user: user, prop: prop, tok: testutil.SignToken(t, user)}
@@ -1219,7 +1219,7 @@ func TestExpenseList_DateFilter_IgnoresEmbeddedUTCOffset(t *testing.T) {
 	cest := time.FixedZone("CEST", 2*60*60)
 	borderline := time.Date(2026, 9, 1, 0, 41, 0, 0, cest) // 2026-08-31 22:41 UTC
 	expense := models.Expense{
-		UserID: f.alice.ID, PropertyID: &f.prop.ID, CategoryID: f.homeCatID,
+		UserID: f.alice.ID, HouseholdID: f.prop.HouseholdID, PropertyID: &f.prop.ID, CategoryID: f.homeCatID,
 		PaidByMemberID: f.mAlice.ID,
 		Amount:         29.99, Date: borderline, Description: "Bolletta internet",
 	}

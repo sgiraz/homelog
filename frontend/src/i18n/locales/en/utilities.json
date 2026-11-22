@@ -646,5 +646,6 @@
       "action": "Delete"
     },
     "updatedToast": "Service updated"
-  }
+  },
+  "archivedHome": "{name} (archived)"
 }

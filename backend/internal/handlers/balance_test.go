@@ -25,13 +25,13 @@ func (f *moneyFixture) balanceRouter() *gin.Engine {
 	r := gin.New()
 	p := r.Group("")
 	p.Use(middleware.AuthRequired())
-	p.GET("/properties/:id/balance", h.GetBalance)
-	p.GET("/properties/:id/balance/details", h.GetBalanceDetails)
+	p.GET("/households/:id/balance", h.GetBalance)
+	p.GET("/households/:id/balance/details", h.GetBalanceDetails)
 	return r
 }
 
 func (f *moneyFixture) balanceURL(suffix, query string) string {
-	u := "/properties/" + itoa(f.prop.ID) + "/balance" + suffix
+	u := "/households/" + itoa(f.prop.HouseholdID) + "/balance" + suffix
 	if query != "" {
 		u += "?" + query
 	}
@@ -105,7 +105,7 @@ func TestBalance_PartialSettlementShrinksBalance(t *testing.T) {
 	f.createSplitExpense(t, 100, []uint{f.mBob.ID})
 
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 20.0, "date": "2026-05-05",
 	})
 	if rec.Code != http.StatusCreated {
@@ -121,7 +121,7 @@ func TestBalance_FullySettledIsZero(t *testing.T) {
 	f := setupMoneyFixture(t)
 	f.createSplitExpense(t, 100, []uint{f.mBob.ID})
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 50.0, "date": "2026-05-05",
 	})
 	if rec.Code != http.StatusCreated {
@@ -163,7 +163,7 @@ func TestBalance_IgnoresDeletedExpenses(t *testing.T) {
 func TestBalance_SplitModeOffReportsZero(t *testing.T) {
 	f := setupMoneyFixture(t)
 	f.createSplitExpense(t, 100, []uint{f.mBob.ID})
-	if err := f.db.Model(&models.HouseholdSettings{}).Where("property_id = ?", f.prop.ID).Update("split_mode", false).Error; err != nil {
+	if err := f.db.Model(&models.HouseholdSettings{}).Where("household_id = ?", f.prop.HouseholdID).Update("split_mode", false).Error; err != nil {
 		t.Fatalf("disable split mode: %v", err)
 	}
 
@@ -176,7 +176,7 @@ func TestBalance_SplitModeOffReportsZero(t *testing.T) {
 
 func TestBalance_NoSettingsReportsZero(t *testing.T) {
 	f := setupMoneyFixture(t)
-	if err := f.db.Where("property_id = ?", f.prop.ID).Delete(&models.HouseholdSettings{}).Error; err != nil {
+	if err := f.db.Where("household_id = ?", f.prop.HouseholdID).Delete(&models.HouseholdSettings{}).Error; err != nil {
 		t.Fatalf("delete settings: %v", err)
 	}
 
@@ -235,10 +235,10 @@ func TestBalance_BadRequests(t *testing.T) {
 		name, path string
 		want       int
 	}{
-		{"balance: bad property id", "/properties/abc/balance", http.StatusBadRequest},
+		{"balance: bad property id", "/households/abc/balance", http.StatusBadRequest},
 		{"balance: bad other member id", f.balanceURL("", "other_member_id=xyz"), http.StatusBadRequest},
 		{"balance: unknown other member", f.balanceURL("", "other_member_id=99999"), http.StatusNotFound},
-		{"details: bad property id", "/properties/abc/balance/details", http.StatusBadRequest},
+		{"details: bad property id", "/households/abc/balance/details", http.StatusBadRequest},
 		{"details: bad other member id", f.balanceURL("/details", "other_member_id=xyz"), http.StatusBadRequest},
 		{"details: unknown other member", f.balanceURL("/details", "other_member_id=99999"), http.StatusNotFound},
 	}
@@ -264,7 +264,7 @@ func TestBalanceDetails_ListsUnsettledSplitsAndSettlements(t *testing.T) {
 	f := setupMoneyFixture(t)
 	id := f.createSplitExpense(t, 100, []uint{f.mBob.ID})
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 20.0, "date": "2026-05-05", "note": "acconto",
 	})
 	if rec.Code != http.StatusCreated {
@@ -303,7 +303,7 @@ func TestBalanceDetails_ExcludesLongTermDebtsAndTargetedPayments(t *testing.T) {
 	big := f.createSplitExpense(t, 100000, []uint{f.mBob.ID})
 	f.markLongTermDebt(t, big)
 	rec := doJSON(t, f.router, http.MethodPost, "/settlements", f.bobTok, map[string]any{
-		"property_id": f.prop.ID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
+		"household_id": f.prop.HouseholdID, "from_member_id": f.mBob.ID, "to_member_id": f.mAlice.ID,
 		"amount": 500.0, "date": "2026-05-05", "target_expense_id": big,
 	})
 	if rec.Code != http.StatusCreated {
@@ -343,7 +343,7 @@ func TestBalanceDetails_EdgeStates(t *testing.T) {
 
 func TestCalculateBalance_NoSettingsIsZero(t *testing.T) {
 	f := setupMoneyFixture(t)
-	if err := f.db.Where("property_id = ?", f.prop.ID).Delete(&models.HouseholdSettings{}).Error; err != nil {
+	if err := f.db.Where("household_id = ?", f.prop.HouseholdID).Delete(&models.HouseholdSettings{}).Error; err != nil {
 		t.Fatalf("delete settings: %v", err)
 	}
 
@@ -358,9 +358,9 @@ func TestBalance_OtherMemberMustBelongToTheProperty(t *testing.T) {
 	f := setupMoneyFixture(t)
 	eve := &models.User{Email: "eve@example.com", PasswordHash: "x", Name: "Eve", Role: "user", IsActive: true}
 	mustCreate(t, f.db, eve)
-	evesHome := models.Property{UserID: eve.ID, Name: "Eve", Type: "owned", StartDate: time.Now()}
+	evesHome := models.Property{Household: &models.Household{Name: "Eve"}, UserID: eve.ID, Name: "Eve", Type: "owned", StartDate: time.Now()}
 	mustCreate(t, f.db, &evesHome)
-	stranger := models.HouseholdMember{PropertyID: evesHome.ID, UserID: &eve.ID, Name: "Eve", Role: "admin"}
+	stranger := models.HouseholdMember{HouseholdID: evesHome.HouseholdID, UserID: &eve.ID, Name: "Eve", Role: "admin"}
 	mustCreate(t, f.db, &stranger)
 	r := f.balanceRouter()
 
@@ -369,5 +369,34 @@ func TestBalance_OtherMemberMustBelongToTheProperty(t *testing.T) {
 		if rec.Code != http.StatusNotFound {
 			t.Errorf("balance%s with another household's member: status %d, want 404 (body %s)", suffix, rec.Code, rec.Body.String())
 		}
+	}
+}
+
+// In a household of three the balance used to be shown against whichever other
+// member had the lowest id: Alice saw "even with Bob" while Carol owed her.
+// The counterpart is now the member with the largest balance, the same one on
+// every ledger, and every counterpart comes back with its own balance.
+func TestBalance_ThreeMembersPicksTheCounterpartThatOwes(t *testing.T) {
+	f := setupMoneyFixture(t)
+	f.createSplitExpense(t, 40, []uint{f.mCarol.ID}) // Carol owes Alice 20
+
+	got := f.getBalance(t, f.aliceTok, "")
+	if got.OtherMemberID != f.mCarol.ID || !approx(got.Balance, 20) {
+		t.Fatalf("counterpart %d balance %.2f, want Carol (%d) at 20", got.OtherMemberID, got.Balance, f.mCarol.ID)
+	}
+	if len(got.Counterparts) != 2 ||
+		got.Counterparts[0].MemberID != f.mCarol.ID || !approx(got.Counterparts[0].Balance, 20) ||
+		got.Counterparts[1].MemberID != f.mBob.ID || !approx(got.Counterparts[1].Balance, 0) {
+		t.Errorf("counterparts = %+v, want Carol at 20 then Bob at 0", got.Counterparts)
+	}
+
+	if d := f.getBalanceDetails(t, f.aliceTok, ""); d.OtherMemberID != f.mCarol.ID || len(d.UnsettledSplits) != 1 {
+		t.Errorf("details: counterpart %d with %d unsettled splits, want Carol with 1", d.OtherMemberID, len(d.UnsettledSplits))
+	}
+
+	// Asking for Bob explicitly still works, and the list stays the same.
+	bob := f.getBalance(t, f.aliceTok, "other_member_id="+itoa(f.mBob.ID))
+	if bob.OtherMemberID != f.mBob.ID || !approx(bob.Balance, 0) || len(bob.Counterparts) != 2 {
+		t.Errorf("explicit Bob: %+v", bob)
 	}
 }

@@ -21,7 +21,7 @@
         <h2 class="text-lg font-semibold text-ink">{{ t('dashboard.noProperty.pendingTitle') }}</h2>
         <p class="text-ink-soft">
           <i18n-t keypath="dashboard.noProperty.pendingMessage" tag="span">
-            <template #name><strong>{{ settingsStore.pendingJoinRequest.property_name }}</strong></template>
+            <template #name><strong>{{ settingsStore.pendingJoinRequest.household_name }}</strong></template>
           </i18n-t>
         </p>
       </div>
@@ -98,7 +98,7 @@
       :other-member-name="balanceInfo.other_member_name"
       :other-member-id="balanceInfo.other_member_id"
       :current-member-id="balanceInfo.current_member_id"
-      :property-id="settingsStore.householdPropertyId"
+      :household-id="settingsStore.householdId"
       @close="showSettle = false"
       @created="onSettled"
     />
@@ -274,26 +274,26 @@ const lastExpense = ref(null)
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 async function fetchActionables() {
-  // The brief is scoped to the current property. householdPropertyId is
+  // The brief covers every home of the active household. The household is
   // populated asynchronously at startup, so bail out until it's known rather
-  // than calling /utilities unscoped (which would return cross-property data
-  // and skip the balance). The watcher below re-runs us once it's set.
-  const propertyId = settingsStore.householdPropertyId
-  if (!propertyId) return
+  // than calling /utilities unscoped (which would return other households'
+  // services and skip the balance). The watcher below re-runs us once it's set.
+  const householdId = settingsStore.householdId
+  if (!householdId) return
   try {
-    const { data } = await utilitiesAPI.list({ property_id: propertyId })
+    const { data } = await utilitiesAPI.list({ household_id: householdId })
     utilities.value = data || []
   } catch {
     utilities.value = []
   }
   try {
-    const { data } = await balanceAPI.get(propertyId)
+    const { data } = await balanceAPI.get(householdId)
     balanceInfo.value = data
   } catch {
     balanceInfo.value = null
   }
   try {
-    const { data } = await expensesAPI.list({ limit: 1 })
+    const { data } = await expensesAPI.list({ limit: 1, household_id: householdId })
     lastExpense.value = data.expenses?.[0] ?? null
   } catch {
     lastExpense.value = null
@@ -475,8 +475,11 @@ function onSettled() {
 
 // Methods
 async function fetchStats(params = {}) {
+  // Stats are the active household's, which loads after mount (see the
+  // watcher below).
+  if (!settingsStore.householdId) return
   try {
-    const { data } = await expensesAPI.stats(params)
+    const { data } = await expensesAPI.stats({ ...params, household_id: settingsStore.householdId })
     stats.value = data
   } catch (err) {
     console.error('Error fetching stats:', err)
@@ -574,7 +577,7 @@ function onExpenseCreated() {
   refreshBrief()
 }
 
-// Everything the "Da gestire" brief reads: property-scoped services and
+// Everything the "Da gestire" brief reads: the household's services and
 // balance, plus the project budget stats behind the "oltre budget" row. Any
 // expense mutation can move either, so they always refresh together.
 function refreshBrief() {
@@ -587,12 +590,16 @@ onMounted(() => {
   applyFilters()
 })
 
-// "Da gestire" is scoped to the current property, whose id arrives
+// "Da gestire" is scoped to the active household, whose id arrives
 // asynchronously after mount. Fetch as soon as it's known (covers first load),
 // and re-fetch whenever it changes.
 watch(
-  () => settingsStore.householdPropertyId,
-  (id) => { if (id) fetchActionables() }
+  () => settingsStore.householdId,
+  (id, prev) => {
+    if (!id || id === prev) return
+    fetchActionables()
+    applyFilters()
+  }
 )
 
 // keep-alive caches this view, so onMounted won't re-run on return. Refresh on
@@ -605,7 +612,7 @@ onDeactivated(() => { wasDeactivated = true })
 
 onActivated(() => {
   if (wasDeactivated) fetchProjects()
-  if (settingsStore.householdPropertyId) fetchActionables()
+  if (settingsStore.householdId) fetchActionables()
   // A preset ends today: if the view was left open across midnight (or a
   // month end), move it forward instead of showing a stale window.
   if (activePreset.value && filters.value.to !== todayDateOnly()) selectPeriod(periodMode.value)

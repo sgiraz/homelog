@@ -26,10 +26,7 @@ func (h *UtilityHandler) GetCommunications(c *gin.Context) {
 		return
 	}
 
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
@@ -58,10 +55,7 @@ func (h *UtilityHandler) AddCommunication(c *gin.Context) {
 		return
 	}
 
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
@@ -133,10 +127,7 @@ func (h *UtilityHandler) MarkCommunicationRead(c *gin.Context) {
 		return
 	}
 
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", comm.UtilityID, memberPropertyIDs).
@@ -187,10 +178,7 @@ func (h *UtilityHandler) DeleteCommunication(c *gin.Context) {
 		return
 	}
 
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", comm.UtilityID, memberPropertyIDs).
@@ -211,10 +199,7 @@ func (h *UtilityHandler) DeleteReadCommunications(c *gin.Context) {
 		return
 	}
 
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utilityIDs []uint
 	h.db.Model(&models.Utility{}).
@@ -237,10 +222,7 @@ func (h *UtilityHandler) GetAllCommunications(c *gin.Context) {
 		return
 	}
 
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utilityIDs []uint
 	h.db.Model(&models.Utility{}).
@@ -291,10 +273,7 @@ func (h *UtilityHandler) GetUnreadCount(c *gin.Context) {
 		return
 	}
 
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utilityIDs []uint
 	h.db.Model(&models.Utility{}).

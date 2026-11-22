@@ -56,6 +56,7 @@ type ExportData struct {
 	Projects          []models.Project           `json:"projects"`
 	UserSettings      models.UserSettings        `json:"user_settings"`
 	HouseholdSettings []models.HouseholdSettings `json:"household_settings"`
+	Households        []models.Household         `json:"households"`
 }
 
 // ExportAll exports all user data as a JSON download, or expenses as CSV when format=csv.
@@ -103,14 +104,15 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 
 	// Properties owned by this user
 	h.db.Where("user_id = ?", userID).Find(&data.Properties)
-	propertyIDs := make([]uint, len(data.Properties))
+	householdIDs := make([]uint, len(data.Properties))
 	for i, p := range data.Properties {
-		propertyIDs[i] = p.ID
+		householdIDs[i] = p.HouseholdID
 	}
 
-	// Household members across all user's properties
-	if len(propertyIDs) > 0 {
-		h.db.Where("property_id IN ?", propertyIDs).Find(&data.HouseholdMembers)
+	// Households of those properties, with their members
+	if len(householdIDs) > 0 {
+		h.db.Where("id IN ?", householdIDs).Find(&data.Households)
+		h.db.Where("household_id IN ?", householdIDs).Find(&data.HouseholdMembers)
 	}
 
 	// Categories: user's custom + system defaults
@@ -129,8 +131,8 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 	}
 
 	// Settlements
-	if len(propertyIDs) > 0 {
-		h.db.Where("property_id IN ?", propertyIDs).Find(&data.Settlements)
+	if len(householdIDs) > 0 {
+		h.db.Where("household_id IN ?", householdIDs).Find(&data.Settlements)
 	}
 
 	// Utilities + readings + bills
@@ -150,9 +152,8 @@ func (h *ExportHandler) ExportAll(c *gin.Context) {
 	// User settings
 	h.db.Where("user_id = ?", userID).First(&data.UserSettings)
 
-	// Household settings for all properties
-	if len(propertyIDs) > 0 {
-		h.db.Where("property_id IN ?", propertyIDs).Find(&data.HouseholdSettings)
+	if len(householdIDs) > 0 {
+		h.db.Where("household_id IN ?", householdIDs).Find(&data.HouseholdSettings)
 	}
 
 	timestamp := time.Now().Format("2006-01-02_15-04-05")

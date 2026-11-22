@@ -1,5 +1,7 @@
 <template>
   <div class="space-y-6">
+    <CounterpartPicker :household-id="currentHouseholdId" />
+
     <!-- Loading State -->
     <div v-if="balanceStore.loading" class="text-center py-12">
       <svg class="animate-spin h-12 w-12 mx-auto text-accent" fill="none" viewBox="0 0 24 24">
@@ -208,7 +210,7 @@
       :other-member-name="balanceStore.otherMemberName"
       :other-member-id="balanceStore.otherMemberId"
       :current-member-id="balanceStore.currentMemberId"
-      :property-id="currentPropertyId"
+      :household-id="currentHouseholdId"
       @close="showSettlementModal = false"
       @created="onSettlementCreated"
     />
@@ -218,7 +220,7 @@
       v-if="compensatingSplit"
       :split="compensatingSplit"
       :debts="balanceStore.myOpenDebts"
-      :property-id="currentPropertyId"
+      :household-id="currentHouseholdId"
       @close="compensatingSplit = null"
       @created="onSettlementCreated"
     />
@@ -226,7 +228,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onActivated } from 'vue'
+import { ref, computed, watch, onActivated } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Badge from '@/components/common/Badge.vue'
 import { useBalanceStore } from '@/stores/balance'
@@ -234,7 +236,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useExpensesStore } from '@/stores/expenses'
 import { useConfirm } from '@/composables/useConfirm'
 import { formatDate as _formatDate, formatCurrency as _formatCurrency } from '@/utils/dateFormatter'
-import apiClient from '@/api/client'
+import CounterpartPicker from '@/components/balance/CounterpartPicker.vue'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import SettlementModal from '@/components/balance/SettlementModal.vue'
@@ -249,7 +251,7 @@ const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 
 const showSettlementModal = ref(false)
-const currentPropertyId = ref(null)
+const currentHouseholdId = computed(() => settingsStore.householdId)
 const unsettledOpen = ref(false)
 const actionsFor = ref(null)
 const compensatingSplit = ref(null)
@@ -302,7 +304,7 @@ async function moveToDebts(split) {
   if (!ok) return
 
   try {
-    await balanceStore.setLongTermDebt(split.expense_id, true, currentPropertyId.value)
+    await balanceStore.setLongTermDebt(split.expense_id, true, currentHouseholdId.value)
     actionsFor.value = null
     window.$toast?.success(t('balance.unsettled.moveToDebtsToast'))
   } catch (err) {
@@ -316,45 +318,30 @@ async function onSettlementCreated() {
   showSettlementModal.value = false
   compensatingSplit.value = null
   actionsFor.value = null
-  if (currentPropertyId.value) {
-    await balanceStore.fetchBalanceDetails(currentPropertyId.value)
+  if (currentHouseholdId.value) {
+    await balanceStore.fetchBalanceDetails(currentHouseholdId.value)
   }
   // Refresh expenses so the outstanding/settled labels update
   await expensesStore.fetchExpenses({})
   emit('settlement-created')
 }
 
-async function fetchCurrentProperty() {
-  try {
-    const { data } = await apiClient.get('/properties')
-    if (data && data.length > 0) {
-      const currentProp = data.find(p => p.is_current) || data[0]
-      currentPropertyId.value = currentProp.id
-      // Debts too: the row actions need to know whether any exist to pay down.
-      await Promise.all([
-        balanceStore.fetchBalanceDetails(currentProp.id),
-        balanceStore.fetchDebts(currentProp.id)
-      ])
-    }
-  } catch (err) {
-    console.error('Error fetching properties:', err)
-  }
+// Debts too: the row actions need to know whether any exist to pay down.
+function loadBalance() {
+  const id = currentHouseholdId.value
+  if (!id) return
+  return Promise.all([balanceStore.fetchBalanceDetails(id), balanceStore.fetchDebts(id)])
 }
 
-onMounted(() => {
-  fetchCurrentProperty()
-})
+watch(currentHouseholdId, loadBalance, { immediate: true })
 
 // ExpensesView is cached by <keep-alive>, so coming back to it restores this
-// component instead of re-mounting it and onMounted never runs again — an
-// expense added elsewhere (the dashboard's quick add, say) would leave a stale
-// balance until a hard reload. On the very first render currentPropertyId is
-// still null here, so this doesn't double-fetch. Same idiom as DashboardView.
+// component instead of re-mounting it — an expense added elsewhere (the
+// dashboard's quick add, say) would leave a stale balance until a hard
+// reload. The first activation follows the mount, which already loaded.
+let activations = 0
 onActivated(() => {
-  if (currentPropertyId.value) {
-    balanceStore.fetchBalanceDetails(currentPropertyId.value)
-    balanceStore.fetchDebts(currentPropertyId.value)
-  }
+  if (activations++ > 0) loadBalance()
 })
 </script>
 

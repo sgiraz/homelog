@@ -208,10 +208,7 @@ func (h *PDFHandler) UploadBillPDF(c *gin.Context) {
 	}
 
 	// Verify access to utility
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var utility models.Utility
 	if err := h.db.Where("id = ? AND property_id IN ?", utilityID, memberPropertyIDs).
@@ -343,11 +340,10 @@ func (h *PDFHandler) UploadContractPDF(c *gin.Context) {
 
 // === Template CRUD Operations ===
 
-// memberTemplates scopes bill templates to the properties userID belongs to:
-// a template is shared by every member of its property.
+// memberTemplates scopes bill templates to the homes userID can open: a
+// template is shared by every member of the household owning its home.
 func (h *PDFHandler) memberTemplates(userID uint) *gorm.DB {
-	return h.db.Where("property_id IN (?)",
-		h.db.Model(&models.HouseholdMember{}).Select("property_id").Where("user_id = ?", userID))
+	return h.db.Where("property_id IN ?", propertyIDsOfMember(h.db, userID))
 }
 
 // clearOtherDefaults leaves template the only default for its provider and type
@@ -985,10 +981,7 @@ func (h *PDFHandler) findBillForUser(c *gin.Context) (*models.Bill, bool) {
 		apierr.Fail(c, http.StatusBadRequest, "invalid_bill_id", "Invalid bill id")
 		return nil, false
 	}
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
+	memberPropertyIDs := propertyIDsOfMember(h.db, userID)
 
 	var bill models.Bill
 	if err := h.db.Preload("Utility").First(&bill, billID).Error; err != nil {

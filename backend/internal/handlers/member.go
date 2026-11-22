@@ -24,14 +24,14 @@ func NewMemberHandler(db *gorm.DB) *MemberHandler {
 
 // MemberResponse represents a household member response
 type MemberResponse struct {
-	ID         uint   `json:"id"`
-	PropertyID uint   `json:"property_id"`
-	UserID     *uint  `json:"user_id,omitempty"`
-	Name       string `json:"name"`
-	Role       string `json:"role,omitempty"`
-	IsVirtual  bool   `json:"is_virtual"`
-	UserRole   string `json:"user_role,omitempty"`   // "admin" or "user" (from linked User account)
-	AvatarPath string `json:"avatar_path,omitempty"` // relative path e.g. "avatars/2_123.jpg"
+	ID          uint   `json:"id"`
+	HouseholdID uint   `json:"household_id"`
+	UserID      *uint  `json:"user_id,omitempty"`
+	Name        string `json:"name"`
+	Role        string `json:"role,omitempty"`
+	IsVirtual   bool   `json:"is_virtual"`
+	UserRole    string `json:"user_role,omitempty"`   // "admin" or "user" (from linked User account)
+	AvatarPath  string `json:"avatar_path,omitempty"` // relative path e.g. "avatars/2_123.jpg"
 }
 
 // CreateMemberRequest represents the request for creating a member
@@ -46,7 +46,7 @@ type UpdateMemberRequest struct {
 	Role string `json:"role,omitempty"`
 }
 
-// List - GET /api/v1/properties/:id/members
+// List - GET /api/v1/households/:id/members
 func (h *MemberHandler) List(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -54,19 +54,17 @@ func (h *MemberHandler) List(c *gin.Context) {
 		return
 	}
 
-	propertyIDStr := c.Param("id")
-	propertyID, err := strconv.ParseUint(propertyIDStr, 10, 32)
-	if err != nil {
-		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
+	householdID, ok := householdParam(c)
+	if !ok {
 		return
 	}
 
-	if !requirePropertyMember(c, h.db, userID, uint(propertyID)) {
+	if !requireHouseholdMember(c, h.db, userID, householdID) {
 		return
 	}
 
 	var members []models.HouseholdMember
-	if err := h.db.Preload("User").Where("property_id = ?", propertyID).Find(&members).Error; err != nil {
+	if err := h.db.Preload("User").Where("household_id = ?", householdID).Find(&members).Error; err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch members")
 		return
 	}
@@ -75,12 +73,12 @@ func (h *MemberHandler) List(c *gin.Context) {
 	response := make([]MemberResponse, len(members))
 	for i, m := range members {
 		resp := MemberResponse{
-			ID:         m.ID,
-			PropertyID: m.PropertyID,
-			UserID:     m.UserID,
-			Name:       m.Name,
-			Role:       m.Role,
-			IsVirtual:  m.IsVirtual,
+			ID:          m.ID,
+			HouseholdID: m.HouseholdID,
+			UserID:      m.UserID,
+			Name:        m.Name,
+			Role:        m.Role,
+			IsVirtual:   m.IsVirtual,
 		}
 		if m.User != nil {
 			resp.UserRole = m.User.Role
@@ -92,7 +90,7 @@ func (h *MemberHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// Create - POST /api/v1/properties/:id/members
+// Create - POST /api/v1/households/:id/members
 func (h *MemberHandler) Create(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -100,15 +98,13 @@ func (h *MemberHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Parse property ID from URL
-	propertyIDStr := c.Param("id")
-	propertyID, err := strconv.ParseUint(propertyIDStr, 10, 32)
-	if err != nil {
-		apierr.Fail(c, http.StatusBadRequest, "invalid_property_id", "Invalid property id")
+	// Parse household ID from URL
+	householdID, ok := householdParam(c)
+	if !ok {
 		return
 	}
 
-	if !requirePropertyAdmin(c, h.db, userID, uint(propertyID)) {
+	if !requireHouseholdAdmin(c, h.db, userID, householdID) {
 		return
 	}
 
@@ -120,11 +116,11 @@ func (h *MemberHandler) Create(c *gin.Context) {
 
 	// Create virtual member (UserID = nil)
 	member := models.HouseholdMember{
-		PropertyID: uint(propertyID),
-		UserID:     nil, // Virtual member
-		Name:       req.Name,
-		Role:       req.Role,
-		IsVirtual:  true,
+		HouseholdID: householdID,
+		UserID:      nil, // Virtual member
+		Name:        req.Name,
+		Role:        req.Role,
+		IsVirtual:   true,
 	}
 
 	if err := h.db.Create(&member).Error; err != nil {
@@ -133,15 +129,15 @@ func (h *MemberHandler) Create(c *gin.Context) {
 		return
 	}
 
-	log.Printf("✅ Virtual member created: ID=%d, Name=%s, PropertyID=%d", member.ID, member.Name, member.PropertyID)
+	log.Printf("✅ Virtual member created: ID=%d, Name=%s, HouseholdID=%d", member.ID, member.Name, member.HouseholdID)
 
 	c.JSON(http.StatusCreated, MemberResponse{
-		ID:         member.ID,
-		PropertyID: member.PropertyID,
-		UserID:     member.UserID,
-		Name:       member.Name,
-		Role:       member.Role,
-		IsVirtual:  member.IsVirtual,
+		ID:          member.ID,
+		HouseholdID: member.HouseholdID,
+		UserID:      member.UserID,
+		Name:        member.Name,
+		Role:        member.Role,
+		IsVirtual:   member.IsVirtual,
 	})
 }
 
@@ -170,17 +166,17 @@ func (h *MemberHandler) Get(c *gin.Context) {
 		return
 	}
 
-	if !requirePropertyMember(c, h.db, userID, member.PropertyID) {
+	if !requireHouseholdMember(c, h.db, userID, member.HouseholdID) {
 		return
 	}
 
 	c.JSON(http.StatusOK, MemberResponse{
-		ID:         member.ID,
-		PropertyID: member.PropertyID,
-		UserID:     member.UserID,
-		Name:       member.Name,
-		Role:       member.Role,
-		IsVirtual:  member.IsVirtual,
+		ID:          member.ID,
+		HouseholdID: member.HouseholdID,
+		UserID:      member.UserID,
+		Name:        member.Name,
+		Role:        member.Role,
+		IsVirtual:   member.IsVirtual,
 	})
 }
 
@@ -215,7 +211,7 @@ func (h *MemberHandler) Update(c *gin.Context) {
 		return
 	}
 
-	if !requirePropertyAdmin(c, h.db, userID, member.PropertyID) {
+	if !requireHouseholdAdmin(c, h.db, userID, member.HouseholdID) {
 		return
 	}
 
@@ -232,12 +228,12 @@ func (h *MemberHandler) Update(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, MemberResponse{
-		ID:         member.ID,
-		PropertyID: member.PropertyID,
-		UserID:     member.UserID,
-		Name:       member.Name,
-		Role:       member.Role,
-		IsVirtual:  member.IsVirtual,
+		ID:          member.ID,
+		HouseholdID: member.HouseholdID,
+		UserID:      member.UserID,
+		Name:        member.Name,
+		Role:        member.Role,
+		IsVirtual:   member.IsVirtual,
 	})
 }
 
@@ -266,7 +262,7 @@ func (h *MemberHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if !requirePropertyAdmin(c, h.db, userID, member.PropertyID) {
+	if !requireHouseholdAdmin(c, h.db, userID, member.HouseholdID) {
 		return
 	}
 

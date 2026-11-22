@@ -29,9 +29,14 @@ export const useSettingsStore = defineStore('settings', () => {
   const isPropertyAdmin = ref(false)
   const pendingJoinRequest = ref(null)
 
-  // Household settings (shared across all members of the property)
+  // The user's household (an account belongs to one at most): what Dashboard,
+  // Expenses, Balance and Settings show.
+  const household = ref(null)
+  const householdId = computed(() => household.value?.id ?? null)
+  // The household's primary home: the default home for new Home expenses.
+  const householdPropertyId = computed(() => household.value?.primary_home_id || null)
+  // Household settings (shared across all members of the household)
   const splitMode = ref(false)
-  const householdPropertyId = ref(null)
 
   // Getters - provides { date_format, language } object for formatDate/formatPeriod
   const dateSettings = computed(() => ({
@@ -96,28 +101,27 @@ export const useSettingsStore = defineStore('settings', () => {
 
   async function loadHouseholdSettings() {
     try {
-      // Find the current property
-      const { data: properties } = await apiClient.get('/properties')
-      if (!properties || properties.length === 0) return
-
-      const currentProp = properties.find(p => p.is_current) || properties[0]
-      householdPropertyId.value = currentProp.id
-
-      const { data } = await apiClient.get(`/properties/${currentProp.id}/settings`)
-      splitMode.value = data.split_mode || false
+      const { data } = await apiClient.get('/households')
+      household.value = data?.[0] ?? null
+      if (!householdId.value) {
+        splitMode.value = false
+        return
+      }
+      const { data: settings } = await apiClient.get(`/households/${householdId.value}/settings`)
+      splitMode.value = settings.split_mode || false
     } catch (err) {
       console.error('Error loading household settings:', err)
       splitMode.value = false
-      householdPropertyId.value = null
+      household.value = null
     }
   }
 
   async function updateHouseholdSettings(updates) {
-    if (!householdPropertyId.value) return
+    if (!householdId.value) return
 
     try {
       if (updates.split_mode !== undefined) splitMode.value = updates.split_mode
-      await apiClient.put(`/properties/${householdPropertyId.value}/settings`, updates)
+      await apiClient.put(`/households/${householdId.value}/settings`, updates)
     } catch (err) {
       console.error('Error updating household settings:', err)
       throw err
@@ -183,7 +187,7 @@ export const useSettingsStore = defineStore('settings', () => {
     isPropertyAdmin.value = false
     pendingJoinRequest.value = null
     splitMode.value = false
-    householdPropertyId.value = null
+    household.value = null
   }
 
   return {
@@ -205,6 +209,7 @@ export const useSettingsStore = defineStore('settings', () => {
     isPropertyAdmin,
     pendingJoinRequest,
     splitMode,
+    householdId,
     householdPropertyId,
     // Getters
     dateSettings,

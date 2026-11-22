@@ -701,6 +701,16 @@ onMounted(async () => {
   setupIntersectionObserver()
 })
 
+// The active household loads after mount; switching it remounts the view.
+watch(
+  () => settingsStore.householdId,
+  async (id, prev) => {
+    if (!id || id === prev) return
+    await expensesStore.fetchExpenses(currentFilters.value, { page: 1 })
+    await applyHighlightTarget()
+  },
+)
+
 // ExpensesView is cached by <keep-alive> in App.vue, so a second click on a
 // global-search result (same route, new `highlight`) does NOT re-run
 // onMounted. Watch the query so deep-links keep working on re-entry.

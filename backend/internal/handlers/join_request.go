@@ -25,7 +25,7 @@ func NewJoinRequestHandler(db *gorm.DB) *JoinRequestHandler {
 
 // CreateJoinRequestBody is the request body for creating a join request
 type CreateJoinRequestBody struct {
-	PropertyID uint `json:"property_id" binding:"required"`
+	HouseholdID uint `json:"household_id" binding:"required"`
 }
 
 // ResolveJoinRequestBody is the request body for resolving a join request
@@ -33,12 +33,12 @@ type ResolveJoinRequestBody struct {
 	Status string `json:"status" binding:"required"` // "approved" or "rejected"
 }
 
-// JoinablePropertyResponse limits exposed fields for the joinable properties list
-type JoinablePropertyResponse struct {
-	ID        uint   `json:"id"`
-	Name      string `json:"name"`
-	Address   string `json:"address"`
-	Residents int    `json:"residents"`
+// JoinableHouseholdResponse limits exposed fields for the joinable households list
+type JoinableHouseholdResponse struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	Address     string `json:"address"` // of its primary home
+	MemberCount int64  `json:"member_count"`
 }
 
 // Create - POST /api/v1/join-requests
@@ -55,41 +55,42 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Validate: property exists
-	var property models.Property
-	if err := h.db.First(&property, req.PropertyID).Error; err != nil {
+	// Validate: household exists
+	var household models.Household
+	if err := h.db.First(&household, req.HouseholdID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			apierr.Fail(c, http.StatusNotFound, "property_not_found", "Property not found")
+			apierr.Fail(c, http.StatusNotFound, "household_not_found", "Household not found")
 		} else {
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch property")
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch household")
 		}
 		return
 	}
 
-	// Validate: user is not already a member of this property
-	var memberCount int64
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ? AND property_id = ?", userID, req.PropertyID).
-		Count(&memberCount)
-	if memberCount > 0 {
-		apierr.Fail(c, http.StatusConflict, "already_property_member", "You are already a member of this property")
+	// Validate: user is not in a household already (an account belongs to one)
+	current, err := userHouseholdID(h.db, userID)
+	if err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch household")
+		return
+	}
+	if current != 0 {
+		apierr.Fail(c, http.StatusConflict, "already_in_household", "You already belong to a household")
 		return
 	}
 
-	// Validate: no pending request already exists for this user+property
+	// Validate: no pending request already exists for this user+household
 	var existingCount int64
-	h.db.Model(&models.PropertyJoinRequest{}).
-		Where("user_id = ? AND property_id = ? AND status = 'pending'", userID, req.PropertyID).
+	h.db.Model(&models.HouseholdJoinRequest{}).
+		Where("user_id = ? AND household_id = ? AND status = 'pending'", userID, req.HouseholdID).
 		Count(&existingCount)
 	if existingCount > 0 {
-		apierr.Fail(c, http.StatusConflict, "join_request_pending", "A join request for this property is already pending")
+		apierr.Fail(c, http.StatusConflict, "join_request_pending", "A join request for this household is already pending")
 		return
 	}
 
-	joinReq := models.PropertyJoinRequest{
-		UserID:     userID,
-		PropertyID: req.PropertyID,
-		Status:     "pending",
+	joinReq := models.HouseholdJoinRequest{
+		UserID:      userID,
+		HouseholdID: req.HouseholdID,
+		Status:      "pending",
 	}
 
 	if err := h.db.Create(&joinReq).Error; err != nil {
@@ -99,14 +100,14 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 	}
 
 	// Preload relations for the response
-	h.db.Preload("User").Preload("Property").First(&joinReq, joinReq.ID)
+	h.db.Preload("User").Preload("Household").First(&joinReq, joinReq.ID)
 
-	log.Printf("✅ Join request created: ID=%d, UserID=%d, PropertyID=%d", joinReq.ID, userID, req.PropertyID)
+	log.Printf("✅ Join request created: ID=%d, UserID=%d, HouseholdID=%d", joinReq.ID, userID, req.HouseholdID)
 
-	// Notify property admins
+	// Notify household admins
 	var adminUserIDs []uint
 	h.db.Model(&models.HouseholdMember{}).
-		Where("property_id = ? AND role = 'admin' AND user_id IS NOT NULL", req.PropertyID).
+		Where("household_id = ? AND role = 'admin' AND user_id IS NOT NULL", req.HouseholdID).
 		Pluck("user_id", &adminUserIDs)
 
 	for _, adminUID := range adminUserIDs {
@@ -114,15 +115,14 @@ func (h *JoinRequestHandler) Create(c *gin.Context) {
 			continue
 		}
 		relID := joinReq.ID
-		propID := req.PropertyID
 		// Written in the recipient's language, not the requester's.
 		lang := i18n.UserLanguage(h.db, adminUID)
 		createNotification(h.db, adminUID, "join_request",
 			i18n.T(lang, "notification.join_request.title",
-				"name", joinReq.User.Name, "property", property.Name),
+				"name", joinReq.User.Name, "household", household.Name),
 			i18n.T(lang, "notification.join_request.body",
-				"name", joinReq.User.Name, "property", property.Name),
-			&relID, &propID)
+				"name", joinReq.User.Name, "household", household.Name),
+			&relID, nil)
 	}
 
 	c.JSON(http.StatusCreated, joinReq)
@@ -136,27 +136,27 @@ func (h *JoinRequestHandler) List(c *gin.Context) {
 		return
 	}
 
-	// Find property IDs where user is admin
-	var adminPropertyIDs []uint
+	// Find household IDs where user is admin
+	var adminHouseholdIDs []uint
 	h.db.Model(&models.HouseholdMember{}).
 		Where("user_id = ? AND role = 'admin'", userID).
-		Pluck("property_id", &adminPropertyIDs)
+		Pluck("household_id", &adminHouseholdIDs)
 
-	var results []models.PropertyJoinRequest
+	results := []models.HouseholdJoinRequest{}
 
-	// If admin of any property: fetch pending requests for those properties
-	if len(adminPropertyIDs) > 0 {
-		h.db.Where("property_id IN ? AND status = 'pending'", adminPropertyIDs).
+	// If admin of any household: fetch pending requests for those households
+	if len(adminHouseholdIDs) > 0 {
+		h.db.Where("household_id IN ? AND status = 'pending'", adminHouseholdIDs).
 			Preload("User").
-			Preload("Property").
+			Preload("Household").
 			Find(&results)
 	}
 
 	// Always also fetch the user's own requests (all statuses)
-	var ownRequests []models.PropertyJoinRequest
+	var ownRequests []models.HouseholdJoinRequest
 	h.db.Where("user_id = ?", userID).
 		Preload("User").
-		Preload("Property").
+		Preload("Household").
 		Find(&ownRequests)
 
 	// Merge and deduplicate by ID
@@ -200,8 +200,8 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 	}
 
 	// Find the join request
-	var joinReq models.PropertyJoinRequest
-	if err := h.db.Preload("Property").First(&joinReq, id).Error; err != nil {
+	var joinReq models.HouseholdJoinRequest
+	if err := h.db.First(&joinReq, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			apierr.Fail(c, http.StatusNotFound, "join_request_not_found", "Join request not found")
 		} else {
@@ -216,13 +216,8 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 		return
 	}
 
-	// Validate: current user is admin of the request's property
-	var adminMemberCount int64
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ? AND property_id = ? AND role = 'admin'", userID, joinReq.PropertyID).
-		Count(&adminMemberCount)
-	if adminMemberCount == 0 {
-		apierr.Fail(c, http.StatusForbidden, "not_property_admin", "You are not an admin of this property")
+	// Validate: current user is admin of the request's household
+	if !requireHouseholdAdmin(c, h.db, userID, joinReq.HouseholdID) {
 		return
 	}
 
@@ -235,13 +230,20 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 	}
 
 	if req.Status == "approved" {
-		// Check if user is already a member (e.g., added manually while request was pending)
-		var existingCount int64
-		tx.Model(&models.HouseholdMember{}).
-			Where("user_id = ? AND property_id = ?", joinReq.UserID, joinReq.PropertyID).
-			Count(&existingCount)
-
-		if existingCount == 0 {
+		// Check if user is already in a household (e.g., added manually while
+		// request was pending): this one is fine, another one is not
+		current, err := userHouseholdID(tx, joinReq.UserID)
+		if err != nil {
+			tx.Rollback()
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch household")
+			return
+		}
+		if current != 0 && current != joinReq.HouseholdID {
+			tx.Rollback()
+			apierr.Fail(c, http.StatusConflict, "requester_in_household", "The requester already belongs to another household")
+			return
+		}
+		if current == 0 {
 			// Fetch the requesting user's name for the household member record
 			var requestingUser models.User
 			if err := tx.First(&requestingUser, joinReq.UserID).Error; err != nil {
@@ -252,28 +254,32 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 
 			// Create HouseholdMember for the requesting user
 			member := models.HouseholdMember{
-				PropertyID: joinReq.PropertyID,
-				UserID:     &joinReq.UserID,
-				Name:       requestingUser.Name,
-				Role:       "member",
-				IsVirtual:  false,
+				HouseholdID: joinReq.HouseholdID,
+				UserID:      &joinReq.UserID,
+				Name:        requestingUser.Name,
+				Role:        "member",
+				IsVirtual:   false,
 			}
 			if err := tx.Create(&member).Error; err != nil {
 				tx.Rollback()
 				log.Printf("❌ Failed to create household member on join request approval: %v", err)
-				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to add member to property")
+				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to add member to household")
 				return
 			}
 
-			// Increment property residents count
-			tx.Model(&models.Property{}).Where("id = ?", joinReq.PropertyID).
-				UpdateColumn("residents", gorm.Expr("residents + ?", 1))
+			// Increment residents count of the household's homes
+			if err := tx.Model(&models.Property{}).Where("household_id = ?", joinReq.HouseholdID).
+				UpdateColumn("residents", gorm.Expr("residents + ?", 1)).Error; err != nil {
+				tx.Rollback()
+				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update residents")
+				return
+			}
 
-			log.Printf("✅ Join request approved: UserID=%d joined PropertyID=%d as MemberID=%d",
-				joinReq.UserID, joinReq.PropertyID, member.ID)
+			log.Printf("✅ Join request approved: UserID=%d joined HouseholdID=%d as MemberID=%d",
+				joinReq.UserID, joinReq.HouseholdID, member.ID)
 		} else {
-			log.Printf("ℹ️ Join request approved but UserID=%d is already a member of PropertyID=%d",
-				joinReq.UserID, joinReq.PropertyID)
+			log.Printf("ℹ️ Join request approved but UserID=%d is already a member of HouseholdID=%d",
+				joinReq.UserID, joinReq.HouseholdID)
 		}
 	}
 
@@ -294,14 +300,14 @@ func (h *JoinRequestHandler) Resolve(c *gin.Context) {
 		return
 	}
 
-	h.db.Preload("User").Preload("Property").First(&joinReq, joinReq.ID)
+	h.db.Preload("User").Preload("Household").First(&joinReq, joinReq.ID)
 
 	log.Printf("✅ Join request ID=%d resolved as '%s' by UserID=%d", joinReq.ID, req.Status, userID)
 
 	c.JSON(http.StatusOK, joinReq)
 }
 
-// ListJoinable - GET /api/v1/properties/joinable
+// ListJoinable - GET /api/v1/households/joinable
 func (h *JoinRequestHandler) ListJoinable(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
@@ -309,41 +315,47 @@ func (h *JoinRequestHandler) ListJoinable(c *gin.Context) {
 		return
 	}
 
-	// Find property IDs where user is already a member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
-
-	// Find property IDs where user has a pending request
-	var pendingPropertyIDs []uint
-	h.db.Model(&models.PropertyJoinRequest{}).
-		Where("user_id = ? AND status = 'pending'", userID).
-		Pluck("property_id", &pendingPropertyIDs)
-
-	// Build exclusion list
-	excludedIDs := make([]uint, 0, len(memberPropertyIDs)+len(pendingPropertyIDs))
-	excludedIDs = append(excludedIDs, memberPropertyIDs...)
-	excludedIDs = append(excludedIDs, pendingPropertyIDs...)
-
-	var properties []models.Property
-	query := h.db.Model(&models.Property{})
-	if len(excludedIDs) > 0 {
-		query = query.Where("id NOT IN ?", excludedIDs)
+	// Someone in a household has none to join: an account belongs to one.
+	current, err := userHouseholdID(h.db, userID)
+	if err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch households")
+		return
 	}
-	if err := query.Order("name ASC").Find(&properties).Error; err != nil {
-		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch properties")
+	if current != 0 {
+		c.JSON(http.StatusOK, []JoinableHouseholdResponse{})
+		return
+	}
+
+	pending := h.db.Model(&models.HouseholdJoinRequest{}).Select("household_id").
+		Where("user_id = ? AND status = 'pending'", userID)
+
+	var households []models.Household
+	if err := h.db.Where("id NOT IN (?)", pending).
+		Order("name ASC").Find(&households).Error; err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch households")
 		return
 	}
 
 	// Map to limited response struct (no sensitive data)
-	response := make([]JoinablePropertyResponse, len(properties))
-	for i, p := range properties {
-		response[i] = JoinablePropertyResponse{
-			ID:        p.ID,
-			Name:      p.Name,
-			Address:   p.Address,
-			Residents: p.Residents,
+	response := make([]JoinableHouseholdResponse, len(households))
+	for i, hh := range households {
+		var home models.Property
+		if err := h.db.Where("household_id = ?", hh.ID).
+			Order("is_current DESC, created_at ASC").Limit(1).Find(&home).Error; err != nil {
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch households")
+			return
+		}
+		var members int64
+		if err := h.db.Model(&models.HouseholdMember{}).Where("household_id = ?", hh.ID).
+			Count(&members).Error; err != nil {
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch households")
+			return
+		}
+		response[i] = JoinableHouseholdResponse{
+			ID:          hh.ID,
+			Name:        hh.Name,
+			Address:     home.Address,
+			MemberCount: members,
 		}
 	}
 

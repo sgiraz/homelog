@@ -39,9 +39,9 @@ type SearchHit struct {
 // Query handles GET /api/v1/search?q=...
 //
 // Scoping: we collect every property_id the user can read (owned + member) and
-// restrict the FTS5 lookup to those. Users with no property memberships do not
-// search the global index, but may still match legacy unscoped records tied to
-// their user_id (rows where property_id = 0).
+// every household they are a member of, and restrict the FTS5 lookup to
+// those. Rows with neither (projects without a home) match only their
+// creator's user_id.
 //
 // Query shape: we sanitise the user input into a prefix MATCH (each token gets
 // a trailing *) so partial words work for live-search as the user types on
@@ -59,25 +59,15 @@ func (h *SearchHandler) Query(c *gin.Context) {
 		return
 	}
 
-	// Collect accessible property IDs: owned + member-of.
-	var ownedIDs []uint
-	h.db.Model(&models.Property{}).Where("user_id = ?", userID).Pluck("id", &ownedIDs)
-
-	var memberIDs []uint
-	h.db.Model(&models.HouseholdMember{}).Where("user_id = ?", userID).Pluck("property_id", &memberIDs)
-
-	// Merge + dedupe accessible property IDs (no sentinel 0 — unscoped entities
-	// are handled separately in the query via the user_id column).
-	idSet := map[uint]struct{}{}
-	for _, id := range ownedIDs {
-		idSet[id] = struct{}{}
+	propertyIDs, err := accessiblePropertyIDs(h.db, userID)
+	if err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, apierr.CodeServerError, "Search failed")
+		return
 	}
-	for _, id := range memberIDs {
-		idSet[id] = struct{}{}
-	}
-	propertyIDs := make([]uint, 0, len(idSet))
-	for id := range idSet {
-		propertyIDs = append(propertyIDs, id)
+	householdIDs, err := userHouseholdIDs(h.db, userID)
+	if err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, apierr.CodeServerError, "Search failed")
+		return
 	}
 
 	match := buildMatchQuery(raw)
@@ -96,25 +86,26 @@ func (h *SearchHandler) Query(c *gin.Context) {
 
 	var rows []row
 	// snippet(table, colIndex, open, close, ellipsis, tokens). Column 5 is body
-	// (0=entity_type,1=entity_id,2=property_id,3=user_id,4=title,5=body).
+	// (0=entity_type,1=entity_id,2=property_id,3=household_id,4=user_id,5=title,6=body).
 	// Delimiters are ASCII control chars (SOH/STX) — cannot appear in user text,
 	// so frontend replacement is unambiguous.
-	// Two access paths:
-	//   1. Rows belonging to a real property the user owns or is a member of.
-	//   2. Rows with property_id=0 (unscoped expenses/projects) whose user_id
-	//      matches the current user — prevents cross-user leakage of legacy data.
-	err := h.db.Raw(`
+	// Three access paths:
+	//   1. Rows belonging to a home the user owns or is a member of.
+	//   2. Rows belonging to a household the user is a member of.
+	//   3. Rows with neither (projects without a home) whose user_id matches
+	//      the current user — prevents cross-user leakage.
+	err = h.db.Raw(`
 		SELECT entity_type AS entity_type,
 		       entity_id   AS entity_id,
 		       property_id AS property_id,
 		       title       AS title,
-		       snippet(search_index, 5, x'01', x'02', '…', 12) AS snippet
+		       snippet(search_index, 6, x'01', x'02', '…', 12) AS snippet
 		FROM search_index
 		WHERE search_index MATCH ?
-		  AND (property_id IN ? OR (property_id = 0 AND user_id = ?))
+		  AND (property_id IN ? OR household_id IN ? OR (property_id = 0 AND household_id = 0 AND user_id = ?))
 		ORDER BY bm25(search_index)
 		LIMIT 50
-	`, match, propertyIDs, userID).Scan(&rows).Error
+	`, match, propertyIDs, householdIDs, userID).Scan(&rows).Error
 
 	if err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, apierr.CodeServerError, "Search failed")

@@ -395,23 +395,25 @@ func newRouter(db *gorm.DB) *gin.Engine {
 				settings.DELETE("/account", middleware.DemoGuard(), settingsHandler.DeleteAccount)
 			}
 
-			// Balance (per property) - nested under properties
+			// Household-scoped resources: balance, long-term debts, split
+			// settings and members belong to the household, not to a home.
+			households := protected.Group("/households")
 			balanceHandler := handlers.NewBalanceHandler(db)
-			properties.GET("/:id/balance", balanceHandler.GetBalance)
-			properties.GET("/:id/balance/details", balanceHandler.GetBalanceDetails)
-
-			// Long-term debts (per property) - kept out of the running balance
 			debtHandler := handlers.NewDebtHandler(db)
-			properties.GET("/:id/debts", debtHandler.List)
-
-			// Household settings (per property) - nested under properties
-			properties.GET("/:id/settings", settingsHandler.GetHouseholdSettings)
-			properties.PUT("/:id/settings", settingsHandler.UpdateHouseholdSettings)
-
-			// Household members (per property) - nested under properties
 			memberHandler := handlers.NewMemberHandler(db)
-			properties.GET("/:id/members", memberHandler.List)
-			properties.POST("/:id/members", memberHandler.Create)
+			joinRequestHandler := handlers.NewJoinRequestHandler(db)
+			householdHandler := handlers.NewHouseholdHandler(db)
+			{
+				households.GET("", householdHandler.List)
+				households.GET("/joinable", joinRequestHandler.ListJoinable)
+				households.GET("/:id/balance", balanceHandler.GetBalance)
+				households.GET("/:id/balance/details", balanceHandler.GetBalanceDetails)
+				households.GET("/:id/debts", debtHandler.List)
+				households.GET("/:id/settings", settingsHandler.GetHouseholdSettings)
+				households.PUT("/:id/settings", settingsHandler.UpdateHouseholdSettings)
+				households.GET("/:id/members", memberHandler.List)
+				households.POST("/:id/members", memberHandler.Create)
+			}
 
 			// Individual member operations
 			members := protected.Group("/members")
@@ -422,11 +424,9 @@ func newRouter(db *gorm.DB) *gin.Engine {
 			}
 
 			// Join Requests
-			joinRequestHandler := handlers.NewJoinRequestHandler(db)
 			protected.POST("/join-requests", joinRequestHandler.Create)
 			protected.GET("/join-requests", joinRequestHandler.List)
 			protected.PATCH("/join-requests/:id", joinRequestHandler.Resolve)
-			protected.GET("/properties/joinable", joinRequestHandler.ListJoinable)
 
 			// Settlements
 			settlements := protected.Group("/settlements")

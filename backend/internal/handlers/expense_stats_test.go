@@ -64,13 +64,13 @@ func (f *moneyFixture) getStats(t *testing.T, token, query string) statsResponse
 // which would also build splits we do not need here).
 func (f *moneyFixture) addExpense(t *testing.T, amount float64, date time.Time, categoryID uint, subcategoryID *uint) models.Expense {
 	t.Helper()
-	return f.addExpenseIn(t, f.prop.ID, amount, date, categoryID, subcategoryID)
+	return f.addExpenseIn(t, f.prop.HouseholdID, amount, date, categoryID, subcategoryID)
 }
 
-func (f *moneyFixture) addExpenseIn(t *testing.T, propertyID uint, amount float64, date time.Time, categoryID uint, subcategoryID *uint) models.Expense {
+func (f *moneyFixture) addExpenseIn(t *testing.T, householdID uint, amount float64, date time.Time, categoryID uint, subcategoryID *uint) models.Expense {
 	t.Helper()
 	e := models.Expense{
-		UserID: f.alice.ID, PropertyID: &propertyID, CategoryID: categoryID, SubcategoryID: subcategoryID,
+		UserID: f.alice.ID, HouseholdID: householdID, CategoryID: categoryID, SubcategoryID: subcategoryID,
 		Amount: amount, Date: date, Description: "stat", PaidByMemberID: f.mAlice.ID,
 	}
 	mustCreate(t, f.db, &e)
@@ -262,37 +262,25 @@ func TestStats_CategoryFilterBreaksDownBySubcategory(t *testing.T) {
 	}
 }
 
-func TestStats_PropertyFilterAndHouseholdIsolation(t *testing.T) {
+func TestStats_HouseholdIsolation(t *testing.T) {
 	f := setupMoneyFixture(t)
 	f.addExpense(t, 100, utc(2026, 1, 10), f.homeCatID, nil)
 
-	// A second property of Alice's, and a stranger's household.
-	second := models.Property{UserID: f.alice.ID, Name: "Garage", Type: "owned", StartDate: time.Now()}
+	// A second home of Alice's household, and a stranger's household.
+	second := models.Property{HouseholdID: f.prop.HouseholdID, UserID: f.alice.ID, Name: "Garage", Type: "owned", StartDate: time.Now()}
 	mustCreate(t, f.db, &second)
-	mustCreate(t, f.db, &models.HouseholdMember{PropertyID: second.ID, UserID: &f.alice.ID, Name: "Alice", Role: "admin"})
-	f.addExpenseIn(t, second.ID, 30, utc(2026, 1, 11), f.homeCatID, nil)
+	f.addExpenseIn(t, second.HouseholdID, 30, utc(2026, 1, 11), f.homeCatID, nil)
 
 	eve := &models.User{Email: "eve@example.com", PasswordHash: "x", Name: "Eve", Role: "user", IsActive: true}
 	mustCreate(t, f.db, eve)
-	evesHome := models.Property{UserID: eve.ID, Name: "Eve", Type: "owned", StartDate: time.Now()}
+	evesHome := models.Property{Household: &models.Household{Name: "Eve"}, UserID: eve.ID, Name: "Eve", Type: "owned", StartDate: time.Now()}
 	mustCreate(t, f.db, &evesHome)
-	mustCreate(t, f.db, &models.HouseholdMember{PropertyID: evesHome.ID, UserID: &eve.ID, Name: "Eve", Role: "admin"})
-	f.addExpenseIn(t, evesHome.ID, 7777, utc(2026, 1, 12), f.homeCatID, nil)
+	mustCreate(t, f.db, &models.HouseholdMember{HouseholdID: evesHome.HouseholdID, UserID: &eve.ID, Name: "Eve", Role: "admin"})
+	f.addExpenseIn(t, evesHome.HouseholdID, 7777, utc(2026, 1, 12), f.homeCatID, nil)
 
 	all := f.getStats(t, f.aliceTok, "from=2026-01-01&to=2026-01-31")
 	if !approx(all.TotalPeriod, 130) {
-		t.Errorf("all of Alice's properties = %.2f, want 130 and never Eve's 7777", all.TotalPeriod)
-	}
-
-	only := f.getStats(t, f.aliceTok, "from=2026-01-01&to=2026-01-31&property_id="+itoa(second.ID))
-	if !approx(only.TotalPeriod, 30) || only.Count != 1 {
-		t.Errorf("property filter = %.2f over %d, want 30 over 1", only.TotalPeriod, only.Count)
-	}
-
-	// Naming a property she is not a member of must not open it up.
-	probe := f.getStats(t, f.aliceTok, "from=2026-01-01&to=2026-01-31&property_id="+itoa(evesHome.ID))
-	if probe.TotalPeriod != 0 || probe.Count != 0 {
-		t.Errorf("another household's property leaked: %.2f over %d", probe.TotalPeriod, probe.Count)
+		t.Errorf("Alice's household = %.2f, want 130 and never Eve's 7777", all.TotalPeriod)
 	}
 
 	// Eve sees her own household only.

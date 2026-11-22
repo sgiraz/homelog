@@ -165,7 +165,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
-import apiClient from '@/api/client'
+import { useSettingsStore } from '@/stores/settings'
+import apiClient, { membersAPI } from '@/api/client'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -176,6 +177,7 @@ const { t } = useI18n()
 const emit = defineEmits(['close', 'created'])
 const projectsStore = useProjectsStore()
 const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
 
 const loading = ref(false)
 const error = ref(null)
@@ -230,11 +232,11 @@ async function fetchCurrentPropertyAndMembers() {
   try {
     const { data } = await apiClient.get('/properties')
     if (data && data.length > 0) {
-      const prop = data.find(p => p.is_current) || data[0]
+      const prop = data.find(p => p.id === settingsStore.householdPropertyId) || data[0]
       currentPropertyId.value = prop.id
       form.value.property_id = prop.id
 
-      const membersRes = await apiClient.get(`/properties/${prop.id}/members`)
+      const membersRes = await membersAPI.list(prop.household_id)
       householdMembers.value = membersRes.data || []
     }
   } catch (err) {

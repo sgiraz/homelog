@@ -18,11 +18,11 @@ func TestTemplateValuesForAnalysis(t *testing.T) {
 	if err := db.Create(&owner).Error; err != nil {
 		t.Fatal(err)
 	}
-	prop := models.Property{UserID: owner.ID, Name: "Casa", IsCurrent: true}
+	prop := models.Property{Household: &models.Household{Name: "Casa"}, UserID: owner.ID, Name: "Casa", IsCurrent: true}
 	if err := db.Create(&prop).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&models.HouseholdMember{PropertyID: prop.ID, UserID: &owner.ID, Name: "Owner"}).Error; err != nil {
+	if err := db.Create(&models.HouseholdMember{HouseholdID: prop.HouseholdID, UserID: &owner.ID, Name: "Owner"}).Error; err != nil {
 		t.Fatal(err)
 	}
 	tpl := models.BillTemplate{

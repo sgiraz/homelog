@@ -1,7 +1,7 @@
-// Command upgrade converts a database from HomeLog 2026.09.11 or earlier so
-// that 2026.10.21 and later can start on it. Stop HomeLog and back up the data
-// folder first, run it once, then start the new version, which migrates the
-// rest. Running it again changes nothing.
+// Command upgrade converts a database from an older HomeLog so that the
+// current version can start on it. Stop HomeLog and back up the data folder
+// first, run it once, then start the new version, which migrates the rest.
+// Running it again changes nothing.
 //
 // In Docker: docker compose run --rm homelog ./upgrade
 package main
@@ -52,6 +52,8 @@ func upgrade(db *gorm.DB) error {
 			{"bill templates moved to their property", moveBillTemplatesToProperty},
 			{"bill estimates moved to the closing reading", moveEstimatesToClosingReading},
 			{"per-service default template removed", dropServiceDefaultTemplate},
+			// Last: the steps above still read household_members.property_id.
+			{"homes grouped into households", groupHomesIntoHouseholds},
 		} {
 			if err := step.run(conn); err != nil {
 				return fmt.Errorf("%s: %w", step.name, err)
@@ -227,4 +229,79 @@ func dropServiceDefaultTemplate(db *gorm.DB) error {
 	}
 	// Not m.DropColumn: it finds only the columns GORM itself wrote.
 	return db.Exec(`ALTER TABLE utilities DROP COLUMN default_bill_template_id`).Error
+}
+
+// groupHomesIntoHouseholds gives every home its own household, named after it
+// and with the same id, so existing data behaves exactly as before. Members,
+// settlements, split settings and join requests move from the home to the
+// household; every expense gets a household, and keeps its home only in the
+// Home category, the one where a home means something. Households with the
+// same people are then merged, since an account belongs to one household.
+func groupHomesIntoHouseholds(db *gorm.DB) error {
+	m := db.Migrator()
+	if !m.HasTable("household_members") || m.HasColumn("household_members", "household_id") {
+		return nil
+	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Migrator().CreateTable(&models.Household{}); err != nil {
+			return err
+		}
+		if err := tx.Migrator().CreateTable(&models.HouseholdJoinRequest{}); err != nil {
+			return err
+		}
+		for _, stmt := range []string{
+			`INSERT INTO households (id, created_at, updated_at, deleted_at, name)
+				SELECT id, created_at, updated_at, deleted_at, name FROM properties`,
+			`ALTER TABLE properties ADD COLUMN household_id integer`,
+			`UPDATE properties SET household_id = id`,
+			// Primary was one home per owner; it is one per household now, and
+			// every household starts with a single home.
+			`UPDATE properties SET is_current = 1`,
+			`ALTER TABLE household_members ADD COLUMN household_id integer`,
+			`UPDATE household_members SET household_id = property_id`,
+			`ALTER TABLE settlements ADD COLUMN household_id integer`,
+			`UPDATE settlements SET household_id = property_id`,
+			`ALTER TABLE household_settings ADD COLUMN household_id integer`,
+			`UPDATE household_settings SET household_id = property_id`,
+			`INSERT INTO household_join_requests
+				(id, created_at, updated_at, deleted_at, user_id, household_id, status, resolved_by, resolved_at)
+				SELECT id, created_at, updated_at, deleted_at, user_id, property_id, status, resolved_by, resolved_at
+				FROM property_join_requests`,
+			`DROP TABLE property_join_requests`,
+			`ALTER TABLE expenses ADD COLUMN household_id integer`,
+			`UPDATE expenses SET household_id = property_id`,
+			// An expense without a home belongs to its author's first household.
+			`UPDATE expenses SET household_id = (
+				SELECT hm.household_id FROM household_members hm
+				WHERE hm.user_id = expenses.user_id ORDER BY hm.created_at, hm.id LIMIT 1)
+			WHERE household_id IS NULL`,
+			// The form forced a home on every expense: only Home ones keep it.
+			`UPDATE expenses SET property_id = NULL
+			WHERE property_id IS NOT NULL
+				AND category_id NOT IN (SELECT id FROM categories WHERE slug = 'home')`,
+		} {
+			if err := tx.Exec(stmt).Error; err != nil {
+				return err
+			}
+		}
+
+		var homeless int64
+		if err := tx.Table("expenses").Where("household_id IS NULL").Count(&homeless).Error; err != nil {
+			return err
+		}
+		if homeless > 0 {
+			return fmt.Errorf("%d expenses belong to no home and their authors to no household: assign them a home first", homeless)
+		}
+
+		for _, table := range []string{"household_members", "settlements", "household_settings"} {
+			if err := database.DropColumns(tx, table, "property_id"); err != nil {
+				return fmt.Errorf("drop %s.property_id: %w", table, err)
+			}
+		}
+		// Replaced by a unique one, which the server creates on startup.
+		if err := tx.Exec(`DROP INDEX IF EXISTS idx_household_members_user_id`).Error; err != nil {
+			return err
+		}
+		return mergeHouseholds(tx)
+	})
 }

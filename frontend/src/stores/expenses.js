@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { expensesAPI } from '@/api/client'
 import { apiErrorMessage } from '@/utils/apiError'
 import { trackEvent } from '@/utils/analytics'
+import { useSettingsStore } from '@/stores/settings'
 
 const PAGE_SIZE = 20
 
@@ -14,6 +15,7 @@ export const useExpensesStore = defineStore('expenses', () => {
   const total = ref(0)
   const page = ref(1)
   const hasMore = ref(false)
+  const settingsStore = useSettingsStore()
 
   // Deduplication: track in-flight fetch
   let fetchPromise = null
@@ -27,8 +29,21 @@ export const useExpensesStore = defineStore('expenses', () => {
 
     const doFetch = async () => {
       try {
+        // The list is the active household's. Until it is known (it loads
+        // after the views mount) there is nothing to show yet; the views
+        // fetch again once it arrives.
+        const householdId = settingsStore.householdId
+        if (!householdId) {
+          if (!append) {
+            expenses.value = []
+            total.value = 0
+          }
+          hasMore.value = false
+          return
+        }
         const params = {
           ...filters,
+          household_id: householdId,
           limit: PAGE_SIZE,
           offset: (p - 1) * PAGE_SIZE
         }

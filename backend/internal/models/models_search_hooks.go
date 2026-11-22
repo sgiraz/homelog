@@ -46,7 +46,7 @@ func (e *Expense) AfterSave(tx *gorm.DB) error {
 	}
 	title := truncate(e.Description, 120)
 	body := strings.TrimSpace(e.Description + " " + categoryName + " " + subcategoryName)
-	return search.Upsert(tx, search.TypeExpense, e.ID, propertyID, e.UserID, title, body)
+	return search.Upsert(tx, search.TypeExpense, e.ID, propertyID, e.HouseholdID, e.UserID, title, body)
 }
 
 func (e *Expense) AfterDelete(tx *gorm.DB) error {
@@ -65,7 +65,7 @@ func (b *Bill) AfterSave(tx *gorm.DB) error {
 
 	title := truncate(strings.TrimSpace(provider+" "+b.BillNumber), 120)
 	body := strings.TrimSpace(b.BillNumber + " " + provider + " " + commContent)
-	return search.Upsert(tx, search.TypeBill, b.ID, propertyID, 0, title, body)
+	return search.Upsert(tx, search.TypeBill, b.ID, propertyID, 0, 0, title, body)
 }
 
 func (b *Bill) AfterDelete(tx *gorm.DB) error {
@@ -81,7 +81,7 @@ func (p *Project) AfterSave(tx *gorm.DB) error {
 	}
 	title := truncate(p.Name, 120)
 	body := strings.TrimSpace(p.Name + " " + p.Description)
-	return search.Upsert(tx, search.TypeProject, p.ID, propertyID, p.UserID, title, body)
+	return search.Upsert(tx, search.TypeProject, p.ID, propertyID, 0, p.UserID, title, body)
 }
 
 func (p *Project) AfterDelete(tx *gorm.DB) error {
@@ -112,7 +112,7 @@ func (u *Utility) AfterSave(tx *gorm.DB) error {
 		u.Type + " " + typeIT + " " +
 			u.Provider + " " + u.Address + " " + u.CustomerCode + " " + u.Notes,
 	)
-	return search.Upsert(tx, search.TypeUtility, u.ID, u.PropertyID, 0, title, body)
+	return search.Upsert(tx, search.TypeUtility, u.ID, u.PropertyID, 0, 0, title, body)
 }
 
 func (u *Utility) AfterDelete(tx *gorm.DB) error {

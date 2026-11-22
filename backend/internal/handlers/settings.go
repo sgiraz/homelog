@@ -21,8 +21,6 @@ func NewSettingsHandler(db *gorm.DB) *SettingsHandler {
 }
 
 // Allow-lists so unexpected client values never get persisted/echoed back.
-const defaultColorTheme = "slate"
-
 var validThemes = map[string]bool{"auto": true, "light": true, "dark": true}
 var validColorThemes = map[string]bool{
 	"slate": true, "paper": true, "forest": true, "ocean": true, "plum": true,
@@ -33,7 +31,7 @@ func colorThemeOrDefault(v string) string {
 	if validColorThemes[v] {
 		return v
 	}
-	return defaultColorTheme
+	return models.DefaultColorTheme
 }
 
 // UserSettingsResponse represents the user settings response
@@ -57,8 +55,8 @@ type UserSettingsResponse struct {
 
 // PendingJoinRequestInfo contains summary info about a user's pending join request
 type PendingJoinRequestInfo struct {
-	PropertyName string    `json:"property_name"`
-	RequestedAt  time.Time `json:"requested_at"`
+	HouseholdName string    `json:"household_name"`
+	RequestedAt   time.Time `json:"requested_at"`
 }
 
 // UpdateUserSettingsRequest represents the request for updating user settings
@@ -87,13 +85,13 @@ func (h *SettingsHandler) getPropertyStatus(userID uint) (hasProperty bool, isPr
 	h.db.Model(&models.HouseholdMember{}).Where("user_id = ? AND role = 'admin'", userID).Count(&adminCount)
 	isPropertyAdmin = adminCount > 0
 
-	var joinReqs []models.PropertyJoinRequest
+	var joinReqs []models.HouseholdJoinRequest
 	h.db.Where("user_id = ? AND status = 'pending'", userID).
-		Preload("Property").Limit(1).Find(&joinReqs)
-	if len(joinReqs) > 0 {
+		Preload("Household").Limit(1).Find(&joinReqs)
+	if len(joinReqs) > 0 && joinReqs[0].Household != nil {
 		pendingReq = &PendingJoinRequestInfo{
-			PropertyName: joinReqs[0].Property.Name,
-			RequestedAt:  joinReqs[0].CreatedAt,
+			HouseholdName: joinReqs[0].Household.Name,
+			RequestedAt:   joinReqs[0].CreatedAt,
 		}
 	}
 	return
@@ -112,28 +110,9 @@ func (h *SettingsHandler) Get(c *gin.Context) {
 	// Find or create user settings
 	var settings models.UserSettings
 	err := h.db.Where("user_id = ?", userID).First(&settings).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			// Return defaults
-			c.JSON(http.StatusOK, UserSettingsResponse{
-				Theme:                     "auto",
-				ColorTheme:                defaultColorTheme,
-				Currency:                  models.DefaultCurrency,
-				Language:                  models.DefaultLanguage,
-				DateFormat:                "DD/MM/YYYY",
-				DefaultSplitWithMemberIDs: "",
-				EmailNotifications:        true,
-				BillReminders:             true,
-				NotificationRetentionDays: 90,
-				NotifyJoinRequests:        true,
-				NotifySharedExpenses:      true,
-				OnboardingCompleted:       false,
-				HasProperty:               hasProperty,
-				IsPropertyAdmin:           isPropertyAdmin,
-				PendingJoinRequest:        pendingReq,
-			})
-			return
-		}
+	if err == gorm.ErrRecordNotFound {
+		settings = models.NewUserSettings(userID, models.DefaultLanguage)
+	} else if err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch settings")
 		return
 	}
@@ -187,16 +166,7 @@ func (h *SettingsHandler) Update(c *gin.Context) {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			// Create new settings
-			settings = models.UserSettings{
-				UserID:                    userID,
-				Theme:                     "auto",
-				ColorTheme:                defaultColorTheme,
-				Currency:                  models.DefaultCurrency,
-				Language:                  models.DefaultLanguage,
-				DefaultSplitWithMemberIDs: "",
-				EmailNotifications:        true,
-				BillDueAlertDays:          3,
-			}
+			settings = models.NewUserSettings(userID, models.DefaultLanguage)
 		} else {
 			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch settings")
 			return

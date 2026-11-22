@@ -298,7 +298,7 @@ async function fetchCurrentProperty() {
       const fromQuery = Number.isFinite(requested)
         ? data.find(p => p.id === requested)
         : null
-      const currentProp = fromQuery || data.find(p => p.is_current) || data[0]
+      const currentProp = fromQuery || data.find(p => p.id === settingsStore.householdPropertyId) || data[0]
       currentPropertyId.value = currentProp.id
     }
   } catch (err) {

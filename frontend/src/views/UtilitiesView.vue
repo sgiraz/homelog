@@ -18,8 +18,9 @@
                  bg-surface text-ink text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
+          <!-- Archived homes come last (API order): their final bills still arrive. -->
           <option v-for="p in properties" :key="p.id" :value="p.id">
-            {{ p.name }}
+            {{ p.end_date ? t('utilities.archivedHome', { name: p.name }) : p.name }}
           </option>
         </select>
 
@@ -499,7 +500,7 @@ async function fetchProperties() {
       const fromQuery = Number.isFinite(requested)
         ? data.find(p => p.id === requested)
         : null
-      const current = fromQuery || data.find(p => p.is_current) || data[0]
+      const current = fromQuery || data.find(p => p.id === settingsStore.householdPropertyId) || data[0]
       selectedPropertyId.value = current.id
       utilitiesStore.fetchUtilities({ property_id: current.id })
     }
@@ -579,7 +580,7 @@ onActivated(async () => {
     // No override: preserve current selection if it still exists.
     const stillValid = selectedPropertyId.value && data.some(p => p.id === selectedPropertyId.value)
     if (!stillValid) {
-      const current = data.find(p => p.is_current) || data[0]
+      const current = data.find(p => p.id === settingsStore.householdPropertyId) || data[0]
       selectedPropertyId.value = current.id
       utilitiesStore.fetchUtilities({ property_id: current.id })
     }

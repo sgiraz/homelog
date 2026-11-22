@@ -165,7 +165,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
-import apiClient from '@/api/client'
+import { membersAPI } from '@/api/client'
+import { householdIdOfProperty } from '@/utils/household'
 import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
@@ -232,9 +233,9 @@ function setMemberRole(userId, role) {
 
 async function fetchHouseholdMembers() {
   try {
-    const propertyId = props.project.property_id
-    if (!propertyId) return
-    const { data } = await apiClient.get(`/properties/${propertyId}/members`)
+    const householdId = await householdIdOfProperty(props.project.property_id)
+    if (!householdId) return
+    const { data } = await membersAPI.list(householdId)
     householdMembers.value = data || []
   } catch (err) {
     console.error('Error fetching members:', err)

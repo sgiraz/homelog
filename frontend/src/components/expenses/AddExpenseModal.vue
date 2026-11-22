@@ -148,6 +148,24 @@
         </select>
       </div>
 
+      <!-- Home: only a Home expense has one, and only a household with more
+           than one home needs to be asked which. -->
+      <div v-if="isHomeCategory && householdHomes.length > 1">
+        <label class="block text-sm text-ink-soft mb-1">
+          {{ t('expenses.modal.homeLabel') }}
+        </label>
+        <select
+          v-model.number="form.property_id"
+          class="w-full px-3 py-3 border border-line rounded-lg
+                 bg-surface text-ink text-base
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option v-for="home in householdHomes" :key="home.id" :value="home.id">
+            {{ home.name }}
+          </option>
+        </select>
+      </div>
+
       <Input
         v-model="form.date"
         :label="t('expenses.modal.dateLabel')"
@@ -298,7 +316,7 @@ import { useExpensesStore } from '@/stores/expenses'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { formatCurrency as _formatCurrency, todayDateOnly } from '@/utils/dateFormatter'
-import apiClient, { categoriesAPI, projectsAPI, expenseTemplatesAPI, exchangeAPI } from '@/api/client'
+import apiClient, { categoriesAPI, projectsAPI, expenseTemplatesAPI, exchangeAPI, membersAPI } from '@/api/client'
 import { currencies as allCurrencies } from '@/utils/currencies'
 import { categoryLabel } from '@/utils/categoryLabel'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -329,7 +347,10 @@ const expenseTemplates = ref([])
 const selectedTemplateId = ref(null)
 
 const householdUsers = ref([])
-const currentPropertyId = ref(null)
+// Every expense belongs to the active household.
+const currentHouseholdId = computed(() => settingsStore.householdId)
+// The active household's homes, for the Home expense selector.
+const householdHomes = ref([])
 
 // Currency conversion
 const selectedCurrency = ref(settingsStore.currency || 'EUR')
@@ -373,6 +394,10 @@ const form = ref({
 })
 
 const hasMultipleUsers = computed(() => householdUsers.value.length > 1)
+
+const isHomeCategory = computed(() =>
+  categories.value.find(c => c.id === form.value.category_id)?.slug === 'home'
+)
 
 const selectedCategorySubcategories = computed(() => {
   if (!form.value.category_id) return []
@@ -457,14 +482,13 @@ async function fetchCategories() {
   }
 }
 
-async function fetchCurrentProperty() {
+// A Home expense defaults to the household's primary home.
+async function fetchHouseholdHomes() {
+  form.value.property_id = settingsStore.householdPropertyId
   try {
     const { data } = await apiClient.get('/properties')
-    if (data && data.length > 0) {
-      const currentProp = data.find(p => p.is_current) || data[0]
-      currentPropertyId.value = currentProp.id
-      form.value.property_id = currentProp.id
-    }
+    // An archived home is history: new expenses go to the homes in use.
+    householdHomes.value = (data || []).filter(p => p.household_id === currentHouseholdId.value && !p.end_date)
   } catch (err) {
     console.error('Error fetching properties:', err)
   }
@@ -510,10 +534,10 @@ async function fetchActiveProjects() {
 }
 
 async function fetchHouseholdUsers() {
-  if (!currentPropertyId.value) return
+  if (!currentHouseholdId.value) return
 
   try {
-    const { data } = await apiClient.get(`/properties/${currentPropertyId.value}/members`)
+    const { data } = await membersAPI.list(currentHouseholdId.value)
     householdUsers.value = data
 
     const currentUserId = authStore.user?.id
@@ -617,7 +641,8 @@ async function handleSubmit() {
       category_id: form.value.category_id,
       subcategory_id: form.value.subcategory_id || undefined,
       date: form.value.date,
-      property_id: form.value.property_id,
+      household_id: currentHouseholdId.value,
+      property_id: isHomeCategory.value ? form.value.property_id || undefined : undefined,
       project_id: form.value.project_id,
       paid_by_member_id: form.value.paid_by_member_id,
       is_split: form.value.is_split,
@@ -640,7 +665,7 @@ async function handleSubmit() {
 onMounted(async () => {
   fetchCategories()
   fetchExpenseTemplates()
-  await fetchCurrentProperty()
+  fetchHouseholdHomes()
   await fetchHouseholdUsers()
   await fetchUserSettings()
   fetchActiveProjects()

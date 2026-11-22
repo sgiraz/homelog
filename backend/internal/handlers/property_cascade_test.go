@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"net/http"
 	"sort"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
 
 	"github.com/sgiraz/homelog/internal/models"
 	"github.com/sgiraz/homelog/internal/testutil"
@@ -22,6 +23,7 @@ func TestCascadeDeleteProperty_CoversSchema(t *testing.T) {
 		"properties": true, "household_members": true, "utilities": true,
 		"bills": true, "bill_installments": true, "meter_readings": true,
 		"expenses": true, "expense_splits": true, "settlements": true, "projects": true,
+		"households": true,
 	}
 	// Edges the database refuses to orphan: the cascade deletes these children
 	// before their parent.
@@ -34,15 +36,17 @@ func TestCascadeDeleteProperty_CoversSchema(t *testing.T) {
 		"expenses.bill_installment_id":            "expenses go before the bills",
 		"expenses.paid_by_member_id":              "expenses go before the members",
 		"expenses.property_id":                    "deleted with the property",
-		"household_members.property_id":           "deleted with the property",
-		"household_settings.property_id":          "deleted with the property",
+		"expenses.household_id":                   "clearHouseholdLedger deletes them with the last home",
+		"household_join_requests.household_id":    "deleteHousehold deletes them",
+		"household_members.household_id":          "deleteHousehold deletes them",
+		"household_settings.household_id":         "deleteHousehold deletes them",
+		"properties.household_id":                 "the last home goes before its household",
 		"notifications.property_id":               "deleted with the property",
 		"projects.property_id":                    "deleted with the property",
-		"property_join_requests.property_id":      "deleted with the property",
 		"settlement_allocations.expense_split_id": "deleteExpenses deletes them first",
 		"settlements.from_member_id":              "settlements go first",
 		"settlements.to_member_id":                "settlements go first",
-		"settlements.property_id":                 "settlements go first",
+		"settlements.household_id":                "clearHouseholdLedger deletes them first",
 		"utilities.paid_by_member_id":             "utilities go before the members",
 		"utilities.property_id":                   "deleted with the property",
 	}
@@ -95,9 +99,9 @@ func TestDeleteProperty_SoftDeletedAndSettledRows(t *testing.T) {
 	id := f.home.ID
 
 	var mOwner models.HouseholdMember
-	db.Where("property_id = ? AND user_id = ?", id, f.owner.ID).First(&mOwner)
+	db.Where("household_id = ? AND user_id = ?", f.home.HouseholdID, f.owner.ID).First(&mOwner)
 	var settlement models.Settlement
-	db.Where("property_id = ?", id).First(&settlement)
+	db.Where("household_id = ?", f.home.HouseholdID).First(&settlement)
 	var util models.Utility
 	db.Where("property_id = ?", id).First(&util)
 	var cat models.Category
@@ -107,7 +111,7 @@ func TestDeleteProperty_SoftDeletedAndSettledRows(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	oldExpense := models.Expense{UserID: f.owner.ID, PropertyID: &id, CategoryID: cat.ID, Amount: 9, Date: now, Description: "Old", PaidByMemberID: mOwner.ID}
+	oldExpense := models.Expense{UserID: f.owner.ID, HouseholdID: f.home.HouseholdID, PropertyID: &id, CategoryID: cat.ID, Amount: 9, Date: now, Description: "Old", PaidByMemberID: mOwner.ID}
 	mustCreate(t, db, &oldExpense)
 	mustCreate(t, db, &models.ExpenseSplit{ExpenseID: oldExpense.ID, MemberID: mOwner.ID, Amount: 9, IsSettled: true, SettledAt: &now})
 
@@ -131,9 +135,8 @@ func TestDeleteProperty_SoftDeletedAndSettledRows(t *testing.T) {
 		}
 	}
 
-	rec := doJSON(t, f.router, http.MethodDelete, "/properties/"+itoa(id)+"?new_principal_id="+itoa(f.other.ID), f.ownerTok, nil)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("delete: status %d, body %s", rec.Code, rec.Body.String())
+	if err := db.Transaction(func(tx *gorm.DB) error { return cascadeDeleteProperty(tx, id) }); err != nil {
+		t.Fatalf("delete: %v", err)
 	}
 
 	for _, c := range []struct {
@@ -144,11 +147,13 @@ func TestDeleteProperty_SoftDeletedAndSettledRows(t *testing.T) {
 		{"utilities", &models.Utility{}, "property_id = ?"},
 		{"expenses", &models.Expense{}, "property_id = ?"},
 		{"projects", &models.Project{}, "property_id = ?"},
-		{"settlements", &models.Settlement{}, "property_id = ?"},
 	} {
 		if n := f.count(t, c.model, c.query, id); n != 0 {
 			t.Errorf("%s: %d rows left for the deleted property, want 0", c.name, n)
 		}
+	}
+	if n := f.count(t, &models.Settlement{}, "household_id = ?", f.home.HouseholdID); n != 0 {
+		t.Errorf("settlements: %d rows left for the deleted household, want 0", n)
 	}
 	for _, c := range []struct {
 		name  string

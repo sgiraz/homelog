@@ -39,6 +39,9 @@ type UpdatePropertyRequest struct {
 	Type      *string `json:"type" binding:"omitempty,oneof=owned rented"`
 	IsCurrent *bool   `json:"is_current"`
 	Residents *int    `json:"residents" binding:"omitempty,min=1"`
+	// Archived moves a home out of everyday use (the family moved out) while
+	// keeping its history; false brings it back.
+	Archived *bool `json:"archived"`
 }
 
 // List - GET /api/v1/properties
@@ -50,20 +53,14 @@ func (h *PropertyHandler) List(c *gin.Context) {
 		return
 	}
 
-	// Find property IDs where user is a household member
-	var memberPropertyIDs []uint
-	h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ?", userID).
-		Pluck("property_id", &memberPropertyIDs)
-
-	// Get properties where user is owner OR is a member
-	var properties []models.Property
-	query := h.db.Where("user_id = ?", userID)
-	if len(memberPropertyIDs) > 0 {
-		query = h.db.Where("user_id = ? OR id IN ?", userID, memberPropertyIDs)
+	visible, err := accessiblePropertyIDs(h.db, userID)
+	if err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch properties")
+		return
 	}
-
-	if err := query.Order("is_current DESC, created_at DESC").
+	var properties []models.Property
+	if err := h.db.Preload("Household").Where("id IN ?", visible).
+		Order("end_date IS NOT NULL, is_current DESC, created_at DESC").
 		Find(&properties).Error; err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch properties")
 		return
@@ -78,8 +75,19 @@ func (h *PropertyHandler) List(c *gin.Context) {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to count members")
 		return
 	}
+	var withExpenses []uint
+	if err := h.db.Model(&models.Expense{}).Where("property_id IN ?", ids).
+		Distinct().Pluck("property_id", &withExpenses).Error; err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to count expenses")
+		return
+	}
+	hasExpenses := make(map[uint]bool, len(withExpenses))
+	for _, id := range withExpenses {
+		hasExpenses[id] = true
+	}
 	for i := range properties {
 		properties[i].IsShared = shared[properties[i].ID]
+		properties[i].HasExpenses = hasExpenses[properties[i].ID]
 	}
 
 	log.Printf("User %d has access to %d properties (owner or member)", userID, len(properties))
@@ -101,14 +109,26 @@ func (h *PropertyHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// If this property is set as current, unset other properties
-	if req.IsCurrent {
-		h.db.Model(&models.Property{}).Where("user_id = ?", userID).Update("is_current", false)
+	// An account belongs to one household: a new home joins the user's, which
+	// only its admins add homes to. Without one, the home starts it.
+	householdID, err := userHouseholdID(h.db, userID)
+	if err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch household")
+		return
+	}
+	if householdID != 0 && !requireHouseholdAdmin(c, h.db, userID, householdID) {
+		return
 	}
 
 	residents := req.Residents
 	if residents == 0 {
 		residents = 1
+	}
+
+	var user models.User
+	if err := h.db.First(&user, userID).Error; err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch user")
+		return
 	}
 
 	property := models.Property{
@@ -121,31 +141,34 @@ func (h *PropertyHandler) Create(c *gin.Context) {
 		Residents: residents,
 	}
 
-	if err := h.db.Create(&property).Error; err != nil {
+	err = h.db.Transaction(func(tx *gorm.DB) error {
+		if householdID == 0 {
+			household, _, err := createHousehold(tx, req.Name, user)
+			if err != nil {
+				return err
+			}
+			householdID = household.ID
+			// In a household now: a request to join another one is moot.
+			if err := tx.Unscoped().Where("user_id = ? AND status = 'pending'", userID).Delete(&models.HouseholdJoinRequest{}).Error; err != nil {
+				return err
+			}
+		}
+		property.HouseholdID = householdID
+		if err := tx.Create(&property).Error; err != nil {
+			return err
+		}
+		if !property.IsCurrent {
+			return ensurePrimaryHome(tx, property.HouseholdID)
+		}
+		return makePrimaryHome(tx, property)
+	})
+	if err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create property")
 		return
 	}
-
-	// Create default household settings for the property
-	householdSettings := models.HouseholdSettings{
-		PropertyID:       property.ID,
-		SplitMode:        false,
-		DefaultSplitType: "equal",
-	}
-	h.db.Create(&householdSettings)
-
-	// Create HouseholdMember for the creator (admin of the property)
-	var user models.User
-	if err := h.db.First(&user, userID).Error; err == nil {
-		member := models.HouseholdMember{
-			PropertyID: property.ID,
-			UserID:     &userID,
-			Name:       user.Name,
-			Role:       "admin",
-			IsVirtual:  false,
-		}
-		h.db.Create(&member)
-		log.Printf("✅ Household member created: ID=%d, Name=%s, PropertyID=%d", member.ID, member.Name, property.ID)
+	if err := h.db.First(&property, property.ID).Error; err != nil {
+		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch property")
+		return
 	}
 
 	log.Printf("✅ Property created: ID=%d, Name=%s, UserID=%d", property.ID, property.Name, userID)
@@ -230,20 +253,43 @@ func (h *PropertyHandler) Update(c *gin.Context) {
 	if req.Residents != nil {
 		updates["residents"] = *req.Residents
 	}
-	if req.IsCurrent != nil {
-		updates["is_current"] = *req.IsCurrent
+	// A household always has exactly one primary home: is_current=true moves
+	// the title here, false is a no-op (promote another home instead).
+	promote := req.IsCurrent != nil && *req.IsCurrent && !property.IsCurrent
+
+	// A household's primary home is always one in use: archiving it would
+	// leave new Home expenses pointing at a home the family left.
+	archived := property.EndDate != nil
+	if req.Archived != nil {
+		archived = *req.Archived
+	}
+	if archived && promote {
+		apierr.Fail(c, http.StatusConflict, "archived_home_not_primary", "An archived home cannot become the primary home")
+		return
+	}
+	if archived && property.IsCurrent {
+		apierr.Fail(c, http.StatusConflict, "primary_home_archived", "The primary home cannot be archived")
+		return
+	}
+	if req.Archived != nil && *req.Archived != (property.EndDate != nil) {
+		if *req.Archived {
+			updates["end_date"] = time.Now()
+		} else {
+			updates["end_date"] = gorm.Expr("NULL")
+		}
 	}
 
-	if len(updates) > 0 {
+	if len(updates) > 0 || promote {
 		err := h.db.Transaction(func(tx *gorm.DB) error {
-			if req.IsCurrent != nil && *req.IsCurrent {
-				if err := tx.Model(&models.Property{}).
-					Where("user_id = ? AND id != ?", userID, property.ID).
-					Update("is_current", false).Error; err != nil {
+			if len(updates) > 0 {
+				if err := tx.Model(&property).Updates(updates).Error; err != nil {
 					return err
 				}
 			}
-			return tx.Model(&property).Updates(updates).Error
+			if promote {
+				return makePrimaryHome(tx, property)
+			}
+			return nil
 		})
 		if err != nil {
 			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to update property")
@@ -296,30 +342,43 @@ func (h *PropertyHandler) Delete(c *gin.Context) {
 	}
 
 	// The app has no screen without a home: the last one cannot go.
-	var memberPropertyIDs []uint
-	if err := h.db.Model(&models.HouseholdMember{}).
-		Where("user_id = ? AND property_id != ?", userID, property.ID).
-		Pluck("property_id", &memberPropertyIDs).Error; err != nil {
+	visible, err := accessiblePropertyIDs(h.db, userID)
+	if err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to count properties")
 		return
 	}
-	var ownedOthers int64
+	var householdOthers int64
 	if err := h.db.Model(&models.Property{}).
-		Where("user_id = ? AND id != ?", userID, property.ID).
-		Count(&ownedOthers).Error; err != nil {
+		Where("household_id = ? AND id != ?", property.HouseholdID, property.ID).
+		Count(&householdOthers).Error; err != nil {
 		apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to count properties")
 		return
 	}
-	if ownedOthers == 0 && len(memberPropertyIDs) == 0 {
+	if len(visible) <= 1 {
 		apierr.Fail(c, http.StatusConflict, "last_property", "The only property cannot be deleted")
 		return
 	}
 
-	// Deleting the primary home: the owner names its successor among their
-	// other homes. With none left (only homes they joined), there is nothing
-	// to promote.
+	// Home expenses are part of the household's ledger: deleting them would
+	// shift everyone's balance. While the household keeps other homes, such a
+	// home is archived instead. A household's last home takes the whole
+	// household with it, which the owner confirms knowing that.
+	if householdOthers > 0 {
+		var expenses int64
+		if err := h.db.Model(&models.Expense{}).Where("property_id = ?", property.ID).Count(&expenses).Error; err != nil {
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to count expenses")
+			return
+		}
+		if expenses > 0 {
+			apierr.Fail(c, http.StatusConflict, "home_has_expenses", "A home with expenses can be archived, not deleted, while its household has other homes")
+			return
+		}
+	}
+
+	// Deleting the primary home: the owner names its successor among the
+	// household's other homes. With none left the household goes with it.
 	var successor *models.Property
-	if property.IsCurrent && ownedOthers > 0 {
+	if property.IsCurrent && householdOthers > 0 {
 		raw := c.Query("new_principal_id")
 		if raw == "" {
 			apierr.Fail(c, http.StatusBadRequest, "new_principal_required", "new_principal_id is required when deleting the primary property")
@@ -327,13 +386,13 @@ func (h *PropertyHandler) Delete(c *gin.Context) {
 		}
 		nextID, err := strconv.ParseUint(raw, 10, 32)
 		if err != nil || uint(nextID) == property.ID {
-			apierr.Fail(c, http.StatusBadRequest, "new_principal_invalid", "new_principal_id must be another property you own")
+			apierr.Fail(c, http.StatusBadRequest, "new_principal_invalid", "new_principal_id must be another home of the same household, not archived")
 			return
 		}
 		var next models.Property
-		if err := h.db.Where("id = ? AND user_id = ?", nextID, userID).First(&next).Error; err != nil {
+		if err := h.db.Where("id = ? AND household_id = ? AND end_date IS NULL", nextID, property.HouseholdID).First(&next).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
-				apierr.Fail(c, http.StatusBadRequest, "new_principal_invalid", "new_principal_id must be another property you own")
+				apierr.Fail(c, http.StatusBadRequest, "new_principal_invalid", "new_principal_id must be another home of the same household, not archived")
 			} else {
 				apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to fetch property")
 			}
@@ -349,7 +408,7 @@ func (h *PropertyHandler) Delete(c *gin.Context) {
 		if successor == nil {
 			return nil
 		}
-		return tx.Model(successor).Update("is_current", true).Error
+		return makePrimaryHome(tx, *successor)
 	})
 	if err != nil {
 		log.Printf("❌ Error deleting property %d: %v", property.ID, err)
@@ -371,10 +430,10 @@ func sharedPropertyIDs(db *gorm.DB, propertyIDs []uint) (map[uint]bool, error) {
 	}
 	var ids []uint
 	err := db.Model(&models.HouseholdMember{}).
-		Joins("JOIN properties ON properties.id = household_members.property_id").
-		Where("household_members.property_id IN ? AND household_members.is_virtual = ?", propertyIDs, false).
+		Joins("JOIN properties ON properties.household_id = household_members.household_id").
+		Where("properties.id IN ? AND household_members.is_virtual = ?", propertyIDs, false).
 		Where("household_members.user_id IS NOT NULL AND household_members.user_id <> properties.user_id").
-		Distinct().Pluck("household_members.property_id", &ids).Error
+		Distinct().Pluck("properties.id", &ids).Error
 	if err != nil {
 		return nil, err
 	}

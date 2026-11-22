@@ -22,16 +22,17 @@ const (
 // transaction — safe under GORM's AfterSave hook because tx is the same txn
 // as the triggering Save.
 //
-// userID must be the owning user's ID for entities that can have property_id=0
-// (expenses, projects). For entities always scoped to a property (bills,
-// utilities), pass 0 — they are never matched by the property_id=0 branch.
-func Upsert(tx *gorm.DB, etype EntityType, id, propertyID, userID uint, title, body string) error {
+// householdID scopes entities that belong to a household (expenses), with or
+// without a home; pass 0 for the others. userID must be the owning user's ID
+// for entities that can have neither (projects). For entities always scoped
+// to a property (bills, utilities), pass 0.
+func Upsert(tx *gorm.DB, etype EntityType, id, propertyID, householdID, userID uint, title, body string) error {
 	if err := tx.Exec(`DELETE FROM search_index WHERE entity_type = ? AND entity_id = ?`, etype, id).Error; err != nil {
 		return err
 	}
 	return tx.Exec(
-		`INSERT INTO search_index (entity_type, entity_id, property_id, user_id, title, body) VALUES (?, ?, ?, ?, ?, ?)`,
-		etype, id, propertyID, userID, title, body,
+		`INSERT INTO search_index (entity_type, entity_id, property_id, household_id, user_id, title, body) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		etype, id, propertyID, householdID, userID, title, body,
 	).Error
 }
 

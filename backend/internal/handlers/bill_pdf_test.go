@@ -47,11 +47,11 @@ func setupBillPDFFixture(t *testing.T) *billPDFFixture {
 		return u
 	}
 	owner, other := mkUser("owner@example.com"), mkUser("other@example.com")
-	prop := models.Property{UserID: owner.ID, Name: "Casa", IsCurrent: true}
+	prop := models.Property{Household: &models.Household{Name: "Casa"}, UserID: owner.ID, Name: "Casa", IsCurrent: true}
 	if err := db.Create(&prop).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&models.HouseholdMember{PropertyID: prop.ID, UserID: &owner.ID, Name: "Owner", Role: "admin"}).Error; err != nil {
+	if err := db.Create(&models.HouseholdMember{HouseholdID: prop.HouseholdID, UserID: &owner.ID, Name: "Owner", Role: "admin"}).Error; err != nil {
 		t.Fatal(err)
 	}
 	util := models.Utility{UserID: owner.ID, PropertyID: prop.ID, Type: "water", Provider: "Acme"}

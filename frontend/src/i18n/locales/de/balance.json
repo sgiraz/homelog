@@ -2,6 +2,7 @@
   "loading": "Kontostand wird geladen...",
   "balanceWith": "Kontostand mit {name}",
   "partnerFallback": "Partner",
+  "counterpartsLabel": "Saldo anzeigen mit",
   "owesYou": "{name} schuldet dir",
   "youOwe": "Sie schulden {name}",
   "even": "Ihr seid Quitt",

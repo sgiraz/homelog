@@ -32,7 +32,7 @@
   },
   "step2Join": {
     "title": "Einem Zuhause beitreten",
-    "subtitle": "Wähle die Immobilie aus, auf die du zugreifen möchtest.",
+    "subtitle": "Wähle den Haushalt aus, dem du beitreten möchtest.",
     "loading": "Wird geladen...",
     "noProperties": "Keine Immobilien gefunden. Du kannst selbst eine erstellen!",
     "createMine": "Eigene erstellen!",

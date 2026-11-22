@@ -387,6 +387,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import Input from '@/components/common/Input.vue'
 import Button from '@/components/common/Button.vue'
 import { apiErrorMessage } from '@/utils/apiError'
+import { householdIdOfProperty } from '@/utils/household'
 
 const props = defineProps({
   utility: {
@@ -530,11 +531,10 @@ const splitOverrideHint = computed(() => {
 })
 
 async function fetchMembers() {
-  const propertyId = props.utility.property_id
-  if (!propertyId) return
-
   try {
-    const { data } = await membersAPI.list(propertyId)
+    const householdId = await householdIdOfProperty(props.utility.property_id)
+    if (!householdId) return
+    const { data } = await membersAPI.list(householdId)
     members.value = data || []
   } catch (err) {
     console.error('Error fetching members:', err)

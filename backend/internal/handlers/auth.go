@@ -196,16 +196,24 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	// Auto-create Property + HouseholdSettings + UserSettings for first user (admin)
 	if isFirstUser {
-		// Create default property
+		// Create the default home and its household, with the user as admin
+		household, adminMember, err := createHousehold(tx, i18n.T(language, "property.default_name"), user)
+		if err != nil {
+			tx.Rollback()
+			log.Printf("ERROR creating household: %v", err)
+			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create household")
+			return
+		}
 		now := time.Now()
 		property := models.Property{
-			UserID:    user.ID,
-			Name:      i18n.T(language, "property.default_name"),
-			Address:   "",
-			Type:      "owned",
-			StartDate: now,
-			IsCurrent: true,
-			Residents: 1,
+			HouseholdID: household.ID,
+			UserID:      user.ID,
+			Name:        household.Name,
+			Address:     "",
+			Type:        "owned",
+			StartDate:   now,
+			IsCurrent:   true,
+			Residents:   1,
 		}
 
 		if err := tx.Create(&property).Error; err != nil {
@@ -217,33 +225,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 		log.Printf("✅ Default property created: ID=%d, Name=%s", property.ID, property.Name)
 
-		// Create household settings for the property
-		householdSettings := models.HouseholdSettings{
-			PropertyID:       property.ID,
-			SplitMode:        false,
-			DefaultSplitType: "equal",
-		}
-
-		if err := tx.Create(&householdSettings).Error; err != nil {
-			tx.Rollback()
-			log.Printf("ERROR creating household settings: %v", err)
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create household settings")
-			return
-		}
-
-		log.Printf("✅ Household settings created for property ID=%d", property.ID)
-
 		// Create user settings
-		userSettings := models.UserSettings{
-			UserID:                    user.ID,
-			Language:                  language,
-			Currency:                  models.DefaultCurrency,
-			Theme:                     "auto",
-			DateFormat:                "DD/MM/YYYY",
-			DefaultSplitWithMemberIDs: "",
-			EmailNotifications:        true,
-			BillDueAlertDays:          3,
-		}
+		userSettings := models.NewUserSettings(user.ID, language)
 
 		if err := tx.Create(&userSettings).Error; err != nil {
 			tx.Rollback()
@@ -253,22 +236,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		}
 
 		log.Printf("✅ User settings created for user ID=%d", user.ID)
-
-		// Create HouseholdMember for the admin user (linked to their User account)
-		adminMember := models.HouseholdMember{
-			PropertyID: property.ID,
-			UserID:     &user.ID,
-			Name:       user.Name,
-			Role:       "admin",
-			IsVirtual:  false,
-		}
-
-		if err := tx.Create(&adminMember).Error; err != nil {
-			tx.Rollback()
-			log.Printf("ERROR creating household member: %v", err)
-			apierr.Fail(c, http.StatusInternalServerError, "server_error", "Failed to create household member")
-			return
-		}
 
 		log.Printf("✅ Household member created: ID=%d, Name=%s, UserID=%d", adminMember.ID, adminMember.Name, user.ID)
 
@@ -284,16 +251,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		// Non-first user: create only user settings.
 		// NO auto-join to any property — the onboarding wizard will guide the user
 		// to either create a new property or request to join an existing one.
-		userSettings := models.UserSettings{
-			UserID:                    user.ID,
-			Language:                  language,
-			Currency:                  models.DefaultCurrency,
-			Theme:                     "auto",
-			DateFormat:                "DD/MM/YYYY",
-			DefaultSplitWithMemberIDs: "",
-			EmailNotifications:        true,
-			BillDueAlertDays:          3,
-		}
+		userSettings := models.NewUserSettings(user.ID, language)
 
 		if err := tx.Create(&userSettings).Error; err != nil {
 			tx.Rollback()
