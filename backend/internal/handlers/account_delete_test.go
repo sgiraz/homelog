@@ -364,6 +364,9 @@ func TestDeleteAccount_OwnerHandsTheHomeToTheSuccessor(t *testing.T) {
 	if prop.UserID != f.bob.ID {
 		t.Errorf("home owner = %d, want bob (%d)", prop.UserID, f.bob.ID)
 	}
+	if !prop.IsCurrent {
+		t.Error("the household lost its primary home: handing it over must keep is_current")
+	}
 	var n int64
 	f.db.Unscoped().Model(&models.HouseholdMember{}).Where("id = ?", f.mAlice.ID).Count(&n)
 	if n != 0 {

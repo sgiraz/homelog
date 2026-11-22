@@ -241,9 +241,9 @@ func deleteAccount(tx *gorm.DB, userID uint) error {
 // took in them. The member row itself is detachMembers'.
 func leaveHousehold(all *gorm.DB, userID uint, hh accountHousehold) error {
 	if next := hh.successor(); next != nil {
-		// is_current marks the owner's home of choice, not the successor's.
+		// Only ownership moves: the primary home belongs to the household.
 		if err := all.Model(&models.Property{}).Where("household_id = ? AND user_id = ?", hh.household.ID, userID).
-			Updates(map[string]any{"user_id": *next.UserID, "is_current": false}).Error; err != nil {
+			Update("user_id", *next.UserID).Error; err != nil {
 			return err
 		}
 	}
